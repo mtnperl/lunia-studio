@@ -4,7 +4,9 @@ import { Script, Comment } from "@/lib/types";
 import { saveScript } from "@/lib/storage";
 
 function StatusChip({ status }: { status: Script["status"] }) {
-  return <span className={`status-${status === "review" ? "review" : status}`}>{status === "review" ? "IN REVIEW" : status.toUpperCase()}</span>;
+  const cls = status === "review" ? "chip chip-review" : status === "locked" ? "chip chip-locked" : "chip chip-draft";
+  const label = status === "review" ? "In Review" : status === "locked" ? "Locked" : "Draft";
+  return <span className={cls}>{label}</span>;
 }
 
 function CommentModal({
@@ -15,21 +17,23 @@ function CommentModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <p style={{ fontFamily: "var(--font-pixel)", fontSize: 8, marginBottom: 14, letterSpacing: "0.1em" }}>ADD COMMENT — LINE {lineIndex + 1}</p>
-        <div style={{ background: "var(--gray1)", border: "2px solid var(--black)", padding: "10px 12px", marginBottom: 16 }}>
-          <p style={{ fontFamily: "var(--font-crt)", fontSize: 18, margin: 0 }}>{lineText}</p>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+          Add Comment — Line {lineIndex + 1}
+        </p>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px", marginBottom: 16, fontSize: 14, color: "var(--muted)", lineHeight: 1.5 }}>
+          {lineText}
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6 }}>YOUR NAME</label>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Your name</label>
           <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Name or @handle" />
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6 }}>COMMENT</label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Comment</label>
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ resize: "vertical" }} />
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn-pixel" onClick={() => { if (author && text) { onAdd(author, text); onClose(); } }}>ADD</button>
-          <button className="btn-ghost" onClick={onClose}>CANCEL</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn" onClick={() => { if (author && text) { onAdd(author, text); onClose(); } }}>Add comment</button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
@@ -41,17 +45,17 @@ function LockModal({ onConfirm, onClose }: { onConfirm: (title: string) => void;
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <p style={{ fontFamily: "var(--font-pixel)", fontSize: 8, marginBottom: 14 }}>LOCK SCRIPT</p>
-        <p style={{ fontFamily: "var(--font-crt)", fontSize: 17, color: "var(--gray5)", marginBottom: 16 }}>
-          This will make the script permanently read-only and save it to the library.
+        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Lock script</p>
+        <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 20, lineHeight: 1.5 }}>
+          This makes the script permanently read-only and saves it to your library.
         </p>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6 }}>FINAL TITLE</label>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginBottom: 6 }}>Final title</label>
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter final script title" />
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn-pixel" onClick={() => { if (title) onConfirm(title); }}>LOCK + SAVE ■</button>
-          <button className="btn-ghost" onClick={onClose}>CANCEL</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn" onClick={() => { if (title) onConfirm(title); }}>Lock & save</button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
@@ -125,9 +129,9 @@ export default function EditorView({ script: initialScript, onUpdate }: {
 
   if (!script) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400, flexDirection: "column", gap: 16 }}>
-        <p style={{ fontFamily: "var(--font-pixel)", fontSize: 10, letterSpacing: "0.15em", color: "var(--gray4)" }}>NO SCRIPT LOADED</p>
-        <p style={{ fontFamily: "var(--font-crt)", fontSize: 18, color: "var(--gray3)" }}>Generate a script or open one from the library.</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400, flexDirection: "column", gap: 8 }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: "var(--text)" }}>No script loaded</p>
+        <p style={{ fontSize: 14, color: "var(--muted)" }}>Generate a script or open one from your library.</p>
       </div>
     );
   }
@@ -139,33 +143,33 @@ export default function EditorView({ script: initialScript, onUpdate }: {
   const linesWithComments = Object.keys(script.comments).filter((k) => script.comments[parseInt(k)]?.length > 0).map(Number);
 
   return (
-    <div className="animate-slide-in" style={{ paddingBottom: 80 }}>
+    <div style={{ paddingBottom: 80 }}>
       {/* Topbar */}
-      <div style={{ borderBottom: "2px solid var(--black)", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, background: "var(--gray1)" }}>
+      <div style={{ borderBottom: "1px solid var(--border)", padding: "10px 20px", display: "flex", alignItems: "center", gap: 12, background: "var(--bg)" }}>
         <input
           type="text"
           value={script.title}
           onChange={(e) => update({ title: e.target.value })}
           readOnly={isLocked}
-          style={{ fontFamily: "var(--font-pixel)", fontSize: 9, flex: 1, background: isLocked ? "var(--gray2)" : "var(--gray1)", letterSpacing: "0.05em" }}
+          style={{ flex: 1, fontWeight: 500, fontSize: 14, border: "none", background: "transparent", padding: 0, outline: "none", width: "auto" }}
         />
         <StatusChip status={script.status} />
-        <button className="btn-ghost" onClick={share} style={{ fontSize: 7 }}>
-          {copied ? "COPIED!" : "SHARE"}
+        <button className="btn-ghost" onClick={share} style={{ fontSize: 13, padding: "6px 12px" }}>
+          {copied ? "Copied!" : "Share"}
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px 240px", minHeight: "calc(100vh - 140px)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px 220px", minHeight: "calc(100vh - 140px)" }}>
         {/* Script pane */}
-        <div style={{ borderRight: "2px solid var(--black)", padding: 20 }}>
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)", marginBottom: 16, letterSpacing: "0.1em" }}>SCRIPT</p>
+        <div style={{ borderRight: "1px solid var(--border)", padding: 20, overflowY: "auto" }}>
+          <p className="section-label" style={{ marginBottom: 12 }}>Script</p>
           {script.lines.map((line, i) => {
             const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
-            const hasComments = lineCommentCounts[i] > 0;
+            const hasComments = (lineCommentCounts[i] ?? 0) > 0;
             if (isSection) {
               return (
-                <div key={i} style={{ margin: "12px 0 6px", paddingLeft: 32 }}>
-                  <span className="section-divider">{line}</span>
+                <div key={i} style={{ margin: "16px 0 8px", paddingLeft: 36 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" as const, color: "var(--muted)", background: "var(--surface)", padding: "2px 8px", borderRadius: 4 }}>{line}</span>
                 </div>
               );
             }
@@ -177,12 +181,12 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 2, position: "relative" }}
               >
                 <span style={{
-                  fontFamily: "var(--font-mono)", fontSize: 11, minWidth: 28, paddingTop: 6, textAlign: "right" as const,
-                  background: hasComments ? "var(--black)" : "transparent",
-                  color: hasComments ? "var(--white)" : "var(--gray4)",
-                  padding: hasComments ? "2px 4px" : undefined,
+                  fontSize: 11, minWidth: 28, paddingTop: 9, textAlign: "right" as const,
+                  color: hasComments ? "var(--accent)" : "var(--subtle)",
+                  fontWeight: hasComments ? 600 : 400,
+                  flexShrink: 0,
                 }}>
-                  {String(i + 1).padStart(2, "0")}
+                  {i + 1}
                 </span>
                 <textarea
                   value={line}
@@ -196,12 +200,14 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                   }}
                   rows={1}
                   style={{
-                    flex: 1, fontFamily: "var(--font-crt)", fontSize: 19, resize: "none", overflow: "hidden",
-                    background: hoveredLine === i ? "var(--gray1)" : "transparent",
-                    border: "2px solid transparent",
-                    borderColor: hoveredLine === i ? "var(--gray2)" : "transparent",
-                    padding: "4px 8px", lineHeight: 1.5,
-                    minHeight: 32,
+                    flex: 1, fontSize: 14, resize: "none", overflow: "hidden",
+                    background: hoveredLine === i ? "var(--surface)" : "transparent",
+                    border: "1px solid transparent",
+                    borderColor: hoveredLine === i ? "var(--border)" : "transparent",
+                    borderRadius: 6,
+                    padding: "6px 8px", lineHeight: 1.6,
+                    minHeight: 34,
+                    transition: "background .1s, border-color .1s",
                   }}
                   onInput={(e) => {
                     const t = e.target as HTMLTextAreaElement;
@@ -213,9 +219,10 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                   <button
                     onClick={() => setCommentModal(i)}
                     style={{
-                      fontFamily: "var(--font-pixel)", fontSize: 8, background: "var(--black)", color: "var(--white)",
-                      border: "2px solid var(--black)", width: 24, height: 24, cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 4,
+                      fontSize: 12, fontWeight: 500, background: "var(--surface)", color: "var(--muted)",
+                      border: "1px solid var(--border)", borderRadius: 4,
+                      width: 24, height: 24, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 6,
                     }}
                     title="Add comment"
                   >+</button>
@@ -226,26 +233,26 @@ export default function EditorView({ script: initialScript, onUpdate }: {
         </div>
 
         {/* Comment pane */}
-        <div style={{ borderRight: "2px solid var(--black)", padding: 16, overflowY: "auto" }}>
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)", marginBottom: 14, letterSpacing: "0.1em" }}>COMMENTS</p>
+        <div style={{ borderRight: "1px solid var(--border)", padding: 16, overflowY: "auto" }}>
+          <p className="section-label" style={{ marginBottom: 12 }}>Comments</p>
           {linesWithComments.length === 0 ? (
-            <p style={{ fontFamily: "var(--font-crt)", fontSize: 16, color: "var(--gray3)" }}>No comments yet. Hover a line to add one.</p>
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>No comments yet. Hover a line and click + to add one.</p>
           ) : (
             linesWithComments.sort((a, b) => a - b).map((lineIdx) => {
               const comments = script.comments[lineIdx] ?? [];
               return (
-                <div key={lineIdx} style={{ marginBottom: 16, border: "2px solid var(--black)" }}>
-                  <div style={{ background: "var(--black)", padding: "6px 10px", display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--white)" }}>LINE {lineIdx + 1}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--gray3)" }}>{comments.length}</span>
+                <div key={lineIdx} style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ background: "var(--surface)", padding: "6px 10px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>Line {lineIdx + 1}</span>
+                    <span style={{ fontSize: 11, color: "var(--subtle)" }}>{comments.length}</span>
                   </div>
                   {comments.map((c, ci) => (
-                    <div key={ci} style={{ padding: "8px 10px", borderBottom: "1px solid var(--gray2)" }}>
+                    <div key={ci} style={{ padding: "10px 12px", borderBottom: ci < comments.length - 1 ? "1px solid var(--border)" : undefined }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontFamily: "var(--font-pixel)", fontSize: 6 }}>{c.author}</span>
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--gray4)" }}>{c.time}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{c.author}</span>
+                        <span style={{ fontSize: 11, color: "var(--subtle)" }}>{c.time}</span>
                       </div>
-                      <p style={{ fontFamily: "var(--font-crt)", fontSize: 17, margin: 0 }}>{c.text}</p>
+                      <p style={{ fontSize: 13, margin: 0, color: "var(--text)", lineHeight: 1.5 }}>{c.text}</p>
                     </div>
                   ))}
                   {!isLocked && (
@@ -258,54 +265,59 @@ export default function EditorView({ script: initialScript, onUpdate }: {
         </div>
 
         {/* Sidebar */}
-        <div style={{ padding: 16, overflowY: "auto", background: "var(--gray1)" }}>
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)", marginBottom: 12, letterSpacing: "0.1em" }}>SELECTED HOOK</p>
-          <div style={{ border: "2px solid var(--black)", padding: 12, background: "var(--white)", marginBottom: 16, position: "relative" }}>
-            <span style={{ position: "absolute", top: 6, left: 8, fontFamily: "var(--font-crt)", fontSize: 40, color: "var(--gray2)", lineHeight: 1 }}>"</span>
-            <p style={{ fontFamily: "var(--font-crt)", fontSize: 17, margin: 0, paddingTop: 16, lineHeight: 1.4 }}>{script.hook}</p>
+        <div style={{ padding: 16, overflowY: "auto", background: "var(--surface)" }}>
+          <p className="section-label" style={{ marginBottom: 8 }}>Selected hook</p>
+          <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", background: "var(--bg)", marginBottom: 20, fontSize: 13, lineHeight: 1.6, color: "var(--text)" }}>
+            {script.hook}
           </div>
 
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)", marginBottom: 10, letterSpacing: "0.1em" }}>FILMING NOTES</p>
+          <p className="section-label" style={{ marginBottom: 10 }}>Filming notes</p>
           {(["setting", "wardrobe", "broll", "director"] as const).map((field) => (
-            <div key={field} style={{ marginBottom: 10 }}>
-              <label style={{ fontFamily: "var(--font-pixel)", fontSize: 5, display: "block", marginBottom: 4, color: "var(--gray5)", letterSpacing: "0.08em" }}>
-                {field === "broll" ? "B-ROLL" : field === "director" ? "DIRECTOR NOTES" : field.toUpperCase()}
+            <div key={field} style={{ marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
+                {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
               </label>
               <textarea
                 value={script.filmingNotes[field]}
                 readOnly={isLocked}
                 onChange={(e) => update({ filmingNotes: { ...script.filmingNotes, [field]: e.target.value } })}
                 rows={2}
-                style={{ fontSize: 15, resize: "vertical" }}
+                style={{ fontSize: 13, resize: "vertical" }}
               />
             </div>
           ))}
 
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontFamily: "var(--font-pixel)", fontSize: 5, display: "block", marginBottom: 4, color: "var(--gray5)" }}>CREATOR</label>
-            <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 16 }} />
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
+            <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13 }} />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontFamily: "var(--font-pixel)", fontSize: 5, display: "block", marginBottom: 4, color: "var(--gray5)" }}>STATUS</label>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Status</label>
             <select
               value={script.status}
               disabled={isLocked}
               onChange={(e) => update({ status: e.target.value as Script["status"] })}
-              style={{ fontSize: 16 }}
+              style={{ fontSize: 13 }}
             >
               <option value="draft">Draft</option>
               <option value="review">In Review</option>
             </select>
           </div>
 
-          <div style={{ borderTop: "2px solid var(--black)", paddingTop: 14 }}>
-            <p style={{ fontFamily: "var(--font-pixel)", fontSize: 5, color: "var(--gray4)", marginBottom: 8, lineHeight: 1.8 }}>
-              LOCK script to mark it final. Locking is permanent and saves to library.
-            </p>
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
             {isLocked
-              ? <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)" }}>SCRIPT IS LOCKED ■</p>
-              : <button className="btn-pixel" onClick={() => setLockModal(true)} style={{ width: "100%", justifyContent: "center", fontSize: 7 }}>LOCK + SAVE ■</button>
+              ? <p style={{ fontSize: 13, color: "var(--muted)" }}>Script is locked.</p>
+              : (
+                <>
+                  <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>
+                    Locking is permanent and saves the script to your library.
+                  </p>
+                  <button className="btn" onClick={() => setLockModal(true)} style={{ width: "100%", justifyContent: "center" }}>
+                    Lock & save
+                  </button>
+                </>
+              )
             }
           </div>
         </div>
@@ -328,11 +340,15 @@ function ReplyInput({ onAdd }: { onAdd: (a: string, t: string) => void }) {
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
   return (
-    <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-      <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Name" style={{ fontSize: 14, padding: "4px 8px" }} />
+    <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+      <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" style={{ fontSize: 12, padding: "4px 8px" }} />
       <div style={{ display: "flex", gap: 6 }}>
-        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply..." style={{ flex: 1, fontSize: 14, padding: "4px 8px" }} />
-        <button className="btn-pixel" style={{ fontSize: 6, padding: "4px 8px" }} onClick={() => { if (author && text) { onAdd(author, text); setAuthor(""); setText(""); } }}>↵</button>
+        <input type="text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Reply..." style={{ flex: 1, fontSize: 12, padding: "4px 8px" }} />
+        <button
+          className="btn"
+          style={{ fontSize: 12, padding: "4px 10px" }}
+          onClick={() => { if (author && text) { onAdd(author, text); setAuthor(""); setText(""); } }}
+        >↵</button>
       </div>
     </div>
   );

@@ -4,8 +4,20 @@ import { Script, FilmingNotes } from "@/lib/types";
 import { generateId } from "@/lib/storage";
 
 const PERSONAS = ["Wellness Creator", "Mom", "Biohacker", "Gen Z", "Professional", "Athlete", "Skeptic"];
-const FORMATS = ["Voiceover", "Talking Head", "POV", "Day-in-Life", "Testimonial", "Comparison"];
+const FORMATS = ["Voiceover", "Talking Head", "POV", "Day-in-Life", "Testimonial", "Comparison", "Educational"];
 const ANGLES = ["Science-backed", "Personal story", "Problem/Solution", "Routine reveal", "Myth-bust", "Social proof"];
+
+const LOADER_MSGS = [
+  "Reading brief...",
+  "Analyzing persona...",
+  "Pulling brand rules...",
+  "Drafting hooks...",
+  "Writing script body...",
+  "Checking for em-dashes...",
+  "Removing cringe...",
+  "Calibrating tone...",
+  "Finalizing...",
+];
 
 type HookVariant = { num: number; type: string; text: string };
 
@@ -16,43 +28,44 @@ function parseOutput(raw: string): { hooks: HookVariant[]; scriptLines: string[]
   while ((m = hookRe.exec(raw)) !== null) {
     hooks.push({ num: parseInt(m[1]), type: m[2].trim(), text: m[3].trim() });
   }
-
   const scriptStart = raw.indexOf("SCRIPT");
   const filmingStart = raw.indexOf("FILMING NOTES");
-  const scriptRaw = scriptStart >= 0
-    ? raw.slice(scriptStart + 6, filmingStart >= 0 ? filmingStart : undefined).trim()
-    : "";
-
-  const scriptLines = scriptRaw
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
+  const scriptRaw = scriptStart >= 0 ? raw.slice(scriptStart + 6, filmingStart >= 0 ? filmingStart : undefined).trim() : "";
+  const scriptLines = scriptRaw.split("\n").map((l) => l.trim()).filter(Boolean);
   const filmingNotes: Partial<FilmingNotes> = {};
   if (filmingStart >= 0) {
     const fn = raw.slice(filmingStart);
-    const settingM = fn.match(/Setting:\s*(.+)/);
-    const wardrobeM = fn.match(/Energy:\s*(.+)/);
-    const brollM = fn.match(/Key visual:\s*(.+)/);
-    if (settingM) filmingNotes.setting = settingM[1].trim();
-    if (wardrobeM) filmingNotes.wardrobe = wardrobeM[1].trim();
-    if (brollM) filmingNotes.broll = brollM[1].trim();
+    const s = fn.match(/Setting:\s*(.+)/); if (s) filmingNotes.setting = s[1].trim();
+    const w = fn.match(/Energy:\s*(.+)/); if (w) filmingNotes.wardrobe = w[1].trim();
+    const b = fn.match(/Key visual:\s*(.+)/); if (b) filmingNotes.broll = b[1].trim();
   }
-
   return { hooks, scriptLines, filmingNotes };
 }
 
-export default function GenerateView({
-  onOpenEditor,
-}: {
-  onOpenEditor: (script: Script) => void;
-}) {
+function RetroLoader({ streamText }: { streamText: string }) {
+  const lines = LOADER_MSGS.slice(0, Math.max(1, Math.ceil((streamText.length / 800) * LOADER_MSGS.length)));
+  return (
+    <div className="loader-wrap" style={{ marginTop: 20 }}>
+      <div className="hp-label">GEN PROGRESS</div>
+      <div className="hp-track"><div className="hp-fill" /></div>
+      <div className="loader-log">
+        {lines.map((msg, i) => (
+          <div key={i} className={i === lines.length - 1 ? "active" : ""}>
+            {i === lines.length - 1 ? `> ${msg}` : `  ${msg} OK`}
+            {i === lines.length - 1 && <span className="blink">_</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Script) => void }) {
   const [persona, setPersona] = useState(PERSONAS[0]);
   const [format, setFormat] = useState(FORMATS[0]);
   const [angle, setAngle] = useState(ANGLES[0]);
   const [context, setContext] = useState("");
   const [creator, setCreator] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [done, setDone] = useState(false);
@@ -63,8 +76,7 @@ export default function GenerateView({
     setLoading(true); setDone(false); setStreamText(""); setSelectedHook(null); setError(null);
     try {
       const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona, format, angle, context, creator }),
       });
       if (!res.ok || !res.body) throw new Error("Generation failed");
@@ -80,9 +92,7 @@ export default function GenerateView({
       setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   const parsed = done ? parseOutput(streamText) : null;
@@ -90,169 +100,105 @@ export default function GenerateView({
   function openInEditor() {
     if (!parsed || selectedHook === null) return;
     const hook = parsed.hooks.find((h) => h.num === selectedHook);
-    const script: Script = {
-      id: generateId(),
-      title: `${persona} ${format} — ${angle}`,
-      hook: hook?.text ?? "",
-      lines: parsed.scriptLines,
-      comments: {},
-      filmingNotes: {
-        setting: parsed.filmingNotes.setting ?? "",
-        wardrobe: parsed.filmingNotes.wardrobe ?? "",
-        broll: parsed.filmingNotes.broll ?? "",
-        director: "",
-      },
-      creator,
-      status: "draft",
-      persona,
-      angle,
-      format,
-      savedAt: new Date().toISOString(),
-    };
-    onOpenEditor(script);
+    onOpenEditor({
+      id: generateId(), title: `${persona} · ${format} · ${angle}`,
+      hook: hook?.text ?? "", lines: parsed.scriptLines, comments: {},
+      filmingNotes: { setting: parsed.filmingNotes.setting ?? "", wardrobe: parsed.filmingNotes.wardrobe ?? "", broll: parsed.filmingNotes.broll ?? "", director: "" },
+      creator, status: "draft", persona, angle, format, savedAt: new Date().toISOString(),
+    });
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 pb-20 animate-slide-in">
-      {/* Header */}
-      <div className="mb-8">
-        <p style={{ fontFamily: "var(--font-pixel)", fontSize: 11, letterSpacing: "0.15em" }}>
-          GENERATE SCRIPT<span className="animate-blink">_</span>
-        </p>
-        <p style={{ fontFamily: "var(--font-crt)", fontSize: 18, color: "var(--gray4)", marginTop: 6 }}>
-          Fill out the brief and generate three hook variants + a full script.
-        </p>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px 80px" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Generate script</h1>
+        <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 14 }}>Fill in the brief and get 3 hooks + a full script.</p>
       </div>
 
       {/* Form */}
-      <div style={{ border: "2px solid var(--black)", padding: 24, boxShadow: "4px 4px 0 var(--black)", background: "var(--white)" }}>
+      <div className="card" style={{ padding: 24, marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
           {[
-            { label: "PERSONA", value: persona, set: setPersona, opts: PERSONAS },
-            { label: "FORMAT", value: format, set: setFormat, opts: FORMATS },
-            { label: "ANGLE", value: angle, set: setAngle, opts: ANGLES },
+            { label: "Persona", value: persona, set: setPersona, opts: PERSONAS },
+            { label: "Format", value: format, set: setFormat, opts: FORMATS },
+            { label: "Angle", value: angle, set: setAngle, opts: ANGLES },
           ].map(({ label, value, set, opts }) => (
             <div key={label}>
-              <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6, letterSpacing: "0.1em" }}>{label}</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, letterSpacing: ".02em" }}>{label}</label>
               <select value={value} onChange={(e) => set(e.target.value)}>
                 {opts.map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
           ))}
         </div>
-
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6, letterSpacing: "0.1em" }}>CREATOR NAME</label>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Creator name</label>
           <input type="text" value={creator} onChange={(e) => setCreator(e.target.value)} placeholder="@handle or name" />
         </div>
-
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontFamily: "var(--font-pixel)", fontSize: 6, display: "block", marginBottom: 6, letterSpacing: "0.1em" }}>ADDITIONAL CONTEXT <span style={{ color: "var(--gray4)" }}>(OPTIONAL)</span></label>
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30-40F..."
-            rows={3}
-            style={{ resize: "vertical" }}
-          />
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
+            Additional context <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+          </label>
+          <textarea value={context} onChange={(e) => setContext(e.target.value)}
+            placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30–40F..."
+            rows={3} style={{ resize: "vertical" }} />
         </div>
-
-        <button className="btn-pixel" onClick={generate} disabled={loading} style={{ width: "100%", justifyContent: "center" }}>
-          {loading ? "GENERATING..." : "GENERATE SCRIPT ▶"}
+        <button className="btn" onClick={generate} disabled={loading} style={{ width: "100%", justifyContent: "center" }}>
+          {loading ? "Generating..." : "Generate →"}
         </button>
       </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div style={{ marginTop: 24, border: "2px solid var(--black)", padding: 16, boxShadow: "4px 4px 0 var(--black)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <span style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)" }}>GEN</span>
-            <div className="hp-bar-track" style={{ flex: 1 }}>
-              <div className="hp-bar-fill" />
-            </div>
-          </div>
-          <p style={{ fontFamily: "var(--font-crt)", fontSize: 16, color: "var(--gray4)" }}>
-            GENERATING<span className="animate-blink">...</span>
-          </p>
-          <pre style={{ fontFamily: "var(--font-crt)", fontSize: 16, whiteSpace: "pre-wrap", color: "var(--gray5)", marginTop: 8, maxHeight: 200, overflow: "auto" }}>
-            {streamText}
-          </pre>
-        </div>
-      )}
+      {/* Retro loader */}
+      {loading && <RetroLoader streamText={streamText} />}
 
       {error && (
-        <div style={{ marginTop: 16, border: "2px solid var(--black)", padding: 12, background: "var(--gray1)" }}>
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 7, color: "var(--black)" }}>ERROR: {error}</p>
+        <div style={{ padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, color: "#991b1b", fontSize: 13 }}>
+          {error}
         </div>
       )}
 
       {/* Results */}
       {done && parsed && (
         <div style={{ marginTop: 24 }}>
-          {/* Hook variants */}
-          <p style={{ fontFamily: "var(--font-pixel)", fontSize: 7, marginBottom: 12, letterSpacing: "0.1em" }}>SELECT A HOOK</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", letterSpacing: ".05em", textTransform: "uppercase", marginBottom: 12 }}>Choose a hook</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
             {parsed.hooks.map((h) => {
-              const selected = selectedHook === h.num;
+              const sel = selectedHook === h.num;
               return (
-                <button
-                  key={h.num}
-                  onClick={() => setSelectedHook(h.num)}
-                  style={{
-                    background: selected ? "var(--black)" : "var(--white)",
-                    color: selected ? "var(--white)" : "var(--black)",
-                    border: `2px solid var(--black)`,
-                    padding: 14,
-                    textAlign: "left",
-                    cursor: "pointer",
-                    boxShadow: selected ? "none" : "4px 4px 0 var(--black)",
-                    transform: selected ? "translate(4px,4px)" : "none",
-                    transition: "all 0.08s",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                    <span style={{ fontFamily: "var(--font-pixel)", fontSize: 7 }}>HOOK {h.num}</span>
-                    <span style={{
-                      fontFamily: "var(--font-pixel)", fontSize: 5,
-                      background: selected ? "var(--gray5)" : "var(--gray2)",
-                      color: selected ? "var(--white)" : "var(--gray5)",
-                      padding: "2px 6px", border: `1px solid ${selected ? "var(--gray4)" : "var(--gray3)"}`
-                    }}>{h.type.toUpperCase()}</span>
+                <button key={h.num} onClick={() => setSelectedHook(h.num)} style={{
+                  textAlign: "left", padding: 16, background: sel ? "#000" : "var(--bg)",
+                  border: `1px solid ${sel ? "#000" : "var(--border-strong)"}`,
+                  borderRadius: 8, cursor: "pointer", transition: "all .15s",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: sel ? "#aaa" : "var(--muted)" }}>HOOK {h.num}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 3, background: sel ? "#333" : "var(--surface)", color: sel ? "#ccc" : "var(--muted)" }}>{h.type}</span>
                   </div>
-                  <p style={{ fontFamily: "var(--font-crt)", fontSize: 20, margin: 0, lineHeight: 1.3 }}>{h.text}</p>
+                  <p style={{ margin: 0, fontSize: 15, color: sel ? "#fff" : "var(--text)", lineHeight: 1.5 }}>{h.text}</p>
                 </button>
               );
             })}
           </div>
 
           {/* Script preview */}
-          <div style={{ border: "2px solid var(--black)", boxShadow: "4px 4px 0 var(--black)", marginBottom: 20 }}>
-            <div style={{ background: "var(--black)", padding: "8px 14px" }}>
-              <span style={{ fontFamily: "var(--font-pixel)", fontSize: 7, color: "var(--white)", letterSpacing: "0.1em" }}>FULL SCRIPT</span>
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>Full script</span>
             </div>
-            <div style={{ padding: 16, maxHeight: 320, overflowY: "auto" }}>
+            <div style={{ padding: 16, maxHeight: 340, overflowY: "auto" }}>
               {parsed.scriptLines.map((line, i) => {
                 const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
                 return isSection
-                  ? <div key={i} style={{ margin: "10px 0 6px" }}><span className="section-divider">{line}</span></div>
-                  : <p key={i} style={{ fontFamily: "var(--font-crt)", fontSize: 18, margin: "4px 0", lineHeight: 1.5 }}>{line}</p>;
+                  ? <div key={i} style={{ margin: "12px 0 4px" }}><span className="section-label">{line.replace(/[[\]]/g, "")}</span></div>
+                  : <p key={i} style={{ margin: "3px 0", fontSize: 14, lineHeight: 1.7, color: "var(--text)" }}>{line}</p>;
               })}
             </div>
           </div>
 
-          <button
-            className="btn-pixel"
-            onClick={openInEditor}
-            disabled={selectedHook === null}
-            style={{ width: "100%", justifyContent: "center" }}
-          >
-            OPEN IN EDITOR →
+          <button className="btn" onClick={openInEditor} disabled={selectedHook === null} style={{ width: "100%", justifyContent: "center" }}>
+            Open in editor →
           </button>
-          {selectedHook === null && (
-            <p style={{ fontFamily: "var(--font-pixel)", fontSize: 6, color: "var(--gray4)", textAlign: "center", marginTop: 8 }}>
-              SELECT A HOOK FIRST
-            </p>
-          )}
+          {selectedHook === null && <p style={{ textAlign: "center", fontSize: 12, color: "var(--subtle)", marginTop: 8 }}>Select a hook first</p>}
         </div>
       )}
     </div>

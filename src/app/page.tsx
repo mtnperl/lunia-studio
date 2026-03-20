@@ -13,101 +13,53 @@ export default function Page() {
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [scriptCount, setScriptCount] = useState(0);
 
-  useEffect(() => {
-    setScriptCount(getLibrary().length);
-  }, [tab]);
+  useEffect(() => { setScriptCount(getLibrary().length); }, [tab]);
 
-  function openEditor(script: Script) {
-    setActiveScript(script);
-    setTab("editor");
-  }
-
-  function openFromLibrary(script: Script) {
-    setActiveScript(script);
-    setTab("editor");
-  }
-
-  function handleScriptUpdate(s: Script) {
-    setActiveScript(s);
-    saveScript(s);
-    setScriptCount(getLibrary().length);
-  }
+  function openEditor(script: Script) { setActiveScript(script); setTab("editor"); }
+  function handleScriptUpdate(s: Script) { setActiveScript(s); saveScript(s); setScriptCount(getLibrary().length); }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "generate", label: "GENERATE" },
-    { key: "editor", label: "EDITOR" },
-    { key: "library", label: "LIBRARY" },
+    { key: "generate", label: "Generate" },
+    { key: "editor", label: "Editor" },
+    { key: "library", label: "Library" },
   ];
 
   return (
-    <>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Nav */}
-      <nav style={{
-        position: "sticky", top: 0, zIndex: 100,
-        height: 52, background: "var(--black)",
-        borderBottom: "2px solid var(--black)",
-        display: "flex", alignItems: "center",
-        padding: "0 24px", gap: 0,
+      <header style={{
+        borderBottom: "1px solid var(--border)", background: "var(--bg)",
+        position: "sticky", top: 0, zIndex: 50,
+        padding: "0 24px", height: 52,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
-          <div style={{
-            width: 20, height: 20, background: "var(--white)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: "coin 1.4s ease-in-out infinite",
-          }}>
-            <span style={{ fontFamily: "var(--font-pixel)", fontSize: 7, color: "var(--black)", lineHeight: 1 }}>L</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 20, height: 20, background: "#000", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>L</span>
           </div>
-          <span style={{ fontFamily: "var(--font-pixel)", fontSize: 9, color: "var(--white)", letterSpacing: "0.15em" }}>LUNIA</span>
-          <span style={{ fontFamily: "var(--font-crt)", fontSize: 16, color: "var(--gray4)" }}>SCRIPT STUDIO v1.0</span>
+          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Script Studio</span>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", flex: 1, height: "100%" }}>
-          {tabs.map((t) => {
-            const active = tab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                style={{
-                  fontFamily: "var(--font-pixel)", fontSize: 7, letterSpacing: "0.1em",
-                  background: active ? "var(--white)" : "var(--black)",
-                  color: active ? "var(--black)" : "var(--white)",
-                  border: "none",
-                  borderLeft: `1px solid var(--gray5)`,
-                  padding: "0 20px", height: "100%", cursor: "pointer",
-                  position: "relative",
-                }}
-              >
-                {t.label}
-                {active && (
-                  <span style={{
-                    position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
-                    width: 0, height: 0,
-                    borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
-                    borderTop: "6px solid var(--white)",
-                  }} />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <nav style={{ display: "flex", gap: 2 }}>
+          {tabs.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: "6px 14px", fontSize: 13, fontWeight: 500,
+              background: tab === t.key ? "var(--surface)" : "transparent",
+              color: tab === t.key ? "var(--text)" : "var(--muted)",
+              border: "none", borderRadius: 6, cursor: "pointer",
+              fontFamily: "inherit",
+            }}>{t.label}</button>
+          ))}
+        </nav>
 
-        {/* Script count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontFamily: "var(--font-pixel)", fontSize: 7, color: "var(--gray4)" }}>
-            {String(scriptCount).padStart(2, "0")} FILES
-          </span>
-        </div>
-      </nav>
+        <span style={{ fontSize: 12, color: "var(--subtle)" }}>{scriptCount} scripts</span>
+      </header>
 
-      {/* Content */}
-      <main style={{ minHeight: "calc(100vh - 52px)", background: "var(--white)" }}>
+      <main style={{ flex: 1 }}>
         {tab === "generate" && <GenerateView onOpenEditor={openEditor} />}
         {tab === "editor" && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
-        {tab === "library" && <LibraryView onOpen={openFromLibrary} />}
+        {tab === "library" && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
       </main>
-    </>
+    </div>
   );
 }
