@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -14,14 +14,22 @@ type Props = {
   onContentChange: (config: CarouselConfig) => void;
 };
 
+const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
+const PREVIEW_SCALE = 0.38;
+
 export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [copyLabel, setCopyLabel] = useState("Copy share link");
-  const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy caption");
+  const [copyLabel, setCopyLabel] = useState("Copy link");
+  const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  // Full-size hidden refs for accurate PNG export
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
   const { content, selectedHook, graphicStyles, topic } = config;
   const hook = content.hooks[selectedHook];
@@ -30,37 +38,32 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setDownloading(index);
     setExportError(null);
     try {
-      const el = document.getElementById(`slide-${index}`);
-      if (!el) return;
-      // Clone the inner 1080×1350 div, strip the preview scale, render off-screen
-      const clone = el.cloneNode(true) as HTMLElement;
-      clone.style.transform = "none";
-      clone.style.position = "fixed";
-      clone.style.top = "-9999px";
-      clone.style.left = "-9999px";
-      clone.style.width = "1080px";
-      clone.style.height = "1350px";
-      document.body.appendChild(clone);
-      try {
-        const dataUrl = await toPng(clone, { width: 1080, height: 1350, pixelRatio: 1 });
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = `lunia-carousel-slide-${index + 1}.png`;
-        a.click();
-      } finally {
-        document.body.removeChild(clone);
-      }
+      const el = exportRefs.current[index];
+      if (!el) throw new Error("Element not found");
+      const dataUrl = await toPng(el, {
+        width: 1080,
+        height: 1350,
+        pixelRatio: 1,
+        cacheBust: true,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
+      a.click();
     } catch {
-      setExportError("Export failed — please try again");
+      setExportError("Export failed — try again");
     } finally {
       setDownloading(null);
     }
   }
 
   async function downloadAll() {
+    setDownloadingAll(true);
+    setExportError(null);
     for (let i = 0; i < 5; i++) {
       await downloadSlide(i);
     }
+    setDownloadingAll(false);
   }
 
   async function handleSave() {
@@ -69,13 +72,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const res = await fetch("/api/carousel/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic,
-          hookTone,
-          content,
-          selectedHook,
-          graphicStyles,
-        }),
+        body: JSON.stringify({ topic, hookTone, content, selectedHook, graphicStyles }),
       });
       if (!res.ok) return;
       const { id } = await res.json();
@@ -87,10 +84,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   function handleCopyShareLink() {
     if (!savedId) return;
-    const url = `${window.location.origin}/carousels/${savedId}`;
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard.writeText(`${window.location.origin}/carousels/${savedId}`).then(() => {
       setCopyLabel("Copied!");
-      setTimeout(() => setCopyLabel("Copy share link"), 2000);
+      setTimeout(() => setCopyLabel("Copy link"), 2000);
     });
   }
 
@@ -112,184 +108,298 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
-  const slides = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={0.5} id="slide-0" />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={0.5} id="slide-1" />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphicStyle={graphicStyles[1]} scale={0.5} id="slide-2" />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphicStyle={graphicStyles[2]} scale={0.5} id="slide-3" />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={0.5} id="slide-4" />,
+  const slideNodes = [
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphicStyle={graphicStyles[1]} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphicStyle={graphicStyles[2]} scale={PREVIEW_SCALE} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} />,
   ];
 
+  const exportNodes = [
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={1} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={1} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphicStyle={graphicStyles[1]} scale={1} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphicStyle={graphicStyles[2]} scale={1} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} />,
+  ];
+
+  const slideW = Math.round(1080 * PREVIEW_SCALE);
+  const slideH = Math.round(1350 * PREVIEW_SCALE);
+
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
+    <div style={{ maxWidth: 960 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, letterSpacing: "-0.02em" }}>Your carousel</h2>
-          <p style={{ color: "var(--muted)", fontSize: 14 }}>Download individual slides or all at once.</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>
+            Your carousel
+          </h2>
+          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
+            {topic} · 5 slides
+          </p>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {savedId ? (
-            <button
-              onClick={handleCopyShareLink}
-              style={{
-                background: "transparent",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                padding: "10px 20px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                color: "var(--text)",
-              }}
-            >
+            <button className="btn-ghost" onClick={handleCopyShareLink}>
               {copyLabel}
             </button>
           ) : (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                background: "transparent",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                padding: "10px 20px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: saving ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                color: "var(--text)",
-                opacity: saving ? 0.5 : 1,
-              }}
-            >
-              {saving ? "Saving..." : "Save carousel"}
+            <button className="btn-ghost" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
             </button>
           )}
           <button
+            className="btn"
             onClick={downloadAll}
-            style={{
-              background: "var(--text)",
-              color: "var(--bg)",
-              border: "none",
-              borderRadius: 8,
-              padding: "10px 24px",
-              fontSize: 14,
-              fontWeight: 700,
-              fontFamily: "inherit",
-              cursor: "pointer",
-            }}
+            disabled={downloadingAll}
+            style={{ minWidth: 160 }}
           >
-            Download all (5 PNGs)
+            {downloadingAll ? (
+              <>
+                <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 4 }}>⟳</span>
+                Exporting…
+              </>
+            ) : (
+              "↓ Download all (5 PNGs)"
+            )}
           </button>
         </div>
       </div>
 
       {exportError && (
-        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#9b1c1c" }}>
-          Export error: {exportError}
+        <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b" }}>
+          ⚠ {exportError}
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 16 }}>
-        {slides.map((slide, i) => (
-          <div key={i} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-            {slide}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => downloadSlide(i)}
-                disabled={downloading === i}
-                style={{
-                  background: "var(--bg)",
-                  color: "var(--text)",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 7,
-                  padding: "8px 14px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: "inherit",
-                  cursor: downloading === i ? "not-allowed" : "pointer",
-                  opacity: downloading === i ? 0.5 : 1,
-                }}
-              >
-                {downloading === i ? "Exporting..." : `↓ Slide ${i + 1}`}
-              </button>
-              {i >= 1 && i <= 3 && (
+      {/* Slide strip */}
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
+        {slideNodes.map((slide, i) => {
+          const isActive = activeSlide === i;
+          const isDownloading = downloading === i;
+          const isRegenerating = regenerating === i - 1;
+          return (
+            <div
+              key={i}
+              onClick={() => setActiveSlide(i)}
+              style={{
+                flexShrink: 0,
+                width: slideW,
+                cursor: "pointer",
+                scrollSnapAlign: "start",
+              }}
+            >
+              {/* Slide number label */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: isActive ? "var(--text)" : "var(--muted)",
+                }}>
+                  {SLIDE_LABELS[i]}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+                  {i + 1}/5
+                </span>
+              </div>
+
+              {/* Slide preview */}
+              <div style={{
+                borderRadius: 8,
+                overflow: "hidden",
+                outline: isActive ? "2px solid #1e7a8a" : "2px solid transparent",
+                outlineOffset: 2,
+                transition: "outline-color 0.15s",
+                boxShadow: isActive
+                  ? "0 0 0 4px rgba(30,122,138,0.12), 0 4px 20px rgba(0,0,0,0.12)"
+                  : "0 2px 12px rgba(0,0,0,0.08)",
+              }}>
+                {slide}
+              </div>
+
+              {/* Slide actions */}
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                 <button
-                  onClick={() => handleRegenerateSlide(i - 1)}
-                  disabled={regenerating === i - 1}
-                  title="Regenerate this slide"
+                  onClick={(e) => { e.stopPropagation(); downloadSlide(i); }}
+                  disabled={isDownloading || downloadingAll}
                   style={{
-                    background: "var(--bg)",
-                    color: "var(--muted)",
-                    border: "1.5px solid var(--border)",
-                    borderRadius: 7,
-                    padding: "8px 10px",
+                    flex: 1,
+                    background: "var(--surface)",
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "7px 0",
                     fontSize: 12,
                     fontWeight: 600,
                     fontFamily: "inherit",
-                    cursor: regenerating === i - 1 ? "not-allowed" : "pointer",
-                    opacity: regenerating === i - 1 ? 0.5 : 1,
+                    cursor: (isDownloading || downloadingAll) ? "not-allowed" : "pointer",
+                    opacity: (isDownloading || downloadingAll) ? 0.5 : 1,
+                    transition: "background 0.15s",
+                    letterSpacing: "0.01em",
                   }}
                 >
-                  {regenerating === i - 1 ? "..." : "↺"}
+                  {isDownloading ? "…" : "↓ PNG"}
                 </button>
-              )}
+                {i >= 1 && i <= 3 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleRegenerateSlide(i - 1); }}
+                    disabled={isRegenerating}
+                    title="Regenerate slide"
+                    style={{
+                      background: "var(--surface)",
+                      color: "var(--muted)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "7px 10px",
+                      fontSize: 13,
+                      fontFamily: "inherit",
+                      cursor: isRegenerating ? "not-allowed" : "pointer",
+                      opacity: isRegenerating ? 0.5 : 1,
+                      transition: "background 0.15s",
+                    }}
+                  >
+                    {isRegenerating ? "…" : "↺"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          );
+        })}
+      </div>
+
+      {/* Dot indicators */}
+      <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8 }}>
+        {[0,1,2,3,4].map(i => (
+          <button
+            key={i}
+            onClick={() => setActiveSlide(i)}
+            style={{
+              width: activeSlide === i ? 20 : 6,
+              height: 6,
+              borderRadius: 3,
+              background: activeSlide === i ? "#1e7a8a" : "var(--border)",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              transition: "all 0.2s",
+            }}
+          />
         ))}
       </div>
 
-      {/* IG Caption */}
+      {/* Caption */}
       {content.caption && (
-        <div style={{ marginTop: 36, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
-              Instagram caption
+        <div style={{
+          marginTop: 36,
+          border: "1px solid var(--border)",
+          borderRadius: 10,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted)" }}>
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", letterSpacing: "0.01em" }}>
+                Instagram caption
+              </span>
             </div>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(content.caption).then(() => {
                   setCaptionCopyLabel("Copied!");
-                  setTimeout(() => setCaptionCopyLabel("Copy caption"), 2000);
+                  setTimeout(() => setCaptionCopyLabel("Copy"), 2000);
                 });
               }}
               style={{
-                background: "transparent",
-                border: "1.5px solid var(--border)",
-                borderRadius: 7,
-                padding: "6px 14px",
+                background: captionCopyLabel === "Copied!" ? "#f0fdf4" : "var(--bg)",
+                border: `1px solid ${captionCopyLabel === "Copied!" ? "#bbf7d0" : "var(--border-strong)"}`,
+                borderRadius: 6,
+                padding: "5px 12px",
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
                 fontFamily: "inherit",
-                color: "var(--text)",
+                color: captionCopyLabel === "Copied!" ? "#15803d" : "var(--text)",
+                transition: "all 0.2s",
               }}
             >
               {captionCopyLabel}
             </button>
           </div>
           <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "14px 16px",
-            fontSize: 14,
-            lineHeight: 1.65,
+            padding: "16px 18px",
+            fontSize: 13.5,
+            lineHeight: 1.7,
             color: "var(--text)",
             whiteSpace: "pre-wrap",
+            background: "var(--bg)",
           }}>
             {content.caption}
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 20, marginTop: 28 }}>
-        <button onClick={onChangeHook} style={{ background: "transparent", color: "var(--text)", border: "none", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}>
+      {/* Footer actions */}
+      <div style={{ display: "flex", gap: 20, marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+        <button
+          onClick={onChangeHook}
+          style={{
+            background: "transparent",
+            color: "var(--text)",
+            border: "none",
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "inherit",
+            cursor: "pointer",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
           ← Change hook
         </button>
-        <button onClick={onRestart} style={{ background: "transparent", color: "var(--muted)", border: "none", fontSize: 14, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}>
+        <button
+          onClick={onRestart}
+          style={{
+            background: "transparent",
+            color: "var(--muted)",
+            border: "none",
+            fontSize: 13,
+            fontFamily: "inherit",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
           Start over
         </button>
+      </div>
+
+      {/* Hidden full-size slides for accurate PNG export */}
+      <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
+        {exportNodes.map((node, i) => (
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: 1350 }}>
+            {node}
+          </div>
+        ))}
       </div>
     </div>
   );
