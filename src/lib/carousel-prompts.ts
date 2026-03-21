@@ -1,3 +1,5 @@
+import type { CarouselTemplate } from "./types";
+
 export const SUGGESTIONS_PROMPT = `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 3 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
 
 Return ONLY valid JSON in this exact format, no other text:
@@ -25,9 +27,19 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
 
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
 
-export const TEMPLATE_PREFIX = `A carousel template image is attached first. Use it as a structural guide: match its content density per slide, number of points, heading style, and information hierarchy. Do not comment on the image — just apply the structure.\n\n`;
+function buildTemplateSection(template: CarouselTemplate): string {
+  return `A carousel template is attached (${template.images.length} slide image${template.images.length > 1 ? "s" : ""}).
+Template: "${template.name}"${template.description ? `\nDescription: ${template.description}` : ""}${template.styleNotes ? `\nStyle notes: ${template.styleNotes}` : ""}
+Content density: ${template.contentDensity}
+Follow this template's structure: match its content density per slide, heading style, information hierarchy, and visual rhythm. Do not comment on the images.\n\n`;
+}
 
-export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational", hasStyleRef = false, hasTemplate = false) => `${hasTemplate ? TEMPLATE_PREFIX : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+export const GENERATE_CAROUSEL_PROMPT = (
+  topic: string,
+  hookTone = "educational",
+  hasStyleRef = false,
+  template: CarouselTemplate | null = null
+) => `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 
@@ -39,9 +51,9 @@ Return ONLY valid JSON in this exact format, no other text:
     { "headline": "string", "subline": "string" }
   ],
   "slides": [
-    { "headline": "string", "body": "string", "citation": "string" },
-    { "headline": "string", "body": "string", "citation": "string" },
-    { "headline": "string", "body": "string", "citation": "string" }
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" }
   ],
   "cta": {
     "headline": "string",
@@ -60,7 +72,8 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
-- Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"`;
+- Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
+- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 260" with NO explicit width/height on the svg element • Colors only: #1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1200 chars • Use REAL data/numbers from the slide text — do not invent • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
   `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"
@@ -68,11 +81,12 @@ export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational",
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 
 Return ONLY valid JSON in this exact format, no other text:
-{ "headline": "string", "body": "string", "citation": "string" }
+{ "headline": "string", "body": "string", "citation": "string", "graphic": "string" }
 
 Brand rules (follow exactly):
 - No em dashes anywhere.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Body copy: 3-5 sentences, specific and factual
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
-- Headline: uppercase, max 8 words`;
+- Headline: uppercase, max 8 words
+- graphic: same rules as main carousel prompt — SVG infographic, viewBox="0 0 936 260", single compact line max 1200 chars, real data only, "" if none`;

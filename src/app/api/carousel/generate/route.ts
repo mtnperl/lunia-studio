@@ -1,6 +1,6 @@
 import { anthropic } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
-import { checkRateLimit, getAssets } from "@/lib/kv";
+import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
 import { CarouselContent, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const topic: string = body.topic ?? "";
     const hookTone: HookTone = body.hookTone ?? "educational";
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
-    const templateUrl: string | undefined = typeof body.templateUrl === "string" ? body.templateUrl : undefined;
+    const templateId: string | undefined = typeof body.templateId === "string" ? body.templateId : undefined;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -31,31 +31,39 @@ export async function POST(req: Request) {
       return Response.json({ error: "Topic too long (max 500 characters)" }, { status: 400 });
     }
 
-    // Fetch carousel-style reference images (up to 2 to keep context manageable)
+    // Fetch carousel-style reference images (up to 2)
     const allAssets = await getAssets().catch(() => []);
     const styleRefs = allAssets
       .filter((a) => a.assetType === "carousel-style")
       .slice(0, 2);
 
-    const hasStyleRef = styleRefs.length > 0;
-    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, !!templateUrl);
+    // Fetch template if provided
+    const template = templateId ? await getCarouselTemplateById(templateId).catch(() => null) : null;
 
-    // Build message content — text first, then template (if any), then style refs
+    const hasStyleRef = styleRefs.length > 0;
+    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template);
+
+    // Build message content
     type ContentBlock =
       | { type: "text"; text: string }
       | { type: "image"; source: { type: "url"; url: string } };
 
     const userContent: ContentBlock[] = [{ type: "text", text: promptText }];
-    if (templateUrl) {
-      userContent.push({ type: "image", source: { type: "url", url: templateUrl } });
+
+    // Template images first (all slides of the template)
+    if (template) {
+      for (const img of template.images) {
+        userContent.push({ type: "image", source: { type: "url", url: img.url } });
+      }
     }
+
+    // Style reference images
     for (const ref of styleRefs) {
       userContent.push({ type: "image", source: { type: "url", url: ref.url } });
     }
 
     const messages: MessageParam[] = [{ role: "user", content: userContent }];
 
-    // Generate `count` variants in parallel; collect successes, filter failures
     const results = await Promise.all(
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
         try {
@@ -65,7 +73,6 @@ export async function POST(req: Request) {
             messages,
           });
           const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
-          // Strip markdown fences if Claude wraps the JSON
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           return JSON.parse(text) as CarouselContent;
         } catch {
@@ -87,6 +94,7 @@ export async function POST(req: Request) {
     return Response.json({
       variants,
       styleRefsUsed: styleRefs.length,
+      templateUsed: template?.name,
       ...(warning ? { warning } : {}),
     });
   } catch (err) {

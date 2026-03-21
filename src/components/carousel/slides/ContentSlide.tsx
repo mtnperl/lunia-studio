@@ -9,16 +9,27 @@ import IconGrid from "@/components/carousel/graphics/IconGrid";
 import { GraphicStyle } from "@/lib/types";
 import { extractGraphicData } from "@/lib/carousel-utils";
 
+// Strip potentially harmful attributes from Claude-generated SVG
+function sanitizeSvg(svg: string): string {
+  return svg
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+="[^"]*"/gi, "")
+    .replace(/\son\w+='[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 type Props = {
   headline: string;
   body: string;
   citation: string;
-  graphicStyle: GraphicStyle;
+  graphic?: string;          // SVG from Claude (new path)
+  graphicStyle?: GraphicStyle; // legacy fallback for saved carousels
   scale?: number;
   id?: string;
 };
 
-function GraphicZone({ style, headline, body }: { style: GraphicStyle; headline: string; body: string }) {
+// Legacy graphic zone (only used when no SVG graphic is present)
+function LegacyGraphicZone({ style, headline, body }: { style: GraphicStyle; headline: string; body: string }) {
   if (style === "textOnly") return null;
   const data = extractGraphicData(style, headline, body);
   let graphic: React.ReactNode;
@@ -32,23 +43,24 @@ function GraphicZone({ style, headline, body }: { style: GraphicStyle; headline:
     default:         return null;
   }
   return (
-    <div style={{
-      position: "absolute",
-      bottom: 60,
-      left: 72,
-      right: 72,
-    }}>
+    <div style={{ position: "absolute", bottom: 60, left: 72, right: 72 }}>
       {graphic}
     </div>
   );
 }
 
-export default function ContentSlide({ headline, body, citation, graphicStyle, scale = 1, id }: Props) {
-  const isTextOnly = graphicStyle === "textOnly";
+export default function ContentSlide({ headline, body, citation, graphic, graphicStyle = "textOnly", scale = 1, id }: Props) {
+  const hasSvg = !!graphic && graphic.trim().length > 10;
+  const hasLegacyGraphic = !hasSvg && graphicStyle !== "textOnly";
+
+  // Slightly smaller body text when a graphic occupies the bottom portion
+  const bodyFontSize = hasSvg ? 27 : (hasLegacyGraphic ? 30 : 34);
+
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: "#f0ece6" }}>
       <ArrowIcons color="#9ab0b8" />
       <div style={{ position: "absolute", top: 80, left: 72, right: 72 }}>
+        {/* Headline — Jost 400 */}
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
@@ -60,31 +72,47 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
         }}>
           {headline}
         </div>
+
+        {/* Body — Inter */}
         <div style={{
-          fontFamily: "Cormorant Garamond, Lora, serif",
+          fontFamily: "Inter, system-ui, sans-serif",
           fontWeight: 400,
-          fontStyle: "italic",
-          fontSize: isTextOnly ? 34 : 30,
+          fontSize: bodyFontSize,
           color: "#1a2535",
           lineHeight: 1.6,
-          marginTop: 40,
+          marginTop: 36,
           maxWidth: 936,
         }}>
           {body}
         </div>
+
+        {/* Citation — Cormorant Garamond italic, smaller */}
         <div style={{
           fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
-          fontSize: 22,
-          color: "#4a5568",
-          marginTop: 32,
+          fontSize: 17,
+          color: "#6b7280",
+          marginTop: 24,
           maxWidth: 936,
+          lineHeight: 1.4,
         }}>
-          Research: {citation}
+          {citation}
         </div>
+
+        {/* SVG infographic from Claude */}
+        {hasSvg && (
+          <div
+            style={{ marginTop: 32, overflow: "hidden" }}
+            dangerouslySetInnerHTML={{ __html: sanitizeSvg(graphic!) }}
+          />
+        )}
       </div>
-      <GraphicZone style={graphicStyle} headline={headline} body={body} />
+
+      {/* Legacy graphic zone for saved carousels */}
+      {hasLegacyGraphic && (
+        <LegacyGraphicZone style={graphicStyle} headline={headline} body={body} />
+      )}
     </SlideWrapper>
   );
 }

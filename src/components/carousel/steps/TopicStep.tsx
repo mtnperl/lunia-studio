@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { HookTone, Subject, AssetMetadata } from "@/lib/types";
+import { HookTone, Subject, CarouselTemplate } from "@/lib/types";
 
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
@@ -25,7 +25,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, templateUrl?: string) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, templateId?: string) => void;
 };
 
 type Mode = "list" | "custom";
@@ -39,17 +39,17 @@ export default function TopicStep({ onNext }: Props) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
-  const [templates, setTemplates] = useState<AssetMetadata[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<AssetMetadata | null>(null);
+  const [templates, setTemplates] = useState<CarouselTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<CarouselTemplate | null>(null);
 
   useEffect(() => {
     fetch("/api/subjects")
       .then((r) => r.json())
       .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoadingSubjects(false); })
       .catch(() => setLoadingSubjects(false));
-    fetch("/api/assets")
+    fetch("/api/carousel-templates")
       .then((r) => r.json())
-      .then((d: AssetMetadata[]) => setTemplates((Array.isArray(d) ? d : []).filter((a) => a.assetType === "carousel-template")))
+      .then((d: CarouselTemplate[]) => setTemplates(Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -70,7 +70,7 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, subjectId, selectedTemplate?.url);
+    onNext(topic, hookTone, subjectId, selectedTemplate?.id);
   }
 
   return (
@@ -273,6 +273,7 @@ export default function TopicStep({ onNext }: Props) {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {templates.map((t) => {
               const isSelected = selectedTemplate?.id === t.id;
+              const firstImage = t.images[0];
               return (
                 <div
                   key={t.id}
@@ -289,7 +290,14 @@ export default function TopicStep({ onNext }: Props) {
                     flexShrink: 0,
                   }}
                 >
-                  <img src={t.url} alt={t.name} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                  {firstImage && (
+                    <img src={firstImage.url} alt={t.name} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                  )}
+                  {!firstImage && (
+                    <div style={{ width: "100%", aspectRatio: "4/5", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--muted)" }}>
+                      No img
+                    </div>
+                  )}
                   {isSelected && (
                     <div style={{
                       position: "absolute", top: 4, right: 4,
@@ -301,6 +309,9 @@ export default function TopicStep({ onNext }: Props) {
                       </svg>
                     </div>
                   )}
+                  <div style={{ padding: "4px 6px", fontSize: 10, fontWeight: 600, color: isSelected ? "#1e7a8a" : "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t.name}
+                  </div>
                 </div>
               );
             })}

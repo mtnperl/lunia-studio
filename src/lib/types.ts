@@ -49,6 +49,7 @@ export type CarouselContentSlide = {
   headline: string;
   body: string;
   citation: string;
+  graphic?: string; // SVG infographic string from Claude
 };
 
 export type CarouselContent = {
@@ -71,17 +72,32 @@ export type CarouselConfig = {
   topic: string;
   content: CarouselContent;
   selectedHook: number;
-  graphicStyles: [GraphicStyle, GraphicStyle, GraphicStyle];
 };
 
 export type SavedCarousel = {
   id: string;
   topic: string;
   hookTone: HookTone;
-  content: CarouselContent;      // the selected variant
-  selectedHook: number;          // index into content.hooks[] (0–2)
-  graphicStyles: [GraphicStyle, GraphicStyle, GraphicStyle];
+  content: CarouselContent;
+  selectedHook: number;
+  graphicStyles?: [GraphicStyle, GraphicStyle, GraphicStyle]; // legacy
   savedAt: string;
+};
+
+export type CarouselTemplateImage = {
+  id: string;
+  url: string;
+  slideName: string;
+};
+
+export type CarouselTemplate = {
+  id: string;
+  name: string;
+  description?: string;
+  contentDensity: "minimal" | "medium" | "dense";
+  styleNotes?: string;
+  images: CarouselTemplateImage[];
+  uploadedAt: string;
 };
 
 export type Subject = {
@@ -91,7 +107,7 @@ export type Subject = {
   usedAt?: string; // ISO date when last used for a carousel
 };
 
-export type AssetType = "logo" | "carousel-style" | "carousel-template" | "product-image" | "other";
+export type AssetType = "logo" | "carousel-style" | "product-image" | "other";
 
 export type AssetMetadata = {
   id: string;

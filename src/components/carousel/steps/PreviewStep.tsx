@@ -31,7 +31,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Full-size hidden refs for accurate PNG export
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
-  const { content, selectedHook, graphicStyles, topic } = config;
+  const { content, selectedHook, topic } = config;
   const hook = content.hooks[selectedHook];
 
   async function downloadSlide(index: number) {
@@ -72,7 +72,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const res = await fetch("/api/carousel/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, hookTone, content, selectedHook, graphicStyles }),
+        body: JSON.stringify({ topic, hookTone, content, selectedHook }),
       });
       if (!res.ok) return;
       const { id } = await res.json();
@@ -110,17 +110,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   const slideNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={PREVIEW_SCALE} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={PREVIEW_SCALE} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphicStyle={graphicStyles[1]} scale={PREVIEW_SCALE} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphicStyle={graphicStyles[2]} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} />,
     <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} />,
   ];
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={1} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={1} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphicStyle={graphicStyles[1]} scale={1} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphicStyle={graphicStyles[2]} scale={1} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} />,
     <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} />,
   ];
 

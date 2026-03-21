@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate } from "./types";
 
 // Supports both Vercel KV (KV_REST_API_URL) and standard Redis (REDIS_URL)
 // Lazily initialized so module evaluation at build time doesn't throw.
@@ -161,4 +161,36 @@ export async function markSubjectUsed(id: string): Promise<void> {
     all[idx] = { ...all[idx], usedAt: new Date().toISOString() };
     await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
   }
+}
+
+// ─── Carousel Templates ───────────────────────────────────────────────────────
+const TEMPLATES_KEY = "lunia:carousel-templates";
+
+export async function getCarouselTemplates(): Promise<CarouselTemplate[]> {
+  try {
+    return (await redis.get<CarouselTemplate[]>(TEMPLATES_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCarouselTemplate(template: CarouselTemplate): Promise<void> {
+  const all = await getCarouselTemplates();
+  const idx = all.findIndex((t) => t.id === template.id);
+  if (idx >= 0) {
+    all[idx] = template;
+  } else {
+    all.unshift(template);
+  }
+  await redis.set(TEMPLATES_KEY, all, { ex: TTL_SECONDS });
+}
+
+export async function deleteCarouselTemplate(id: string): Promise<void> {
+  const all = await getCarouselTemplates();
+  await redis.set(TEMPLATES_KEY, all.filter((t) => t.id !== id), { ex: TTL_SECONDS });
+}
+
+export async function getCarouselTemplateById(id: string): Promise<CarouselTemplate | null> {
+  const all = await getCarouselTemplates();
+  return all.find((t) => t.id === id) ?? null;
 }
