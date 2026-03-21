@@ -57,10 +57,12 @@ export async function POST(req: Request) {
         try {
           const msg = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
-            max_tokens: 2048,
+            max_tokens: 4096,
             messages,
           });
-          const text = msg.content[0].type === "text" ? msg.content[0].text : "";
+          const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+          // Strip markdown fences if Claude wraps the JSON
+          const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           return JSON.parse(text) as CarouselContent;
         } catch {
           return null;
