@@ -7,6 +7,7 @@ import StepList from "@/components/carousel/graphics/StepList";
 import StatCallout from "@/components/carousel/graphics/StatCallout";
 import IconGrid from "@/components/carousel/graphics/IconGrid";
 import { GraphicStyle } from "@/lib/types";
+import { extractGraphicData } from "@/lib/carousel-utils";
 
 type Props = {
   headline: string;
@@ -17,17 +18,19 @@ type Props = {
   id?: string;
 };
 
-function GraphicZone({ style, body }: { style: GraphicStyle; body: string }) {
+function GraphicZone({ style, headline, body }: { style: GraphicStyle; headline: string; body: string }) {
   if (style === "textOnly") return null;
-  const map: Record<GraphicStyle, React.ReactNode> = {
-    wave: <WaveGraphic />,
-    dotchain: <DotChainGraphic />,
-    bars: <ComparisonBars />,
-    steps: <StepList />,
-    stat: <StatCallout />,
-    iconGrid: <IconGrid />,
-    textOnly: null,
-  };
+  const data = extractGraphicData(style, headline, body);
+  let graphic: React.ReactNode;
+  switch (data.style) {
+    case "stat":     graphic = <StatCallout stat={data.data.stat} label={data.data.label} />; break;
+    case "bars":     graphic = <ComparisonBars items={data.data.items} />; break;
+    case "steps":    graphic = <StepList steps={data.data.steps} />; break;
+    case "dotchain": graphic = <DotChainGraphic labels={data.data.labels} />; break;
+    case "wave":     graphic = <WaveGraphic />; break;
+    case "iconGrid": graphic = <IconGrid />; break;
+    default:         return null;
+  }
   return (
     <div style={{
       position: "absolute",
@@ -35,7 +38,7 @@ function GraphicZone({ style, body }: { style: GraphicStyle; body: string }) {
       left: 72,
       right: 72,
     }}>
-      {map[style]}
+      {graphic}
     </div>
   );
 }
@@ -80,7 +83,7 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
           Research: {citation}
         </div>
       </div>
-      <GraphicZone style={graphicStyle} body={body} />
+      <GraphicZone style={graphicStyle} headline={headline} body={body} />
     </SlideWrapper>
   );
 }

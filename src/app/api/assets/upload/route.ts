@@ -6,6 +6,12 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 
 export async function POST(req: Request) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return Response.json(
+      { error: "Vercel Blob is not configured. Add BLOB_READ_WRITE_TOKEN to your environment variables." },
+      { status: 503 }
+    );
+  }
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
