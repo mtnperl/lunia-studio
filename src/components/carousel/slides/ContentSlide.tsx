@@ -6,7 +6,7 @@ import ComparisonBars from "@/components/carousel/graphics/ComparisonBars";
 import StepList from "@/components/carousel/graphics/StepList";
 import StatCallout from "@/components/carousel/graphics/StatCallout";
 import IconGrid from "@/components/carousel/graphics/IconGrid";
-import { GraphicStyle } from "@/lib/types";
+import { BrandStyle, GraphicStyle } from "@/lib/types";
 import { extractGraphicData } from "@/lib/carousel-utils";
 
 // Strip potentially harmful attributes from Claude-generated SVG
@@ -24,8 +24,9 @@ type Props = {
   headline: string;
   body: string;
   citation: string;
-  graphic?: string;          // SVG from Claude (new path)
+  graphic?: string;            // SVG from Claude (new path)
   graphicStyle?: GraphicStyle; // legacy fallback for saved carousels
+  brandStyle?: BrandStyle;
   scale?: number;
   id?: string;
 };
@@ -51,23 +52,29 @@ function LegacyGraphicZone({ style, headline, body }: { style: GraphicStyle; hea
   );
 }
 
-export default function ContentSlide({ headline, body, citation, graphic, graphicStyle = "textOnly", scale = 1, id }: Props) {
+export default function ContentSlide({ headline, body, citation, graphic, graphicStyle = "textOnly", brandStyle, scale = 1, id }: Props) {
   const hasSvg = !!graphic && graphic.trim().length > 10;
   const hasLegacyGraphic = !hasSvg && graphicStyle !== "textOnly";
+
+  const bg = brandStyle?.background ?? "#f0ece6";
+  const headlineColor = brandStyle?.headline ?? "#1e7a8a";
+  const bodyColor = brandStyle?.body ?? "#1a2535";
+  const citationColor = brandStyle?.secondary ?? "#6b7280";
+  const arrowColor = brandStyle?.secondary ?? "#9ab0b8";
 
   // Slightly smaller body text when a graphic occupies the bottom portion
   const bodyFontSize = hasSvg ? 27 : (hasLegacyGraphic ? 30 : 34);
 
   return (
-    <SlideWrapper scale={scale} id={id} style={{ background: "#f0ece6" }}>
-      <ArrowIcons color="#9ab0b8" />
+    <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+      <ArrowIcons color={arrowColor} />
       <div style={{ position: "absolute", top: 80, left: 72, right: 72 }}>
         {/* Headline — Jost 400 */}
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
           fontSize: 52,
-          color: "#1e7a8a",
+          color: headlineColor,
           textTransform: "uppercase",
           letterSpacing: "0.14em",
           lineHeight: 1.2,
@@ -80,7 +87,7 @@ export default function ContentSlide({ headline, body, citation, graphic, graphi
           fontFamily: "Inter, system-ui, sans-serif",
           fontWeight: 400,
           fontSize: bodyFontSize,
-          color: "#1a2535",
+          color: bodyColor,
           lineHeight: 1.6,
           marginTop: 36,
           maxWidth: 936,
@@ -94,7 +101,7 @@ export default function ContentSlide({ headline, body, citation, graphic, graphi
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: 17,
-          color: "#6b7280",
+          color: citationColor,
           marginTop: 24,
           maxWidth: 936,
           lineHeight: 1.4,

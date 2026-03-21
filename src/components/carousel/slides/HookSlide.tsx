@@ -1,10 +1,11 @@
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
+import { BrandStyle } from "@/lib/types";
 
-type Props = { headline: string; subline: string; scale?: number; id?: string };
+type Props = { headline: string; subline: string; scale?: number; id?: string; brandStyle?: BrandStyle };
 
-function WaveLines() {
+function WaveLines({ accent }: { accent: string }) {
   const width = 1080;
   const lines = Array.from({ length: 14 }, (_, i) => {
     const amp = 60 + i * 8;
@@ -21,7 +22,7 @@ function WaveLines() {
         key={i}
         points={points.join(" ")}
         fill="none"
-        stroke={i > 10 ? "#e8f4f8" : "#ffffff"}
+        stroke={i > 10 ? accent : "#ffffff"}
         strokeWidth="0.8"
         opacity={opacity}
       />
@@ -38,23 +39,22 @@ function WaveLines() {
   );
 }
 
-export default function HookSlide({ headline, subline, scale = 1, id }: Props) {
+export default function HookSlide({ headline, subline, scale = 1, id, brandStyle }: Props) {
+  const bg = brandStyle?.hookBackground ?? "linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)";
+  const headlineColor = brandStyle?.hookHeadline ?? "#ffffff";
+  const sublineColor = brandStyle?.accent ?? "#c8dde8";
+  const waveAccent = brandStyle?.secondary ?? "#e8f4f8";
+  const arrowColor = brandStyle?.secondary ?? "#4a7c8e";
+
   return (
-    <SlideWrapper scale={scale} id={id} style={{
-      background: "linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)",
-    }}>
-      <ArrowIcons color="#4a7c8e" />
-      <div style={{
-        position: "absolute",
-        top: 110,
-        left: 72,
-        right: 72,
-      }}>
+    <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+      <ArrowIcons color={arrowColor} />
+      <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
           fontSize: 64,
-          color: "#ffffff",
+          color: headlineColor,
           textTransform: "uppercase",
           letterSpacing: "0.14em",
           lineHeight: 1.15,
@@ -66,14 +66,14 @@ export default function HookSlide({ headline, subline, scale = 1, id }: Props) {
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: 38,
-          color: "#c8dde8",
+          color: sublineColor,
           lineHeight: 1.4,
           marginTop: 32,
         }}>
           {subline}
         </div>
       </div>
-      <WaveLines />
+      <WaveLines accent={waveAccent} />
       <LuniaLogo />
     </SlideWrapper>
   );

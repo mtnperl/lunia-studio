@@ -68,10 +68,21 @@ export type GraphicStyle =
   | "iconGrid"
   | "textOnly";
 
+export type BrandStyle = {
+  background: string;      // content + CTA slide background
+  hookBackground: string;  // hook slide background (usually dark)
+  headline: string;        // headline text on content/CTA slides
+  hookHeadline: string;    // headline text on hook slide (usually light)
+  body: string;            // body paragraph text
+  accent: string;          // accent / highlight color
+  secondary: string;       // muted / citation text
+};
+
 export type CarouselConfig = {
   topic: string;
   content: CarouselContent;
   selectedHook: number;
+  brandStyle?: BrandStyle;
 };
 
 export type SavedCarousel = {
@@ -97,6 +108,7 @@ export type CarouselTemplate = {
   contentDensity: "minimal" | "medium" | "dense";
   styleNotes?: string;
   images: CarouselTemplateImage[];
+  brandStyle?: BrandStyle;
   uploadedAt: string;
 };
 

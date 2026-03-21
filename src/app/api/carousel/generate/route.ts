@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     console.log("[generate] templateId:", templateId, "→ found:", template ? `"${template.name}" (${template.images.length} images)` : "null");
 
     const hasStyleRef = styleRefs.length > 0;
-    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template);
+    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle);
 
     // Build message content
     type ContentBlock =
@@ -96,6 +96,7 @@ export async function POST(req: Request) {
       variants,
       styleRefsUsed: styleRefs.length,
       templateUsed: template?.name,
+      brandStyle: template?.brandStyle ?? null,
       ...(warning ? { warning } : {}),
     });
   } catch (err) {

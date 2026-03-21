@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CarouselContent, CarouselConfig, HookTone, MultiVariantResponse } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse } from "@/lib/types";
 import TopicStep from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
@@ -55,11 +55,12 @@ export default function CarouselView() {
   const [variants, setVariants] = useState<CarouselContent[]>([]);
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedHook, setSelectedHook] = useState(0);
+  const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
 
   const content = variants[selectedVariant] ?? null;
 
   const config: CarouselConfig | null = content
-    ? { topic, content, selectedHook }
+    ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined }
     : null;
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, templateId?: string) {
@@ -81,7 +82,7 @@ export default function CarouselView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: t, hookTone: tone, count: 1, templateId }),
       });
-      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; templateUsed?: string } = await res.json();
+      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; templateUsed?: string; brandStyle?: BrandStyle } = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;
@@ -89,6 +90,7 @@ export default function CarouselView() {
       setVariants(data.variants);
       setSelectedVariant(0);
       setSelectedHook(0);
+      setBrandStyle(data.brandStyle ?? null);
       const msgs = [
         data.templateUsed ? `Template "${data.templateUsed}" applied.` : null,
         data.styleRefsUsed ? `${data.styleRefsUsed} style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
@@ -110,6 +112,7 @@ export default function CarouselView() {
     setVariants([]);
     setSelectedVariant(0);
     setSelectedHook(0);
+    setBrandStyle(null);
     setError(null);
     setWarning(null);
   }

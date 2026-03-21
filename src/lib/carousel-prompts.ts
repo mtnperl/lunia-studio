@@ -1,4 +1,4 @@
-import type { CarouselTemplate } from "./types";
+import type { BrandStyle, CarouselTemplate } from "./types";
 
 export const SUGGESTIONS_PROMPT = `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 3 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
 
@@ -50,8 +50,14 @@ export const GENERATE_CAROUSEL_PROMPT = (
   topic: string,
   hookTone = "educational",
   hasStyleRef = false,
-  template: CarouselTemplate | null = null
-) => `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+  template: CarouselTemplate | null = null,
+  brandStyle?: BrandStyle
+) => {
+  const svgColors = brandStyle
+    ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
+    : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
+
+  return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 
@@ -85,7 +91,8 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 440" with NO explicit width/height on the svg element • Colors only: #1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1600 chars • Use REAL data/numbers from the slide text — do not invent • Design for the full 440px height — spread content vertically, use large numbers (120-180px font), generous spacing, a title label at top and a sub-label below the visual element • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
+- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 440" with NO explicit width/height on the svg element • Colors only: ${svgColors} • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1600 chars • Use REAL data/numbers from the slide text — do not invent • Design for the full 440px height — spread content vertically, use large numbers (120-180px font), generous spacing, a title label at top and a sub-label below the visual element • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
+};
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
   `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"
