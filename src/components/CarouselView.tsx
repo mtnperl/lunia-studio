@@ -28,12 +28,10 @@ const CAROUSEL_LOADER_MSGS = [
   "Finalizing...",
 ];
 
-function CarouselLoader({ count }: { count: number }) {
+function CarouselLoader() {
   return (
     <div className="loader-wrap" style={{ marginTop: 20 }}>
-      <div className="hp-label">
-        {count > 1 ? `GENERATING ${count} VARIANTS` : "GEN PROGRESS"}
-      </div>
+      <div className="hp-label">GEN PROGRESS</div>
       <div className="hp-track"><div className="hp-fill" /></div>
       <div className="loader-log">
         {CAROUSEL_LOADER_MSGS.slice(0, 4).map((msg, i, arr) => (
@@ -55,7 +53,6 @@ export default function CarouselView() {
   const [warning, setWarning] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
-  const [variantCount, setVariantCount] = useState(1);
   const [variants, setVariants] = useState<CarouselContent[]>([]);
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedHook, setSelectedHook] = useState(0);
@@ -75,10 +72,9 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
     ? { topic, content, selectedHook, graphicStyles }
     : null;
 
-  async function handleTopicNext(t: string, tone: HookTone, count: number, subjectId?: string) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string) {
     setTopic(t);
     setHookTone(tone);
-    setVariantCount(count);
     setLoading(true);
     setError(null);
     setWarning(null);
@@ -93,7 +89,7 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
       const res = await fetch("/api/carousel/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: t, hookTone: tone, count }),
+        body: JSON.stringify({ topic: t, hookTone: tone, count: 1 }),
       });
       const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number } = await res.json();
       if (!res.ok || data.error) {
@@ -127,7 +123,6 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
     setStep(1);
     setTopic("");
     setHookTone("educational");
-    setVariantCount(1);
     setVariants([]);
     setSelectedVariant(0);
     setSelectedHook(0);
@@ -226,11 +221,11 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
           )}
 
           {/* Loading */}
-          {loading && <CarouselLoader count={variantCount} />}
+          {loading && <CarouselLoader />}
 
           {/* Steps */}
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, count, subjectId) => handleTopicNext(t, tone, count, subjectId)} />
+            <TopicStep onNext={(t, tone, subjectId) => handleTopicNext(t, tone, subjectId)} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep

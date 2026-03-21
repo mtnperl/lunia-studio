@@ -10,20 +10,21 @@ export default function CTASlide({ headline, followLine, scale = 1, id }: Props)
       <ArrowIcons color="#9ab0b8" />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
-          fontWeight: 700,
+          fontFamily: "Jost, Montserrat, sans-serif",
+          fontWeight: 800,
           fontSize: 72,
           color: "#1e7a8a",
           textTransform: "uppercase",
-          letterSpacing: "0.12em",
+          letterSpacing: "0.14em",
           lineHeight: 1.15,
         }}>
           {headline}
         </div>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
+          fontFamily: "Lora, Merriweather, serif",
           fontWeight: 400,
-          fontSize: 40,
+          fontStyle: "italic",
+          fontSize: 36,
           color: "#1e7a8a",
           lineHeight: 1.4,
           marginTop: 56,

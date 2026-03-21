@@ -44,7 +44,8 @@ Return ONLY valid JSON in this exact format, no other text:
   "cta": {
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
-  }
+  },
+  "caption": "string"
 }
 
 Brand rules (follow exactly):
@@ -56,7 +57,8 @@ Brand rules (follow exactly):
 - Body copy: 3-5 sentences, specific and factual, references the cited research
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
-- All headlines uppercase`;
+- All headlines uppercase
+- Caption: Instagram caption for this post. 2-3 punchy sentences that tease the carousel content. No hashtags. No em dashes. Tone matches the hookTone. Max 220 characters.`;
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
   `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"

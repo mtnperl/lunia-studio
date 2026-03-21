@@ -55,6 +55,7 @@ export type CarouselContent = {
   hooks: Hook[];
   slides: CarouselContentSlide[];
   cta: { headline: string; followLine: string };
+  caption: string; // IG caption including hashtags
 };
 
 export type GraphicStyle =

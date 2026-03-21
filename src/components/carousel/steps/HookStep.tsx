@@ -25,9 +25,6 @@ type Props = {
 };
 
 export default function HookStep({
-  variants,
-  selectedVariant,
-  onSelectVariant,
   content,
   selectedHook,
   graphicStyles,
@@ -35,77 +32,76 @@ export default function HookStep({
   onSelectStyle,
   onNext,
 }: Props) {
-  const showVariantPicker = variants.length > 1;
-
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>
-        {showVariantPicker ? "Compare variants & choose hook" : "Choose hook + graphics"}
+        Choose hook + graphics
       </h2>
       <p style={{ color: "var(--muted)", marginBottom: 28, fontSize: 14 }}>
-        {showVariantPicker
-          ? "Pick your favourite variant, then choose a hook and graphic style."
-          : "Pick your hook, then a graphic style for each slide."}
+        Pick a hook slide, then set graphic styles for each content slide.
       </p>
-
-      {/* Variant picker */}
-      {showVariantPicker && (
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-            Select a variant ({variants.length} generated)
-          </div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
-            {variants.map((v, i) => (
-              <div
-                key={i}
-                onClick={() => onSelectVariant(i)}
-                style={{
-                  flexShrink: 0,
-                  cursor: "pointer",
-                  border: `2px solid ${selectedVariant === i ? "var(--text)" : "var(--border)"}`,
-                  borderRadius: 10,
-                  overflow: "hidden",
-                  transition: "border-color 0.12s",
-                  background: selectedVariant === i ? "var(--surface)" : "var(--bg)",
-                }}
-              >
-                <div style={{ padding: "6px 10px", fontSize: 12, fontWeight: 700, textAlign: "center", borderBottom: "1px solid var(--border)" }}>
-                  Variant {i + 1}
-                </div>
-                <div style={{ padding: 8 }}>
-                  <HookSlide headline={v.hooks[0].headline} subline={v.hooks[0].subline} scale={0.22} />
-                </div>
-                <div style={{ padding: "6px 10px", fontSize: 11, color: "var(--muted)", borderTop: "1px solid var(--border)", lineHeight: 1.4 }}>
-                  {v.hooks[0].subline}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Hook picker */}
       <div style={{ marginBottom: 40 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-          {showVariantPicker ? "Hook for selected variant" : "Select a hook"}
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
+          Select a hook — click to choose
         </div>
-        <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8 }}>
-          {content.hooks.map((hook, i) => (
-            <div
-              key={i}
-              onClick={() => onSelectHook(i)}
-              style={{
-                flexShrink: 0,
-                cursor: "pointer",
-                border: `2px solid ${selectedHook === i ? "var(--text)" : "transparent"}`,
-                borderRadius: 8,
-                overflow: "hidden",
-                transition: "border-color 0.12s",
-              }}
-            >
-              <HookSlide headline={hook.headline} subline={hook.subline} scale={0.26} />
-            </div>
-          ))}
+        <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 8 }}>
+          {content.hooks.map((hook, i) => {
+            const isSelected = selectedHook === i;
+            return (
+              <div
+                key={i}
+                onClick={() => onSelectHook(i)}
+                style={{
+                  flexShrink: 0,
+                  cursor: "pointer",
+                  position: "relative",
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  outline: isSelected ? "3px solid #1e7a8a" : "3px solid transparent",
+                  outlineOffset: 2,
+                  transition: "outline-color 0.15s",
+                  boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
+                }}
+              >
+                <HookSlide headline={hook.headline} subline={hook.subline} scale={0.28} />
+
+                {/* Selected overlay badge */}
+                {isSelected && (
+                  <div style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 10,
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "#1e7a8a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+
+                {/* Hook number + selected label */}
+                <div style={{
+                  marginTop: 8,
+                  textAlign: "center",
+                  fontSize: 12,
+                  fontWeight: isSelected ? 700 : 500,
+                  color: isSelected ? "#1e7a8a" : "var(--muted)",
+                  paddingBottom: 4,
+                }}>
+                  {isSelected ? "✓ Hook " + (i + 1) + " selected" : `Hook ${i + 1}`}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

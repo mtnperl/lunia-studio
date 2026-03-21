@@ -50,32 +50,33 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
       <ArrowIcons color="#9ab0b8" />
       <div style={{ position: "absolute", top: 80, left: 72, right: 72 }}>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
-          fontWeight: 700,
+          fontFamily: "Jost, Montserrat, sans-serif",
+          fontWeight: 800,
           fontSize: 52,
           color: "#1e7a8a",
           textTransform: "uppercase",
-          letterSpacing: "0.12em",
+          letterSpacing: "0.14em",
           lineHeight: 1.2,
         }}>
           {headline}
         </div>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
+          fontFamily: "Lora, Merriweather, serif",
           fontWeight: 400,
-          fontSize: isTextOnly ? 36 : 32,
+          fontStyle: "italic",
+          fontSize: isTextOnly ? 34 : 30,
           color: "#1a2535",
-          lineHeight: 1.55,
+          lineHeight: 1.6,
           marginTop: 40,
           maxWidth: 936,
         }}>
           {body}
         </div>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
-          fontWeight: 300,
+          fontFamily: "Lora, Merriweather, serif",
+          fontWeight: 400,
           fontStyle: "italic",
-          fontSize: 24,
+          fontSize: 22,
           color: "#4a5568",
           marginTop: 32,
           maxWidth: 936,

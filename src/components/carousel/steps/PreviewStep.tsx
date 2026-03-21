@@ -19,6 +19,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [copyLabel, setCopyLabel] = useState("Copy share link");
+  const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy caption");
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -237,6 +238,50 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </div>
         ))}
       </div>
+
+      {/* IG Caption */}
+      {content.caption && (
+        <div style={{ marginTop: 36, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+              Instagram caption
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(content.caption).then(() => {
+                  setCaptionCopyLabel("Copied!");
+                  setTimeout(() => setCaptionCopyLabel("Copy caption"), 2000);
+                });
+              }}
+              style={{
+                background: "transparent",
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: "var(--text)",
+              }}
+            >
+              {captionCopyLabel}
+            </button>
+          </div>
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "14px 16px",
+            fontSize: 14,
+            lineHeight: 1.65,
+            color: "var(--text)",
+            whiteSpace: "pre-wrap",
+          }}>
+            {content.caption}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 20, marginTop: 28 }}>
         <button onClick={onChangeHook} style={{ background: "transparent", color: "var(--text)", border: "none", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}>

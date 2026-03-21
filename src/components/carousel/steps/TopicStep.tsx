@@ -25,7 +25,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, count: number, subjectId?: string) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string) => void;
 };
 
 type Mode = "list" | "custom";
@@ -39,7 +39,6 @@ export default function TopicStep({ onNext }: Props) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
-  const [count, setCount] = useState(1);
 
   useEffect(() => {
     fetch("/api/subjects")
@@ -65,7 +64,7 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, count, subjectId);
+    onNext(topic, hookTone, subjectId);
   }
 
   return (
@@ -257,38 +256,6 @@ export default function TopicStep({ onNext }: Props) {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Variant count */}
-      <div style={{ marginBottom: 28 }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          Variants to generate
-        </label>
-        <div style={{ display: "flex", gap: 8 }}>
-          {[1, 2, 3].map((n) => (
-            <button
-              key={n}
-              onClick={() => setCount(n)}
-              style={{
-                padding: "8px 20px",
-                border: `1.5px solid ${count === n ? "var(--text)" : "var(--border)"}`,
-                borderRadius: 8,
-                background: count === n ? "var(--surface)" : "var(--bg)",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {n === 1 ? "1 (single)" : `${n} (compare)`}
-            </button>
-          ))}
-        </div>
-        {count > 1 && (
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
-            {count} variants will be generated in parallel — pick the best one.
-          </div>
-        )}
       </div>
 
       <button

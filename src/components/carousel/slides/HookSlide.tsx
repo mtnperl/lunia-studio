@@ -51,23 +51,23 @@ export default function HookSlide({ headline, subline, scale = 1, id }: Props) {
         right: 72,
       }}>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
-          fontWeight: 700,
+          fontFamily: "Jost, Montserrat, sans-serif",
+          fontWeight: 800,
           fontSize: 64,
           color: "#ffffff",
           textTransform: "uppercase",
-          letterSpacing: "0.1em",
+          letterSpacing: "0.14em",
           lineHeight: 1.15,
         }}>
           {headline}
         </div>
         <div style={{
-          fontFamily: "Outfit, sans-serif",
-          fontWeight: 300,
+          fontFamily: "Lora, Merriweather, serif",
+          fontWeight: 400,
           fontStyle: "italic",
-          fontSize: 42,
+          fontSize: 38,
           color: "#c8dde8",
-          lineHeight: 1.3,
+          lineHeight: 1.4,
           marginTop: 32,
         }}>
           {subline}
