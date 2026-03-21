@@ -2,6 +2,76 @@
 import { useState, useEffect, useRef } from "react";
 import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
 
+const LOADER_LINES = [
+  "UPLOADING SLIDE IMAGES",
+  "RUNNING VISION SCAN",
+  "EXTRACTING BRAND PALETTE",
+  "CALIBRATING COLOR MATRIX",
+  "SAVING TO VAULT",
+  "FINALIZING TEMPLATE",
+];
+
+function RetroLoader({ tick }: { tick: number }) {
+  const [blink, setBlink] = useState(true);
+  const step = Math.min(tick, LOADER_LINES.length - 1);
+  const pct = Math.min(Math.round((tick / (LOADER_LINES.length + 1)) * 100), 96);
+  const filled = Math.round(pct / 5);
+  const bar = "█".repeat(filled) + "░".repeat(20 - filled);
+
+  useEffect(() => {
+    const t = setInterval(() => setBlink((b) => !b), 530);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div style={{
+      background: "#000",
+      color: "#fff",
+      fontFamily: "'Courier New', Courier, monospace",
+      fontSize: 13,
+      padding: "20px 24px",
+      borderRadius: 8,
+      border: "2px solid #fff",
+      marginBottom: 24,
+      lineHeight: 2,
+      letterSpacing: "0.03em",
+      minHeight: 220,
+    }}>
+      <div style={{
+        textAlign: "center",
+        fontSize: 10,
+        letterSpacing: "0.25em",
+        color: "#888",
+        borderBottom: "1px solid #333",
+        paddingBottom: 10,
+        marginBottom: 14,
+      }}>
+        *** LUNIA TEMPLATE SYSTEM v1.0 ***
+      </div>
+      {LOADER_LINES.slice(0, step + 1).map((line, i) => (
+        <div key={i} style={{ fontSize: 12 }}>
+          <span style={{ color: "#555" }}>&gt; </span>
+          {i < step ? (
+            <>
+              <span style={{ color: "#999" }}>{line}...</span>
+              {"  "}
+              <span style={{ color: "#fff", fontWeight: 700 }}>[ OK ]</span>
+            </>
+          ) : (
+            <>
+              <span>{line}...</span>
+              <span style={{ opacity: blink ? 1 : 0 }}>_</span>
+            </>
+          )}
+        </div>
+      ))}
+      <div style={{ marginTop: 18, fontSize: 11, color: "#666" }}>
+        [{bar}] {pct}%
+      </div>
+    </div>
+  );
+}
+
 const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string }[] = [
   { value: "logo",                label: "Logo",              description: "Brand logo or wordmark",            color: "#1e7a8a" },
   { value: "carousel-style",      label: "Carousel Style",    description: "Reference layout for generation",   color: "#7c3aed" },
@@ -47,6 +117,7 @@ export default function AssetsView() {
   const [templateFiles, setTemplateFiles] = useState<File[]>([]);
   const [creatingTemplate, setCreatingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
+  const [loaderTick, setLoaderTick] = useState(0);
 
   async function loadAssets() {
     try {
@@ -74,6 +145,12 @@ export default function AssetsView() {
     loadAssets();
     loadTemplates();
   }, []);
+
+  useEffect(() => {
+    if (!creatingTemplate) { setLoaderTick(0); return; }
+    const t = setInterval(() => setLoaderTick((n) => n + 1), 2200);
+    return () => clearInterval(t);
+  }, [creatingTemplate]);
 
   function selectType(type: AssetType) {
     setPendingType(type);
@@ -315,8 +392,9 @@ export default function AssetsView() {
 
         {/* Template creation form */}
         {showTemplateForm && (
-          <form onSubmit={handleCreateTemplate} style={{ border: "1.5px solid var(--border)", borderRadius: 10, padding: 20, marginBottom: 24, background: "var(--surface)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <form onSubmit={handleCreateTemplate} style={{ border: creatingTemplate ? "2px solid #fff" : "1.5px solid var(--border)", borderRadius: 10, padding: 20, marginBottom: 24, background: creatingTemplate ? "#000" : "var(--surface)" }}>
+            {creatingTemplate && <RetroLoader tick={loaderTick} />}
+            <div style={{ display: creatingTemplate ? "none" : "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <div>
                 <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Name *</label>
                 <input
@@ -341,7 +419,7 @@ export default function AssetsView() {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ display: creatingTemplate ? "none" : "block", marginBottom: 12 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Description (optional)</label>
               <input
                 type="text"
@@ -351,7 +429,7 @@ export default function AssetsView() {
                 style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1.5px solid var(--border)", borderRadius: 7, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" }}
               />
             </div>
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ display: creatingTemplate ? "none" : "block", marginBottom: 12 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Style Notes (optional)</label>
               <input
                 type="text"
@@ -361,7 +439,7 @@ export default function AssetsView() {
                 style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "1.5px solid var(--border)", borderRadius: 7, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" }}
               />
             </div>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ display: creatingTemplate ? "none" : "block", marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Slide Images * (upload all slides)</label>
               <input
                 type="file"
@@ -376,23 +454,25 @@ export default function AssetsView() {
                 </div>
               )}
             </div>
-            {templateError && (
+            {!creatingTemplate && templateError && (
               <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 7, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "#9b1c1c" }}>
                 {templateError}
               </div>
             )}
-            <button
-              type="submit"
-              disabled={creatingTemplate || !templateName.trim() || templateFiles.length === 0}
-              style={{
-                padding: "10px 24px", fontSize: 14, fontWeight: 700,
-                background: "var(--text)", color: "var(--bg)",
-                border: "none", borderRadius: 7, cursor: creatingTemplate ? "not-allowed" : "pointer",
-                fontFamily: "inherit", opacity: creatingTemplate ? 0.6 : 1,
-              }}
-            >
-              {creatingTemplate ? "Uploading..." : "Create Template"}
-            </button>
+            {!creatingTemplate && (
+              <button
+                type="submit"
+                disabled={!templateName.trim() || templateFiles.length === 0}
+                style={{
+                  padding: "10px 24px", fontSize: 14, fontWeight: 700,
+                  background: "var(--text)", color: "var(--bg)",
+                  border: "none", borderRadius: 7, cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Create Template
+              </button>
+            )}
           </form>
         )}
 
