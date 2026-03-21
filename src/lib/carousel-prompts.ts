@@ -58,7 +58,7 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
-- Caption: Instagram caption for this post. 2-3 punchy sentences that tease the carousel content. No hashtags. No em dashes. Tone matches the hookTone. Max 220 characters.`;
+- Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"`;
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
   `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"

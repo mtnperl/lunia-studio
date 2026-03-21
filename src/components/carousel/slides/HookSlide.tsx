@@ -52,7 +52,7 @@ export default function HookSlide({ headline, subline, scale = 1, id }: Props) {
       }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 800,
+          fontWeight: 400,
           fontSize: 64,
           color: "#ffffff",
           textTransform: "uppercase",

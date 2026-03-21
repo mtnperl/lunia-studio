@@ -11,7 +11,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id }: Props)
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 800,
+          fontWeight: 400,
           fontSize: 72,
           color: "#1e7a8a",
           textTransform: "uppercase",

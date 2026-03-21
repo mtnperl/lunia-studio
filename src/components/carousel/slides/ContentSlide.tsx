@@ -51,7 +51,7 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
       <div style={{ position: "absolute", top: 80, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 800,
+          fontWeight: 400,
           fontSize: 52,
           color: "#1e7a8a",
           textTransform: "uppercase",
