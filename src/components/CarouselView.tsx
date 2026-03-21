@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { CarouselContent, CarouselConfig, GraphicStyle, HookTone, MultiVariantResponse } from "@/lib/types";
+import { inferGraphicStyle } from "@/lib/carousel-utils";
 import TopicStep from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
@@ -62,6 +63,14 @@ export default function CarouselView() {
 
   const content = variants[selectedVariant] ?? null;
 
+function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, GraphicStyle] {
+  return [
+    inferGraphicStyle(v.slides[0].headline, v.slides[0].body),
+    inferGraphicStyle(v.slides[1].headline, v.slides[1].body),
+    inferGraphicStyle(v.slides[2].headline, v.slides[2].body),
+  ];
+}
+
   const config: CarouselConfig | null = content
     ? { topic, content, selectedHook, graphicStyles }
     : null;
@@ -87,6 +96,7 @@ export default function CarouselView() {
       setVariants(data.variants);
       setSelectedVariant(0);
       setSelectedHook(0);
+      setGraphicStyles(stylesForVariant(data.variants[0]));
       if (data.warning) setWarning(data.warning);
       setStep(2);
     } catch {
@@ -99,6 +109,7 @@ export default function CarouselView() {
   function handleVariantSelect(i: number) {
     setSelectedVariant(i);
     setSelectedHook(0);
+    setGraphicStyles(stylesForVariant(variants[i]));
   }
 
   function handleRestart() {

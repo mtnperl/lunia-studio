@@ -30,10 +30,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     try {
       const el = document.getElementById(`slide-${index}`);
       if (!el) return;
+      // Clone and remove the preview scale transform so Puppeteer renders at full 1080×1350
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.style.transform = "none";
+      clone.style.transformOrigin = "top left";
       const res = await fetch("/api/carousel/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIndex: index, html: el.outerHTML }),
+        body: JSON.stringify({ slideIndex: index, html: clone.outerHTML }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
