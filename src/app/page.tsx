@@ -13,10 +13,10 @@ export default function Page() {
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [scriptCount, setScriptCount] = useState(0);
 
-  useEffect(() => { setScriptCount(getLibrary().length); }, [tab]);
+  useEffect(() => { getLibrary().then((lib) => setScriptCount(lib.length)).catch(() => {}); }, [tab]);
 
   function openEditor(script: Script) { setActiveScript(script); setTab("editor"); }
-  function handleScriptUpdate(s: Script) { setActiveScript(s); saveScript(s); setScriptCount(getLibrary().length); }
+  function handleScriptUpdate(s: Script) { setActiveScript(s); saveScript(s); getLibrary().then((lib) => setScriptCount(lib.length)).catch(() => {}); }
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "generate", label: "Generate" },
