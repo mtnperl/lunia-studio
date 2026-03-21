@@ -21,7 +21,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id }: Props)
           {headline}
         </div>
         <div style={{
-          fontFamily: "Lora, Merriweather, serif",
+          fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: 36,

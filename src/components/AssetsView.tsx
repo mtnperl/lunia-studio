@@ -3,10 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import { AssetMetadata, AssetType } from "@/lib/types";
 
 const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string }[] = [
-  { value: "logo",            label: "Logo",           description: "Brand logo or wordmark",            color: "#1e7a8a" },
-  { value: "carousel-style",  label: "Carousel Style", description: "Reference layout for generation",   color: "#7c3aed" },
-  { value: "product-image",   label: "Product Image",  description: "Product photos",                    color: "#b45309" },
-  { value: "other",           label: "Other",          description: "General brand asset",               color: "#4a5568" },
+  { value: "logo",                label: "Logo",              description: "Brand logo or wordmark",            color: "#1e7a8a" },
+  { value: "carousel-style",      label: "Carousel Style",    description: "Reference layout for generation",   color: "#7c3aed" },
+  { value: "carousel-template",   label: "Carousel Template", description: "Visual template to apply when creating",  color: "#d97706" },
+  { value: "product-image",       label: "Product Image",     description: "Product photos",                    color: "#b45309" },
+  { value: "other",               label: "Other",             description: "General brand asset",               color: "#4a5568" },
 ];
 
 function TypeBadge({ assetType }: { assetType?: AssetType }) {
@@ -115,7 +116,7 @@ export default function AssetsView() {
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
           Upload as
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
           {ASSET_TYPES.map((t) => (
             <button
               key={t.value}

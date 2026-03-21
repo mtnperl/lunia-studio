@@ -7,6 +7,9 @@ export type BarsData   = { items: { label: string; value: string }[] };
 export type StepsData  = { steps: string[] };
 export type ChainData  = { labels: string[] };
 
+// Sentinel — extractor found no usable data
+const NO_DATA = null;
+
 export type GraphicData =
   | { style: "stat";      data: StatData }
   | { style: "bars";      data: BarsData }
@@ -83,17 +86,29 @@ export function extractGraphicData(
   body: string
 ): GraphicData {
   switch (style) {
-    case "stat":   return { style, data: extractStat(headline, body) };
-    case "bars":   return { style, data: extractBars(body) };
-    case "steps":  return { style, data: extractSteps(body) };
-    case "dotchain": return { style, data: extractChain(body) };
-    default:       return { style } as GraphicData;
+    case "stat": {
+      const d = extractStat(headline, body);
+      return d ? { style, data: d } : { style: "textOnly" };
+    }
+    case "bars": {
+      const d = extractBars(body);
+      return d ? { style, data: d } : { style: "textOnly" };
+    }
+    case "steps": {
+      const d = extractSteps(body);
+      return d ? { style, data: d } : { style: "textOnly" };
+    }
+    case "dotchain": {
+      const d = extractChain(body);
+      return d ? { style, data: d } : { style: "textOnly" };
+    }
+    default: return { style } as GraphicData;
   }
 }
 
 // ── Stat extractor ────────────────────────────────────────────────────────────
 
-function extractStat(headline: string, body: string): StatData {
+function extractStat(headline: string, body: string): StatData | typeof NO_DATA {
   const bodyClean = body.replace(/Research:.*$/i, "");
 
   // Prefer the FIRST % figure in the body (not just in citations)
@@ -124,12 +139,12 @@ function extractStat(headline: string, body: string): StatData {
     };
   }
 
-  return { stat: "—", label: headline.toUpperCase().slice(0, 45) };
+  return NO_DATA;
 }
 
 // ── Bars extractor ────────────────────────────────────────────────────────────
 
-function extractBars(body: string): BarsData {
+function extractBars(body: string): BarsData | typeof NO_DATA {
   const bodyClean = body.replace(/Research:.*$/i, "");
 
   // Match "Label ... X%" patterns — grab up to 3
@@ -155,18 +170,12 @@ function extractBars(body: string): BarsData {
     };
   }
 
-  // Generic fallback
-  return {
-    items: [
-      { label: "Treatment",  value: "↑" },
-      { label: "Placebo",    value: "→" },
-    ],
-  };
+  return NO_DATA;
 }
 
 // ── Steps extractor ───────────────────────────────────────────────────────────
 
-function extractSteps(body: string): StepsData {
+function extractSteps(body: string): StepsData | typeof NO_DATA {
   // 1. Numbered list: "1. ...", "2. ..."
   const numbered = [...body.matchAll(/\b[1-4]\.\s+([^.!?\n]{15,80})/g)].map(m => m[1].trim());
   if (numbered.length >= 2) return { steps: numbered.slice(0, 4) };
@@ -187,12 +196,12 @@ function extractSteps(body: string): StepsData {
     .filter(s => s.length >= 20 && s.length <= 80);
   if (sentences.length >= 2) return { steps: sentences.slice(0, 4) };
 
-  return { steps: ["Take Lunia 30 min before bed", "Dim lights", "Avoid screens", "Set room to 18°C"] };
+  return NO_DATA;
 }
 
 // ── Chain extractor ───────────────────────────────────────────────────────────
 
-function extractChain(body: string): ChainData {
+function extractChain(body: string): ChainData | typeof NO_DATA {
   const b = body.toLowerCase();
 
   // "without X ... with Y" or "before ... after"
@@ -206,5 +215,5 @@ function extractChain(body: string): ChainData {
   if (stages.length >= 2)
     return { labels: [stages[0][1], stages[1][1]] };
 
-  return { labels: ["Baseline", "With Lunia"] };
+  return NO_DATA;
 }

@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     const topic: string = body.topic ?? "";
     const hookTone: HookTone = body.hookTone ?? "educational";
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
+    const templateUrl: string | undefined = typeof body.templateUrl === "string" ? body.templateUrl : undefined;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -37,14 +38,17 @@ export async function POST(req: Request) {
       .slice(0, 2);
 
     const hasStyleRef = styleRefs.length > 0;
-    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef);
+    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, !!templateUrl);
 
-    // Build message content — text first, then style images
+    // Build message content — text first, then template (if any), then style refs
     type ContentBlock =
       | { type: "text"; text: string }
       | { type: "image"; source: { type: "url"; url: string } };
 
     const userContent: ContentBlock[] = [{ type: "text", text: promptText }];
+    if (templateUrl) {
+      userContent.push({ type: "image", source: { type: "url", url: templateUrl } });
+    }
     for (const ref of styleRefs) {
       userContent.push({ type: "image", source: { type: "url", url: ref.url } });
     }

@@ -62,7 +62,7 @@ export default function HookSlide({ headline, subline, scale = 1, id }: Props) {
           {headline}
         </div>
         <div style={{
-          fontFamily: "Lora, Merriweather, serif",
+          fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: 38,

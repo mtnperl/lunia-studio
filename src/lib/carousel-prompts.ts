@@ -25,7 +25,9 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
 
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
 
-export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational", hasStyleRef = false) => `${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+export const TEMPLATE_PREFIX = `A carousel template image is attached first. Use it as a structural guide: match its content density per slide, number of points, heading style, and information hierarchy. Do not comment on the image — just apply the structure.\n\n`;
+
+export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational", hasStyleRef = false, hasTemplate = false) => `${hasTemplate ? TEMPLATE_PREFIX : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 

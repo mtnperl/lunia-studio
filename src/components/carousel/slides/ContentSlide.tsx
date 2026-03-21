@@ -61,7 +61,7 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
           {headline}
         </div>
         <div style={{
-          fontFamily: "Lora, Merriweather, serif",
+          fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: isTextOnly ? 34 : 30,
@@ -73,7 +73,7 @@ export default function ContentSlide({ headline, body, citation, graphicStyle, s
           {body}
         </div>
         <div style={{
-          fontFamily: "Lora, Merriweather, serif",
+          fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
           fontSize: 22,
