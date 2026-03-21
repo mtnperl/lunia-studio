@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit } from "@/lib/kv";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -40,6 +41,18 @@ Energy: [calm/energetic/conversational]
 Key visual: [one specific b-roll moment]`;
 
 export async function POST(req: Request) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "127.0.0.1";
+  const allowed = await checkRateLimit(ip);
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Please try again in an hour." }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { persona, format, angle, context, creator } = await req.json();
 
