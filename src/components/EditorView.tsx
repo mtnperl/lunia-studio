@@ -132,17 +132,25 @@ export default function EditorView({ script: initialScript, onUpdate }: {
 
   function copyScriptText() {
     if (!script) return;
+    const noteLines: string[] = [];
+    Object.entries(script.filmingNotes).forEach(([idx, notes]) => {
+      if (!notes) return;
+      const lineText = script.lines[Number(idx)];
+      if (!lineText) return;
+      const parts = [
+        notes.setting ? `Setting: ${notes.setting}` : "",
+        notes.energy ? `Energy: ${notes.energy}` : "",
+        notes.broll ? `B-Roll: ${notes.broll}` : "",
+        notes.director ? `Director: ${notes.director}` : "",
+      ].filter(Boolean);
+      if (parts.length) noteLines.push(`Line ${Number(idx) + 1}: ${parts.join(" · ")}`);
+    });
     const lines = [
       `HOOK: ${script.hook}`,
       "",
       ...script.lines,
-      "",
-      "— FILMING NOTES —",
-      `Setting: ${script.filmingNotes.setting}`,
-      `Energy: ${script.filmingNotes.energy}`,
-      `B-Roll: ${script.filmingNotes.broll}`,
-      script.filmingNotes.director ? `Director notes: ${script.filmingNotes.director}` : "",
-    ].filter((l) => l !== undefined);
+      ...(noteLines.length ? ["", "— FILMING NOTES —", ...noteLines] : []),
+    ];
     const text = lines.join("\n").trim();
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => { setScriptCopied(true); setTimeout(() => setScriptCopied(false), 2500); });
@@ -174,6 +182,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
 
   const isLocked = script.status === "locked";
   const selectedComments = selectedLine !== null ? (script.comments[selectedLine] ?? []) : [];
+  const selectedFilmingNotes = selectedLine !== null ? (script.filmingNotes[selectedLine] ?? {}) : {};
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -213,6 +222,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
           {script.lines.map((line, i) => {
             const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
             const hasComments = (script.comments[i]?.length ?? 0) > 0;
+            const hasFilmingNotes = Object.values(script.filmingNotes[i] ?? {}).some(Boolean);
             const isSelected = selectedLine === i;
 
             if (isSection) {
@@ -276,13 +286,17 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                   }}
                 />
 
-                {/* Comment dot indicator */}
-                {hasComments && (
-                  <span style={{
-                    width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7",
-                    flexShrink: 0, marginTop: 14, marginRight: 6,
-                  }} title={`${script.comments[i].length} comment${script.comments[i].length !== 1 ? "s" : ""}`} />
-                )}
+                {/* Indicators */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0, marginTop: 12, marginRight: 6 }}>
+                  {hasComments && (
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7" }}
+                      title={`${script.comments[i].length} comment${script.comments[i].length !== 1 ? "s" : ""}`} />
+                  )}
+                  {hasFilmingNotes && (
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "#f59e0b" }}
+                      title="Has filming notes" />
+                  )}
+                </div>
               </div>
             );
           })}
@@ -328,7 +342,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 )}
               </div>
 
-              {/* Filming notes */}
+              {/* Filming notes — per line */}
               <div style={{ padding: "14px 16px", flex: 1 }}>
                 <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
                 {(["setting", "energy", "broll", "director"] as const).map((field) => (
@@ -337,9 +351,14 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                       {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
                     </label>
                     <textarea
-                      value={script.filmingNotes[field]}
+                      value={selectedFilmingNotes[field] ?? ""}
                       readOnly={isLocked}
-                      onChange={(e) => update({ filmingNotes: { ...script.filmingNotes, [field]: e.target.value } })}
+                      onChange={(e) => update({
+                        filmingNotes: {
+                          ...script.filmingNotes,
+                          [selectedLine!]: { ...script.filmingNotes[selectedLine!], [field]: e.target.value },
+                        },
+                      })}
                       rows={2}
                       style={{ fontSize: 13, resize: "vertical", background: "var(--bg)" }}
                     />
@@ -353,41 +372,31 @@ export default function EditorView({ script: initialScript, onUpdate }: {
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "20px 16px 14px", borderBottom: "1px solid var(--border)" }}>
                 <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-                  Click any line in the script to view comments and filming notes.
+                  Click any line to add comments and filming notes for that specific line.
                 </p>
+                <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7", display: "inline-block" }} /> Comments
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "#f59e0b", display: "inline-block" }} /> Filming notes
+                  </span>
+                </div>
               </div>
 
-              {/* Global filming notes still visible when nothing selected */}
-              <div style={{ padding: "14px 16px", flex: 1 }}>
-                <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
-                {(["setting", "energy", "broll", "director"] as const).map((field) => (
-                  <div key={field} style={{ marginBottom: 12 }}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
-                      {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
-                    </label>
-                    <textarea
-                      value={script.filmingNotes[field]}
-                      readOnly={isLocked}
-                      onChange={(e) => update({ filmingNotes: { ...script.filmingNotes, [field]: e.target.value } })}
-                      rows={2}
-                      style={{ fontSize: 13, resize: "vertical", background: "var(--bg)" }}
-                    />
-                  </div>
-                ))}
-
-                {/* Meta */}
-                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 4, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
-                    <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Status</label>
-                    <select value={script.status} disabled={isLocked} onChange={(e) => update({ status: e.target.value as Script["status"] })} style={{ fontSize: 13, background: "var(--bg)" }}>
-                      <option value="draft">Draft</option>
-                      <option value="review">In Review</option>
-                    </select>
-                  </div>
+              {/* Meta */}
+              <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+                <p className="section-label" style={{ marginBottom: 4 }}>Script info</p>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
+                  <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Status</label>
+                  <select value={script.status} disabled={isLocked} onChange={(e) => update({ status: e.target.value as Script["status"] })} style={{ fontSize: 13, background: "var(--bg)" }}>
+                    <option value="draft">Draft</option>
+                    <option value="review">In Review</option>
+                  </select>
                 </div>
               </div>
             </div>

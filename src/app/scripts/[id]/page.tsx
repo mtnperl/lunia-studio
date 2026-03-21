@@ -63,11 +63,13 @@ export default async function ScriptSharePage({
           <p style={{ fontSize: 16, fontWeight: 600, color: "#111", lineHeight: 1.5, margin: 0 }}>{script.hook}</p>
         </div>
 
-        {/* Script */}
+        {/* Script with inline filming notes */}
         <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 18px", marginBottom: 16 }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "#9ca3af", margin: "0 0 12px" }}>SCRIPT</p>
           {scriptLines.map((line, i) => {
             const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
+            const notes = script.filmingNotes[i];
+            const hasNotes = notes && Object.values(notes).some(Boolean);
             return isSection ? (
               <div key={i} style={{ margin: "14px 0 6px" }}>
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#9ca3af", background: "#f9fafb", padding: "2px 8px", borderRadius: 4 }}>
@@ -75,28 +77,26 @@ export default async function ScriptSharePage({
                 </span>
               </div>
             ) : (
-              <p key={i} style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, margin: "3px 0" }}>{line}</p>
+              <div key={i} style={{ marginBottom: hasNotes ? 10 : 0 }}>
+                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, margin: "3px 0" }}>{line}</p>
+                {hasNotes && (
+                  <div style={{ marginLeft: 8, marginTop: 3, padding: "6px 10px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, display: "flex", flexWrap: "wrap" as const, gap: "4px 14px" }}>
+                    {([
+                      { key: "setting", label: "Setting" },
+                      { key: "energy", label: "Energy" },
+                      { key: "broll", label: "B-Roll" },
+                      { key: "director", label: "Director" },
+                    ] as const).filter(({ key }) => notes[key]).map(({ key, label }) => (
+                      <span key={key} style={{ fontSize: 12, color: "#92400e" }}>
+                        <span style={{ fontWeight: 600 }}>{label}:</span> {notes[key]}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
-
-        {/* Filming notes */}
-        {(script.filmingNotes.setting || script.filmingNotes.energy || script.filmingNotes.broll || script.filmingNotes.director) && (
-          <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 18px" }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: "#9ca3af", margin: "0 0 12px" }}>FILMING NOTES</p>
-            {([
-              { key: "setting", label: "Setting" },
-              { key: "energy", label: "Energy" },
-              { key: "broll", label: "B-Roll" },
-              { key: "director", label: "Director notes" },
-            ] as const).filter(({ key }) => script.filmingNotes[key]).map(({ key, label }) => (
-              <div key={key} style={{ marginBottom: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", margin: "0 0 3px", letterSpacing: ".04em" }}>{label.toUpperCase()}</p>
-                <p style={{ fontSize: 14, color: "#374151", lineHeight: 1.5, margin: 0 }}>{script.filmingNotes[key]}</p>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Footer */}
         <p style={{ fontSize: 12, color: "#d1d5db", textAlign: "center", marginTop: 32 }}>

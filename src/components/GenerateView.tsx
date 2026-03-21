@@ -106,7 +106,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
     onOpenEditor({
       id: generateId(), title: `${persona} · ${format} · ${angle}`,
       hook: hook?.text ?? "", lines: parsed.scriptLines, comments: {},
-      filmingNotes: { setting: parsed.filmingNotes.setting ?? "", energy: parsed.filmingNotes.energy ?? "", broll: parsed.filmingNotes.broll ?? "", director: "" },
+      filmingNotes: {},
       creator, status: "draft", persona, angle, format, savedAt: new Date().toISOString(),
     });
   }

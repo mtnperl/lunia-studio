@@ -17,7 +17,7 @@ export type Script = {
   hook: string;
   lines: string[];
   comments: Record<number, Comment[]>;
-  filmingNotes: FilmingNotes;
+  filmingNotes: Record<number, Partial<FilmingNotes>>;
   creator: string;
   status: "draft" | "review" | "locked";
   persona: string;
