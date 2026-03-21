@@ -1,16 +1,19 @@
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate } from "./types";
 
-// Supports both Vercel KV (KV_REST_API_URL) and standard Redis (REDIS_URL)
+// Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
+// or falls back to KV_REST_API_URL as last resort.
 // Lazily initialized so module evaluation at build time doesn't throw.
 let _redis: Redis | null = null;
 
 function getRedis(): Redis {
   if (_redis) return _redis;
-  const url = process.env.KV_REST_API_URL ?? process.env.REDIS_URL;
+  // KV_URL is Vercel's redis:// URL (ioredis-compatible).
+  // KV_REST_API_URL is the https:// REST endpoint — ioredis cannot use it.
+  const url = process.env.KV_URL ?? process.env.REDIS_URL ?? process.env.KV_REST_API_URL;
   if (!url) {
     throw new Error(
-      "Missing Redis environment variable: set KV_REST_API_URL or REDIS_URL"
+      "Missing Redis environment variable: set KV_URL or REDIS_URL"
     );
   }
   _redis = new Redis(url, { lazyConnect: true });

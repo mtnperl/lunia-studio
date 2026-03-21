@@ -28,10 +28,20 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
 
 function buildTemplateSection(template: CarouselTemplate): string {
-  return `A carousel template is attached (${template.images.length} slide image${template.images.length > 1 ? "s" : ""}).
-Template: "${template.name}"${template.description ? `\nDescription: ${template.description}` : ""}${template.styleNotes ? `\nStyle notes: ${template.styleNotes}` : ""}
-Content density: ${template.contentDensity}
-Follow this template's structure: match its content density per slide, heading style, information hierarchy, and visual rhythm. Do not comment on the images.\n\n`;
+  const densityMap = {
+    minimal: "Very short copy: 1-2 punchy sentences per slide. Headlines do all the work.",
+    medium: "Moderate copy: 2-3 sentences per slide. Balance of headline and body.",
+    dense: "Rich copy: 3-5 sentences per slide. Detailed, educational, citation-heavy.",
+  };
+  return `TEMPLATE REFERENCE: "${template.name}" (${template.images.length} slide image${template.images.length > 1 ? "s" : ""} attached)
+${template.description ? `Description: ${template.description}\n` : ""}${template.styleNotes ? `Style notes: ${template.styleNotes}\n` : ""}Content density rule: ${densityMap[template.contentDensity] ?? densityMap.medium}
+
+Study each attached template slide carefully. You MUST mirror:
+- The exact sentence count and copy length per slide shown in the template
+- The headline framing style (question vs. statement vs. data-led)
+- Whether the template uses bullet-style facts or flowing prose in the body
+- The citation placement and verbosity shown in the template
+Do not comment on the images. Apply what you observe.\n\n`;
 }
 
 export const GENERATE_CAROUSEL_PROMPT = (
