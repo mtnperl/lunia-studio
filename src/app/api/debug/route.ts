@@ -17,5 +17,22 @@ export async function GET() {
     kvError = String(e);
   }
 
-  return Response.json({ envCheck, templatesCount: templates.length, templates, kvError });
+  // Test image URL accessibility for each template
+  const templateSummary = await Promise.all(
+    (templates as Array<{ id: string; name: string; images: Array<{ url: string; slideName: string }> }>).map(async (t) => {
+      const imageChecks = await Promise.all(
+        t.images.map(async (img) => {
+          try {
+            const r = await fetch(img.url, { method: "HEAD" });
+            return { url: img.url.slice(0, 60) + "...", slideName: img.slideName, status: r.status, ok: r.ok };
+          } catch (e) {
+            return { url: img.url.slice(0, 60) + "...", slideName: img.slideName, status: "FETCH_ERROR", error: String(e) };
+          }
+        })
+      );
+      return { id: t.id, name: t.name, imageChecks };
+    })
+  );
+
+  return Response.json({ envCheck, templatesCount: templates.length, templateSummary, kvError });
 }

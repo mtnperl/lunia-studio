@@ -39,6 +39,7 @@ export async function POST(req: Request) {
 
     // Fetch template if provided
     const template = templateId ? await getCarouselTemplateById(templateId).catch(() => null) : null;
+    console.log("[generate] templateId:", templateId, "→ found:", template ? `"${template.name}" (${template.images.length} images)` : "null");
 
     const hasStyleRef = styleRefs.length > 0;
     const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template);

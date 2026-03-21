@@ -29,19 +29,21 @@ export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attac
 
 function buildTemplateSection(template: CarouselTemplate): string {
   const densityMap = {
-    minimal: "Very short copy: 1-2 punchy sentences per slide. Headlines do all the work.",
-    medium: "Moderate copy: 2-3 sentences per slide. Balance of headline and body.",
-    dense: "Rich copy: 3-5 sentences per slide. Detailed, educational, citation-heavy.",
+    minimal: "1-2 sentences MAX per slide. Headlines must carry the full idea. Body is a single punchy line or two at most. This OVERRIDES the default 3-5 sentence rule.",
+    medium: "2-3 sentences per slide. Concise and scannable. This OVERRIDES the default 3-5 sentence rule.",
+    dense: "4-5 sentences per slide, detailed and citation-heavy. Match the default 3-5 sentence rule.",
   };
-  return `TEMPLATE REFERENCE: "${template.name}" (${template.images.length} slide image${template.images.length > 1 ? "s" : ""} attached)
-${template.description ? `Description: ${template.description}\n` : ""}${template.styleNotes ? `Style notes: ${template.styleNotes}\n` : ""}Content density rule: ${densityMap[template.contentDensity] ?? densityMap.medium}
+  return `=== TEMPLATE OVERRIDE: "${template.name}" ===
+${template.description ? `Description: ${template.description}\n` : ""}${template.styleNotes ? `Style notes: ${template.styleNotes}\n` : ""}BODY COPY RULE (overrides all defaults): ${densityMap[template.contentDensity] ?? densityMap.medium}
 
-Study each attached template slide carefully. You MUST mirror:
-- The exact sentence count and copy length per slide shown in the template
-- The headline framing style (question vs. statement vs. data-led)
-- Whether the template uses bullet-style facts or flowing prose in the body
-- The citation placement and verbosity shown in the template
-Do not comment on the images. Apply what you observe.\n\n`;
+${template.images.length} reference slide image${template.images.length > 1 ? "s are" : " is"} attached. Study each carefully and mirror:
+- The EXACT sentence count and word count per slide
+- The headline framing style (question / statement / data-led)
+- Whether the slide uses bullet-point facts or flowing prose
+- How prominent and long the citation text is
+
+This template instruction takes PRIORITY over all other copy-length rules below.
+===\n\n`;
 }
 
 export const GENERATE_CAROUSEL_PROMPT = (
