@@ -4,10 +4,11 @@ import GenerateView from "@/components/GenerateView";
 import EditorView from "@/components/EditorView";
 import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
+import AssetsView from "@/components/AssetsView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "generate" | "editor" | "library" | "carousel";
+type Tab = "generate" | "editor" | "library" | "carousel" | "assets";
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("generate");
@@ -24,6 +25,7 @@ export default function Page() {
     { key: "editor", label: "Editor" },
     { key: "library", label: "Library" },
     { key: "carousel", label: "Carousel" },
+    { key: "assets", label: "Assets" },
   ];
 
   return (
@@ -62,6 +64,7 @@ export default function Page() {
         {tab === "editor" && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
         {tab === "library" && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
         {tab === "carousel" && <CarouselView />}
+        {tab === "assets" && <AssetsView />}
       </main>
     </div>
   );

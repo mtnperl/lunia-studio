@@ -1,7 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic as client } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SYSTEM_PROMPT = `You are a UGC scriptwriter for Lunia Life, a sleep supplement brand.
 

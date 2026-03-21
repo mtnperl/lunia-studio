@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script } from "./types";
+import { Script, SavedCarousel, AssetMetadata } from "./types";
 
 // Supports both Vercel KV (KV_REST_API_URL) and standard Redis (REDIS_URL)
 // Lazily initialized so module evaluation at build time doesn't throw.
@@ -63,14 +63,64 @@ export async function getScriptById(id: string): Promise<Script | null> {
   return scripts.find((s) => s.id === id) ?? null;
 }
 
-// Rate limiting: fixed window, 10 req/hr per IP
-export async function checkRateLimit(ip: string): Promise<boolean> {
+// Rate limiting: fixed window, 10 req/hr per IP per bucket
+export async function checkRateLimit(ip: string, bucket = "generate"): Promise<boolean> {
   try {
-    const key = `lunia:rl:generate:${ip}`;
+    const key = `lunia:rl:${bucket}:${ip}`;
     const count = await redis.incr(key);
     if (count === 1) await redis.expire(key, 3600);
     return count <= 10;
   } catch {
     return true; // fail open on Redis error
   }
+}
+
+// ─── Carousel persistence ─────────────────────────────────────────────────────
+const CAROUSELS_KEY = "lunia:carousels";
+
+export async function getCarousels(): Promise<SavedCarousel[]> {
+  try {
+    return (await redis.get<SavedCarousel[]>(CAROUSELS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCarousel(carousel: SavedCarousel): Promise<void> {
+  const all = await getCarousels();
+  const idx = all.findIndex((c) => c.id === carousel.id);
+  if (idx >= 0) {
+    all[idx] = carousel;
+  } else {
+    all.unshift(carousel);
+  }
+  await redis.set(CAROUSELS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+}
+
+export async function getCarouselById(id: string): Promise<SavedCarousel | null> {
+  const all = await getCarousels();
+  return all.find((c) => c.id === id) ?? null;
+}
+
+// ─── Asset metadata ───────────────────────────────────────────────────────────
+const ASSETS_KEY = "lunia:assets";
+
+export async function getAssets(): Promise<AssetMetadata[]> {
+  try {
+    return (await redis.get<AssetMetadata[]>(ASSETS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveAsset(asset: AssetMetadata): Promise<void> {
+  const all = await getAssets();
+  all.unshift(asset);
+  await redis.set(ASSETS_KEY, all, { ex: TTL_SECONDS });
+}
+
+export async function deleteAsset(id: string): Promise<void> {
+  const all = await getAssets();
+  const filtered = all.filter((a) => a.id !== id);
+  await redis.set(ASSETS_KEY, filtered, { ex: TTL_SECONDS });
 }

@@ -14,7 +14,18 @@ Rules:
 - No em dashes
 - No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
 
-export const GENERATE_CAROUSEL_PROMPT = (topic: string) => `You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
+  "educational": "Educational tone: clear, factual, teaches the reader something they didn't know. Start with an insight.",
+  "clickbait": "Clickbait tone: bold, provocative hooks that create urgency or disbelief. Still factually accurate.",
+  "curiosity": "Curiosity-gap tone: tease an unexpected or counterintuitive insight. Make the reader want to know more.",
+  "myth-bust": "Myth-busting tone: challenge a common misconception about sleep or supplements. Be direct and corrective.",
+  "science-backed": "Science-backed tone: lead with research findings and data. Reference studies confidently.",
+  "personal-story": "Personal-story tone: write as if a real person is sharing their journey with sleep problems and Lunia.",
+};
+
+export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational") => `You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+
+Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 
 Return ONLY valid JSON in this exact format, no other text:
 {
@@ -44,3 +55,18 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase`;
+
+export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
+  `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"
+
+Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
+
+Return ONLY valid JSON in this exact format, no other text:
+{ "headline": "string", "body": "string", "citation": "string" }
+
+Brand rules (follow exactly):
+- No em dashes anywhere.
+- No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
+- Body copy: 3-5 sentences, specific and factual
+- Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
+- Headline: uppercase, max 8 words`;

@@ -3,18 +3,30 @@ import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
-import { CarouselConfig } from "@/lib/types";
+import { CarouselConfig, HookTone } from "@/lib/types";
 
-type Props = { config: CarouselConfig; onRestart: () => void; onChangeHook: () => void };
+type Props = {
+  config: CarouselConfig;
+  hookTone: HookTone;
+  onRestart: () => void;
+  onChangeHook: () => void;
+  onContentChange: (config: CarouselConfig) => void;
+};
 
-export default function PreviewStep({ config, onRestart, onChangeHook }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [copyLabel, setCopyLabel] = useState("Copy share link");
+  const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const { content, selectedHook, graphicStyles } = config;
+  const { content, selectedHook, graphicStyles, topic } = config;
   const hook = content.hooks[selectedHook];
 
   async function downloadSlide(index: number) {
     setDownloading(index);
+    setExportError(null);
     try {
       const el = document.getElementById(`slide-${index}`);
       if (!el) return;
@@ -23,6 +35,11 @@ export default function PreviewStep({ config, onRestart, onChangeHook }: Props) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slideIndex: index, html: el.outerHTML }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setExportError((err as { error?: string }).error ?? "Export failed");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -41,6 +58,55 @@ export default function PreviewStep({ config, onRestart, onChangeHook }: Props) 
     }
   }
 
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/carousel/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          hookTone,
+          content,
+          selectedHook,
+          graphicStyles,
+        }),
+      });
+      if (!res.ok) return;
+      const { id } = await res.json();
+      setSavedId(id);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCopyShareLink() {
+    if (!savedId) return;
+    const url = `${window.location.origin}/carousels/${savedId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopyLabel("Copied!");
+      setTimeout(() => setCopyLabel("Copy share link"), 2000);
+    });
+  }
+
+  async function handleRegenerateSlide(slideIndex: number) {
+    setRegenerating(slideIndex);
+    try {
+      const res = await fetch("/api/carousel/regenerate-slide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, hookTone, slideIndex }),
+      });
+      if (!res.ok) return;
+      const { slide } = await res.json();
+      const slides = [...content.slides];
+      slides[slideIndex] = slide;
+      onContentChange({ ...config, content: { ...content, slides } });
+    } finally {
+      setRegenerating(null);
+    }
+  }
+
   const slides = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={0.5} id="slide-0" />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphicStyle={graphicStyles[0]} scale={0.5} id="slide-1" />,
@@ -51,49 +117,128 @@ export default function PreviewStep({ config, onRestart, onChangeHook }: Props) 
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h2 style={{ fontSize: 28, fontWeight: 700, color: "#1e7a8a", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your carousel</h2>
-          <p style={{ color: "#4a5568", marginTop: 4, fontSize: 16 }}>Download individual slides or all at once.</p>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4, letterSpacing: "-0.02em" }}>Your carousel</h2>
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>Download individual slides or all at once.</p>
         </div>
-        <button
-          onClick={downloadAll}
-          style={{ background: "#1e7a8a", color: "#fff", border: "none", borderRadius: 10, padding: "14px 32px", fontSize: 15, fontWeight: 600, fontFamily: "Outfit, sans-serif", cursor: "pointer" }}
-        >
-          Download all (5 PNGs)
-        </button>
-      </div>
-
-      <div style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 16 }}>
-        {slides.map((slide, i) => (
-          <div key={i} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            {slide}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          {savedId ? (
             <button
-              onClick={() => downloadSlide(i)}
-              disabled={downloading === i}
+              onClick={handleCopyShareLink}
               style={{
-                background: downloading === i ? "#e2e8f0" : "#ffffff",
-                color: "#1e7a8a",
-                border: "2px solid #1e7a8a",
+                background: "transparent",
+                border: "1.5px solid var(--border)",
                 borderRadius: 8,
                 padding: "10px 20px",
                 fontSize: 14,
                 fontWeight: 600,
-                fontFamily: "Outfit, sans-serif",
-                cursor: downloading === i ? "not-allowed" : "pointer",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                color: "var(--text)",
               }}
             >
-              {downloading === i ? "Exporting..." : `Download slide ${i + 1}`}
+              {copyLabel}
             </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                background: "transparent",
+                border: "1.5px solid var(--border)",
+                borderRadius: 8,
+                padding: "10px 20px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: saving ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                color: "var(--text)",
+                opacity: saving ? 0.5 : 1,
+              }}
+            >
+              {saving ? "Saving..." : "Save carousel"}
+            </button>
+          )}
+          <button
+            onClick={downloadAll}
+            style={{
+              background: "var(--text)",
+              color: "var(--bg)",
+              border: "none",
+              borderRadius: 8,
+              padding: "10px 24px",
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: "inherit",
+              cursor: "pointer",
+            }}
+          >
+            Download all (5 PNGs)
+          </button>
+        </div>
+      </div>
+
+      {exportError && (
+        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#9b1c1c" }}>
+          Export error: {exportError}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 16 }}>
+        {slides.map((slide, i) => (
+          <div key={i} style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            {slide}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => downloadSlide(i)}
+                disabled={downloading === i}
+                style={{
+                  background: "var(--bg)",
+                  color: "var(--text)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 7,
+                  padding: "8px 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "inherit",
+                  cursor: downloading === i ? "not-allowed" : "pointer",
+                  opacity: downloading === i ? 0.5 : 1,
+                }}
+              >
+                {downloading === i ? "Exporting..." : `↓ Slide ${i + 1}`}
+              </button>
+              {i >= 1 && i <= 3 && (
+                <button
+                  onClick={() => handleRegenerateSlide(i - 1)}
+                  disabled={regenerating === i - 1}
+                  title="Regenerate this slide"
+                  style={{
+                    background: "var(--bg)",
+                    color: "var(--muted)",
+                    border: "1.5px solid var(--border)",
+                    borderRadius: 7,
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: "inherit",
+                    cursor: regenerating === i - 1 ? "not-allowed" : "pointer",
+                    opacity: regenerating === i - 1 ? 0.5 : 1,
+                  }}
+                >
+                  {regenerating === i - 1 ? "..." : "↺"}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 24, marginTop: 32 }}>
-        <button onClick={onChangeHook} style={{ background: "transparent", color: "#1e7a8a", border: "none", fontSize: 15, fontWeight: 600, fontFamily: "Outfit, sans-serif", cursor: "pointer", textDecoration: "underline" }}>
+      <div style={{ display: "flex", gap: 20, marginTop: 28 }}>
+        <button onClick={onChangeHook} style={{ background: "transparent", color: "var(--text)", border: "none", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}>
           ← Change hook
         </button>
-        <button onClick={onRestart} style={{ background: "transparent", color: "#4a5568", border: "none", fontSize: 15, fontFamily: "Outfit, sans-serif", cursor: "pointer", textDecoration: "underline" }}>
+        <button onClick={onRestart} style={{ background: "transparent", color: "var(--muted)", border: "none", fontSize: 14, fontFamily: "inherit", cursor: "pointer", textDecoration: "underline" }}>
           Start over
         </button>
       </div>

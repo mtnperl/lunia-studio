@@ -27,6 +27,13 @@ export type Script = {
 };
 
 // ─── Carousel types ───────────────────────────────────────────────────────────
+export type HookTone =
+  | "educational"
+  | "clickbait"
+  | "curiosity"
+  | "myth-bust"
+  | "science-backed"
+  | "personal-story";
 export type Topic = {
   title: string;
   description: string;
@@ -64,4 +71,27 @@ export type CarouselConfig = {
   content: CarouselContent;
   selectedHook: number;
   graphicStyles: [GraphicStyle, GraphicStyle, GraphicStyle];
+};
+
+export type SavedCarousel = {
+  id: string;
+  topic: string;
+  hookTone: HookTone;
+  content: CarouselContent;      // the selected variant
+  selectedHook: number;          // index into content.hooks[] (0–2)
+  graphicStyles: [GraphicStyle, GraphicStyle, GraphicStyle];
+  savedAt: string;
+};
+
+export type AssetMetadata = {
+  id: string;
+  url: string;
+  name: string;
+  type: string;
+  uploadedAt: string;
+};
+
+export type MultiVariantResponse = {
+  variants: CarouselContent[];
+  warning?: string; // e.g. "2 of 5 variants failed — showing 3"
 };
