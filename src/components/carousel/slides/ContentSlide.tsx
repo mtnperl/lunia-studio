@@ -15,7 +15,9 @@ function sanitizeSvg(svg: string): string {
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+="[^"]*"/gi, "")
     .replace(/\son\w+='[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/javascript:/gi, "")
+    // Ensure SVG fills the full 936px container width
+    .replace(/<svg(?![^>]*\bwidth=)/, '<svg width="100%"');
 }
 
 type Props = {

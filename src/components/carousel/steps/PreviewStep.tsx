@@ -43,7 +43,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const dataUrl = await toPng(el, {
         width: 1080,
         height: 1350,
-        pixelRatio: 1,
+        pixelRatio: 2,
         cacheBust: true,
       });
       const a = document.createElement("a");

@@ -73,7 +73,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 260" with NO explicit width/height on the svg element • Colors only: #1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1200 chars • Use REAL data/numbers from the slide text — do not invent • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
+- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 440" with NO explicit width/height on the svg element • Colors only: #1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1600 chars • Use REAL data/numbers from the slide text — do not invent • Design for the full 440px height — spread content vertically, use large numbers (120-180px font), generous spacing, a title label at top and a sub-label below the visual element • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
   `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"
@@ -89,4 +89,4 @@ Brand rules (follow exactly):
 - Body copy: 3-5 sentences, specific and factual
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
-- graphic: same rules as main carousel prompt — SVG infographic, viewBox="0 0 936 260", single compact line max 1200 chars, real data only, "" if none`;
+- graphic: same rules as main carousel prompt — SVG infographic, viewBox="0 0 936 440", single compact line max 1600 chars, design for full 440px height with large numbers and generous spacing, real data only, "" if none`;
