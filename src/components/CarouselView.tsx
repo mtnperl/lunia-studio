@@ -95,7 +95,7 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: t, hookTone: tone, count }),
       });
-      const data: MultiVariantResponse & { error?: string } = await res.json();
+      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number } = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;
@@ -104,7 +104,11 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
       setSelectedVariant(0);
       setSelectedHook(0);
       setGraphicStyles(stylesForVariant(data.variants[0]));
-      if (data.warning) setWarning(data.warning);
+      const msgs = [
+        data.styleRefsUsed ? `${data.styleRefsUsed} carousel style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
+        data.warning ?? null,
+      ].filter(Boolean);
+      if (msgs.length) setWarning(msgs.join(" "));
       setStep(2);
     } catch {
       setError("Network error — please check your connection and try again.");

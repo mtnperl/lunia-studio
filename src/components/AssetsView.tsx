@@ -1,12 +1,40 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { AssetMetadata } from "@/lib/types";
+import { AssetMetadata, AssetType } from "@/lib/types";
+
+const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string }[] = [
+  { value: "logo",            label: "Logo",           description: "Brand logo or wordmark",            color: "#1e7a8a" },
+  { value: "carousel-style",  label: "Carousel Style", description: "Reference layout for generation",   color: "#7c3aed" },
+  { value: "product-image",   label: "Product Image",  description: "Product photos",                    color: "#b45309" },
+  { value: "other",           label: "Other",          description: "General brand asset",               color: "#4a5568" },
+];
+
+function TypeBadge({ assetType }: { assetType?: AssetType }) {
+  const t = ASSET_TYPES.find((a) => a.value === assetType) ?? ASSET_TYPES[3];
+  return (
+    <span style={{
+      display: "inline-block",
+      background: `${t.color}18`,
+      color: t.color,
+      fontSize: 10,
+      fontWeight: 700,
+      padding: "2px 7px",
+      borderRadius: 4,
+      textTransform: "uppercase",
+      letterSpacing: "0.04em",
+      border: `1px solid ${t.color}30`,
+    }}>
+      {t.label}
+    </span>
+  );
+}
 
 export default function AssetsView() {
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingType, setPendingType] = useState<AssetType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadAssets() {
@@ -15,7 +43,7 @@ export default function AssetsView() {
       const data = await res.json();
       setAssets(Array.isArray(data) ? data : []);
     } catch {
-      // fail silently — assets are non-critical
+      // non-critical
     } finally {
       setLoading(false);
     }
@@ -23,11 +51,25 @@ export default function AssetsView() {
 
   useEffect(() => { loadAssets(); }, []);
 
-  async function handleUpload(file: File) {
+  function selectType(type: AssetType) {
+    setPendingType(type);
+    setTimeout(() => fileInputRef.current?.click(), 50);
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !pendingType) return;
+    await doUpload(file, pendingType);
+    setPendingType(null);
+  }
+
+  async function doUpload(file: File, assetType: AssetType) {
     setUploading(true);
     setUploadError(null);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("assetType", assetType);
     try {
       const res = await fetch("/api/assets/upload", { method: "POST", body: formData });
       const data = await res.json();
@@ -48,7 +90,7 @@ export default function AssetsView() {
       await fetch(`/api/assets/${id}`, { method: "DELETE" });
       setAssets((prev) => prev.filter((a) => a.id !== id));
     } catch {
-      // fail silently
+      // non-critical
     }
   }
 
@@ -56,55 +98,70 @@ export default function AssetsView() {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  function formatBytes(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
+  const styleCount = assets.filter((a) => a.assetType === "carousel-style").length;
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px 80px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Brand assets</h1>
-          <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>Reference images for carousel production. Up to 5 MB per file.</p>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Brand assets</h1>
+        <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
+          Upload tagged assets. Carousel Style references are automatically sent to Claude when generating.
+          {styleCount > 0 && <span style={{ color: "#7c3aed", fontWeight: 600 }}> {styleCount} style reference{styleCount > 1 ? "s" : ""} active.</span>}
+        </p>
+      </div>
+
+      {/* Upload type picker */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          Upload as
         </div>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleUpload(file);
-              e.target.value = "";
-            }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{
-              background: "var(--text)",
-              color: "var(--bg)",
-              border: "none",
-              borderRadius: 8,
-              padding: "10px 20px",
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: uploading ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              opacity: uploading ? 0.5 : 1,
-            }}
-          >
-            {uploading ? "Uploading..." : "+ Upload image"}
-          </button>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {ASSET_TYPES.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => selectType(t.value)}
+              disabled={uploading}
+              style={{
+                border: `1.5px solid ${t.color}40`,
+                borderRadius: 9,
+                padding: "12px 14px",
+                cursor: uploading ? "not-allowed" : "pointer",
+                background: "var(--bg)",
+                textAlign: "left",
+                fontFamily: "inherit",
+                opacity: uploading ? 0.5 : 1,
+                transition: "border-color 0.12s, background 0.12s",
+              }}
+              onMouseEnter={(e) => { if (!uploading) (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg)"; }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, color: t.color, marginBottom: 3 }}>
+                {uploading && pendingType === t.value ? "Uploading..." : `+ ${t.label}`}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>{t.description}</div>
+            </button>
+          ))}
         </div>
       </div>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
       {uploadError && (
-        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#9b1c1c" }}>
+        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#9b1c1c" }}>
           {uploadError}
+        </div>
+      )}
+
+      {/* Carousel style notice */}
+      {styleCount > 0 && (
+        <div style={{ background: "#f5f0ff", border: "1px solid #c4b5fd", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#5b21b6" }}>
+          <strong>{styleCount} Carousel Style reference{styleCount > 1 ? "s" : ""}</strong> — Claude will analyze {styleCount > 1 ? "these" : "this"} when generating your next carousel to match the layout and structure.
         </div>
       )}
 
@@ -114,15 +171,15 @@ export default function AssetsView() {
         <div style={{ textAlign: "center", padding: "60px 0", color: "var(--muted)" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🖼</div>
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>No assets yet</div>
-          <div style={{ fontSize: 13 }}>Upload brand images to reference during carousel production.</div>
+          <div style={{ fontSize: 13 }}>Upload tagged images to use as references during carousel generation.</div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
           {assets.map((a) => (
             <div
               key={a.id}
               style={{
-                border: "1px solid var(--border)",
+                border: a.assetType === "carousel-style" ? "1.5px solid #c4b5fd" : "1px solid var(--border)",
                 borderRadius: 10,
                 overflow: "hidden",
                 background: "var(--surface)",
@@ -136,6 +193,9 @@ export default function AssetsView() {
                 />
               </div>
               <div style={{ padding: "10px 12px" }}>
+                <div style={{ marginBottom: 6 }}>
+                  <TypeBadge assetType={a.assetType} />
+                </div>
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>
                   {a.name}
                 </div>
@@ -147,32 +207,13 @@ export default function AssetsView() {
                     href={a.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      textDecoration: "none",
-                      border: "1px solid var(--border)",
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      background: "var(--bg)",
-                    }}
+                    style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", textDecoration: "none", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 8px", background: "var(--bg)" }}
                   >
                     View
                   </a>
                   <button
                     onClick={() => handleDelete(a.id)}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#9b1c1c",
-                      border: "1px solid #f5c6c6",
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      background: "var(--bg)",
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                    }}
+                    style={{ fontSize: 12, fontWeight: 600, color: "#9b1c1c", border: "1px solid #f5c6c6", borderRadius: 5, padding: "4px 8px", background: "var(--bg)", cursor: "pointer", fontFamily: "inherit" }}
                   >
                     Delete
                   </button>

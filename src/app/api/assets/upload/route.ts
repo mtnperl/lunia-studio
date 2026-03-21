@@ -1,9 +1,11 @@
 import { put } from "@vercel/blob";
 import { saveAsset } from "@/lib/kv";
+import { AssetType } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+const VALID_ASSET_TYPES: AssetType[] = ["logo", "carousel-style", "product-image", "other"];
 
 export async function POST(req: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -15,6 +17,10 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const assetTypeRaw = formData.get("assetType") as string | null;
+    const assetType: AssetType = VALID_ASSET_TYPES.includes(assetTypeRaw as AssetType)
+      ? (assetTypeRaw as AssetType)
+      : "other";
 
     if (!file) {
       return Response.json({ error: "No file provided" }, { status: 400 });
@@ -43,12 +49,14 @@ export async function POST(req: Request) {
       url: blob.url,
       name: file.name,
       type: file.type,
+      assetType,
       uploadedAt: new Date().toISOString(),
     });
 
-    return Response.json({ id, url: blob.url });
+    return Response.json({ id, url: blob.url, assetType });
   } catch (err) {
-    console.error("[api/assets/upload]", err);
-    return Response.json({ error: "Upload failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[api/assets/upload]", message);
+    return Response.json({ error: `Upload failed: ${message}` }, { status: 500 });
   }
 }

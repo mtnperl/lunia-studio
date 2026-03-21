@@ -1,7 +1,8 @@
 import { anthropic } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
-import { checkRateLimit } from "@/lib/kv";
+import { checkRateLimit, getAssets } from "@/lib/kv";
 import { CarouselContent, HookTone } from "@/lib/types";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export async function POST(req: Request) {
   const ip =
@@ -29,6 +30,27 @@ export async function POST(req: Request) {
       return Response.json({ error: "Topic too long (max 500 characters)" }, { status: 400 });
     }
 
+    // Fetch carousel-style reference images (up to 2 to keep context manageable)
+    const allAssets = await getAssets().catch(() => []);
+    const styleRefs = allAssets
+      .filter((a) => a.assetType === "carousel-style")
+      .slice(0, 2);
+
+    const hasStyleRef = styleRefs.length > 0;
+    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef);
+
+    // Build message content — text first, then style images
+    type ContentBlock =
+      | { type: "text"; text: string }
+      | { type: "image"; source: { type: "url"; url: string } };
+
+    const userContent: ContentBlock[] = [{ type: "text", text: promptText }];
+    for (const ref of styleRefs) {
+      userContent.push({ type: "image", source: { type: "url", url: ref.url } });
+    }
+
+    const messages: MessageParam[] = [{ role: "user", content: userContent }];
+
     // Generate `count` variants in parallel; collect successes, filter failures
     const results = await Promise.all(
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
@@ -36,7 +58,7 @@ export async function POST(req: Request) {
           const msg = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 2048,
-            messages: [{ role: "user", content: GENERATE_CAROUSEL_PROMPT(topic, hookTone) }],
+            messages,
           });
           const text = msg.content[0].type === "text" ? msg.content[0].text : "";
           return JSON.parse(text) as CarouselContent;
@@ -56,7 +78,11 @@ export async function POST(req: Request) {
         ? `${count - variants.length} of ${count} variants failed — showing ${variants.length}`
         : undefined;
 
-    return Response.json({ variants, ...(warning ? { warning } : {}) });
+    return Response.json({
+      variants,
+      styleRefsUsed: styleRefs.length,
+      ...(warning ? { warning } : {}),
+    });
   } catch (err) {
     console.error("[api/carousel/generate]", err);
     return Response.json({ error: "Failed to generate content" }, { status: 500 });

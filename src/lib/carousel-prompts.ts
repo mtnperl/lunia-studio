@@ -23,7 +23,9 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "personal-story": "Personal-story tone: write as if a real person is sharing their journey with sleep problems and Lunia.",
 };
 
-export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational") => `You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
+
+export const GENERATE_CAROUSEL_PROMPT = (topic: string, hookTone = "educational", hasStyleRef = false) => `${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 

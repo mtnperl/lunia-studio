@@ -90,11 +90,14 @@ export type Subject = {
   usedAt?: string; // ISO date when last used for a carousel
 };
 
+export type AssetType = "logo" | "carousel-style" | "product-image" | "other";
+
 export type AssetMetadata = {
   id: string;
   url: string;
   name: string;
-  type: string;
+  type: string;        // MIME type
+  assetType: AssetType; // usage classification
   uploadedAt: string;
 };
 
