@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject } from "./types";
 
 // Supports both Vercel KV (KV_REST_API_URL) and standard Redis (REDIS_URL)
 // Lazily initialized so module evaluation at build time doesn't throw.
@@ -123,4 +123,42 @@ export async function deleteAsset(id: string): Promise<void> {
   const all = await getAssets();
   const filtered = all.filter((a) => a.id !== id);
   await redis.set(ASSETS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
+// ─── Subjects ─────────────────────────────────────────────────────────────────
+const SUBJECTS_KEY = "lunia:subjects";
+
+export async function getSubjects(): Promise<Subject[]> {
+  try {
+    const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
+    if (stored && stored.length > 0) return stored;
+    // Seed defaults on first call
+    const { DEFAULT_SUBJECTS } = await import("./default-subjects");
+    await redis.set(SUBJECTS_KEY, DEFAULT_SUBJECTS, { ex: TTL_SECONDS });
+    return DEFAULT_SUBJECTS;
+  } catch {
+    return [];
+  }
+}
+
+export async function saveSubjects(subjects: Subject[]): Promise<void> {
+  await redis.set(SUBJECTS_KEY, subjects, { ex: TTL_SECONDS });
+}
+
+export async function updateSubject(id: string, text: string): Promise<void> {
+  const all = await getSubjects();
+  const idx = all.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], text };
+    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+  }
+}
+
+export async function markSubjectUsed(id: string): Promise<void> {
+  const all = await getSubjects();
+  const idx = all.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], usedAt: new Date().toISOString() };
+    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+  }
 }

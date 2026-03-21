@@ -83,6 +83,13 @@ export type SavedCarousel = {
   savedAt: string;
 };
 
+export type Subject = {
+  id: string;
+  text: string;
+  category: string;
+  usedAt?: string; // ISO date when last used for a carousel
+};
+
 export type AssetMetadata = {
   id: string;
   url: string;

@@ -75,13 +75,20 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
     ? { topic, content, selectedHook, graphicStyles }
     : null;
 
-  async function handleTopicNext(t: string, tone: HookTone, count: number) {
+  async function handleTopicNext(t: string, tone: HookTone, count: number, subjectId?: string) {
     setTopic(t);
     setHookTone(tone);
     setVariantCount(count);
     setLoading(true);
     setError(null);
     setWarning(null);
+    if (subjectId) {
+      fetch(`/api/subjects/${subjectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "markUsed" }),
+      }).catch(() => {});
+    }
     try {
       const res = await fetch("/api/carousel/generate", {
         method: "POST",
@@ -219,7 +226,7 @@ function stylesForVariant(v: CarouselContent): [GraphicStyle, GraphicStyle, Grap
 
           {/* Steps */}
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={handleTopicNext} />
+            <TopicStep onNext={(t, tone, count, subjectId) => handleTopicNext(t, tone, count, subjectId)} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep

@@ -1,14 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Topic, HookTone } from "@/lib/types";
-
-const PILLARS_COLORS: Record<string, string> = {
-  "Sleep Science": "#1e7a8a",
-  "Ingredient Education": "#2d8a6a",
-  "Cortisol & Stress": "#8a4a1e",
-  "Longevity": "#4a1e8a",
-  "Wind-Down Routines": "#1e4a8a",
-};
+import { HookTone, Subject } from "@/lib/types";
 
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
@@ -19,93 +11,229 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
   { value: "personal-story", label: "Personal story", description: "Relatable journey with Lunia" },
 ];
 
+const CATEGORIES = [
+  "All",
+  "Sleep Science",
+  "Circadian Rhythm",
+  "Sleep Hygiene",
+  "Nutrition & Sleep",
+  "Mental Health & Sleep",
+  "Performance & Recovery",
+  "Lunia Ingredients",
+  "Sleep Disorders",
+  "Lifestyle & Productivity",
+];
+
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, count: number) => void;
+  onNext: (topic: string, hookTone: HookTone, count: number, subjectId?: string) => void;
 };
 
+type Mode = "list" | "custom";
+
 export default function TopicStep({ onNext }: Props) {
-  const [suggestions, setSuggestions] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("list");
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [count, setCount] = useState(1);
 
   useEffect(() => {
-    fetch("/api/carousel/suggestions", { method: "POST" })
+    fetch("/api/subjects")
       .then((r) => r.json())
-      .then((d) => { setSuggestions(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoadingSubjects(false); })
+      .catch(() => setLoadingSubjects(false));
   }, []);
 
-  const topic = selected || custom.trim();
+  const topic = mode === "list"
+    ? (selectedSubject?.text ?? "")
+    : custom.trim();
+
   const topicTooLong = topic.length > 500;
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 15,
-    border: "1.5px solid var(--border)",
-    borderRadius: 8,
-    fontFamily: "inherit",
-    outline: "none",
-    background: "var(--bg)",
-    color: "var(--text)",
-  };
+  const filteredSubjects = subjects.filter((s) => {
+    const matchCat = category === "All" || s.category === category;
+    const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const usedCount = subjects.filter((s) => s.usedAt).length;
+
+  function handleNext() {
+    if (!topic || topicTooLong) return;
+    const subjectId = mode === "list" ? selectedSubject?.id : undefined;
+    onNext(topic, hookTone, count, subjectId);
+  }
 
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Choose a topic</h2>
-      <p style={{ color: "var(--muted)", marginBottom: 28, fontSize: 14 }}>Pick from AI suggestions or type your own.</p>
+      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick from your subject library or enter a custom topic.</p>
 
-      {loading ? (
-        <div style={{ color: "var(--muted)", fontSize: 14, marginBottom: 28 }}>Generating suggestions...</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
-          {suggestions.map((s, i) => (
-            <div
-              key={i}
-              onClick={() => { setSelected(s.title); setCustom(""); }}
+      {/* Mode toggle */}
+      <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+        {(["list", "custom"] as Mode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            style={{
+              padding: "8px 20px",
+              fontSize: 13,
+              fontWeight: 600,
+              background: mode === m ? "var(--text)" : "var(--bg)",
+              color: mode === m ? "var(--bg)" : "var(--muted)",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {m === "list" ? "Subject library" : "Custom topic"}
+          </button>
+        ))}
+      </div>
+
+      {/* List mode */}
+      {mode === "list" && (
+        <div style={{ marginBottom: 28 }}>
+          {/* Filters */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search subjects..."
               style={{
-                border: `1.5px solid ${selected === s.title ? "var(--text)" : "var(--border)"}`,
-                borderRadius: 10,
-                padding: "16px 18px",
+                flex: "1 1 200px",
+                padding: "8px 12px",
+                fontSize: 13,
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                fontFamily: "inherit",
+                background: "var(--bg)",
+                color: "var(--text)",
+                outline: "none",
+              }}
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                fontSize: 13,
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                fontFamily: "inherit",
+                background: "var(--bg)",
+                color: "var(--text)",
+                outline: "none",
                 cursor: "pointer",
-                background: selected === s.title ? "var(--surface)" : "var(--bg)",
-                transition: "all 0.12s",
               }}
             >
-              <div style={{
-                display: "inline-block",
-                background: PILLARS_COLORS[s.pillar] || "#333",
-                color: "#fff",
-                fontSize: 10,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 3,
-                marginBottom: 8,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}>{s.pillar}</div>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, lineHeight: 1.3 }}>{s.title}</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{s.description}</div>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+            {loadingSubjects ? "Loading..." : `${filteredSubjects.length} subjects · ${usedCount} used`}
+          </div>
+
+          {/* Subject list */}
+          <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", maxHeight: 340, overflowY: "auto" }}>
+            {filteredSubjects.length === 0 && !loadingSubjects && (
+              <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+                No subjects match your filter.
+              </div>
+            )}
+            {filteredSubjects.map((s) => {
+              const used = !!s.usedAt;
+              const isSelected = selectedSubject?.id === s.id;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => setSelectedSubject(s)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    borderBottom: "1px solid var(--border)",
+                    cursor: "pointer",
+                    background: isSelected
+                      ? "var(--text)"
+                      : used
+                      ? "rgba(34,197,94,0.06)"
+                      : "var(--bg)",
+                    transition: "background 0.1s",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: isSelected ? 700 : used ? 600 : 400,
+                      color: isSelected ? "var(--bg)" : used ? "#15803d" : "var(--text)",
+                      lineHeight: 1.4,
+                    }}>
+                      {s.text}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                    <span style={{
+                      fontSize: 10,
+                      color: isSelected ? "rgba(255,255,255,0.6)" : "var(--subtle)",
+                    }}>{s.category}</span>
+                    {used && !isSelected && (
+                      <span style={{
+                        background: "rgba(34,197,94,0.15)",
+                        color: "#15803d",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 3,
+                        textTransform: "uppercase",
+                      }}>Used</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedSubject && (
+            <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--surface)", borderRadius: 7, fontSize: 13, fontWeight: 600 }}>
+              Selected: {selectedSubject.text}
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      <div style={{ marginBottom: 24 }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Or type your own topic</label>
-        <input
-          type="text"
-          value={custom}
-          maxLength={500}
-          onChange={(e) => { setCustom(e.target.value); setSelected(null); }}
-          placeholder="e.g. Why magnesium beats melatonin for deep sleep"
-          style={{ ...inputStyle, borderColor: topicTooLong ? "#e53e3e" : undefined }}
-        />
-        {topicTooLong && <div style={{ fontSize: 12, color: "#e53e3e", marginTop: 4 }}>Maximum 500 characters</div>}
-      </div>
+      {/* Custom mode */}
+      {mode === "custom" && (
+        <div style={{ marginBottom: 28 }}>
+          <input
+            type="text"
+            value={custom}
+            maxLength={500}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="e.g. Why magnesium beats melatonin for deep sleep"
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              fontSize: 15,
+              border: `1.5px solid ${topicTooLong ? "#e53e3e" : "var(--border)"}`,
+              borderRadius: 8,
+              fontFamily: "inherit",
+              outline: "none",
+              background: "var(--bg)",
+              color: "var(--text)",
+              boxSizing: "border-box",
+            }}
+          />
+          {topicTooLong && <div style={{ fontSize: 12, color: "#e53e3e", marginTop: 4 }}>Maximum 500 characters</div>}
+        </div>
+      )}
 
       {/* Hook tone */}
       <div style={{ marginBottom: 24 }}>
@@ -165,7 +293,7 @@ export default function TopicStep({ onNext }: Props) {
 
       <button
         disabled={!topic || topicTooLong}
-        onClick={() => topic && onNext(topic, hookTone, count)}
+        onClick={handleNext}
         style={{
           background: topic && !topicTooLong ? "var(--text)" : "var(--border)",
           color: topic && !topicTooLong ? "var(--bg)" : "var(--muted)",
@@ -179,7 +307,7 @@ export default function TopicStep({ onNext }: Props) {
           letterSpacing: "-0.01em",
         }}
       >
-        Generate content →
+        Generate carousel →
       </button>
     </div>
   );
