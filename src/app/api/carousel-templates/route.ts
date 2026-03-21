@@ -3,6 +3,8 @@ import { anthropic } from "@/lib/anthropic";
 import { getCarouselTemplates, saveCarouselTemplate } from "@/lib/kv";
 import { BrandStyle, CarouselTemplate, CarouselTemplateImage } from "@/lib/types";
 
+export const maxDuration = 60;
+
 export async function GET() {
   const templates = await getCarouselTemplates();
   return Response.json(templates);
