@@ -30,7 +30,7 @@ export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void })
   const [scripts, setScripts] = useState<Script[]>([]);
   const [filter, setFilter] = useState<"all" | "draft" | "review" | "locked">("all");
 
-  useEffect(() => { setScripts(getLibrary()); }, []);
+  useEffect(() => { getLibrary().then(setScripts).catch(() => setScripts([])); }, []);
 
   const filtered = filter === "all" ? scripts : scripts.filter((s) => s.status === filter);
 

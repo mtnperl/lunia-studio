@@ -6,7 +6,7 @@ export type Comment = {
 
 export type FilmingNotes = {
   setting: string;
-  wardrobe: string;
+  energy: string;
   broll: string;
   director: string;
 };

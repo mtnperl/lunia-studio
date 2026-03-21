@@ -75,6 +75,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [lockModal, setLockModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scriptCopied, setScriptCopied] = useState(false);
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { setScript(initialScript); setIsDirty(false); setSelectedLine(null); }, [initialScript]);
@@ -117,10 +118,49 @@ export default function EditorView({ script: initialScript, onUpdate }: {
 
   function share() {
     if (script) saveScript({ ...script, savedAt: new Date().toISOString() });
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    const url = `${window.location.origin}/scripts/${script?.id}`;
+    const text = url;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+    } else {
+      const el = document.createElement("textarea");
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand("copy"); document.body.removeChild(el);
+      setCopied(true); setTimeout(() => setCopied(false), 2500);
+    }
+  }
+
+  function copyScriptText() {
+    if (!script) return;
+    const lines = [
+      `HOOK: ${script.hook}`,
+      "",
+      ...script.lines,
+      "",
+      "— FILMING NOTES —",
+      `Setting: ${script.filmingNotes.setting}`,
+      `Energy: ${script.filmingNotes.energy}`,
+      `B-Roll: ${script.filmingNotes.broll}`,
+      script.filmingNotes.director ? `Director notes: ${script.filmingNotes.director}` : "",
+    ].filter((l) => l !== undefined);
+    const text = lines.join("\n").trim();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => { setScriptCopied(true); setTimeout(() => setScriptCopied(false), 2500); });
+    } else {
+      const el = document.createElement("textarea");
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand("copy"); document.body.removeChild(el);
+      setScriptCopied(true); setTimeout(() => setScriptCopied(false), 2500);
+    }
+  }
+
+  function getDuration(lines: string[]): string {
+    const words = lines
+      .filter((l) => !/^\[(HOOK|BODY|CTA)\]$/.test(l))
+      .join(" ").trim().split(/\s+/).filter(Boolean).length;
+    if (words === 0) return "";
+    const secs = Math.round((words / 130) * 60);
+    return secs < 60 ? `~${secs}s` : `~${Math.round(secs / 6) * 6}s`;
   }
 
   if (!script) {
@@ -152,8 +192,16 @@ export default function EditorView({ script: initialScript, onUpdate }: {
             Lock & save
           </button>
         )}
+        {getDuration(script.lines) && (
+          <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+            {getDuration(script.lines)}
+          </span>
+        )}
+        <button className="btn-ghost" onClick={copyScriptText} style={{ fontSize: 13, padding: "6px 12px" }}>
+          {scriptCopied ? "Copied!" : "Copy script"}
+        </button>
         <button className="btn-ghost" onClick={share} style={{ fontSize: 13, padding: "6px 12px" }}>
-          {copied ? "Copied!" : "Share"}
+          {copied ? "Link copied!" : "Share"}
         </button>
       </div>
 
@@ -283,7 +331,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
               {/* Filming notes */}
               <div style={{ padding: "14px 16px", flex: 1 }}>
                 <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
-                {(["setting", "wardrobe", "broll", "director"] as const).map((field) => (
+                {(["setting", "energy", "broll", "director"] as const).map((field) => (
                   <div key={field} style={{ marginBottom: 12 }}>
                     <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
                       {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
@@ -312,7 +360,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
               {/* Global filming notes still visible when nothing selected */}
               <div style={{ padding: "14px 16px", flex: 1 }}>
                 <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
-                {(["setting", "wardrobe", "broll", "director"] as const).map((field) => (
+                {(["setting", "energy", "broll", "director"] as const).map((field) => (
                   <div key={field} style={{ marginBottom: 12 }}>
                     <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
                       {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}

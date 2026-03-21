@@ -36,7 +36,7 @@ function parseOutput(raw: string): { hooks: HookVariant[]; scriptLines: string[]
   if (filmingStart >= 0) {
     const fn = raw.slice(filmingStart);
     const s = fn.match(/Setting:\s*(.+)/); if (s) filmingNotes.setting = s[1].trim();
-    const w = fn.match(/Energy:\s*(.+)/); if (w) filmingNotes.wardrobe = w[1].trim();
+    const e = fn.match(/Energy:\s*(.+)/); if (e) filmingNotes.energy = e[1].trim();
     const b = fn.match(/Key visual:\s*(.+)/); if (b) filmingNotes.broll = b[1].trim();
   }
   return { hooks, scriptLines, filmingNotes };
@@ -79,7 +79,8 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona, format, angle, context, creator }),
       });
-      if (!res.ok || !res.body) throw new Error("Generation failed");
+      if (res.status === 429) throw new Error("Too many requests — try again in an hour.");
+      if (!res.ok || !res.body) throw new Error("Generation failed — please try again.");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = "";
@@ -89,6 +90,8 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         full += decoder.decode(value, { stream: true });
         setStreamText(full);
       }
+      const p = parseOutput(full);
+      if (p.hooks.length === 0) throw new Error("Model returned an unexpected format — try generating again.");
       setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -103,7 +106,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
     onOpenEditor({
       id: generateId(), title: `${persona} · ${format} · ${angle}`,
       hook: hook?.text ?? "", lines: parsed.scriptLines, comments: {},
-      filmingNotes: { setting: parsed.filmingNotes.setting ?? "", wardrobe: parsed.filmingNotes.wardrobe ?? "", broll: parsed.filmingNotes.broll ?? "", director: "" },
+      filmingNotes: { setting: parsed.filmingNotes.setting ?? "", energy: parsed.filmingNotes.energy ?? "", broll: parsed.filmingNotes.broll ?? "", director: "" },
       creator, status: "draft", persona, angle, format, savedAt: new Date().toISOString(),
     });
   }

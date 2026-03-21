@@ -1,34 +1,34 @@
 import { Script } from "./types";
 
-const KEY = "lunia_scripts";
+// Client-side API wrapper — replaces localStorage.
+// All persistence goes through /api/scripts.
 
-export function getLibrary(): Script[] {
-  if (typeof window === "undefined") return [];
+export async function getLibrary(): Promise<Script[]> {
   try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Script[]) : [];
+    const res = await fetch("/api/scripts");
+    if (!res.ok) return [];
+    return await res.json();
   } catch {
     return [];
   }
 }
 
-export function saveScript(script: Script): void {
-  if (typeof window === "undefined") return;
+export async function saveScript(script: Script): Promise<void> {
   try {
-    const lib = getLibrary();
-    const idx = lib.findIndex((s) => s.id === script.id);
-    if (idx >= 0) lib[idx] = script;
-    else lib.unshift(script);
-    localStorage.setItem(KEY, JSON.stringify(lib));
+    await fetch("/api/scripts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(script),
+    });
   } catch {
-    // silently fail if storage is full
+    // fail silently — script may not persist but UI keeps working
   }
 }
 
-export function getScript(id: string): Script | undefined {
-  return getLibrary().find((s) => s.id === id);
-}
-
 export function generateId(): string {
-  return Date.now().toString();
+  // nanoid-lite using crypto.randomUUID (available in all modern browsers + Node)
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
