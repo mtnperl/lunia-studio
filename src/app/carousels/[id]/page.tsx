@@ -15,6 +15,7 @@ export default async function CarouselSharePage({ params }: Props) {
   }
 
   const { content, selectedHook, graphicStyles, topic } = carousel;
+  const safeGraphicStyles = graphicStyles ?? [];
   const hook = content.hooks[selectedHook];
 
   return (
@@ -44,7 +45,8 @@ export default async function CarouselSharePage({ params }: Props) {
               headline={slide.headline}
               body={slide.body}
               citation={slide.citation}
-              graphicStyle={graphicStyles[i]}
+              graphic={slide.graphic}
+              graphicStyle={safeGraphicStyles[i]}
               scale={0.5}
             />
           ))}
