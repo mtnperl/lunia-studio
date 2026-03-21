@@ -326,12 +326,12 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 ) : (
                   <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                     {selectedComments.map((c, ci) => (
-                      <div key={ci} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px" }}>
+                      <div key={ci} style={{ background: "#eef2ff", border: "1px solid #c7d7fd", borderLeft: "3px solid #4f6ef7", borderRadius: 6, padding: "10px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600 }}>{c.author}</span>
-                          <span style={{ fontSize: 11, color: "var(--subtle)" }}>{c.time}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "#3730a3" }}>{c.author}</span>
+                          <span style={{ fontSize: 11, color: "#818cf8" }}>{c.time}</span>
                         </div>
-                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>{c.text}</p>
+                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "#1e1b4b" }}>{c.text}</p>
                       </div>
                     ))}
                   </div>
