@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
@@ -30,27 +31,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     try {
       const el = document.getElementById(`slide-${index}`);
       if (!el) return;
-      // Clone and remove the preview scale transform so Puppeteer renders at full 1080×1350
+      // Clone the inner 1080×1350 div, strip the preview scale, render off-screen
       const clone = el.cloneNode(true) as HTMLElement;
       clone.style.transform = "none";
-      clone.style.transformOrigin = "top left";
-      const res = await fetch("/api/carousel/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIndex: index, html: clone.outerHTML }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setExportError((err as { error?: string }).error ?? "Export failed");
-        return;
+      clone.style.position = "fixed";
+      clone.style.top = "-9999px";
+      clone.style.left = "-9999px";
+      clone.style.width = "1080px";
+      clone.style.height = "1350px";
+      document.body.appendChild(clone);
+      try {
+        const dataUrl = await toPng(clone, { width: 1080, height: 1350, pixelRatio: 1 });
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `lunia-carousel-slide-${index + 1}.png`;
+        a.click();
+      } finally {
+        document.body.removeChild(clone);
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lunia-carousel-slide-${index + 1}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Export failed — please try again");
     } finally {
       setDownloading(null);
     }
