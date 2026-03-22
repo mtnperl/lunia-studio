@@ -204,26 +204,48 @@ export default function AssetsView() {
     }
   }
 
+  function resizeForUpload(file: File, maxWidth = 1200): Promise<Blob> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => resolve(blob ?? file), "image/jpeg", 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   async function handleCreateTemplate(e: React.FormEvent) {
     e.preventDefault();
     if (!templateName.trim() || templateFiles.length === 0) return;
     setCreatingTemplate(true);
     setTemplateError(null);
     try {
+      // Resize images client-side before upload to stay under Vercel's 4.5MB body limit
+      const resized = await Promise.all(templateFiles.map((f) => resizeForUpload(f)));
+
       const form = new FormData();
       form.append("name", templateName.trim());
       if (templateDesc.trim()) form.append("description", templateDesc.trim());
       if (templateStyleNotes.trim()) form.append("styleNotes", templateStyleNotes.trim());
       form.append("contentDensity", templateDensity);
-      templateFiles.forEach((file, i) => {
-        form.append("images", file);
+      resized.forEach((blob, i) => {
+        form.append("images", blob, `slide-${i}.jpg`);
         form.append(`slideName_${i}`, `Slide ${i + 1}`);
       });
       // Step 1: upload images + save template (fast)
       const res = await fetch("/api/carousel-templates", { method: "POST", body: form });
-      const data = await res.json();
+      let data: unknown;
+      try { data = await res.json(); } catch { data = {}; }
       if (!res.ok) {
-        setTemplateError((data as { error?: string }).error ?? "Failed to create template");
+        setTemplateError((data as { error?: string }).error ?? `Upload failed (${res.status})`);
         return;
       }
       const saved = data as CarouselTemplate;
@@ -246,8 +268,8 @@ export default function AssetsView() {
       setTemplateStyleNotes("");
       setTemplateDensity("medium");
       setTemplateFiles([]);
-    } catch {
-      setTemplateError("Network error — please try again.");
+    } catch (err) {
+      setTemplateError(`Upload failed — ${err instanceof Error ? err.message : "please try again"}`);
     } finally {
       setCreatingTemplate(false);
     }
