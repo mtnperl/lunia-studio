@@ -1,4 +1,5 @@
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
+import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
 
@@ -15,6 +16,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
       <ArrowIcons color={arrowColor} />
+      <LuniaLogo />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",

@@ -1,4 +1,5 @@
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
+import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import WaveGraphic from "@/components/carousel/graphics/WaveGraphic";
 import DotChainGraphic from "@/components/carousel/graphics/DotChainGraphic";
@@ -68,6 +69,7 @@ export default function ContentSlide({ headline, body, citation, graphic, graphi
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
       <ArrowIcons color={arrowColor} />
+      <LuniaLogo />
       <div style={{ position: "absolute", top: 80, left: 72, right: 72 }}>
         {/* Headline — Jost 400 */}
         <div style={{

@@ -1,32 +1,59 @@
+// Lunia sparkle logo — 5 four-pointed stars arranged in a triangle (2 top, 3 bottom)
+// White at 50% opacity, positioned bottom-left of every slide
+
+function sparkle(cx: number, cy: number, r: number): string {
+  const k = r * 0.16; // control point — lower = pointier/deeper indentation
+  return [
+    `M${cx},${cy - r}`,
+    `Q${cx + k},${cy - k} ${cx + r},${cy}`,
+    `Q${cx + k},${cy + k} ${cx},${cy + r}`,
+    `Q${cx - k},${cy + k} ${cx - r},${cy}`,
+    `Q${cx - k},${cy - k} ${cx},${cy - r}Z`,
+  ].join(" ");
+}
+
 export default function LuniaLogo() {
-  const color = "#5a7a8a";
-  const size = 10;
-  const gap = 10;
-  const positions = [];
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      positions.push({ x: col * (size + gap), y: row * (size + gap) });
-    }
-  }
-  const total = 3 * size + 2 * gap;
+  const r = 52;
+  const hSpacing = 90;  // horizontal center-to-center
+  const vSpacing = 78;  // vertical center-to-center (≈ hSpacing * √3/2 → equilateral)
+
+  // Bottom row: 3 sparkles
+  const bx0 = r + 4;
+  const by = r + 4 + vSpacing;
+  const bottom = [
+    { cx: bx0,               cy: by },
+    { cx: bx0 + hSpacing,    cy: by },
+    { cx: bx0 + hSpacing * 2, cy: by },
+  ];
+
+  // Top row: 2 sparkles, offset by hSpacing/2 to sit over the gaps in the bottom row
+  const tx0 = bx0 + hSpacing / 2;
+  const ty = r + 4;
+  const top = [
+    { cx: tx0,            cy: ty },
+    { cx: tx0 + hSpacing, cy: ty },
+  ];
+
+  const allSparkles = [...top, ...bottom];
+  const vbW = bx0 + hSpacing * 2 + r + 4;
+  const vbH = by + r + 4;
+
+  // Rendered at 120px wide on the full-size 1080px slide
+  const displayW = 120;
+  const displayH = Math.round((vbH / vbW) * displayW);
+
   return (
     <svg
-      width={total}
-      height={total}
-      viewBox={`0 0 ${total} ${total}`}
-      style={{ position: "absolute", bottom: 60, left: 60 }}
+      width={displayW}
+      height={displayH}
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      style={{ position: "absolute", bottom: 58, left: 60 }}
     >
-      {positions.map((p, i) => (
-        <rect
-          key={i}
-          x={p.x + size / 2}
-          y={p.y}
-          width={size / Math.sqrt(2)}
-          height={size / Math.sqrt(2)}
-          transform={`rotate(45, ${p.x + size / 2 + size / (2 * Math.sqrt(2))}, ${p.y + size / (2 * Math.sqrt(2))})`}
-          fill={color}
-        />
-      ))}
+      <g fill="white" fillOpacity={0.5}>
+        {allSparkles.map((s, i) => (
+          <path key={i} d={sparkle(s.cx, s.cy, r)} />
+        ))}
+      </g>
     </svg>
   );
 }
