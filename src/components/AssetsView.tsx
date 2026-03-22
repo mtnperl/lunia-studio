@@ -4,10 +4,10 @@ import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
 
 const LOADER_LINES = [
   "UPLOADING SLIDE IMAGES",
+  "SAVING TO VAULT",
   "RUNNING VISION SCAN",
   "EXTRACTING BRAND PALETTE",
   "CALIBRATING COLOR MATRIX",
-  "SAVING TO VAULT",
   "FINALIZING TEMPLATE",
 ];
 
@@ -219,13 +219,27 @@ export default function AssetsView() {
         form.append("images", file);
         form.append(`slideName_${i}`, `Slide ${i + 1}`);
       });
+      // Step 1: upload images + save template (fast)
       const res = await fetch("/api/carousel-templates", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) {
         setTemplateError((data as { error?: string }).error ?? "Failed to create template");
         return;
       }
-      setTemplates((prev) => [data as CarouselTemplate, ...prev]);
+      const saved = data as CarouselTemplate;
+      setTemplates((prev) => [saved, ...prev]);
+
+      // Step 2: extract brand palette via Claude Sonnet (slow — separate request)
+      try {
+        const analyzeRes = await fetch(`/api/carousel-templates/${saved.id}`, { method: "PATCH" });
+        if (analyzeRes.ok) {
+          const analyzed = await analyzeRes.json() as CarouselTemplate;
+          setTemplates((prev) => prev.map((t) => t.id === analyzed.id ? analyzed : t));
+        }
+      } catch {
+        // non-fatal — template saved, palette extraction failed silently
+      }
+
       setShowTemplateForm(false);
       setTemplateName("");
       setTemplateDesc("");
