@@ -1,56 +1,50 @@
-// Lunia sparkle logo — 5 four-pointed stars arranged in a triangle (2 top, 3 bottom)
-// White at 50% opacity, positioned bottom-left of every slide
+// Lunia sparkle logo — 5 four-pointed stars in a triangle (2 top, 3 bottom)
+// Each sparkle uses the star-center as bezier control → very concave, sharp tips
+// White at 50% opacity, bottom-left of every slide
 
 function sparkle(cx: number, cy: number, r: number): string {
-  const k = r * 0.16; // control point — lower = pointier/deeper indentation
+  // Quadratic bezier control at the star's own center → deep concave sides, sharp tips
   return [
     `M${cx},${cy - r}`,
-    `Q${cx + k},${cy - k} ${cx + r},${cy}`,
-    `Q${cx + k},${cy + k} ${cx},${cy + r}`,
-    `Q${cx - k},${cy + k} ${cx - r},${cy}`,
-    `Q${cx - k},${cy - k} ${cx},${cy - r}Z`,
+    `Q${cx},${cy} ${cx + r},${cy}`,
+    `Q${cx},${cy} ${cx},${cy + r}`,
+    `Q${cx},${cy} ${cx - r},${cy}`,
+    `Q${cx},${cy} ${cx},${cy - r}Z`,
   ].join(" ");
 }
 
 export default function LuniaLogo() {
-  const r = 52;
-  const hSpacing = 90;  // horizontal center-to-center
-  const vSpacing = 78;  // vertical center-to-center (≈ hSpacing * √3/2 → equilateral)
+  const r = 44;           // outer radius of each sparkle
+  const hGap = 88;        // horizontal center-to-center (= 2r → tips just touch)
+  const vGap = 76;        // vertical spacing (≈ hGap × √3/2 → equilateral triangle)
 
   // Bottom row: 3 sparkles
-  const bx0 = r + 4;
-  const by = r + 4 + vSpacing;
+  const by = r + vGap;
   const bottom = [
-    { cx: bx0,               cy: by },
-    { cx: bx0 + hSpacing,    cy: by },
-    { cx: bx0 + hSpacing * 2, cy: by },
+    { cx: r,          cy: by },
+    { cx: r + hGap,   cy: by },
+    { cx: r + hGap*2, cy: by },
   ];
 
-  // Top row: 2 sparkles, offset by hSpacing/2 to sit over the gaps in the bottom row
-  const tx0 = bx0 + hSpacing / 2;
-  const ty = r + 4;
+  // Top row: 2 sparkles, each centered over the gap between bottom pairs
+  const ty = r;
   const top = [
-    { cx: tx0,            cy: ty },
-    { cx: tx0 + hSpacing, cy: ty },
+    { cx: r + hGap / 2,       cy: ty },
+    { cx: r + hGap / 2 + hGap, cy: ty },
   ];
 
-  const allSparkles = [...top, ...bottom];
-  const vbW = bx0 + hSpacing * 2 + r + 4;
-  const vbH = by + r + 4;
-
-  // Rendered at 120px wide on the full-size 1080px slide
-  const displayW = 120;
-  const displayH = Math.round((vbH / vbW) * displayW);
+  const vbW = r * 2 + hGap * 2;   // 264
+  const vbH = r + vGap + r;        // 164
 
   return (
     <svg
-      width={displayW}
-      height={displayH}
+      width={110}
+      height={Math.round(110 * vbH / vbW)}
       viewBox={`0 0 ${vbW} ${vbH}`}
       style={{ position: "absolute", bottom: 58, left: 60 }}
     >
       <g fill="white" fillOpacity={0.5}>
-        {allSparkles.map((s, i) => (
+        {[...top, ...bottom].map((s, i) => (
           <path key={i} d={sparkle(s.cx, s.cy, r)} />
         ))}
       </g>
