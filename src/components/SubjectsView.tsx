@@ -18,18 +18,36 @@ const CATEGORIES = [
 export default function SubjectsView() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetch("/api/subjects")
-      .then((r) => r.json())
-      .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+  async function loadSubjects() {
+    setLoading(true);
+    try {
+      const d = await fetch("/api/subjects").then((r) => r.json());
+      setSubjects(Array.isArray(d) ? d : []);
+    } catch {
+      setSubjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSeed() {
+    setSeeding(true);
+    try {
+      await fetch("/api/subjects/seed", { method: "POST" });
+      await loadSubjects();
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  useEffect(() => { loadSubjects(); }, []);
 
   useEffect(() => {
     if (editingId && inputRef.current) inputRef.current.focus();
@@ -68,6 +86,19 @@ export default function SubjectsView() {
             {subjects.length} subjects · {usedCount} used · {subjects.length - usedCount} remaining
           </p>
         </div>
+        <button
+          onClick={handleSeed}
+          disabled={seeding}
+          style={{
+            padding: "8px 16px", fontSize: 13, fontWeight: 600,
+            background: "var(--surface)", color: "var(--text)",
+            border: "1px solid var(--border)", borderRadius: 7,
+            cursor: seeding ? "wait" : "pointer", fontFamily: "inherit",
+            opacity: seeding ? 0.6 : 1,
+          }}
+        >
+          {seeding ? "Seeding…" : "↺ Restore 150 subjects"}
+        </button>
       </div>
 
       {/* Filters */}
@@ -133,7 +164,25 @@ export default function SubjectsView() {
 
           {filtered.length === 0 && (
             <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
-              No subjects match your filter.
+              {subjects.length === 0 && !loading ? (
+                <div>
+                  <div style={{ marginBottom: 12 }}>No subjects found.</div>
+                  <button
+                    onClick={handleSeed}
+                    disabled={seeding}
+                    style={{
+                      padding: "10px 20px", fontSize: 13, fontWeight: 700,
+                      background: "var(--text)", color: "var(--bg)",
+                      border: "none", borderRadius: 7,
+                      cursor: seeding ? "wait" : "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {seeding ? "Seeding…" : "Load 150 subjects"}
+                  </button>
+                </div>
+              ) : (
+                "No subjects match your filter."
+              )}
             </div>
           )}
 
