@@ -1,10 +1,16 @@
-import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
-import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
-import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
-import { BrandStyle } from "@/lib/types";
+'use client';
 
-type Props = { headline: string; subline: string; scale?: number; id?: string; brandStyle?: BrandStyle };
+import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
+import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
+import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
+import { BrandStyle } from '@/lib/types';
 
+// ─── Layout tokens ────────────────────────────────────────────────────────────
+const SLIDE_PADDING = { x: 72, y: 80 };
+const SECTION_GAP = 32;
+
+// WaveLines — decorative layer, always position:absolute; bottom:0.
+// It is a visual layer, not a content zone — intentionally kept out of the flex column.
 function WaveLines({ accent }: { accent: string }) {
   const width = 1080;
   const lines = Array.from({ length: 14 }, (_, i) => {
@@ -20,9 +26,9 @@ function WaveLines({ accent }: { accent: string }) {
     return (
       <polyline
         key={i}
-        points={points.join(" ")}
+        points={points.join(' ')}
         fill="none"
-        stroke={i > 10 ? accent : "#ffffff"}
+        stroke={i > 10 ? accent : '#ffffff'}
         strokeWidth="0.8"
         opacity={opacity}
       />
@@ -30,7 +36,7 @@ function WaveLines({ accent }: { accent: string }) {
   });
   return (
     <svg
-      style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "40%" }}
+      style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '40%' }}
       viewBox={`0 0 ${width} 540`}
       preserveAspectRatio="none"
     >
@@ -39,41 +45,96 @@ function WaveLines({ accent }: { accent: string }) {
   );
 }
 
-export default function HookSlide({ headline, subline, scale = 1, id, brandStyle }: Props) {
-  const bg = brandStyle?.hookBackground ?? "linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)";
-  const headlineColor = brandStyle?.hookHeadline ?? "#ffffff";
-  const sublineColor = brandStyle?.accent ?? "#c8dde8";
-  const waveAccent = brandStyle?.secondary ?? "#e8f4f8";
-  const arrowColor = brandStyle?.secondary ?? "#4a7c8e";
+type Props = {
+  headline: string;
+  subline: string;
+  scale?: number;
+  id?: string;
+  brandStyle?: BrandStyle;
+  backgroundImageUrl?: string;
+  isFalImage?: boolean;  // true = fal.ai generated; use lighter overlay (more dramatic)
+  shimmer?: boolean;     // true = show loading shimmer while fal image generates
+};
+
+export default function HookSlide({ headline, subline, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false }: Props) {
+  const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
+  const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
+  const sublineColor = brandStyle?.accent ?? '#c8dde8';
+  const waveAccent = brandStyle?.secondary ?? '#e8f4f8';
+  const arrowColor = brandStyle?.secondary ?? '#4a7c8e';
 
   return (
-    <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
-      <ArrowIcons color={arrowColor} />
-      <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
+    <SlideWrapper scale={scale} id={id} style={{ background: bg, overflow: 'hidden' }}>
+      {/* Background layer — fal.ai image or template image, painted first in DOM so
+          all subsequent elements stack above without needing explicit z-index */}
+      {backgroundImageUrl ? (
+        <>
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `url(${backgroundImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }} />
+          {/* Overlay: lighter (0.45) for fal images to show more drama; heavier (0.82) for template images */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: bg,
+            opacity: isFalImage ? 0.45 : 0.82,
+          }} />
+        </>
+      ) : shimmer ? (
         <div style={{
-          fontFamily: "Jost, Montserrat, sans-serif",
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%)',
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 1.6s ease-in-out infinite',
+        }} />
+      ) : null}
+
+      <ArrowIcons color={arrowColor} />
+
+      {/* WaveLines — decorative, anchored to bottom of slide, independent of content */}
+      <WaveLines accent={waveAccent} />
+
+      {/* Flex column content block — headline + subline stacked with padding tokens */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        paddingTop: SLIDE_PADDING.y,
+        paddingBottom: SLIDE_PADDING.y,
+        paddingLeft: SLIDE_PADDING.x,
+        paddingRight: SLIDE_PADDING.x,
+        gap: SECTION_GAP,
+        boxSizing: 'border-box',
+      }}>
+        {/* Headline zone */}
+        <div style={{
+          fontFamily: 'Jost, Montserrat, sans-serif',
           fontWeight: 400,
           fontSize: 64,
           color: headlineColor,
-          textTransform: "uppercase",
-          letterSpacing: "0.14em",
+          textTransform: 'uppercase',
+          letterSpacing: '0.14em',
           lineHeight: 1.15,
         }}>
           {headline}
         </div>
+
+        {/* Subline zone */}
         <div style={{
-          fontFamily: "Cormorant Garamond, Lora, serif",
+          fontFamily: 'Cormorant Garamond, Lora, serif',
           fontWeight: 400,
-          fontStyle: "italic",
+          fontStyle: 'italic',
           fontSize: 38,
           color: sublineColor,
           lineHeight: 1.4,
-          marginTop: 32,
         }}>
           {subline}
         </div>
       </div>
-      <WaveLines accent={waveAccent} />
+
       <LuniaLogo />
     </SlideWrapper>
   );

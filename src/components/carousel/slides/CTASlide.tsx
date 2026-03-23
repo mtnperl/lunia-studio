@@ -3,9 +3,17 @@ import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
 
-type Props = { headline: string; followLine: string; scale?: number; id?: string; brandStyle?: BrandStyle };
+type Props = {
+  headline: string;
+  followLine: string;
+  scale?: number;
+  id?: string;
+  brandStyle?: BrandStyle;
+  backgroundImage?: string | null;  // fal.ai generated background
+  shimmer?: boolean;                // show shimmer while loading
+};
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false }: Props) {
   const parts = followLine.split("@lunia_life");
 
   const bg = brandStyle?.background ?? "#f0ece6";
@@ -15,6 +23,24 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+      {/* fal.ai background image — 15% opacity, atmospheric */}
+      {backgroundImage ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.15,
+        }} />
+      ) : shimmer ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 100%)',
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 1.6s ease-in-out infinite',
+        }} />
+      ) : null}
+
       <ArrowIcons color={arrowColor} />
       <LuniaLogo />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>

@@ -25,13 +25,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [copyLabel, setCopyLabel] = useState("Copy link");
   const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");
   const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Full-size hidden refs for accurate PNG export
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
-  const { content, selectedHook, topic, brandStyle } = config;
+  const { content, selectedHook, topic, brandStyle, hookImageUrl, slideImages } = config;
+
+  // Proxy fal.ai CDN URLs through our own route so html-to-image canvas export works
+  function proxyUrl(url: string | null | undefined): string | undefined {
+    if (!url) return undefined;
+    if (url.startsWith('/')) return url; // already local
+    return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+
+  const imgs = slideImages ?? [null, null, null, null, null];
+  const imagesLoading = imgs.some((u) => u === null);
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
@@ -109,20 +120,61 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  async function handleRegenerateGraphic(slideIndex: number) {
+    setRegeneratingGraphic(slideIndex);
+    try {
+      const slide = content.slides[slideIndex];
+      const res = await fetch("/api/carousel/regenerate-graphic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          hookTone,
+          slideIndex,
+          headline: slide.headline,
+          body: slide.body,
+          currentGraphic: slide.graphic ?? "",
+        }),
+      });
+      if (!res.ok) return;
+      const { graphic } = await res.json();
+      // Don't update if API returned empty — keep current graphic
+      if (!graphic || graphic.trim() === '""' || graphic.trim() === '') return;
+      const slides = [...content.slides];
+      slides[slideIndex] = { ...slides[slideIndex], graphic };
+      onContentChange({ ...config, content: { ...content, slides } });
+    } finally {
+      setRegeneratingGraphic(null);
+    }
+  }
+
   const slideNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} />,
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
+      isFalImage={!!imgs[0]} shimmer={imgs[0] === null} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImage={imgs[1]} shimmer={imgs[1] === null} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImage={imgs[2]} shimmer={imgs[2] === null} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImage={imgs[3]} shimmer={imgs[3] === null} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImage={imgs[4]} shimmer={imgs[4] === null} />,
   ];
 
+  // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
   const exportNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={1} brandStyle={bs} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} />,
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={1} brandStyle={bs}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      isFalImage={!!imgs[0]} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs}
+      backgroundImage={proxyUrl(imgs[1])} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs}
+      backgroundImage={proxyUrl(imgs[2])} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs}
+      backgroundImage={proxyUrl(imgs[3])} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs}
+      backgroundImage={proxyUrl(imgs[4])} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -149,6 +201,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             <button className="btn-ghost" onClick={handleSave} disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </button>
+          )}
+          {imagesLoading && (
+            <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--muted)', animation: 'shimmer 1s ease-in-out infinite' }} />
+              Generating visuals…
+            </span>
           )}
           <button
             className="btn"
@@ -180,6 +238,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           const isActive = activeSlide === i;
           const isDownloading = downloading === i;
           const isRegenerating = regenerating === i - 1;
+          const isRegeneratingGraphic = regeneratingGraphic === i - 1;
           return (
             <div
               key={i}
@@ -250,25 +309,48 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   {isDownloading ? "…" : "↓ PNG"}
                 </button>
                 {i >= 1 && i <= 3 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRegenerateSlide(i - 1); }}
-                    disabled={isRegenerating}
-                    title="Regenerate slide"
-                    style={{
-                      background: "var(--surface)",
-                      color: "var(--muted)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 6,
-                      padding: "7px 10px",
-                      fontSize: 13,
-                      fontFamily: "inherit",
-                      cursor: isRegenerating ? "not-allowed" : "pointer",
-                      opacity: isRegenerating ? 0.5 : 1,
-                      transition: "background 0.15s",
-                    }}
-                  >
-                    {isRegenerating ? "…" : "↺"}
-                  </button>
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRegenerateSlide(i - 1); }}
+                      disabled={isRegenerating || isRegeneratingGraphic}
+                      title="Regenerate full slide"
+                      style={{
+                        background: "var(--surface)",
+                        color: "var(--muted)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 6,
+                        padding: "7px 10px",
+                        fontSize: 13,
+                        fontFamily: "inherit",
+                        cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
+                        opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      {isRegenerating ? "…" : "↺"}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRegenerateGraphic(i - 1); }}
+                      disabled={isRegenerating || isRegeneratingGraphic}
+                      title="Redesign infographic only"
+                      style={{
+                        background: "var(--surface)",
+                        color: "var(--muted)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 6,
+                        padding: "7px 10px",
+                        fontSize: 11,
+                        fontFamily: "inherit",
+                        cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
+                        opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
+                        transition: "background 0.15s",
+                        letterSpacing: "0.01em",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {isRegeneratingGraphic ? "…" : "↺ graphic"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>

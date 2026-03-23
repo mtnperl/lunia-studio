@@ -109,3 +109,8 @@ select { cursor: pointer; }
   padding: 24px; width: min(480px, 90vw);
   max-height: 90vh; overflow-y: auto;
 }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

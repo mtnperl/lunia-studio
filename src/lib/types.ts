@@ -83,6 +83,8 @@ export type CarouselConfig = {
   content: CarouselContent;
   selectedHook: number;
   brandStyle?: BrandStyle;
+  hookImageUrl?: string;
+  slideImages?: (string | null)[];
 };
 
 export type SavedCarousel = {

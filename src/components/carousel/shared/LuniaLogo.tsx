@@ -1,50 +1,62 @@
-// Lunia sparkle logo — 5 four-pointed stars in a triangle (2 top, 3 bottom)
-// Each sparkle uses the star-center as bezier control → very concave, sharp tips
-// White at 50% opacity, bottom-left of every slide
+// Lunia Life logo — 8 four-pointed stars in a 2 · 2 · 4 centered pyramid
+//
+// All rows centered at x=176.
+// vGap = 2r = 88 so vertically-stacked tips touch.
+//
+// Row 1 (top, 2):  cx=[132, 220],          cy=44
+// Row 2 (mid, 2):  cx=[132, 220],          cy=132  ← directly below row 1, tips touch
+// Row 3 (bot, 4):  cx=[44, 132, 220, 308], cy=220  ← wider base, centered
 
 function sparkle(cx: number, cy: number, r: number): string {
-  // Quadratic bezier control at the star's own center → deep concave sides, sharp tips
   return [
     `M${cx},${cy - r}`,
     `Q${cx},${cy} ${cx + r},${cy}`,
     `Q${cx},${cy} ${cx},${cy + r}`,
     `Q${cx},${cy} ${cx - r},${cy}`,
     `Q${cx},${cy} ${cx},${cy - r}Z`,
-  ].join(" ");
+  ].join(' ');
 }
 
-export default function LuniaLogo() {
-  const r = 44;           // outer radius of each sparkle
-  const hGap = 88;        // horizontal center-to-center (= 2r → tips just touch)
-  const vGap = 76;        // vertical spacing (≈ hGap × √3/2 → equilateral triangle)
+interface LuniaLogoProps {
+  /** 'light' = white 50% opacity (dark hook/CTA slides).
+   *  'dark'  = deep navy 50% opacity (light content slides). */
+  variant?: 'light' | 'dark';
+}
 
-  // Bottom row: 3 sparkles
-  const by = r + vGap;
-  const bottom = [
-    { cx: r,          cy: by },
-    { cx: r + hGap,   cy: by },
-    { cx: r + hGap*2, cy: by },
+export default function LuniaLogo({ variant = 'light' }: LuniaLogoProps) {
+  const r    = 44;
+  const vGap = r * 2;  // 88 — vertically-stacked tips touch (vGap = 2r)
+
+  const y1 = r;             //  44
+  const y2 = r + vGap;      // 132
+  const y3 = r + vGap * 2;  // 220
+
+  const stars = [
+    // Row 1 — 2 stars (top, centered at x=176)
+    { cx: 132, cy: y1 },
+    { cx: 220, cy: y1 },
+    // Row 2 — 2 stars (mid, directly below row 1)
+    { cx: 132, cy: y2 },
+    { cx: 220, cy: y2 },
+    // Row 3 — 4 stars (bottom, wider base, centered at x=176)
+    { cx: 44,  cy: y3 },
+    { cx: 132, cy: y3 },
+    { cx: 220, cy: y3 },
+    { cx: 308, cy: y3 },
   ];
 
-  // Top row: 2 sparkles, each centered over the gap between bottom pairs
-  const ty = r;
-  const top = [
-    { cx: r + hGap / 2,       cy: ty },
-    { cx: r + hGap / 2 + hGap, cy: ty },
-  ];
-
-  const vbW = r * 2 + hGap * 2;   // 264
-  const vbH = r + vGap + r;        // 164
+  const vbW = 352;  // 308 + r = 352 (right tip fits)
+  const vbH = 264;  // y3 + r = 264
 
   return (
     <svg
-      width={110}
-      height={Math.round(110 * vbH / vbW)}
+      width={100}
+      height={Math.round(100 * vbH / vbW)}
       viewBox={`0 0 ${vbW} ${vbH}`}
-      style={{ position: "absolute", bottom: 58, left: 60 }}
+      style={{ position: 'absolute', bottom: 58, left: 60 }}
     >
-      <g fill="white" fillOpacity={0.5}>
-        {[...top, ...bottom].map((s, i) => (
+      <g fill={variant === 'dark' ? '#0d2137' : 'white'} fillOpacity={0.5}>
+        {stars.map((s, i) => (
           <path key={i} d={sparkle(s.cx, s.cy, r)} />
         ))}
       </g>

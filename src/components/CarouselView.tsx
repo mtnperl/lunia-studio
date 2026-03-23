@@ -56,12 +56,37 @@ export default function CarouselView() {
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedHook, setSelectedHook] = useState(0);
   const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
+  const [hookImageUrl, setHookImageUrl] = useState<string | null>(null);
+  const [slideImages, setSlideImages] = useState<(string | null)[]>([null, null, null, null, null]);
 
   const content = variants[selectedVariant] ?? null;
 
   const config: CarouselConfig | null = content
-    ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined }
+    ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined, hookImageUrl: hookImageUrl ?? undefined, slideImages }
     : null;
+
+  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
+    setSlideImages([null, null, null, null, null]);
+    const hook = currentContent.hooks[currentHookIndex];
+    const slides = currentContent.slides;
+    [0, 1, 2, 3, 4].forEach((i) => {
+      fetch('/api/carousel/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slideIndex: i,
+          topic: currentTopic,
+          hook,
+          slide: i >= 1 && i <= 3 ? slides[i - 1] : undefined,
+        }),
+      })
+        .then((r) => r.json())
+        .then(({ url }) => {
+          if (url) setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
+        })
+        .catch(() => {});
+    });
+  }
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string) {
     setTopic(t);
@@ -91,6 +116,7 @@ export default function CarouselView() {
       setSelectedVariant(0);
       setSelectedHook(0);
       setBrandStyle(data.brandStyle ?? null);
+      setHookImageUrl((data as any).hookImageUrl ?? null);
       const msgs = [
         data.styleRefsUsed ? `${data.styleRefsUsed} style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
         data.warning ?? null,
@@ -112,6 +138,8 @@ export default function CarouselView() {
     setSelectedVariant(0);
     setSelectedHook(0);
     setBrandStyle(null);
+    setHookImageUrl(null);
+    setSlideImages([null, null, null, null, null]);
     setError(null);
     setWarning(null);
   }
@@ -204,7 +232,12 @@ export default function CarouselView() {
               content={content}
               selectedHook={selectedHook}
               onSelectHook={setSelectedHook}
-              onNext={() => setStep(4)}
+              onNext={() => {
+                setStep(4);
+                generateSlideImages(topic, content, selectedHook);
+              }}
+              brandStyle={brandStyle}
+              backgroundImageUrl={hookImageUrl}
             />
           )}
           {!loading && !error && step === 4 && config && (
