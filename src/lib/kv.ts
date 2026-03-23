@@ -133,12 +133,18 @@ const SUBJECTS_KEY = "lunia:subjects";
 
 export async function getSubjects(): Promise<Subject[]> {
   try {
-    const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
-    if (stored && stored.length > 0) return stored;
-    // Seed defaults on first call
     const { DEFAULT_SUBJECTS } = await import("./default-subjects");
-    await redis.set(SUBJECTS_KEY, DEFAULT_SUBJECTS, { ex: TTL_SECONDS });
-    return DEFAULT_SUBJECTS;
+    const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
+    // Reseed if empty OR if stored count is less than the canonical defaults
+    if (stored && stored.length >= DEFAULT_SUBJECTS.length) return stored;
+    // Preserve usedAt flags when reseeding
+    const usedMap = new Map((stored ?? []).map((s) => [s.text, s.usedAt]));
+    const seeded = DEFAULT_SUBJECTS.map((s) => {
+      const usedAt = usedMap.get(s.text);
+      return usedAt ? { ...s, usedAt } : s;
+    });
+    await redis.set(SUBJECTS_KEY, seeded, { ex: TTL_SECONDS });
+    return seeded;
   } catch {
     return [];
   }
