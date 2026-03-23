@@ -146,7 +146,9 @@ export async function getSubjects(): Promise<Subject[]> {
     await redis.set(SUBJECTS_KEY, seeded, { ex: TTL_SECONDS });
     return seeded;
   } catch {
-    return [];
+    // Redis unavailable (e.g. local dev without KV_URL) — return defaults in-memory
+    const { DEFAULT_SUBJECTS } = await import("./default-subjects").catch(() => ({ DEFAULT_SUBJECTS: [] as Subject[] }));
+    return DEFAULT_SUBJECTS;
   }
 }
 
