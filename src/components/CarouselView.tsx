@@ -63,7 +63,7 @@ export default function CarouselView() {
     ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined }
     : null;
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, templateId?: string) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string) {
     setTopic(t);
     setHookTone(tone);
     setLoading(true);
@@ -80,9 +80,9 @@ export default function CarouselView() {
       const res = await fetch("/api/carousel/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: t, hookTone: tone, count: 1, templateId }),
+        body: JSON.stringify({ topic: t, hookTone: tone, count: 1 }),
       });
-      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; templateUsed?: string; brandStyle?: BrandStyle } = await res.json();
+      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; brandStyle?: BrandStyle } = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;
@@ -92,7 +92,6 @@ export default function CarouselView() {
       setSelectedHook(0);
       setBrandStyle(data.brandStyle ?? null);
       const msgs = [
-        data.templateUsed ? `Template "${data.templateUsed}" applied.` : null,
         data.styleRefsUsed ? `${data.styleRefsUsed} style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
         data.warning ?? null,
       ].filter(Boolean);
@@ -185,7 +184,7 @@ export default function CarouselView() {
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, subjectId, templateId) => handleTopicNext(t, tone, subjectId, templateId)} />
+            <TopicStep onNext={(t, tone, subjectId) => handleTopicNext(t, tone, subjectId)} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep

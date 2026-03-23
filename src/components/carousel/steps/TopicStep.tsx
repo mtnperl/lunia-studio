@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { HookTone, Subject, CarouselTemplate } from "@/lib/types";
+import { HookTone, Subject } from "@/lib/types";
 
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
@@ -25,7 +25,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, templateId?: string) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string) => void;
 };
 
 type Mode = "list" | "custom";
@@ -39,18 +39,12 @@ export default function TopicStep({ onNext }: Props) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
-  const [templates, setTemplates] = useState<CarouselTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<CarouselTemplate | null>(null);
 
   useEffect(() => {
     fetch("/api/subjects")
       .then((r) => r.json())
       .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoadingSubjects(false); })
       .catch(() => setLoadingSubjects(false));
-    fetch("/api/carousel-templates")
-      .then((r) => r.json())
-      .then((d: CarouselTemplate[]) => setTemplates(Array.isArray(d) ? d : []))
-      .catch(() => {});
   }, []);
 
   const topic = mode === "list"
@@ -70,7 +64,7 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, subjectId, selectedTemplate?.id);
+    onNext(topic, hookTone, subjectId);
   }
 
   return (
@@ -167,28 +161,25 @@ export default function TopicStep({ onNext }: Props) {
                     borderBottom: "1px solid var(--border)",
                     cursor: "pointer",
                     background: isSelected
-                      ? "var(--text)"
+                      ? "rgba(34,197,94,0.12)"
                       : used
                       ? "rgba(34,197,94,0.06)"
                       : "var(--bg)",
                     transition: "background 0.1s",
+                    outline: isSelected ? "1.5px solid #15803d" : "none",
+                    outlineOffset: -1,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: isSelected ? 700 : used ? 600 : 400,
-                      color: isSelected ? "var(--bg)" : used ? "#15803d" : "var(--text)",
-                      lineHeight: 1.4,
-                    }}>
-                      {s.text}
-                    </div>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: isSelected ? 700 : used ? 600 : 400,
+                    color: isSelected ? "#15803d" : used ? "#15803d" : "var(--text)",
+                    lineHeight: 1.4,
+                  }}>
+                    {s.text}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-                    <span style={{
-                      fontSize: 10,
-                      color: isSelected ? "rgba(255,255,255,0.6)" : "var(--subtle)",
-                    }}>{s.category}</span>
+                    <span style={{ fontSize: 10, color: isSelected ? "#15803d" : "var(--subtle)" }}>{s.category}</span>
                     {used && !isSelected && (
                       <span style={{
                         background: "rgba(34,197,94,0.15)",
@@ -207,8 +198,8 @@ export default function TopicStep({ onNext }: Props) {
           </div>
 
           {selectedSubject && (
-            <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--surface)", borderRadius: 7, fontSize: 13, fontWeight: 600 }}>
-              Selected: {selectedSubject.text}
+            <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#15803d" }}>
+              ✓ {selectedSubject.text}
             </div>
           )}
         </div>
@@ -263,66 +254,6 @@ export default function TopicStep({ onNext }: Props) {
           ))}
         </div>
       </div>
-
-      {/* Template picker */}
-      {templates.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Carousel template <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
-          </label>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {templates.map((t) => {
-              const isSelected = selectedTemplate?.id === t.id;
-              const firstImage = t.images[0];
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => setSelectedTemplate(isSelected ? null : t)}
-                  style={{
-                    cursor: "pointer",
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    width: 80,
-                    border: isSelected ? "2.5px solid #1e7a8a" : "2px solid var(--border)",
-                    boxShadow: isSelected ? "0 0 0 3px rgba(30,122,138,0.15)" : "none",
-                    transition: "all 0.15s",
-                    position: "relative",
-                    flexShrink: 0,
-                  }}
-                >
-                  {firstImage && (
-                    <img src={firstImage.url} alt={t.name} style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
-                  )}
-                  {!firstImage && (
-                    <div style={{ width: "100%", aspectRatio: "4/5", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--muted)" }}>
-                      No img
-                    </div>
-                  )}
-                  {isSelected && (
-                    <div style={{
-                      position: "absolute", top: 4, right: 4,
-                      width: 18, height: 18, borderRadius: "50%",
-                      background: "#1e7a8a", display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  )}
-                  <div style={{ padding: "4px 6px", fontSize: 10, fontWeight: 600, color: isSelected ? "#1e7a8a" : "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t.name}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {selectedTemplate && (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#1e7a8a", fontWeight: 600 }}>
-              Template: {selectedTemplate.name}
-            </div>
-          )}
-        </div>
-      )}
 
       <button
         disabled={!topic || topicTooLong}
