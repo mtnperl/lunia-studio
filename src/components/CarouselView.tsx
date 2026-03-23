@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse } from "@/lib/types";
 import TopicStep from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
@@ -92,6 +92,131 @@ function CarouselLoader() {
             {i === arr.length - 1 && <span className="blink">_</span>}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Retro 90s game loader for fal.ai image generation ────────────────────────
+const SLIDE_LABELS = ["HOOK SLIDE", "CONTENT I", "CONTENT II", "CONTENT III", "CTA SLIDE"];
+const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢◣◤"];
+
+function RetroImageLoader({ count }: { count: number }) {
+  const [frame, setFrame] = useState(0);
+  const [scanline, setScanline] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setFrame((f) => (f + 1) % SPINNER_FRAMES.length);
+      setScanline((s) => (s + 1) % 8);
+    }, 180);
+    return () => clearInterval(t);
+  }, []);
+
+  const total = 5;
+  const barFilled = Math.round((count / total) * 28);
+  const bar = "█".repeat(barFilled) + "░".repeat(28 - barFilled);
+  const pct = Math.round((count / total) * 100);
+  const spinner = SPINNER_FRAMES[frame];
+
+  return (
+    <div style={{
+      fontFamily: "'Courier New', Courier, monospace",
+      background: "#000",
+      color: "#fff",
+      border: "3px solid #fff",
+      borderRadius: 2,
+      padding: "32px 36px",
+      maxWidth: 520,
+      margin: "48px auto",
+      position: "relative",
+      overflow: "hidden",
+      userSelect: "none",
+    }}>
+      {/* Scanline overlay */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 3px,
+          rgba(255,255,255,0.03) 3px,
+          rgba(255,255,255,0.03) 4px
+        )`,
+      }} />
+
+      {/* Title bar */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        borderBottom: "1px solid #fff", paddingBottom: 10, marginBottom: 18,
+        fontSize: 11, letterSpacing: "0.12em",
+      }}>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
+        <span style={{ color: "#888" }}>fal-ai/flux.dev · v1.0</span>
+        <span>{spinner}</span>
+      </div>
+
+      {/* Header */}
+      <div style={{ marginBottom: 22, fontSize: 12, letterSpacing: "0.08em" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
+          RENDERING CAROUSEL DESIGNS
+        </div>
+        <div style={{ color: "#888", fontSize: 11 }}>
+          MODEL: fal-ai/flux/dev · 1024×1280 · 28 STEPS · CFG 3.5
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: "#888", marginBottom: 5, letterSpacing: "0.1em" }}>
+          ── RENDER PROGRESS ──────────────────────
+        </div>
+        <div style={{ fontSize: 14, letterSpacing: 1.5, marginBottom: 6 }}>
+          [{bar}]
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#ccc" }}>
+          <span>{count} / {total} SLIDES COMPLETE</span>
+          <span>{pct}%</span>
+        </div>
+      </div>
+
+      {/* Slide log */}
+      <div style={{
+        borderTop: "1px solid #333", borderBottom: "1px solid #333",
+        padding: "12px 0", marginBottom: 16,
+      }}>
+        {SLIDE_LABELS.map((label, i) => {
+          const done = i < count;
+          const active = i === count;
+          return (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              fontSize: 12, marginBottom: 5, letterSpacing: "0.06em",
+              color: done ? "#fff" : active ? "#fff" : "#444",
+            }}>
+              <span style={{ width: 16, flexShrink: 0 }}>
+                {done ? "✓" : active ? ">" : "·"}
+              </span>
+              <span style={{ flex: 1 }}>{label}</span>
+              <span style={{ fontSize: 11 }}>
+                {done
+                  ? "DONE"
+                  : active
+                    ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span className="blink">█</span></span>
+                    : "QUEUE"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        display: "flex", justifyContent: "space-between",
+        fontSize: 10, color: "#555", letterSpacing: "0.1em",
+      }}>
+        <span>FLUX.1 DEV — ANTHROPIC × FAL.AI</span>
+        <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
       </div>
     </div>
   );
@@ -388,7 +513,10 @@ export default function CarouselView() {
               backgroundImageUrl={hookImageUrl}
             />
           )}
-          {!loading && !error && step === 4 && config && (
+          {!loading && !error && step === 4 && falStatus === "loading" && (
+            <RetroImageLoader count={falCount} />
+          )}
+          {!loading && !error && step === 4 && falStatus !== "loading" && config && (
             <PreviewStep
               config={config}
               hookTone={hookTone}
