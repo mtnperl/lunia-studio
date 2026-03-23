@@ -49,8 +49,79 @@ export type CarouselContentSlide = {
   headline: string;
   body: string;
   citation: string;
-  graphic?: string; // SVG infographic string from Claude
+  graphic?: string; // GraphicSpec JSON string (new) or raw SVG string (legacy)
 };
+
+// ─── GraphicSpec — curated infographic component selection ────────────────────
+import { z } from 'zod';
+
+const versusItem = z.object({ label: z.string(), value: z.string(), note: z.string().optional() });
+
+export const GraphicSpecSchema = z.discriminatedUnion('component', [
+  // ── Existing ──────────────────────────────────────────────────────────────
+  z.object({
+    component: z.literal('stat'),
+    data: z.object({ stat: z.string(), label: z.string(), unit: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('bars'),
+    data: z.object({ items: z.array(z.object({ label: z.string(), value: z.string() })).min(2).max(4) }),
+  }),
+  z.object({
+    component: z.literal('steps'),
+    data: z.object({ steps: z.array(z.string()).min(2).max(4) }),
+  }),
+  z.object({
+    component: z.literal('dotchain'),
+    data: z.object({ labels: z.array(z.string()).min(1).max(2) }),
+  }),
+  z.object({
+    component: z.literal('wave'),
+    data: z.object({}),
+  }),
+  z.object({
+    component: z.literal('iconGrid'),
+    data: z.object({ items: z.array(z.object({ label: z.string() })).min(1).max(4) }),
+  }),
+  // ── New ───────────────────────────────────────────────────────────────────
+  z.object({
+    component: z.literal('donut'),
+    data: z.object({ value: z.string(), label: z.string(), sublabel: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('versus'),
+    data: z.object({ left: versusItem, right: versusItem }),
+  }),
+  z.object({
+    component: z.literal('timeline'),
+    data: z.object({ events: z.array(z.object({ time: z.string(), label: z.string() })).min(2).max(6) }),
+  }),
+  z.object({
+    component: z.literal('split'),
+    data: z.object({ parts: z.array(z.object({ label: z.string(), percent: z.number(), value: z.string().optional() })).min(2).max(4) }),
+  }),
+  z.object({
+    component: z.literal('checklist'),
+    data: z.object({ items: z.array(z.string()).min(2).max(5) }),
+  }),
+  z.object({
+    component: z.literal('callout'),
+    data: z.object({ text: z.string(), source: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('table'),
+    data: z.object({
+      headers: z.array(z.string()).min(2).max(4),
+      rows: z.array(z.array(z.string())).min(1).max(5),
+    }),
+  }),
+  z.object({
+    component: z.literal('pyramid'),
+    data: z.object({ levels: z.array(z.string()).min(2).max(5) }),
+  }),
+]);
+
+export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;
 
 export type CarouselContent = {
   hooks: Hook[];
@@ -83,8 +154,8 @@ export type CarouselConfig = {
   content: CarouselContent;
   selectedHook: number;
   brandStyle?: BrandStyle;
-  hookImageUrl?: string;
-  slideImages?: (string | null)[];
+  hookImageUrl?: string; // template image used as hook slide background overlay
+  slideImages?: (string | null)[]; // fal.ai generated images: index 0=hook, 1-3=content, 4=CTA
 };
 
 export type SavedCarousel = {

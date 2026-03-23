@@ -32,37 +32,34 @@ const MOCK_CONTENT: CarouselContent = {
   hooks: [
     {
       headline: "Your body repairs itself while you sleep.",
-      subtext: "But only if you give it the right conditions.",
-      stat: "Deep sleep triggers 95% of nightly growth hormone release",
+      subline: "But only if you give it the right conditions.",
     },
     {
       headline: "Magnesium is your brain's off switch.",
-      subtext: "Most adults are deficient — and don't know it.",
-      stat: "400mg magnesium glycinate is the evidence-based sleep dose",
+      subline: "Most adults are deficient — and don't know it.",
     },
     {
       headline: "You're not bad at sleeping.",
-      subtext: "You're missing one mineral.",
-      stat: "68% of adults fail to meet the daily magnesium requirement",
+      subline: "You're missing one mineral.",
     },
   ],
   slides: [
     {
-      heading: "What happens at 11pm",
+      headline: "What happens at 11pm",
       body: "Cortisol drops. Melatonin rises. Your brain starts clearing the metabolic waste that built up during the day.",
-      stat: "Sleep onset takes 7× longer when cortisol stays elevated",
+      citation: "Sleep onset takes 7× longer when cortisol stays elevated",
       graphic: "",
     },
     {
-      heading: "Why magnesium works",
+      headline: "Why magnesium works",
       body: "Magnesium glycinate activates GABA receptors — the same pathway targeted by sleep medications, but without the dependency.",
-      stat: "Participants fell asleep 17 minutes faster in clinical trials",
+      citation: "Participants fell asleep 17 minutes faster in clinical trials",
       graphic: "",
     },
     {
-      heading: "The L-theanine effect",
+      headline: "The L-theanine effect",
       body: "L-theanine increases alpha brain waves — the relaxed-but-alert state that makes winding down feel effortless.",
-      stat: "Alpha wave activity increases within 30–40 minutes",
+      citation: "Alpha wave activity increases within 30–40 minutes",
       graphic: "",
     },
   ],
@@ -70,11 +67,14 @@ const MOCK_CONTENT: CarouselContent = {
     headline: "Sleep better, starting tonight.",
     followLine: "Follow @lunia_life for evidence-based sleep science.",
   },
+  caption: "#sleep #magnesium #lunia #sleepscience #wellness",
 };
 
 const MOCK_BRAND_STYLE: BrandStyle = {
   background: "#f0ece6",
+  hookBackground: "#0d2137",
   headline: "#1e7a8a",
+  hookHeadline: "#ffffff",
   body: "#2c3e50",
   secondary: "#9ab0b8",
   accent: "#1e7a8a",

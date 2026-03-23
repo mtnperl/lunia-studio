@@ -1,4 +1,30 @@
-import { GraphicStyle } from "./types";
+import { GraphicStyle, GraphicSpec, GraphicSpecSchema } from "./types";
+
+// ─── GraphicSpec parser (Path 1 — curated component selection) ────────────────
+
+/**
+ * Parse a raw string (from the `graphic` field) into a typed GraphicSpec.
+ *
+ * Returns GraphicSpec if the string is valid JSON with a known component key.
+ * Returns null if:
+ *   - raw is empty/undefined → caller falls through to Path 4 (text-only)
+ *   - JSON.parse throws (raw SVG string) → caller falls through to Path 2 (raw SVG)
+ *   - Zod validation fails → console.error with field detail, returns null → Path 4
+ */
+export function parseGraphicSpec(raw: string | undefined): GraphicSpec | null {
+  if (!raw || raw.trim() === '') return null;
+  try {
+    const obj = JSON.parse(raw);
+    const result = GraphicSpecSchema.safeParse(obj);
+    if (result.success) return result.data;
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[GraphicSpec] Zod validation failed:', result.error.issues);
+    }
+  } catch {
+    // raw SVG string — fall through to Path 2 (sanitizeSvg + dangerouslySetInnerHTML)
+  }
+  return null;
+}
 
 // ─── Graphic data shapes ──────────────────────────────────────────────────────
 
@@ -27,6 +53,9 @@ export type GraphicData =
  * Checks run in priority order. Each check uses both headline and body,
  * but body gets higher weight. Citations are stripped before matching
  * so stray numbers in references don't trigger stat mode.
+ *
+ * @deprecated Legacy path only — used by Path 3 (graphicStyle enum on SavedCarousel).
+ * New generation uses GraphicSpec JSON (Path 1). Remove when saved carousels are regenerated.
  */
 export function inferGraphicStyle(headline: string, body: string): GraphicStyle {
   // Strip citation suffix before matching (everything after "Research:" or after the last full-stop pattern)
@@ -79,6 +108,9 @@ export function inferGraphicStyle(headline: string, body: string): GraphicStyle 
 /**
  * Extract data from slide text to populate graphic components.
  * Returns a GraphicData union — pass to GraphicZone in ContentSlide.
+ *
+ * @deprecated Legacy path only — used by Path 3 (graphicStyle enum on SavedCarousel).
+ * New generation uses GraphicSpec JSON (Path 1). Remove when saved carousels are regenerated.
  */
 export function extractGraphicData(
   style: GraphicStyle,
