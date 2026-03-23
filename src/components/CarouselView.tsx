@@ -27,6 +27,59 @@ const CAROUSEL_LOADER_MSGS = [
   "Finalizing...",
 ];
 
+// ─── Mock content for test mode ───────────────────────────────────────────────
+const MOCK_CONTENT: CarouselContent = {
+  hooks: [
+    {
+      headline: "Your body repairs itself while you sleep.",
+      subtext: "But only if you give it the right conditions.",
+      stat: "Deep sleep triggers 95% of nightly growth hormone release",
+    },
+    {
+      headline: "Magnesium is your brain's off switch.",
+      subtext: "Most adults are deficient — and don't know it.",
+      stat: "400mg magnesium glycinate is the evidence-based sleep dose",
+    },
+    {
+      headline: "You're not bad at sleeping.",
+      subtext: "You're missing one mineral.",
+      stat: "68% of adults fail to meet the daily magnesium requirement",
+    },
+  ],
+  slides: [
+    {
+      heading: "What happens at 11pm",
+      body: "Cortisol drops. Melatonin rises. Your brain starts clearing the metabolic waste that built up during the day.",
+      stat: "Sleep onset takes 7× longer when cortisol stays elevated",
+      graphic: "",
+    },
+    {
+      heading: "Why magnesium works",
+      body: "Magnesium glycinate activates GABA receptors — the same pathway targeted by sleep medications, but without the dependency.",
+      stat: "Participants fell asleep 17 minutes faster in clinical trials",
+      graphic: "",
+    },
+    {
+      heading: "The L-theanine effect",
+      body: "L-theanine increases alpha brain waves — the relaxed-but-alert state that makes winding down feel effortless.",
+      stat: "Alpha wave activity increases within 30–40 minutes",
+      graphic: "",
+    },
+  ],
+  cta: {
+    headline: "Sleep better, starting tonight.",
+    followLine: "Follow @lunia_life for evidence-based sleep science.",
+  },
+};
+
+const MOCK_BRAND_STYLE: BrandStyle = {
+  background: "#f0ece6",
+  headline: "#1e7a8a",
+  body: "#2c3e50",
+  secondary: "#9ab0b8",
+  accent: "#1e7a8a",
+};
+
 function CarouselLoader() {
   return (
     <div className="loader-wrap" style={{ marginTop: 20 }}>
@@ -59,6 +112,11 @@ export default function CarouselView() {
   const [hookImageUrl, setHookImageUrl] = useState<string | null>(null);
   const [slideImages, setSlideImages] = useState<(string | null)[]>([null, null, null, null, null]);
 
+  // ─── Test mode & fal.ai status ────────────────────────────────────────────
+  const [testMode, setTestMode] = useState(false);
+  const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
+  const [falCount, setFalCount] = useState(0); // how many images loaded so far
+
   const content = variants[selectedVariant] ?? null;
 
   const config: CarouselConfig | null = content
@@ -67,8 +125,12 @@ export default function CarouselView() {
 
   function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
     setSlideImages([null, null, null, null, null]);
+    setFalStatus("loading");
+    setFalCount(0);
     const hook = currentContent.hooks[currentHookIndex];
     const slides = currentContent.slides;
+    let loaded = 0;
+    let failed = 0;
     [0, 1, 2, 3, 4].forEach((i) => {
       fetch('/api/carousel/generate-image', {
         method: 'POST',
@@ -82,18 +144,43 @@ export default function CarouselView() {
       })
         .then((r) => r.json())
         .then(({ url }) => {
-          if (url) setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
+          if (url) {
+            setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
+            loaded++;
+            setFalCount(loaded);
+            if (loaded + failed === 5) setFalStatus("done");
+          } else {
+            failed++;
+            if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
+          }
         })
-        .catch(() => {});
+        .catch(() => {
+          failed++;
+          if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
+        });
     });
   }
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string) {
     setTopic(t);
     setHookTone(tone);
-    setLoading(true);
     setError(null);
     setWarning(null);
+
+    // ── Test mode: skip generation, inject mock content ──────────────────────
+    if (testMode) {
+      setVariants([MOCK_CONTENT]);
+      setSelectedVariant(0);
+      setSelectedHook(0);
+      setBrandStyle(MOCK_BRAND_STYLE);
+      setHookImageUrl(null);
+      setFalStatus("idle");
+      setFalCount(0);
+      setStep(3); // jump straight to Hook step
+      return;
+    }
+
+    setLoading(true);
     if (subjectId) {
       fetch(`/api/subjects/${subjectId}`, {
         method: "PATCH",
@@ -117,6 +204,8 @@ export default function CarouselView() {
       setSelectedHook(0);
       setBrandStyle(data.brandStyle ?? null);
       setHookImageUrl((data as any).hookImageUrl ?? null);
+      setFalStatus("idle");
+      setFalCount(0);
       const msgs = [
         data.styleRefsUsed ? `${data.styleRefsUsed} style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
         data.warning ?? null,
@@ -142,7 +231,32 @@ export default function CarouselView() {
     setSlideImages([null, null, null, null, null]);
     setError(null);
     setWarning(null);
+    setFalStatus("idle");
+    setFalCount(0);
   }
+
+  // ─── fal.ai status badge ──────────────────────────────────────────────────
+  const falBadge = falStatus !== "idle" && (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "4px 10px",
+      borderRadius: 20,
+      fontSize: 11, fontWeight: 700,
+      border: "1px solid",
+      borderColor: falStatus === "done" ? "rgba(34,197,94,0.4)" : falStatus === "failed" ? "rgba(239,68,68,0.4)" : "rgba(30,122,138,0.4)",
+      background: falStatus === "done" ? "rgba(34,197,94,0.08)" : falStatus === "failed" ? "rgba(239,68,68,0.08)" : "rgba(30,122,138,0.08)",
+      color: falStatus === "done" ? "#15803d" : falStatus === "failed" ? "#dc2626" : "#1e7a8a",
+    }}>
+      {falStatus === "loading" && (
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#1e7a8a", display: "inline-block", animation: "pulse 1s ease-in-out infinite" }} />
+      )}
+      {falStatus === "done" && "✓"}
+      {falStatus === "failed" && "✗"}
+      {" "}fal.ai
+      {falStatus === "loading" && ` ${falCount}/5`}
+      {falStatus === "done" && ` ${falCount}/5`}
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px 80px" }}>
@@ -152,7 +266,26 @@ export default function CarouselView() {
           <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Carousel builder</h1>
           <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>Generate a 5-slide Instagram carousel for Lunia Life.</p>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* fal.ai status badge */}
+          {falBadge}
+
+          {/* Test mode toggle */}
+          <button
+            onClick={() => setTestMode((v) => !v)}
+            title="Skip content generation and jump straight to design"
+            style={{
+              padding: "5px 12px", fontSize: 12, fontWeight: 700,
+              background: testMode ? "#1e7a8a" : "transparent",
+              color: testMode ? "#fff" : "var(--muted)",
+              border: `1px solid ${testMode ? "#1e7a8a" : "var(--border)"}`,
+              borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
+              letterSpacing: "0.02em",
+            }}
+          >
+            ⚡ Test mode
+          </button>
+
           <button
             onClick={() => setView("builder")}
             style={{
@@ -179,18 +312,33 @@ export default function CarouselView() {
       {view === "builder" && (
         <>
           {/* Step indicator */}
-          <div style={{ display: "flex", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
             {([1, 2, 3, 4] as Step[]).map((s) => (
               <div key={s} style={{
                 padding: "8px 18px", fontSize: 13,
                 fontWeight: step === s ? 700 : 500,
                 color: step === s ? "var(--text)" : "var(--subtle)",
                 borderBottom: step === s ? "2px solid var(--text)" : "2px solid transparent",
-                marginBottom: -1, opacity: step < s ? 0.35 : 1,
+                marginBottom: -1,
+                opacity: testMode && s === 2 ? 0.2 : step < s ? 0.35 : 1,
+                textDecoration: testMode && s === 2 ? "line-through" : "none",
               }}>
                 {s}. {STEP_LABELS[s]}
               </div>
             ))}
+            {testMode && (
+              <div style={{
+                marginLeft: "auto", marginBottom: -1,
+                padding: "4px 10px",
+                fontSize: 11, fontWeight: 700,
+                color: "#1e7a8a",
+                background: "rgba(30,122,138,0.08)",
+                border: "1px solid rgba(30,122,138,0.3)",
+                borderRadius: 20,
+              }}>
+                ⚡ Test mode — content step skipped
+              </div>
+            )}
           </div>
 
           {warning && (
@@ -212,7 +360,7 @@ export default function CarouselView() {
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, subjectId) => handleTopicNext(t, tone, subjectId)} />
+            <TopicStep onNext={(t, tone, subjectId) => handleTopicNext(t, tone, subjectId)} testMode={testMode} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep
