@@ -101,7 +101,7 @@ function CarouselLoader() {
 const SLIDE_LABELS = ["HOOK SLIDE", "CONTENT I", "CONTENT II", "CONTENT III", "CTA SLIDE"];
 const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢◣◤"];
 
-function RetroImageLoader({ count }: { count: number }) {
+function RetroImageLoader({ count, errors }: { count: number; errors: (string | null)[] }) {
   const [frame, setFrame] = useState(0);
   const [scanline, setScanline] = useState(0);
 
@@ -186,25 +186,35 @@ function RetroImageLoader({ count }: { count: number }) {
         padding: "12px 0", marginBottom: 16,
       }}>
         {SLIDE_LABELS.map((label, i) => {
-          const done = i < count;
-          const active = i === count;
+          const done = i < count && !errors[i];
+          const errored = !!errors[i];
+          const active = !errored && !done && i === count;
           return (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 10,
-              fontSize: 12, marginBottom: 5, letterSpacing: "0.06em",
-              color: done ? "#fff" : active ? "#fff" : "#444",
-            }}>
-              <span style={{ width: 16, flexShrink: 0 }}>
-                {done ? "✓" : active ? ">" : "·"}
-              </span>
-              <span style={{ flex: 1 }}>{label}</span>
-              <span style={{ fontSize: 11 }}>
-                {done
-                  ? "DONE"
-                  : active
-                    ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span className="blink">█</span></span>
-                    : "QUEUE"}
-              </span>
+            <div key={i} style={{ marginBottom: errored && errors[i] ? 8 : 5 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                fontSize: 12, letterSpacing: "0.06em",
+                color: errored ? "#f55" : done ? "#fff" : active ? "#fff" : "#444",
+              }}>
+                <span style={{ width: 16, flexShrink: 0 }}>
+                  {errored ? "✗" : done ? "✓" : active ? ">" : "·"}
+                </span>
+                <span style={{ flex: 1 }}>{label}</span>
+                <span style={{ fontSize: 11 }}>
+                  {errored
+                    ? "FAILED"
+                    : done
+                      ? "DONE"
+                      : active
+                        ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span className="blink">█</span></span>
+                        : "QUEUE"}
+                </span>
+              </div>
+              {errored && errors[i] && (
+                <div style={{ marginLeft: 26, fontSize: 10, color: "#f55", marginTop: 2, lineHeight: 1.4 }}>
+                  ERR: {errors[i]}
+                </div>
+              )}
             </div>
           );
         })}
@@ -217,6 +227,73 @@ function RetroImageLoader({ count }: { count: number }) {
       }}>
         <span>FLUX.1 DEV — ANTHROPIC × FAL.AI</span>
         <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Retro error screen (all 5 slides failed) ────────────────────────────────
+function RetroImageError({ errors, onRetry }: { errors: (string | null)[]; onRetry: () => void }) {
+  return (
+    <div style={{
+      fontFamily: "'Courier New', Courier, monospace",
+      background: "#000",
+      color: "#f55",
+      border: "3px solid #f55",
+      borderRadius: 2,
+      padding: "32px 36px",
+      maxWidth: 520,
+      margin: "48px auto",
+    }}>
+      <div style={{
+        borderBottom: "1px solid #f55", paddingBottom: 10, marginBottom: 18,
+        display: "flex", justifyContent: "space-between", fontSize: 11,
+      }}>
+        <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
+        <span>RENDER ERROR</span>
+        <span>EXIT CODE: 1</span>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
+          !! IMAGE GENERATION FAILED !!
+        </div>
+        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>
+          fal-ai/flux/dev could not render one or more slides.
+        </div>
+      </div>
+
+      <div style={{ borderTop: "1px solid #500", borderBottom: "1px solid #500", padding: "12px 0", marginBottom: 20 }}>
+        {SLIDE_LABELS.map((label, i) => errors[i] && (
+          <div key={i} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12, letterSpacing: "0.06em" }}>
+              <span style={{ marginRight: 10 }}>✗</span>{label}
+            </div>
+            <div style={{ marginLeft: 22, fontSize: 10, color: "#c44", marginTop: 3, lineHeight: 1.5 }}>
+              {errors[i]}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <button
+          onClick={onRetry}
+          style={{
+            fontFamily: "'Courier New', Courier, monospace",
+            background: "#f55",
+            color: "#000",
+            border: "none",
+            padding: "8px 20px",
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+          }}
+        >
+          [RETRY]
+        </button>
+        <span style={{ fontSize: 10, color: "#c44" }}>Check FAL_KEY env var · rate limits · API status</span>
       </div>
     </div>
   );
@@ -241,6 +318,7 @@ export default function CarouselView() {
   const [testMode, setTestMode] = useState(false);
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
+  const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -250,6 +328,7 @@ export default function CarouselView() {
 
   function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
     setSlideImages([null, null, null, null, null]);
+    setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
     setFalCount(0);
     const hook = currentContent.hooks[currentHookIndex];
@@ -268,18 +347,22 @@ export default function CarouselView() {
         }),
       })
         .then((r) => r.json())
-        .then(({ url }) => {
+        .then(({ url, error: apiErr }) => {
           if (url) {
             setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
             loaded++;
             setFalCount(loaded);
             if (loaded + failed === 5) setFalStatus("done");
           } else {
+            const msg = apiErr ?? "Image generation failed";
+            setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
             failed++;
             if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
           }
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : "Network error";
+          setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
           failed++;
           if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
         });
@@ -358,6 +441,7 @@ export default function CarouselView() {
     setWarning(null);
     setFalStatus("idle");
     setFalCount(0);
+    setFalErrors([null, null, null, null, null]);
   }
 
   // ─── fal.ai status badge ──────────────────────────────────────────────────
@@ -514,9 +598,15 @@ export default function CarouselView() {
             />
           )}
           {!loading && !error && step === 4 && falStatus === "loading" && (
-            <RetroImageLoader count={falCount} />
+            <RetroImageLoader count={falCount} errors={falErrors} />
           )}
-          {!loading && !error && step === 4 && falStatus !== "loading" && config && (
+          {!loading && !error && step === 4 && falStatus === "failed" && (
+            <RetroImageError
+              errors={falErrors}
+              onRetry={() => content && generateSlideImages(topic, content, selectedHook)}
+            />
+          )}
+          {!loading && !error && step === 4 && (falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
               config={config}
               hookTone={hookTone}
