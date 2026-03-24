@@ -72,10 +72,6 @@ function Circadian({ color, accent }: { color: string; accent: string }) {
         );
       })}
 
-      <text x="32" y="68" fill={accent} fontSize="21" opacity="0.55"
-        fontFamily="Inter,sans-serif" fontWeight="500" letterSpacing="0.14em">
-        MELATONIN CURVE
-      </text>
     </svg>
   );
 }
@@ -119,10 +115,6 @@ function Brainwave({ color, accent }: { color: string; accent: string }) {
         );
       })}
 
-      <text x="32" y="52" fill={color} fontSize="21" opacity="0.5"
-        fontFamily="Inter,sans-serif" letterSpacing="0.14em">
-        EEG SLEEP STAGES
-      </text>
     </svg>
   );
 }
@@ -181,10 +173,6 @@ function Molecular({ color, accent }: { color: string; accent: string }) {
         ))}
       </g>
 
-      <text x="32" y="66" fill={accent} fontSize="21" opacity="0.55"
-        fontFamily="Inter,sans-serif" fontWeight="500" letterSpacing="0.14em">
-        MOLECULAR STRUCTURE
-      </text>
     </svg>
   );
 }
@@ -236,10 +224,6 @@ function Constellation({ color, accent }: { color: string; accent: string }) {
           : <circle key={i} cx={x} cy={y} r={r} fill={color} opacity="0.35" />;
       })}
 
-      <text x="32" y="80" fill={accent} fontSize="21" opacity="0.5"
-        fontFamily="Inter,sans-serif" letterSpacing="0.14em">
-        SLEEP CYCLE
-      </text>
     </svg>
   );
 }

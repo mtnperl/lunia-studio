@@ -267,17 +267,39 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               </div>
 
               {/* Slide preview */}
-              <div style={{
-                borderRadius: 8,
-                overflow: "hidden",
-                outline: isActive ? "2px solid #1e7a8a" : "2px solid transparent",
-                outlineOffset: 2,
-                transition: "outline-color 0.15s",
-                boxShadow: isActive
-                  ? "0 0 0 4px rgba(30,122,138,0.12), 0 4px 20px rgba(0,0,0,0.12)"
-                  : "0 2px 12px rgba(0,0,0,0.08)",
-              }}>
-                {slide}
+              <div style={{ position: "relative" }}>
+                <div style={{
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  outline: isActive ? "2px solid #1e7a8a" : "2px solid transparent",
+                  outlineOffset: 2,
+                  transition: "outline-color 0.15s, opacity 0.2s",
+                  boxShadow: isActive
+                    ? "0 0 0 4px rgba(30,122,138,0.12), 0 4px 20px rgba(0,0,0,0.12)"
+                    : "0 2px 12px rgba(0,0,0,0.08)",
+                  opacity: isRegeneratingGraphic ? 0.45 : 1,
+                }}>
+                  {slide}
+                </div>
+                {isRegeneratingGraphic && (
+                  <div style={{
+                    position: "absolute", inset: 0, borderRadius: 8,
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", gap: 8,
+                    pointerEvents: "none",
+                  }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      border: "2.5px solid rgba(255,255,255,0.15)",
+                      borderTopColor: "#1e7a8a",
+                      animation: "spin 0.7s linear infinite",
+                    }} />
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+                      color: "var(--text)", textTransform: "uppercase",
+                    }}>generating</span>
+                  </div>
+                )}
               </div>
 
               {/* Slide actions */}

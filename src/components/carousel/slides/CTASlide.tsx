@@ -1,4 +1,3 @@
-import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
@@ -19,7 +18,6 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
   const bg = brandStyle?.background ?? "#f0ece6";
   const headlineColor = brandStyle?.headline ?? "#1e7a8a";
   const followColor = brandStyle?.headline ?? "#1e7a8a";
-  const arrowColor = brandStyle?.secondary ?? "#9ab0b8";
 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
@@ -41,7 +39,6 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <ArrowIcons color={arrowColor} />
       <LuniaLogo variant="dark" />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
