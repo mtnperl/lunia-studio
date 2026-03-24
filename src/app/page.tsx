@@ -9,11 +9,12 @@ import CalendarView from "@/components/CalendarView";
 import AssetsView from "@/components/AssetsView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
+import AdsView from "@/components/AdsView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar";
-type Product = "home" | "script" | "carousel";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar" | "ads";
+type Product = "home" | "script" | "carousel" | "ads";
 
 function LuniaLogoMark() {
   return (
@@ -49,6 +50,7 @@ export default function Page() {
     if (p === "home") setTab("home");
     else if (p === "script") setTab("generate");
     else if (p === "carousel") setTab("carousel");
+    else if (p === "ads") setTab("ads");
     setMobileNavOpen(false);
   }
 
@@ -109,6 +111,7 @@ export default function Page() {
             {([
               { key: "script" as Product, label: "Script" },
               { key: "carousel" as Product, label: "Carousel" },
+              { key: "ads" as Product, label: "Ads" },
             ]).map(p => (
               <button key={p.key} onClick={() => switchProduct(p.key)} style={{
                 padding: "5px 12px", fontSize: 13, fontWeight: 600,
@@ -205,6 +208,15 @@ export default function Page() {
               cursor: "pointer", fontFamily: "inherit",
             }}>{t.label}</button>
           ))}
+          <div style={{ padding: "8px 16px", fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Ads</div>
+          <button onClick={() => { switchProduct("ads"); }} style={{
+            display: "block", width: "100%", textAlign: "left",
+            padding: "12px 24px", fontSize: 15, fontWeight: tab === "ads" ? 700 : 400,
+            background: tab === "ads" ? "rgba(30,122,138,0.06)" : "transparent",
+            color: tab === "ads" ? "#1e7a8a" : "var(--text)",
+            border: "none", borderBottom: "1px solid var(--border)",
+            cursor: "pointer", fontFamily: "inherit",
+          }}>Generate</button>
           <button onClick={() => { setProduct("home"); switchTab("calendar"); }} style={{
             display: "block", width: "100%", textAlign: "left",
             padding: "12px 24px", fontSize: 15, fontWeight: tab === "calendar" ? 700 : 400,
@@ -238,6 +250,7 @@ export default function Page() {
             onNewScript={() => switchProduct("script")}
           />
         )}
+        {tab === "ads" && <AdsView />}
       </main>
     </div>
   );

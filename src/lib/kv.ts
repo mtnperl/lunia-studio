@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -224,4 +224,32 @@ export async function deleteCarouselTemplate(id: string): Promise<void> {
 export async function getCarouselTemplateById(id: string): Promise<CarouselTemplate | null> {
   const all = await getCarouselTemplates();
   return all.find((t) => t.id === id) ?? null;
+}
+
+// ─── Ads ──────────────────────────────────────────────────────────────────────
+const ADS_KEY = "lunia:ads";
+
+export async function getAds(): Promise<SavedAd[]> {
+  try {
+    return (await redis.get<SavedAd[]>(ADS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveAd(ad: SavedAd): Promise<void> {
+  const all = await getAds();
+  const idx = all.findIndex((a) => a.id === ad.id);
+  if (idx >= 0) {
+    all[idx] = ad;
+  } else {
+    all.unshift(ad);
+  }
+  await redis.set(ADS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+}
+
+export async function deleteAdKv(id: string): Promise<void> {
+  const all = await getAds();
+  const filtered = all.filter((a) => a.id !== id);
+  await redis.set(ADS_KEY, filtered, { ex: TTL_SECONDS });
 }

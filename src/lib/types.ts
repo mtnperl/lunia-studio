@@ -208,3 +208,19 @@ export type MultiVariantResponse = {
   variants: CarouselContent[];
   warning?: string; // e.g. "2 of 5 variants failed — showing 3"
 };
+
+// ─── Ads types ────────────────────────────────────────────────────────────────
+export type AdCTA = "Shop Now" | "Learn More" | "Get Offer";
+
+export type SavedAd = {
+  id: string;
+  savedAt: string;                 // ISO string
+  competitorCopy: string;          // original pasted input
+  angle?: string;
+  emotion?: string;
+  headline: string;                // ≤27 chars (Meta hard limit)
+  primaryText: string;             // ≤125 chars (Meta hard limit)
+  cta: AdCTA;
+  imageUrl: string;                // fal.ai hosted URL
+  complianceNote?: string;         // empty = clean, non-empty = review flag
+};
