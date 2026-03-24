@@ -9,9 +9,10 @@ type Props = {
   onNext: () => void;
   brandStyle?: BrandStyle | null;
   backgroundImageUrl?: string | null;
+  topic?: string;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, brandStyle, backgroundImageUrl }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, brandStyle, backgroundImageUrl, topic }: Props) {
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>
@@ -40,7 +41,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
               }}
             >
-              <HookSlide headline={hook.headline} subline={hook.subline} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} />
+              <HookSlide headline={hook.headline} subline={hook.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} />
 
               {isSelected && (
                 <div style={{

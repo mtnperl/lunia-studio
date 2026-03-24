@@ -566,6 +566,7 @@ export default function CarouselView() {
               }}
               brandStyle={brandStyle}
               backgroundImageUrl={hookImageUrl}
+              topic={topic}
             />
           )}
           {!loading && !error && step === 4 && falStatus === "loading" && (

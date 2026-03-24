@@ -149,10 +149,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
-  // fal.ai images: hook (imgs[0]) and CTA (imgs[4]) only.
-  // Content slides stay clean — brand colors + infographics, no photo overlay.
+  // fal.ai images: hook (imgs[0]) only.
+  // Content + CTA slides stay clean — brand colors + infographics.
   const slideNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={PREVIEW_SCALE} brandStyle={bs}
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
@@ -163,7 +163,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
   const exportNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} scale={1} brandStyle={bs}
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} />,

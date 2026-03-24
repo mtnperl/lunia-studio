@@ -1,6 +1,7 @@
 'use client';
 
 import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
+import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle } from '@/lib/types';
@@ -9,45 +10,10 @@ import { BrandStyle } from '@/lib/types';
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
 
-// WaveLines — decorative layer, always position:absolute; bottom:0.
-// It is a visual layer, not a content zone — intentionally kept out of the flex column.
-function WaveLines({ accent }: { accent: string }) {
-  const width = 1080;
-  const lines = Array.from({ length: 14 }, (_, i) => {
-    const amp = 60 + i * 8;
-    const freq = 1.5 + i * 0.1;
-    const phase = i * 0.3;
-    const opacity = 0.6 + (i / 14) * 0.3;
-    const points = [];
-    for (let x = 0; x <= width; x += 6) {
-      const y = 200 + amp * Math.sin((x / width) * freq * Math.PI * 2 + phase);
-      points.push(`${x},${y}`);
-    }
-    return (
-      <polyline
-        key={i}
-        points={points.join(' ')}
-        fill="none"
-        stroke={i > 10 ? accent : '#ffffff'}
-        strokeWidth="0.8"
-        opacity={opacity}
-      />
-    );
-  });
-  return (
-    <svg
-      style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '40%' }}
-      viewBox={`0 0 ${width} 540`}
-      preserveAspectRatio="none"
-    >
-      {lines}
-    </svg>
-  );
-}
-
 type Props = {
   headline: string;
   subline: string;
+  topic?: string;        // used to pick the matching decoration
   scale?: number;
   id?: string;
   brandStyle?: BrandStyle;
@@ -56,12 +22,13 @@ type Props = {
   shimmer?: boolean;     // true = show loading shimmer while fal image generates
 };
 
-export default function HookSlide({ headline, subline, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false }: Props) {
+export default function HookSlide({ headline, subline, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false }: Props) {
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
-  const waveAccent = brandStyle?.secondary ?? '#e8f4f8';
+  const decoAccent = brandStyle?.secondary ?? '#e8f4f8';
   const arrowColor = brandStyle?.secondary ?? '#4a7c8e';
+  const decorationType = getHookDecorationType(topic ?? headline);
 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg, overflow: 'hidden' }}>
@@ -93,8 +60,8 @@ export default function HookSlide({ headline, subline, scale = 1, id, brandStyle
 
       <ArrowIcons color={arrowColor} />
 
-      {/* WaveLines — decorative, anchored to bottom of slide, independent of content */}
-      <WaveLines accent={waveAccent} />
+      {/* Topic-matched decoration — replaces static WaveLines */}
+      <HookDecoration type={decorationType} color="#ffffff" accent={decoAccent} />
 
       {/* Flex column content block — headline + subline stacked with padding tokens */}
       <div style={{
