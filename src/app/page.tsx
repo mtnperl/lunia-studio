@@ -11,23 +11,10 @@ import { getLibrary, saveScript } from "@/lib/storage";
 
 type Tab = "generate" | "editor" | "library" | "carousel" | "assets" | "subjects";
 
-// Lunia Life mark — 6 sparkle stars in a pyramid arrangement
 function LuniaLogoMark() {
-  // 4-pointed star polygon: 8 points alternating outer (R=3) and inner (r≈0.5) radii
-  const star = (cx: number, cy: number) =>
-    `${cx},${cy - 3} ${cx + 0.5},${cy - 0.5} ${cx + 3},${cy} ${cx + 0.5},${cy + 0.5} ${cx},${cy + 3} ${cx - 0.5},${cy + 0.5} ${cx - 3},${cy} ${cx - 0.5},${cy - 0.5}`;
   return (
-    <svg width="22" height="19" viewBox="0 0 22 19" fill="#1e7a8a" aria-hidden>
-      {/* Row 1 */}
-      <polygon points={star(11, 3)} />
-      {/* Row 2 */}
-      <polygon points={star(7, 9)} />
-      <polygon points={star(15, 9)} />
-      {/* Row 3 */}
-      <polygon points={star(3, 15)} />
-      <polygon points={star(11, 15)} />
-      <polygon points={star(19, 15)} />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 36, width: "auto", display: "block" }} />
   );
 }
 
@@ -75,9 +62,9 @@ export default function Page() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <LuniaLogoMark />
-          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Studio</span>
+          <span style={{ fontWeight: 600, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>Studio</span>
         </div>
 
         {/* Desktop nav — centered */}
