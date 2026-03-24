@@ -91,7 +91,18 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: Inline SVG infographic that visualizes the key insight from THIS slide. Rules: use viewBox="0 0 936 440" with NO explicit width/height on the svg element • Colors only: ${svgColors} • font-family="Inter,system-ui,sans-serif" • No JS, no external resources, no gradients, no filters, no shadows • Output as a single compact line, max 1600 chars • Use REAL data/numbers from the slide text — do not invent • Design for the full 440px height — spread content vertically, use large numbers (120-180px font), generous spacing, a title label at top and a sub-label below the visual element • CRITICAL Z-ORDER RULE: always draw background shapes (rect, path) FIRST, then draw all text elements ON TOP — never place text before the shape that covers it • CRITICAL LAYOUT RULE: for bar/box comparisons, place the category label ABOVE the bar (not inside it) with at least 20px gap, and the value number centered inside the bar — ensure label text and value text never overlap • For stat callouts: one large number centered, unit beside it, descriptor below — all three on separate y positions with 60px+ spacing • Choose the most appropriate type: stat callout (big number/%), bar comparison, numbered timeline (2-4 steps), concept grid (2-4 labeled boxes), or flow diagram • If no meaningful visual can be derived, output exactly ""`;
+- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. Available components (use REAL numbers/facts from the slide, never invent):
+  {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big number or percentage
+  {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
+  {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
+  {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
+  {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions
+  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — two-way comparison
+  {"component":"callout","data":{"text":"KEY STAT OR QUOTE FROM THE BODY","source":"optional brief citation"}}  — bold pull-quote highlight
+  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
+  {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
+  {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
+  Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
@@ -108,4 +119,26 @@ Brand rules (follow exactly):
 - Body copy: 3-5 sentences, specific and factual
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
-- graphic: same rules as main carousel prompt — SVG infographic, viewBox="0 0 936 440", single compact line max 1600 chars, design for full 440px height with large numbers and generous spacing, real data only, "" if none. Z-ORDER: draw all shapes before text. LAYOUT: category labels above bars (not inside), values inside bars, no overlapping text, "" if none`;
+- graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
+
+export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string) =>
+  `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
+
+Topic: "${topic}"
+Headline: "${headline}"
+Body: "${body}"
+
+Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. Available components (use REAL numbers/facts from the body, never invent):
+
+{"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}
+{"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
+{"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
+{"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
+{"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}
+{"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}
+{"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
+{"component":"split","data":{"parts":[{"label":"NAME","percent":70},{"label":"NAME","percent":30}]}}
+{"component":"pyramid","data":{"levels":["Top level","Middle","Base"]}}
+
+Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits, output exactly "".`;

@@ -42,8 +42,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   const imgs = slideImages ?? [null, null, null, null, null];
-  // Only hook (0) and CTA (4) use fal.ai images; content slides are always ready
-  const imagesLoading = imgs[0] === null || imgs[4] === null;
+  // Only hook (0) uses fal.ai image; content + CTA are always ready
+  const imagesLoading = imgs[0] === null;
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
@@ -158,8 +158,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs}
-      backgroundImage={imgs[4]} shimmer={imgs[4] === null} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -170,8 +169,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs}
-      backgroundImage={proxyUrl(imgs[4])} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);

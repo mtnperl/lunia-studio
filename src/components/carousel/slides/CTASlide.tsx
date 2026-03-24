@@ -42,7 +42,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
       ) : null}
 
       <ArrowIcons color={arrowColor} />
-      <LuniaLogo />
+      <LuniaLogo variant="dark" />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",

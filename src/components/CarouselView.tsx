@@ -299,8 +299,8 @@ export default function CarouselView() {
     ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined, hookImageUrl: hookImageUrl ?? undefined, slideImages }
     : null;
 
-  // Only generate hook (0) and CTA (4) — content slides stay clean with infographics
-  const FAL_SLIDE_INDICES = [0, 4] as const;
+  // Only generate hook (0) — content + CTA slides stay clean with brand colors
+  const FAL_SLIDE_INDICES = [0] as const;
   const FAL_TOTAL = FAL_SLIDE_INDICES.length;
 
   function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
@@ -433,8 +433,8 @@ export default function CarouselView() {
       {falStatus === "done" && "✓"}
       {falStatus === "failed" && "✗"}
       {" "}fal.ai
-      {falStatus === "loading" && ` ${falCount}/2`}
-      {falStatus === "done" && ` ${falCount}/2`}
+      {falStatus === "loading" && ` ${falCount}/1`}
+      {falStatus === "done" && ` ${falCount}/1`}
     </div>
   );
 
@@ -571,14 +571,12 @@ export default function CarouselView() {
           {!loading && !error && step === 4 && falStatus === "loading" && (
             <RetroImageLoader items={[
               { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
-              { label: "CTA SLIDE",  done: !!slideImages[4], error: falErrors[4] },
             ]} />
           )}
           {!loading && !error && step === 4 && falStatus === "failed" && (
             <RetroImageError
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
-                { label: "CTA SLIDE",  done: !!slideImages[4], error: falErrors[4] },
               ]}
               onRetry={() => content && generateSlideImages(topic, content, selectedHook)}
             />
