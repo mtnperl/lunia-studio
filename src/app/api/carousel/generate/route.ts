@@ -76,7 +76,8 @@ export async function POST(req: Request) {
           const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           return JSON.parse(text) as CarouselContent;
-        } catch {
+        } catch (err) {
+          console.error("[generate] variant failed:", err instanceof Error ? err.message : err);
           return null;
         }
       })
