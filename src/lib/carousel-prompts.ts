@@ -92,7 +92,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. Available components (use REAL numbers/facts from the slide, never invent):
+- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. Pick the component that best fits the slide's data. For lists of discrete items, prefer checklist or iconGrid over steps. For trends over time, use wave. For proportions adding to 100%, use donut or split. Available components (use REAL numbers/facts from the slide, never invent):
   {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big number or percentage
   {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
   {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
@@ -103,6 +103,10 @@ Brand rules (follow exactly):
   {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
   {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
   {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
+  {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 connected chain steps showing a process or mechanism
+  {"component":"wave","data":{"points":[{"label":"TIME OR LABEL","value":NUMBER},{"label":"TIME OR LABEL","value":NUMBER}],"unit":"optional unit"}}  — trend/wave line showing values over time or stages, 2-6 points
+  {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"},{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — grid of icon+label pairs, 2-9 items, use for lists of benefits/features
+  {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER,"color":"optional hex"},{"label":"NAME","value":NUMBER}],"centerLabel":"optional total or key stat"}}  — donut/pie chart for 2-5 part breakdown
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
 - imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. Write a specific, cinematic scene that emotionally complements hooks[0]'s headline and subline — NOT a generic illustration of the topic, but the exact visual a creative director would commission for that specific hook.
   Structure: [precise subject/material] + [action or state] + [lighting description] + [camera/composition] + [colour palette] + [mood].
