@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 512,
       messages: [
         { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody) },

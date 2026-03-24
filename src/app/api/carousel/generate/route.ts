@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
         try {
           const msg = await anthropic.messages.create({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-5",
             max_tokens: 4096,
             messages,
           });
