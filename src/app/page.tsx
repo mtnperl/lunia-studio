@@ -4,13 +4,15 @@ import GenerateView from "@/components/GenerateView";
 import EditorView from "@/components/EditorView";
 import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
+import BatchView from "@/components/BatchView";
+import CalendarView from "@/components/CalendarView";
 import AssetsView from "@/components/AssetsView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "assets" | "subjects";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar";
 type Product = "home" | "script" | "carousel";
 
 function LuniaLogoMark() {
@@ -63,6 +65,7 @@ export default function Page() {
 
   const carouselTabs: { key: Tab; label: string }[] = [
     { key: "carousel", label: "Builder" },
+    { key: "batch", label: "Batch" },
     { key: "subjects", label: "Subjects" },
     { key: "assets", label: "Assets" },
   ];
@@ -117,6 +120,16 @@ export default function Page() {
                 transition: "all 0.12s",
               }}>{p.label}</button>
             ))}
+            {/* Calendar — always visible */}
+            <button onClick={() => { setProduct("home"); setTab("calendar"); setMobileNavOpen(false); }} style={{
+              padding: "5px 12px", fontSize: 13, fontWeight: 600,
+              background: tab === "calendar" ? "var(--text)" : "transparent",
+              color: tab === "calendar" ? "var(--bg)" : "var(--muted)",
+              border: "1px solid",
+              borderColor: tab === "calendar" ? "var(--text)" : "transparent",
+              borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
+              transition: "all 0.12s",
+            }}>Calendar</button>
           </div>
 
           {/* Sub-tabs for active product */}
@@ -192,6 +205,14 @@ export default function Page() {
               cursor: "pointer", fontFamily: "inherit",
             }}>{t.label}</button>
           ))}
+          <button onClick={() => { setProduct("home"); switchTab("calendar"); }} style={{
+            display: "block", width: "100%", textAlign: "left",
+            padding: "12px 24px", fontSize: 15, fontWeight: tab === "calendar" ? 700 : 400,
+            background: tab === "calendar" ? "rgba(30,122,138,0.06)" : "transparent",
+            color: tab === "calendar" ? "#1e7a8a" : "var(--text)",
+            border: "none", borderBottom: "1px solid var(--border)",
+            cursor: "pointer", fontFamily: "inherit",
+          }}>Calendar</button>
         </div>
       )}
 
@@ -208,8 +229,15 @@ export default function Page() {
         {tab === "editor" && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
         {tab === "library" && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
         {tab === "carousel" && <CarouselView />}
+        {tab === "batch" && <BatchView />}
         {tab === "subjects" && <SubjectsView />}
         {tab === "assets" && <AssetsView />}
+        {tab === "calendar" && (
+          <CalendarView
+            onNewCarousel={() => switchProduct("carousel")}
+            onNewScript={() => switchProduct("script")}
+          />
+        )}
       </main>
     </div>
   );
