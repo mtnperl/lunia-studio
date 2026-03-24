@@ -44,11 +44,21 @@ function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }
   );
 }
 
-function CarouselCard({ carousel, onClick }: { carousel: SavedCarousel; onClick: () => void }) {
+function CarouselCard({ carousel, onClick }: { carousel: SavedCarousel & { _unsaved?: boolean }; onClick: () => void }) {
+  const isUnsaved = (carousel as { _unsaved?: boolean })._unsaved;
   return (
     <div onClick={onClick} className="card" style={{ padding: "14px 16px", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "#1e7a8a", textTransform: "uppercase", letterSpacing: "0.06em" }}>{carousel.hookTone}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#1e7a8a", textTransform: "uppercase", letterSpacing: "0.06em" }}>{carousel.hookTone}</span>
+          {isUnsaved && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+              color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a",
+              borderRadius: 4, padding: "1px 5px",
+            }}>unsaved</span>
+          )}
+        </div>
         <span style={{ fontSize: 11, color: "var(--subtle)" }}>
           {new Date(carousel.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
@@ -74,7 +84,21 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
       fetch("/api/carousel/library").then(r => r.json()).catch(() => [] as SavedCarousel[]),
     ]).then(([s, c]) => {
       setScripts(Array.isArray(s) ? s : []);
-      setCarousels(Array.isArray(c) ? c : []);
+      // Merge last-generated (unsaved) carousel from localStorage
+      const saved: SavedCarousel[] = Array.isArray(c) ? c : [];
+      try {
+        const raw = localStorage.getItem("lunia:lastCarousel");
+        if (raw) {
+          const last = JSON.parse(raw) as SavedCarousel & { _unsaved?: boolean };
+          // Only prepend if not already saved (match by topic + time proximity)
+          const alreadySaved = saved.some(
+            sc => sc.topic === last.topic &&
+              Math.abs(new Date(sc.savedAt).getTime() - new Date(last.savedAt).getTime()) < 5000
+          );
+          if (!alreadySaved) saved.unshift(last);
+        }
+      } catch {}
+      setCarousels(saved);
       setLoading(false);
     });
   }, []);

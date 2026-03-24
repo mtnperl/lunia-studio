@@ -16,7 +16,7 @@ type Product = "home" | "script" | "carousel";
 function LuniaLogoMark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 36, width: "auto", display: "block" }} />
+    <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 72, width: "auto", display: "block" }} />
   );
 }
 

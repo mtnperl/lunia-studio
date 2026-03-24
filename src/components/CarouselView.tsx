@@ -564,6 +564,18 @@ export default function CarouselView() {
               onNext={() => {
                 setStep(4);
                 generateSlideImages(topic, content, selectedHook);
+                // Persist last-generated so HomeView shows it even if unsaved
+                try {
+                  localStorage.setItem("lunia:lastCarousel", JSON.stringify({
+                    id: "__last__",
+                    topic,
+                    hookTone,
+                    content,
+                    selectedHook,
+                    savedAt: new Date().toISOString(),
+                    _unsaved: true,
+                  }));
+                } catch {}
               }}
               onImagePromptChange={(prompt) => {
                 const next = [...variants];
