@@ -77,7 +77,8 @@ Return ONLY valid JSON in this exact format, no other text:
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
   },
-  "caption": "string"
+  "caption": "string",
+  "imagePrompt": "string"
 }
 
 Brand rules (follow exactly):
@@ -102,7 +103,12 @@ Brand rules (follow exactly):
   {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
   {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
   {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
-  Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""`;
+  Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
+- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. Write a specific, cinematic scene that emotionally complements hooks[0]'s headline and subline — NOT a generic illustration of the topic, but the exact visual a creative director would commission for that specific hook.
+  Structure: [precise subject/material] + [action or state] + [lighting description] + [camera/composition] + [colour palette] + [mood].
+  Hard rules: dark background always (midnight navy, black, or deep charcoal) • no people, no faces, no text, no logos • ultra-sharp, editorial, premium wellness brand • name the exact material/object (e.g. "magnesium glycinate crystals", not "minerals") • max 55 words.
+  Good example for hook "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH / Most adults are deficient and don't know it": "Extreme macro of magnesium glycinate powder dissolving in still dark water, single cold shaft of light, crystal clarity, deep navy background, editorial pharmaceutical photography, shallow depth of field, ultra-sharp edges, absolute stillness"
+  Bad example (too generic): "dark moody wellness photo, abstract background, premium brand"`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>

@@ -128,6 +128,7 @@ export type CarouselContent = {
   slides: CarouselContentSlide[];
   cta: { headline: string; followLine: string };
   caption: string; // IG caption including hashtags
+  imagePrompt?: string; // Claude-written Recraft V3 prompt for the hook slide background
 };
 
 export type GraphicStyle =

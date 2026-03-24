@@ -87,6 +87,7 @@ const MOCK_CONTENT: CarouselContent = {
     followLine: "Follow @lunia_life for evidence-based sleep science.",
   },
   caption: "#sleep #magnesium #lunia #sleepscience #wellness",
+  imagePrompt: "Extreme macro of raw magnesium glycinate crystals dissolving in still dark water, single cold shaft of blue-white light striking crystal edges, deep navy background, ultra-sharp focus, shallow depth of field, editorial pharmaceutical photography, absolute stillness",
 };
 
 const MOCK_BRAND_STYLE: BrandStyle = {
@@ -315,7 +316,7 @@ export default function CarouselView() {
       fetch('/api/carousel/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook }),
+        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt }),
       })
         .then((r) => r.json())
         .then(({ url, error: apiErr }) => {

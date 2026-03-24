@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const slideIndex: number = Number(body.slideIndex);
     const topic: string = body.topic ?? '';
     const hook: Hook | undefined = body.hook;
+    const imagePrompt: string | undefined = body.imagePrompt; // Claude-written prompt takes priority
 
     if (!topic.trim()) {
       return Response.json({ error: 'Topic required' }, { status: 400 });
@@ -31,7 +32,9 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
-    const prompt = buildPrompt(slideIndex, topic, hook);
+    // Use Claude-generated prompt if available, otherwise fall back to keyword-based builder
+    const prompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
+    console.log(`[generate-image] slide=${slideIndex} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
 
     const result = await fal.subscribe('fal-ai/recraft-v3', {
       input: {
