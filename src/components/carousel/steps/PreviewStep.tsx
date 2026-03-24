@@ -30,10 +30,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // Hook image refinement state
+  const [imageRefineOpen, setImageRefineOpen] = useState(false);
+  const [imageGuidelines, setImageGuidelines] = useState("");
+  const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
+  const [regeneratingImage, setRegeneratingImage] = useState(false);
+  const [imageRegenError, setImageRegenError] = useState<string | null>(null);
+
   // Full-size hidden refs for accurate PNG export
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
   const { content, selectedHook, topic, brandStyle, hookImageUrl, slideImages } = config;
+  const currentImagePrompt = imagePromptDraft || content.imagePrompt || "";
 
   // Proxy fal.ai CDN URLs through our own route so html-to-image canvas export works
   function proxyUrl(url: string | null | undefined): string | undefined {
@@ -157,6 +165,52 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setGraphicError("Network error — please check your connection");
     } finally {
       setRegeneratingGraphic(null);
+    }
+  }
+
+  async function handleRegenerateHookImage() {
+    setRegeneratingImage(true);
+    setImageRegenError(null);
+    try {
+      // Step 1: optionally regenerate the prompt with guidelines
+      let finalPrompt = currentImagePrompt;
+      if (imageGuidelines.trim() || !finalPrompt) {
+        const promptRes = await fetch("/api/carousel/regenerate-image-prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: topic ?? "",
+            headline: hook.headline,
+            subline: hook.subline,
+            currentPrompt: finalPrompt,
+            guidelines: imageGuidelines.trim(),
+          }),
+        });
+        const promptData = await promptRes.json();
+        if (!promptRes.ok || promptData.error) throw new Error(promptData.error ?? "Failed to regenerate prompt");
+        finalPrompt = promptData.prompt;
+        setImagePromptDraft(finalPrompt);
+        // Update the content's imagePrompt so it's saved with the carousel
+        onContentChange({ ...config, content: { ...config.content, imagePrompt: finalPrompt } });
+      }
+
+      // Step 2: generate the new image
+      const imgRes = await fetch("/api/carousel/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt }),
+      });
+      const imgData = await imgRes.json();
+      if (!imgRes.ok || imgData.error) throw new Error(imgData.error ?? "Image generation failed");
+
+      // Update slideImages[0] in config
+      const newSlideImages = [...(config.slideImages ?? [null, null, null, null, null])];
+      newSlideImages[0] = imgData.url;
+      onContentChange({ ...config, slideImages: newSlideImages as (string | null)[], content: { ...config.content, imagePrompt: finalPrompt } });
+    } catch (err) {
+      setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate image");
+    } finally {
+      setRegeneratingImage(false);
     }
   }
 
@@ -342,6 +396,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 >
                   {isDownloading ? "…" : "↓ PNG"}
                 </button>
+                {i === 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setImageRefineOpen(v => !v); }}
+                    title="Refine hook image"
+                    style={{
+                      background: imageRefineOpen ? "#1e7a8a" : "var(--surface)",
+                      color: imageRefineOpen ? "#fff" : "var(--muted)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                      letterSpacing: "0.01em",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ↺ image
+                  </button>
+                )}
                 {i >= 1 && i <= 3 && (
                   <>
                     <button
@@ -391,6 +467,86 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           );
         })}
       </div>
+
+      {/* Hook image refinement panel */}
+      {imageRefineOpen && (
+        <div style={{
+          marginTop: 12,
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "var(--surface)",
+        }}>
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px", color: "var(--text)" }}>
+              Refine hook image
+            </p>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+              Edit the prompt directly or add guidelines — Claude will rewrite the prompt, then generate a new image.
+            </p>
+          </div>
+          <div style={{ padding: "12px 14px" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              Current prompt
+            </label>
+            <textarea
+              value={currentImagePrompt}
+              onChange={(e) => setImagePromptDraft(e.target.value)}
+              rows={3}
+              placeholder="No prompt yet — add guidelines below to generate one."
+              style={{
+                width: "100%", fontSize: 12, lineHeight: 1.6,
+                resize: "vertical", fontFamily: "inherit",
+                color: currentImagePrompt ? "var(--text)" : "var(--subtle)",
+                marginBottom: 12,
+              }}
+            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              Guidelines (optional)
+            </label>
+            <textarea
+              value={imageGuidelines}
+              onChange={(e) => setImageGuidelines(e.target.value)}
+              rows={2}
+              placeholder="e.g. warmer tones, ocean waves, more minimal, focus on moonlight..."
+              style={{
+                width: "100%", fontSize: 12, lineHeight: 1.5,
+                resize: "vertical", fontFamily: "inherit",
+                color: "var(--text)",
+                marginBottom: 12,
+              }}
+            />
+            {imageRegenError && (
+              <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
+            )}
+            <button
+              onClick={handleRegenerateHookImage}
+              disabled={regeneratingImage}
+              style={{
+                background: regeneratingImage ? "var(--border)" : "#1e7a8a",
+                color: "#fff",
+                border: "none", borderRadius: 6,
+                padding: "9px 20px", fontSize: 12, fontWeight: 700,
+                fontFamily: "inherit", cursor: regeneratingImage ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              {regeneratingImage ? (
+                <>
+                  <span style={{
+                    display: "inline-block", width: 12, height: 12,
+                    border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff",
+                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                  }} />
+                  Generating new image…
+                </>
+              ) : (
+                "↺ Generate new image"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Dot indicators */}
       <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8 }}>

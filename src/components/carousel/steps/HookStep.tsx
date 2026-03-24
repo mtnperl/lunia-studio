@@ -16,7 +16,39 @@ type Props = {
 
 export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic }: Props) {
   const [promptOpen, setPromptOpen] = useState(false);
+  const [guidelines, setGuidelines] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const imagePrompt = content.imagePrompt ?? "";
+  const hook = content.hooks[selectedHook];
+
+  async function handleRegeneratePrompt() {
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          headline: hook?.headline ?? "",
+          subline: hook?.subline ?? "",
+          currentPrompt: imagePrompt,
+          guidelines: guidelines.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setRegenError(data.error ?? "Failed to regenerate prompt");
+      } else {
+        onImagePromptChange?.(data.prompt);
+      }
+    } catch {
+      setRegenError("Network error — please try again");
+    } finally {
+      setRegenerating(false);
+    }
+  }
 
   return (
     <div>
@@ -28,7 +60,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
       </p>
 
       <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 8, marginBottom: 36 }}>
-        {content.hooks.map((hook, i) => {
+        {content.hooks.map((h, i) => {
           const isSelected = selectedHook === i;
           return (
             <div
@@ -46,7 +78,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
               }}
             >
-              <HookSlide headline={hook.headline} subline={hook.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} />
+              <HookSlide headline={h.headline} subline={h.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} />
 
               {isSelected && (
                 <div style={{
@@ -101,7 +133,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
         {promptOpen && (
           <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
-              Claude wrote this prompt specifically for hook {selectedHook + 1}. You can edit it before generating.
+              Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.
             </p>
             <textarea
               value={imagePrompt}
@@ -112,8 +144,68 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 width: "100%", fontSize: 13, lineHeight: 1.6,
                 resize: "vertical", fontFamily: "inherit",
                 color: imagePrompt ? "var(--text)" : "var(--subtle)",
+                marginBottom: 12,
               }}
             />
+
+            {/* Guidelines + regenerate */}
+            <div style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              padding: "10px 12px",
+              marginBottom: 8,
+            }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 6,
+              }}>
+                Guidelines (optional)
+              </label>
+              <textarea
+                value={guidelines}
+                onChange={(e) => setGuidelines(e.target.value)}
+                rows={2}
+                placeholder="e.g. warmer tones, focus on water droplets, more abstract, moonlight scene..."
+                style={{
+                  width: "100%", fontSize: 12, lineHeight: 1.5,
+                  resize: "vertical", fontFamily: "inherit",
+                  color: "var(--text)", background: "transparent",
+                  border: "none", outline: "none", padding: 0,
+                }}
+              />
+            </div>
+
+            {regenError && (
+              <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{regenError}</p>
+            )}
+
+            <button
+              onClick={handleRegeneratePrompt}
+              disabled={regenerating}
+              style={{
+                background: regenerating ? "var(--surface)" : "var(--text)",
+                color: regenerating ? "var(--muted)" : "var(--bg)",
+                border: "none", borderRadius: 6,
+                padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                fontFamily: "inherit", cursor: regenerating ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
+              }}
+            >
+              {regenerating ? (
+                <>
+                  <span style={{
+                    display: "inline-block", width: 12, height: 12,
+                    border: "2px solid var(--muted)", borderTopColor: "transparent",
+                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                  }} />
+                  Regenerating prompt...
+                </>
+              ) : (
+                <>↺ Regenerate prompt</>
+              )}
+            </button>
           </div>
         )}
       </div>

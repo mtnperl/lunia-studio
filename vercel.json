@@ -12,6 +12,9 @@
     "src/app/api/carousel/regenerate-graphic/route.ts": {
       "maxDuration": 60
     },
+    "src/app/api/carousel/regenerate-image-prompt/route.ts": {
+      "maxDuration": 30
+    },
     "src/app/api/generate/route.ts": {
       "maxDuration": 60
     }
