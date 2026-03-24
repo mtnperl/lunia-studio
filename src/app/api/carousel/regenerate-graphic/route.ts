@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
     "127.0.0.1";
-  const allowed = await checkRateLimit(ip, "carousel");
+  const allowed = await checkRateLimit(ip, "graphic");
   if (!allowed) {
     return Response.json({ error: "Too many requests. Please try again in an hour." }, { status: 429 });
   }

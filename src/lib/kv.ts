@@ -66,13 +66,21 @@ export async function getScriptById(id: string): Promise<Script | null> {
   return scripts.find((s) => s.id === id) ?? null;
 }
 
-// Rate limiting: fixed window, 10 req/hr per IP per bucket
+// Rate limiting: fixed window per IP per bucket
+const RATE_LIMITS: Record<string, number> = {
+  generate: 10,   // script generation
+  carousel: 20,   // carousel generation + slide regen
+  graphic: 50,    // infographic regen (cheap Claude calls, used frequently)
+  images: 10,     // fal.ai image generation (expensive)
+};
+
 export async function checkRateLimit(ip: string, bucket = "generate"): Promise<boolean> {
   try {
     const key = `lunia:rl:${bucket}:${ip}`;
     const count = await redis.incr(key);
     if (count === 1) await redis.expire(key, 3600);
-    return count <= 10;
+    const limit = RATE_LIMITS[bucket] ?? 10;
+    return count <= limit;
   } catch {
     return true; // fail open on Redis error
   }

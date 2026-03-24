@@ -27,6 +27,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Full-size hidden refs for accurate PNG export
@@ -123,6 +124,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   async function handleRegenerateGraphic(slideIndex: number) {
     setRegeneratingGraphic(slideIndex);
+    setGraphicError(null);
     try {
       const slide = content.slides[slideIndex];
       const res = await fetch("/api/carousel/regenerate-graphic", {
@@ -137,13 +139,22 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           currentGraphic: slide.graphic ?? "",
         }),
       });
-      if (!res.ok) return;
-      const { graphic } = await res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        setGraphicError(data.error ?? "Failed to regenerate graphic");
+        return;
+      }
+      const { graphic } = data;
       // Don't update if API returned empty — keep current graphic
-      if (!graphic || graphic.trim() === '""' || graphic.trim() === '') return;
+      if (!graphic || graphic.trim() === '""' || graphic.trim() === '') {
+        setGraphicError("No alternative graphic found for this slide — try again");
+        return;
+      }
       const slides = [...content.slides];
       slides[slideIndex] = { ...slides[slideIndex], graphic };
       onContentChange({ ...config, content: { ...content, slides } });
+    } catch {
+      setGraphicError("Network error — please check your connection");
     } finally {
       setRegeneratingGraphic(null);
     }
@@ -224,6 +235,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       {exportError && (
         <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b" }}>
           ⚠ {exportError}
+        </div>
+      )}
+      {graphicError && (
+        <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>⚠ {graphicError}</span>
+          <button onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#991b1b", padding: "0 4px", fontFamily: "inherit" }}>×</button>
         </div>
       )}
 
