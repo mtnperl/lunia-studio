@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import { BrandStyle, CarouselContent } from "@/lib/types";
 
@@ -7,12 +8,16 @@ type Props = {
   selectedHook: number;
   onSelectHook: (i: number) => void;
   onNext: () => void;
+  onImagePromptChange?: (prompt: string) => void;
   brandStyle?: BrandStyle | null;
   backgroundImageUrl?: string | null;
   topic?: string;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, brandStyle, backgroundImageUrl, topic }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic }: Props) {
+  const [promptOpen, setPromptOpen] = useState(false);
+  const imagePrompt = content.imagePrompt ?? "";
+
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>
@@ -68,6 +73,49 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
             </div>
           );
         })}
+      </div>
+
+      {/* Image prompt — expandable */}
+      <div style={{ marginBottom: 28, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          onClick={() => setPromptOpen((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "var(--surface)", border: "none", padding: "10px 14px",
+            fontSize: 12, fontWeight: 600, color: "var(--muted)", cursor: "pointer",
+            fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14 }}>🎨</span>
+            Hook image prompt
+            <span style={{ fontWeight: 400, color: "var(--subtle)", marginLeft: 4 }}>
+              — sent to Recraft V3 when you click Preview
+            </span>
+          </span>
+          <span style={{ fontSize: 16, lineHeight: 1, transform: promptOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+            ›
+          </span>
+        </button>
+
+        {promptOpen && (
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
+              Claude wrote this prompt specifically for hook {selectedHook + 1}. You can edit it before generating.
+            </p>
+            <textarea
+              value={imagePrompt}
+              onChange={(e) => onImagePromptChange?.(e.target.value)}
+              rows={4}
+              placeholder="No image prompt generated yet."
+              style={{
+                width: "100%", fontSize: 13, lineHeight: 1.6,
+                resize: "vertical", fontFamily: "inherit",
+                color: imagePrompt ? "var(--text)" : "var(--subtle)",
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <button

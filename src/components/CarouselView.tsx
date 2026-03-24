@@ -565,6 +565,11 @@ export default function CarouselView() {
                 setStep(4);
                 generateSlideImages(topic, content, selectedHook);
               }}
+              onImagePromptChange={(prompt) => {
+                const next = [...variants];
+                next[selectedVariant] = { ...content, imagePrompt: prompt };
+                setVariants(next);
+              }}
               brandStyle={brandStyle}
               backgroundImageUrl={hookImageUrl}
               topic={topic}
