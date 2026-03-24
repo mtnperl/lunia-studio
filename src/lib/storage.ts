@@ -25,6 +25,14 @@ export async function saveScript(script: Script): Promise<void> {
   }
 }
 
+export async function deleteScript(id: string): Promise<void> {
+  try {
+    await fetch(`/api/scripts/${id}`, { method: "DELETE" });
+  } catch {
+    // fail silently
+  }
+}
+
 export function generateId(): string {
   // nanoid-lite using crypto.randomUUID (available in all modern browsers + Node)
   if (typeof crypto !== "undefined" && crypto.randomUUID) {

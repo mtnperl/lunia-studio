@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Script } from "@/lib/types";
-import { getLibrary } from "@/lib/storage";
+import { getLibrary, deleteScript } from "@/lib/storage";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -29,8 +29,15 @@ function StatusChip({ status }: { status: Script["status"] }) {
 export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void }) {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [filter, setFilter] = useState<"all" | "draft" | "review" | "locked">("all");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => { getLibrary().then(setScripts).catch(() => setScripts([])); }, []);
+
+  async function handleDelete(id: string) {
+    await deleteScript(id);
+    setScripts((prev) => prev.filter((s) => s.id !== id));
+    setConfirmDeleteId(null);
+  }
 
   const filtered = filter === "all" ? scripts : scripts.filter((s) => s.status === filter);
 
@@ -115,9 +122,29 @@ export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void })
                 <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
                   {s.creator || "—"}
                 </span>
-                <span style={{ fontSize: 12, color: "var(--subtle)" }}>
-                  Open →
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {confirmDeleteId === s.id ? (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
+                        style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >Delete</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                        style={{ fontSize: 12, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                      >Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.id); }}
+                        style={{ fontSize: 12, color: "var(--subtle)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, lineHeight: 1 }}
+                        title="Delete script"
+                      >Delete</button>
+                      <span style={{ fontSize: 12, color: "var(--subtle)" }}>Open →</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}

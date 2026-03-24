@@ -66,6 +66,12 @@ export async function getScriptById(id: string): Promise<Script | null> {
   return scripts.find((s) => s.id === id) ?? null;
 }
 
+export async function deleteScriptKv(id: string): Promise<void> {
+  const scripts = await getScripts();
+  const filtered = scripts.filter((s) => s.id !== id);
+  await redis.set(SCRIPTS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
 // Rate limiting: fixed window per IP per bucket
 const RATE_LIMITS: Record<string, number> = {
   generate: 10,   // script generation
