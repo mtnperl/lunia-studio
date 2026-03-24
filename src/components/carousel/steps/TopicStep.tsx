@@ -236,23 +236,27 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook tone</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-          {HOOK_TONE_OPTIONS.map((opt) => (
-            <div
-              key={opt.value}
-              onClick={() => setHookTone(opt.value)}
-              style={{
-                border: `1.5px solid ${hookTone === opt.value ? "var(--text)" : "var(--border)"}`,
-                borderRadius: 8,
-                padding: "10px 12px",
-                cursor: "pointer",
-                background: hookTone === opt.value ? "var(--surface)" : "var(--bg)",
-                transition: "all 0.12s",
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{opt.label}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>{opt.description}</div>
-            </div>
-          ))}
+          {HOOK_TONE_OPTIONS.map((opt) => {
+            const sel = hookTone === opt.value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setHookTone(opt.value)}
+                style={{
+                  border: `1.5px solid ${sel ? "#1e7a8a" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "#1e7a8a" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "#1e7a8a" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

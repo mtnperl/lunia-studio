@@ -35,17 +35,15 @@ export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void })
   const filtered = filter === "all" ? scripts : scripts.filter((s) => s.status === filter);
 
   return (
-    <div style={{ padding: "24px 24px 80px" }}>
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <div>
-          <p style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-.01em" }}>Library</p>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
-            {scripts.length} script{scripts.length !== 1 ? "s" : ""} saved
-          </p>
-        </div>
-        {/* Filter tabs */}
-        <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4 }}>
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-.02em", margin: 0 }}>Library</p>
+        <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, marginBottom: 16 }}>
+          {scripts.length} script{scripts.length !== 1 ? "s" : ""} saved
+        </p>
+        {/* Filter tabs — left-aligned */}
+        <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4, width: "fit-content" }}>
           {FILTERS.map((f) => (
             <button
               key={f.key}

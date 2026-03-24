@@ -52,9 +52,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { persona, format, angle, context, creator } = await req.json();
+    const { topic, persona, format, angle, context, creator } = await req.json();
 
     const userMessage = [
+      topic ? `Topic: ${topic}` : "",
       `Persona: ${persona}`,
       `Format: ${format}`,
       `Angle: ${angle}`,

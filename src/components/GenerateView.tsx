@@ -61,6 +61,7 @@ function RetroLoader({ streamText }: { streamText: string }) {
 }
 
 export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Script) => void }) {
+  const [topic, setTopic] = useState("");
   const [persona, setPersona] = useState(PERSONAS[0]);
   const [format, setFormat] = useState(FORMATS[0]);
   const [angle, setAngle] = useState(ANGLES[0]);
@@ -77,7 +78,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
     try {
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ persona, format, angle, context, creator }),
+        body: JSON.stringify({ topic, persona, format, angle, context, creator }),
       });
       if (res.status === 429) throw new Error("Too many requests — try again in an hour.");
       if (!res.ok || !res.body) throw new Error("Generation failed — please try again.");
@@ -111,8 +112,10 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
     });
   }
 
+  const canGenerate = topic.trim().length > 0;
+
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px 80px" }}>
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Generate script</h1>
         <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 14 }}>Fill in the brief and get 3 hooks + a full script.</p>
@@ -120,6 +123,20 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
 
       {/* Form */}
       <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+        {/* Topic — required */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, letterSpacing: ".02em" }}>
+            Topic <span style={{ color: "#e53e3e", fontWeight: 700 }}>*</span>
+          </label>
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g. Why magnesium beats melatonin for deep sleep"
+            style={{ borderColor: topic.trim() ? "var(--border-strong)" : undefined }}
+          />
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
           {[
             { label: "Persona", value: persona, set: setPersona, opts: PERSONAS },
@@ -146,7 +163,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
             placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30–40F..."
             rows={3} style={{ resize: "vertical" }} />
         </div>
-        <button className="btn" onClick={generate} disabled={loading} style={{ width: "100%", justifyContent: "center" }}>
+        <button className="btn" onClick={generate} disabled={loading || !canGenerate} style={{ width: "100%", justifyContent: "center" }}>
           {loading ? "Generating..." : "Generate →"}
         </button>
       </div>

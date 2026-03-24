@@ -440,7 +440,7 @@ export default function CarouselView() {
   );
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px 80px" }}>
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
