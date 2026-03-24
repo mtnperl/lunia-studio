@@ -5,6 +5,7 @@ import { SavedCarousel } from "@/lib/types";
 export default function CarouselLibraryView() {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/carousel/library")
@@ -12,6 +13,12 @@ export default function CarouselLibraryView() {
       .then((d) => { setCarousels(Array.isArray(d) ? d : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  async function handleDelete(id: string) {
+    await fetch(`/api/carousel/${id}`, { method: "DELETE" });
+    setCarousels((prev) => prev.filter((c) => c.id !== id));
+    setConfirmDeleteId(null);
+  }
 
   if (loading) {
     return <div style={{ fontSize: 14, color: "var(--muted)", padding: "40px 0" }}>Loading library...</div>;
@@ -73,7 +80,7 @@ export default function CarouselLibraryView() {
             <div style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", marginBottom: 14, lineHeight: 1.4, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>
               "{c.content.hooks[c.selectedHook]?.headline}"
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <a
                 href={`/carousels/${c.id}`}
                 target="_blank"
@@ -107,6 +114,23 @@ export default function CarouselLibraryView() {
               >
                 Copy link
               </button>
+              {confirmDeleteId === c.id ? (
+                <>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    style={{ fontSize: 13, fontWeight: 700, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
+                  >Delete</button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={{ fontSize: 13, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
+                  >Cancel</button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteId(c.id)}
+                  style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
+                >Delete</button>
+              )}
             </div>
           </div>
         ))}

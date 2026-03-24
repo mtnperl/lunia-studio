@@ -119,6 +119,12 @@ export async function getCarouselById(id: string): Promise<SavedCarousel | null>
   return all.find((c) => c.id === id) ?? null;
 }
 
+export async function deleteCarouselKv(id: string): Promise<void> {
+  const all = await getCarousels();
+  const filtered = all.filter((c) => c.id !== id);
+  await redis.set(CAROUSELS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
 // ─── Asset metadata ───────────────────────────────────────────────────────────
 const ASSETS_KEY = "lunia:assets";
 

@@ -138,7 +138,7 @@ export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void })
                     <>
                       <button
                         onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.id); }}
-                        style={{ fontSize: 12, color: "var(--subtle)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, lineHeight: 1 }}
+                        style={{ fontSize: 12, fontWeight: 600, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, lineHeight: 1 }}
                         title="Delete script"
                       >Delete</button>
                       <span style={{ fontSize: 12, color: "var(--subtle)" }}>Open →</span>

@@ -1,18 +1,15 @@
-import { getCarouselById } from "@/lib/kv";
+import { deleteCarouselKv } from "@/lib/kv";
 
-export async function GET(
+export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const carousel = await getCarouselById(id);
-    if (!carousel) {
-      return Response.json({ error: "Not found" }, { status: 404 });
-    }
-    return Response.json(carousel);
+    await deleteCarouselKv(id);
+    return Response.json({ ok: true });
   } catch (err) {
-    console.error("[api/carousel/[id]]", err);
-    return Response.json({ error: "Failed to load carousel" }, { status: 500 });
+    console.error("[api/carousel/[id]] DELETE error:", err);
+    return Response.json({ error: "Delete failed" }, { status: 500 });
   }
 }
