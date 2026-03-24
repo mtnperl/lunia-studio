@@ -48,19 +48,38 @@ const MOCK_CONTENT: CarouselContent = {
       headline: "What happens at 11pm",
       body: "Cortisol drops. Melatonin rises. Your brain starts clearing the metabolic waste that built up during the day.",
       citation: "Sleep onset takes 7× longer when cortisol stays elevated",
-      graphic: "",
+      graphic: JSON.stringify({
+        component: "timeline",
+        data: { events: [
+          { time: "10PM", label: "Cortisol starts to drop" },
+          { time: "11PM", label: "Melatonin surges" },
+          { time: "2AM", label: "Deep sleep peaks" },
+          { time: "6AM", label: "Cortisol rises again" },
+        ]},
+      }),
     },
     {
       headline: "Why magnesium works",
       body: "Magnesium glycinate activates GABA receptors — the same pathway targeted by sleep medications, but without the dependency.",
       citation: "Participants fell asleep 17 minutes faster in clinical trials",
-      graphic: "",
+      graphic: JSON.stringify({
+        component: "stat",
+        data: { stat: "17", unit: "min", label: "Faster sleep onset with magnesium glycinate" },
+      }),
     },
     {
       headline: "The L-theanine effect",
       body: "L-theanine increases alpha brain waves — the relaxed-but-alert state that makes winding down feel effortless.",
       citation: "Alpha wave activity increases within 30–40 minutes",
-      graphic: "",
+      graphic: JSON.stringify({
+        component: "checklist",
+        data: { items: [
+          "L-theanine taken 30-60 min before bed",
+          "Binds to GABA-A receptors",
+          "Alpha brain waves increase",
+          "Deep relaxation without sedation",
+        ]},
+      }),
     },
   ],
   cta: {
@@ -98,25 +117,27 @@ function CarouselLoader() {
 }
 
 // ─── Retro 90s game loader for fal.ai image generation ────────────────────────
-const SLIDE_LABELS = ["HOOK SLIDE", "CONTENT I", "CONTENT II", "CONTENT III", "CTA SLIDE"];
+// Only hook (index 0) and CTA (index 4) get fal.ai backgrounds.
+// Content slides stay clean with brand colors + infographics.
 const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢◣◤"];
 
-function RetroImageLoader({ count, errors }: { count: number; errors: (string | null)[] }) {
+type LoaderItem = { label: string; done: boolean; error: string | null };
+
+function RetroImageLoader({ items }: { items: LoaderItem[] }) {
   const [frame, setFrame] = useState(0);
-  const [scanline, setScanline] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setFrame((f) => (f + 1) % SPINNER_FRAMES.length);
-      setScanline((s) => (s + 1) % 8);
-    }, 180);
+    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 180);
     return () => clearInterval(t);
   }, []);
 
-  const total = 5;
-  const barFilled = Math.round((count / total) * 28);
+  const total = items.length;
+  const completed = items.filter((it) => it.done || !!it.error).length;
+  const loaded = items.filter((it) => it.done).length;
+  const activeIdx = items.findIndex((it) => !it.done && !it.error);
+  const barFilled = Math.round((completed / total) * 28);
   const bar = "█".repeat(barFilled) + "░".repeat(28 - barFilled);
-  const pct = Math.round((count / total) * 100);
+  const pct = Math.round((completed / total) * 100);
   const spinner = SPINNER_FRAMES[frame];
 
   return (
@@ -136,13 +157,7 @@ function RetroImageLoader({ count, errors }: { count: number; errors: (string | 
       {/* Scanline overlay */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: `repeating-linear-gradient(
-          0deg,
-          transparent,
-          transparent 3px,
-          rgba(255,255,255,0.03) 3px,
-          rgba(255,255,255,0.03) 4px
-        )`,
+        background: `repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)`,
       }} />
 
       {/* Title bar */}
@@ -152,17 +167,17 @@ function RetroImageLoader({ count, errors }: { count: number; errors: (string | 
         fontSize: 11, letterSpacing: "0.12em",
       }}>
         <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
-        <span style={{ color: "#888" }}>fal-ai/flux.dev · v1.0</span>
+        <span style={{ color: "#888" }}>fal-ai/recraft-v3 · v2.0</span>
         <span>{spinner}</span>
       </div>
 
       {/* Header */}
       <div style={{ marginBottom: 22, fontSize: 12, letterSpacing: "0.08em" }}>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
-          RENDERING CAROUSEL DESIGNS
+          RENDERING SLIDE BACKGROUNDS
         </div>
         <div style={{ color: "#888", fontSize: 11 }}>
-          MODEL: fal-ai/flux/dev · 1024×1280 · 28 STEPS · CFG 3.5
+          MODEL: fal-ai/recraft-v3 · realistic_image · 1024×1280
         </div>
       </div>
 
@@ -171,48 +186,36 @@ function RetroImageLoader({ count, errors }: { count: number; errors: (string | 
         <div style={{ fontSize: 10, color: "#888", marginBottom: 5, letterSpacing: "0.1em" }}>
           ── RENDER PROGRESS ──────────────────────
         </div>
-        <div style={{ fontSize: 14, letterSpacing: 1.5, marginBottom: 6 }}>
-          [{bar}]
-        </div>
+        <div style={{ fontSize: 14, letterSpacing: 1.5, marginBottom: 6 }}>[{bar}]</div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#ccc" }}>
-          <span>{count} / {total} SLIDES COMPLETE</span>
+          <span>{loaded} / {total} BACKGROUNDS COMPLETE</span>
           <span>{pct}%</span>
         </div>
       </div>
 
       {/* Slide log */}
-      <div style={{
-        borderTop: "1px solid #333", borderBottom: "1px solid #333",
-        padding: "12px 0", marginBottom: 16,
-      }}>
-        {SLIDE_LABELS.map((label, i) => {
-          const done = i < count && !errors[i];
-          const errored = !!errors[i];
-          const active = !errored && !done && i === count;
+      <div style={{ borderTop: "1px solid #333", borderBottom: "1px solid #333", padding: "12px 0", marginBottom: 16 }}>
+        {items.map((item, i) => {
+          const isActive = i === activeIdx;
           return (
-            <div key={i} style={{ marginBottom: errored && errors[i] ? 8 : 5 }}>
+            <div key={i} style={{ marginBottom: item.error ? 8 : 5 }}>
               <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                fontSize: 12, letterSpacing: "0.06em",
-                color: errored ? "#f55" : done ? "#fff" : active ? "#fff" : "#444",
+                display: "flex", alignItems: "center", gap: 10, fontSize: 12, letterSpacing: "0.06em",
+                color: item.error ? "#f55" : item.done ? "#fff" : isActive ? "#fff" : "#444",
               }}>
                 <span style={{ width: 16, flexShrink: 0 }}>
-                  {errored ? "✗" : done ? "✓" : active ? ">" : "·"}
+                  {item.error ? "✗" : item.done ? "✓" : isActive ? ">" : "·"}
                 </span>
-                <span style={{ flex: 1 }}>{label}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
                 <span style={{ fontSize: 11 }}>
-                  {errored
-                    ? "FAILED"
-                    : done
-                      ? "DONE"
-                      : active
-                        ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span className="blink">█</span></span>
-                        : "QUEUE"}
+                  {item.error ? "FAILED" : item.done ? "DONE" : isActive
+                    ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span className="blink">█</span></span>
+                    : "QUEUE"}
                 </span>
               </div>
-              {errored && errors[i] && (
+              {item.error && (
                 <div style={{ marginLeft: 26, fontSize: 10, color: "#f55", marginTop: 2, lineHeight: 1.4 }}>
-                  ERR: {errors[i]}
+                  ERR: {item.error}
                 </div>
               )}
             </div>
@@ -221,79 +224,49 @@ function RetroImageLoader({ count, errors }: { count: number; errors: (string | 
       </div>
 
       {/* Footer */}
-      <div style={{
-        display: "flex", justifyContent: "space-between",
-        fontSize: 10, color: "#555", letterSpacing: "0.1em",
-      }}>
-        <span>FLUX.1 DEV — ANTHROPIC × FAL.AI</span>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>
+        <span>RECRAFT V3 — ANTHROPIC × FAL.AI</span>
         <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
       </div>
     </div>
   );
 }
 
-// ─── Retro error screen (all 5 slides failed) ────────────────────────────────
-function RetroImageError({ errors, onRetry }: { errors: (string | null)[]; onRetry: () => void }) {
+// ─── Retro error screen ───────────────────────────────────────────────────────
+function RetroImageError({ items, onRetry }: { items: LoaderItem[]; onRetry: () => void }) {
+  const errored = items.filter((it) => !!it.error);
   return (
     <div style={{
       fontFamily: "'Courier New', Courier, monospace",
-      background: "#000",
-      color: "#f55",
-      border: "3px solid #f55",
-      borderRadius: 2,
-      padding: "32px 36px",
-      maxWidth: 520,
-      margin: "48px auto",
+      background: "#000", color: "#f55", border: "3px solid #f55",
+      borderRadius: 2, padding: "32px 36px", maxWidth: 520, margin: "48px auto",
     }}>
-      <div style={{
-        borderBottom: "1px solid #f55", paddingBottom: 10, marginBottom: 18,
-        display: "flex", justifyContent: "space-between", fontSize: 11,
-      }}>
+      <div style={{ borderBottom: "1px solid #f55", paddingBottom: 10, marginBottom: 18, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
         <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
         <span>RENDER ERROR</span>
         <span>EXIT CODE: 1</span>
       </div>
-
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
-          !! IMAGE GENERATION FAILED !!
-        </div>
-        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>
-          fal-ai/flux/dev could not render one or more slides.
-        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>!! IMAGE GENERATION FAILED !!</div>
+        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>fal-ai/recraft-v3 could not render the background images.</div>
       </div>
-
       <div style={{ borderTop: "1px solid #500", borderBottom: "1px solid #500", padding: "12px 0", marginBottom: 20 }}>
-        {SLIDE_LABELS.map((label, i) => errors[i] && (
+        {errored.map((item, i) => (
           <div key={i} style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 12, letterSpacing: "0.06em" }}>
-              <span style={{ marginRight: 10 }}>✗</span>{label}
+              <span style={{ marginRight: 10 }}>✗</span>{item.label}
             </div>
-            <div style={{ marginLeft: 22, fontSize: 10, color: "#c44", marginTop: 3, lineHeight: 1.5 }}>
-              {errors[i]}
-            </div>
+            <div style={{ marginLeft: 22, fontSize: 10, color: "#c44", marginTop: 3, lineHeight: 1.5 }}>{item.error}</div>
           </div>
         ))}
       </div>
-
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button
-          onClick={onRetry}
-          style={{
-            fontFamily: "'Courier New', Courier, monospace",
-            background: "#f55",
-            color: "#000",
-            border: "none",
-            padding: "8px 20px",
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            cursor: "pointer",
-          }}
-        >
-          [RETRY]
-        </button>
-        <span style={{ fontSize: 10, color: "#c44" }}>Check FAL_KEY env var · rate limits · API status</span>
+        <button onClick={onRetry} style={{
+          fontFamily: "'Courier New', Courier, monospace", background: "#f55", color: "#000",
+          border: "none", padding: "8px 20px", fontSize: 12, fontWeight: 700,
+          letterSpacing: "0.08em", cursor: "pointer",
+        }}>[RETRY]</button>
+        <span style={{ fontSize: 10, color: "#c44" }}>Check FAL_KEY · rate limits · fal.ai status</span>
       </div>
     </div>
   );
@@ -326,25 +299,23 @@ export default function CarouselView() {
     ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined, hookImageUrl: hookImageUrl ?? undefined, slideImages }
     : null;
 
+  // Only generate hook (0) and CTA (4) — content slides stay clean with infographics
+  const FAL_SLIDE_INDICES = [0, 4] as const;
+  const FAL_TOTAL = FAL_SLIDE_INDICES.length;
+
   function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
     setSlideImages([null, null, null, null, null]);
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
     setFalCount(0);
     const hook = currentContent.hooks[currentHookIndex];
-    const slides = currentContent.slides;
     let loaded = 0;
     let failed = 0;
-    [0, 1, 2, 3, 4].forEach((i) => {
+    FAL_SLIDE_INDICES.forEach((i) => {
       fetch('/api/carousel/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slideIndex: i,
-          topic: currentTopic,
-          hook,
-          slide: i >= 1 && i <= 3 ? slides[i - 1] : undefined,
-        }),
+        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook }),
       })
         .then((r) => r.json())
         .then(({ url, error: apiErr }) => {
@@ -352,19 +323,19 @@ export default function CarouselView() {
             setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
             loaded++;
             setFalCount(loaded);
-            if (loaded + failed === 5) setFalStatus("done");
+            if (loaded + failed === FAL_TOTAL) setFalStatus("done");
           } else {
             const msg = apiErr ?? "Image generation failed";
             setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
             failed++;
-            if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
+            if (loaded + failed === FAL_TOTAL) setFalStatus(loaded > 0 ? "done" : "failed");
           }
         })
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : "Network error";
           setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
           failed++;
-          if (loaded + failed === 5) setFalStatus(loaded > 0 ? "done" : "failed");
+          if (loaded + failed === FAL_TOTAL) setFalStatus(loaded > 0 ? "done" : "failed");
         });
     });
   }
@@ -462,8 +433,8 @@ export default function CarouselView() {
       {falStatus === "done" && "✓"}
       {falStatus === "failed" && "✗"}
       {" "}fal.ai
-      {falStatus === "loading" && ` ${falCount}/5`}
-      {falStatus === "done" && ` ${falCount}/5`}
+      {falStatus === "loading" && ` ${falCount}/2`}
+      {falStatus === "done" && ` ${falCount}/2`}
     </div>
   );
 
@@ -598,11 +569,17 @@ export default function CarouselView() {
             />
           )}
           {!loading && !error && step === 4 && falStatus === "loading" && (
-            <RetroImageLoader count={falCount} errors={falErrors} />
+            <RetroImageLoader items={[
+              { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
+              { label: "CTA SLIDE",  done: !!slideImages[4], error: falErrors[4] },
+            ]} />
           )}
           {!loading && !error && step === 4 && falStatus === "failed" && (
             <RetroImageError
-              errors={falErrors}
+              items={[
+                { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
+                { label: "CTA SLIDE",  done: !!slideImages[4], error: falErrors[4] },
+              ]}
               onRetry={() => content && generateSlideImages(topic, content, selectedHook)}
             />
           )}

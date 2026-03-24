@@ -1,8 +1,8 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit } from '@/lib/kv';
-import type { CarouselContentSlide, Hook } from '@/lib/types';
+import type { Hook } from '@/lib/types';
 
-export const maxDuration = 45; // seconds — flux/dev can take ~15-20s
+export const maxDuration = 60; // seconds — recraft-v3 can take ~20-30s
 
 export async function POST(req: Request) {
   const ip =
@@ -23,7 +23,6 @@ export async function POST(req: Request) {
     const slideIndex: number = Number(body.slideIndex);
     const topic: string = body.topic ?? '';
     const hook: Hook | undefined = body.hook;
-    const slide: CarouselContentSlide | undefined = body.slide;
 
     if (!topic.trim()) {
       return Response.json({ error: 'Topic required' }, { status: 400 });
@@ -32,16 +31,14 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
-    const prompt = buildPrompt(slideIndex, topic, hook, slide);
+    const prompt = buildPrompt(slideIndex, topic, hook);
 
-    const result = await fal.subscribe('fal-ai/flux/dev', {
+    const result = await fal.subscribe('fal-ai/recraft-v3', {
       input: {
         prompt,
-        image_size: { width: 1024, height: 1280 }, // 4:5 — closest to 1080×1350, multiples of 64
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
+        image_size: { width: 1024, height: 1280 }, // portrait 4:5 (multiples of 32 ✓)
+        style: 'realistic_image',
         num_images: 1,
-        enable_safety_checker: true,
       },
       logs: false,
     });
@@ -51,7 +48,8 @@ export async function POST(req: Request) {
 
     return Response.json({ url });
   } catch (err) {
-    console.error('[api/carousel/generate-image]', err);
-    return Response.json({ error: 'Image generation failed' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[api/carousel/generate-image]', msg);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }
