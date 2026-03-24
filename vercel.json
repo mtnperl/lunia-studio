@@ -1,7 +1,19 @@
 {
   "functions": {
     "src/app/api/carousel/export/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
+    },
+    "src/app/api/carousel/generate/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/carousel/regenerate-slide/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/carousel/regenerate-graphic/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/generate/route.ts": {
+      "maxDuration": 60
     }
   }
 }
