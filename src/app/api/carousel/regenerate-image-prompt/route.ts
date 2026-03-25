@@ -25,22 +25,24 @@ export async function POST(req: Request) {
       return Response.json({ error: "topic or headline required" }, { status: 400 });
     }
 
-    const systemPrompt = `You are a top-tier ad creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
+    const systemPrompt = `You are a top-tier visual creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
 
-Your output is a single Recraft V3 prompt for a hook slide background image. The goal: make someone STOP SCROLLING. Think premium lifestyle brand ad, not science textbook. Show aspiration or tension — never literally illustrate the ingredient or topic.
+Your output is a single Recraft V3 prompt for a hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in the headline. Pull the most striking noun or verb and build a cinematic scene around it. The image should feel like a still frame of the hook text happening.
+
+Examples of hook-to-image translation:
+- "ADENOSINE IS DROWNING YOUR BRAIN" → dark water engulfing objects sinking into deep blue, air bubbles rising, cold undercurrent light
+- "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH" → single light switch on a dark wall, the moment it flips off, deep shadow with one cold highlight
+- "YOUR CORTISOL IS SPIKING" → sharp crystal or spire formation breaking through a dark surface, jagged edges catching light, tension
+- "YOU'RE WIRED BUT TIRED" → tangled copper wire in warm shallow-focus light, frayed at the end, quiet exhaustion
 
 Rules (hard):
-- Show the OUTCOME (what life looks like when the problem is solved) or the TENSION (how the problem feels). Never show the molecule or ingredient.
-- Aspirational lifestyle scenes: luxury environments, morning light, beautiful objects, emotional moments without people
+- ILLUSTRATE THE HOOK TEXT, not the topic or ingredient
 - No people, no faces, no text, no logos
-- Ultra-sharp, editorial, premium lifestyle/wellness brand aesthetic
+- Ultra-sharp, editorial, premium brand aesthetic
 - Max 55 words
 - Output ONLY the prompt text — no quotes, no explanation, no JSON
 
-Structure: [aspirational lifestyle scene or tension-filled environment] + [lighting that creates desire or unease] + [camera/composition] + [colour palette] + [emotional mood]
-
-Good example for a magnesium/sleep hook: "Pristine white linen sheets glowing in warm 8am light, minimalist nightstand with dimmed amber lamp and a glass of water, soft golden bokeh in background, luxury hotel suite stillness, aspirational lifestyle photography, shallow depth of field"
-Bad example (NEVER do this): "Extreme macro of magnesium glycinate powder dissolving in dark water, pharmaceutical photography"`;
+Structure: [literal visual metaphor from hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood]`;
 
     const userMessage = [
       `Hook headline: "${headline}"`,

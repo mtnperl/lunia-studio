@@ -108,11 +108,15 @@ Brand rules (follow exactly):
   {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"},{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — grid of icon+label pairs, 2-9 items, use for lists of benefits/features
   {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER,"color":"optional hex"},{"label":"NAME","value":NUMBER}],"centerLabel":"optional total or key stat"}}  — donut/pie chart for 2-5 part breakdown
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
-- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. Think like a top-tier ad creative director shooting for a premium lifestyle brand — NOT a science photo, NOT a product shot, NOT a macro of an ingredient. The visual must make someone STOP SCROLLING. Show the ASPIRATION (what life looks like when the problem is solved) or the RAW TENSION of the problem. Evoke emotion and desire, never literally illustrate the topic.
-  Structure: [specific aspirational lifestyle scene or tension-filled environment] + [lighting that creates longing or unease] + [camera/composition] + [colour palette] + [emotional mood].
-  Hard rules: no people, no faces, no text, no logos • ultra-sharp, editorial, premium lifestyle/wellness brand aesthetic • max 55 words.
-  Good example for hook "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH / Most adults are deficient and don't know it": "Pristine white linen sheets glowing in warm 8am light, minimalist nightstand with dimmed amber lamp and a glass of water, soft golden bokeh in background, luxury hotel suite stillness, aspirational lifestyle photography, shallow depth of field — the visual promise of a perfect night's sleep"
-  Bad example (never do this — too literal, too scientific): "Extreme macro of magnesium glycinate powder dissolving in dark water, navy background, pharmaceutical photography"`;
+- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
+  Examples of hook-to-image translation:
+  • "ADENOSINE IS DROWNING YOUR BRAIN" → dark water engulfing, objects sinking into deep blue, air bubbles rising from below, cold undercurrent light
+  • "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH" → single light switch on a dark wall, the moment before it flips off, deep shadow, one cold highlight
+  • "YOUR CORTISOL IS SPIKING" → sharp crystal formation breaking through dark water surface, jagged edges catching light, tension and rupture
+  • "YOU'RE WIRED BUT TIRED" → tangled copper electrical wire in warm shallow-focus light, frayed at the end, quiet exhaustion
+  Structure: [literal visual from the hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood].
+  Hard rules: no people, no faces, no text, no logos • ultra-sharp, editorial, premium brand aesthetic • max 55 words • DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
+  Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>

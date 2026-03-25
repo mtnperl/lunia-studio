@@ -54,12 +54,16 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
 
   const topicTooLong = topic.length > 500;
 
+  // In the carousel builder, only show unused subjects — used ones are hidden to avoid repetition.
+  // The full list (including used) is visible in the Subjects tab.
   const filteredSubjects = subjects.filter((s) => {
+    if (s.usedAt) return false; // hide used subjects in the builder
     const matchCat = category === "All" || s.category === category;
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
+  const unusedCount = subjects.filter((s) => !s.usedAt).length;
   const usedCount = subjects.filter((s) => s.usedAt).length;
 
   function handleNext() {
@@ -137,7 +141,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
           </div>
 
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-            {loadingSubjects ? "Loading..." : `${filteredSubjects.length} subjects · ${usedCount} used`}
+            {loadingSubjects ? "Loading..." : `${filteredSubjects.length} of ${unusedCount} unused subjects${usedCount > 0 ? ` · ${usedCount} used (hidden)` : ""}`}
           </div>
 
           {/* Subject list */}

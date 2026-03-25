@@ -126,6 +126,8 @@ type Props = {
   id?: string;
   backgroundImage?: string | null;  // fal.ai generated background, rendered at low opacity
   shimmer?: boolean;                // show shimmer while fal image is loading
+  logoScale?: number;
+  arrowScale?: number;
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -140,6 +142,8 @@ export default function ContentSlide({
   id,
   backgroundImage,
   shimmer = false,
+  logoScale = 1,
+  arrowScale = 1,
 }: Props) {
   // Determine rendering path
   const graphicSpec = parseGraphicSpec(graphic);
@@ -181,8 +185,8 @@ export default function ContentSlide({
         }} />
       ) : null}
 
-      <ArrowIcons color={arrowColor} />
-      <LuniaLogo variant="dark" />
+      <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
+      <LuniaLogo variant="dark" sizeScale={logoScale} />
 
       {/* Flex column layout — headline / body+citation / graphic */}
       <div style={{
