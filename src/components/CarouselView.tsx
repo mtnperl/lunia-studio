@@ -468,7 +468,7 @@ export default function CarouselView() {
           </button>
 
           <button
-            onClick={() => setView("builder")}
+            onClick={() => { setView("builder"); handleRestart(); }}
             style={{
               padding: "6px 14px", fontSize: 13, fontWeight: 600,
               background: view === "builder" ? "var(--surface)" : "transparent",
