@@ -17,7 +17,7 @@ export function IconStat({ icon = '🧠', value = '23%', unit, label = 'INCREASE
   const valFontSize = value.length <= 4 ? 110 : value.length <= 6 ? 80 : 64;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360">
+    <svg width={936} height={360} viewBox="0 0 936 360" overflow="visible">
       {/* Icon */}
       <text x={468} y={100} textAnchor="middle"
         fontFamily="'Segoe UI Emoji', 'Apple Color Emoji', sans-serif" fontSize="80">

@@ -30,6 +30,7 @@ import { StackedBar } from '@/components/carousel/graphics/StackedBar';
 import { ProcessFlow } from '@/components/carousel/graphics/ProcessFlow';
 import { HeatGrid } from '@/components/carousel/graphics/HeatGrid';
 import { GraphicErrorBoundary } from '@/components/carousel/graphics/GraphicErrorBoundary';
+import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 
@@ -191,8 +192,21 @@ export default function ContentSlide({
   // Body font size: smaller when a graphic occupies the graphic zone
   const bodyFontSize = hasInlineGraphic ? 27 : (hasLegacyGraphic ? 30 : 34);
 
+  const decoAccent = brandStyle?.accent ?? '#1e7a8a';
+
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+      {/* Dark background decoration — mirrors hook slide pattern at low opacity for continuity */}
+      {darkBackground && (
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.18, pointerEvents: 'none' }}>
+          <HookDecoration
+            type={getHookDecorationType(headline)}
+            color="#ffffff"
+            accent={decoAccent}
+          />
+        </div>
+      )}
+
       {/* fal.ai background image — 15% opacity, purely atmospheric behind all content */}
       {backgroundImage ? (
         <div style={{
@@ -257,7 +271,7 @@ export default function ContentSlide({
             fontFamily: 'Cormorant Garamond, Lora, serif',
             fontWeight: 400,
             fontStyle: 'italic',
-            fontSize: 17,
+            fontSize: 21,
             color: citationColor,
             lineHeight: 1.4,
           }}>

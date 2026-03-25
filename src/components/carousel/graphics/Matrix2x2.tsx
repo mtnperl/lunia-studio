@@ -49,7 +49,7 @@ export function Matrix2x2({
   const cellW = 376, cellH = 160;
 
   return (
-    <svg width={936} height={420} viewBox="0 0 936 420">
+    <svg width={936} height={420} viewBox="0 0 936 420" overflow="visible">
       {/* Axis lines */}
       <line x1={80} y1={390} x2={860} y2={390} stroke={`${bodyColor}30`} strokeWidth={1.5} />
       <line x1={80} y1={30} x2={80} y2={390} stroke={`${bodyColor}30`} strokeWidth={1.5} />

@@ -31,7 +31,7 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
   const fillLarge = pct * SWEEP > 180 ? 1 : 0;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {/* Track */}
       <path
         d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 1 1 ${te.x.toFixed(1)} ${te.y.toFixed(1)}`}

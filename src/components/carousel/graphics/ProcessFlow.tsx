@@ -28,7 +28,7 @@ export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
   const cy = 120;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {list.map((step, i) => {
         const boxX = 10 + i * (boxW + arrowW);
         const boxCx = boxX + boxW / 2;

@@ -28,7 +28,7 @@ export function StackedBar({ segments = DEFAULTS, title, brandStyle }: Props) {
   let cumX = barX;
 
   return (
-    <svg width={936} height={240} viewBox="0 0 936 240">
+    <svg width={936} height={240} viewBox="0 0 936 240" overflow="visible">
       {title && (
         <text x={468} y={40} textAnchor="middle"
           fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"

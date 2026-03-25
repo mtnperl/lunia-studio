@@ -22,7 +22,7 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
   const list = stages.slice(0, n);
   const W = 936, H = 360;
   const stageH = (H - 20) / n;
-  const maxW = 820, minW = maxW * 0.3;
+  const maxW = 740, minW = maxW * 0.3;
   const cx = W / 2;
 
   // Compute widths from percent or linear fallback
@@ -33,7 +33,7 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
   const opacities = [1, 0.82, 0.64, 0.46, 0.32];
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {list.map((stage, i) => {
         const topW = widths[i];
         const botW = i < n - 1 ? widths[i + 1] : widths[i] * 0.75;

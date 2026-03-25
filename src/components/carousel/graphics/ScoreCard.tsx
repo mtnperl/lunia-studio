@@ -16,7 +16,7 @@ export function ScoreCard({ score = 'A+', label = 'SLEEP QUALITY RATING', sublab
   const fontSize = score.length <= 2 ? 180 : score.length <= 4 ? 120 : 80;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360">
+    <svg width={936} height={360} viewBox="0 0 936 360" overflow="visible">
       {/* Corner accent lines */}
       <line x1={240} y1={24} x2={300} y2={24} stroke={accent} strokeWidth={3} />
       <line x1={240} y1={24} x2={240} y2={64} stroke={accent} strokeWidth={3} />

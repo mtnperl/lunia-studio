@@ -39,7 +39,7 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const textColor = (v: number) => v >= 2 ? '#fff' : bodyColor;
 
   return (
-    <svg width={936} height={title ? 300 : 260} viewBox={`0 0 936 ${title ? 300 : 260}`}>
+    <svg width={936} height={title ? 300 : 260} viewBox={`0 0 936 ${title ? 300 : 260}`} overflow="visible">
       {title && (
         <text x={468} y={34} textAnchor="middle"
           fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"

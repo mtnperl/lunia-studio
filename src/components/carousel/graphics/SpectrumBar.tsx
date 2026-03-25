@@ -24,7 +24,7 @@ export function SpectrumBar({ min = 0, max = 12, from = 7, to = 9, label = 'OPTI
   const fullLabel = unit ? `${label} (${unit})` : label;
 
   return (
-    <svg width={936} height={240} viewBox="0 0 936 240">
+    <svg width={936} height={240} viewBox="0 0 936 240" overflow="visible">
       {/* Track background */}
       <rect x={trackX} y={trackY} width={trackW} height={trackH} rx={rx} fill={`${bodyColor}12`} />
       {/* Highlight zone */}

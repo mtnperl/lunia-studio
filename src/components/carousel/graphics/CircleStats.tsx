@@ -21,7 +21,7 @@ export function CircleStats({ items = DEFAULTS, brandStyle }: Props) {
   const W = 936, H = 320, cy = 150, r = 78;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {items.slice(0, n).map((item, i) => {
         const cxI = (W / (n + 1)) * (i + 1);
         return (

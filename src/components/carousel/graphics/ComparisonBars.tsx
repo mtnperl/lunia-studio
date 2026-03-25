@@ -46,7 +46,7 @@ export function ComparisonBars({
           <g key={i}>
             {/* Label */}
             <text
-              x={0} y={y + barHeight / 2 + 6}
+              x={10} y={y + barHeight / 2 + 6}
               fontFamily="Outfit, sans-serif" fontSize="24" fill={bodyColor}
             >
               {item.label}

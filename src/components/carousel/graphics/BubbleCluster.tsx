@@ -38,7 +38,7 @@ export function BubbleCluster({ items = DEFAULTS, brandStyle }: Props) {
   const radMap = RADII[n];
 
   return (
-    <svg width={936} height={340} viewBox="0 0 936 340">
+    <svg width={936} height={340} viewBox="0 0 936 340" overflow="visible">
       {list.map((item, i) => {
         const [cx, cy] = pos[i];
         const size = (item.size ?? 2) as 1|2|3;
