@@ -21,9 +21,11 @@ interface LuniaLogoProps {
   /** 'light' = white 50% opacity (dark hook/CTA slides).
    *  'dark'  = deep navy 50% opacity (light content slides). */
   variant?: 'light' | 'dark';
+  /** Multiplier on the base 100px width. Default 1.0. */
+  sizeScale?: number;
 }
 
-export default function LuniaLogo({ variant = 'light' }: LuniaLogoProps) {
+export default function LuniaLogo({ variant = 'light', sizeScale = 1 }: LuniaLogoProps) {
   const r    = 44;
   const vGap = r * 2;  // 88 — vertically-stacked tips touch (vGap = 2r)
 
@@ -48,10 +50,14 @@ export default function LuniaLogo({ variant = 'light' }: LuniaLogoProps) {
   const vbW = 352;  // 308 + r = 352 (right tip fits)
   const vbH = 264;  // y3 + r = 264
 
+  const baseW = 100;
+  const w = Math.round(baseW * sizeScale);
+  const h = Math.round(w * vbH / vbW);
+
   return (
     <svg
-      width={100}
-      height={Math.round(100 * vbH / vbW)}
+      width={w}
+      height={h}
       viewBox={`0 0 ${vbW} ${vbH}`}
       style={{ position: 'absolute', bottom: 58, left: 60 }}
     >

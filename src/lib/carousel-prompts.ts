@@ -108,11 +108,11 @@ Brand rules (follow exactly):
   {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"},{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — grid of icon+label pairs, 2-9 items, use for lists of benefits/features
   {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER,"color":"optional hex"},{"label":"NAME","value":NUMBER}],"centerLabel":"optional total or key stat"}}  — donut/pie chart for 2-5 part breakdown
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
-- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. Write a specific, cinematic scene that emotionally complements hooks[0]'s headline and subline — NOT a generic illustration of the topic, but the exact visual a creative director would commission for that specific hook.
-  Structure: [precise subject/material] + [action or state] + [lighting description] + [camera/composition] + [colour palette] + [mood].
-  Hard rules: dark background always (midnight navy, black, or deep charcoal) • no people, no faces, no text, no logos • ultra-sharp, editorial, premium wellness brand • name the exact material/object (e.g. "magnesium glycinate crystals", not "minerals") • max 55 words.
-  Good example for hook "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH / Most adults are deficient and don't know it": "Extreme macro of magnesium glycinate powder dissolving in still dark water, single cold shaft of light, crystal clarity, deep navy background, editorial pharmaceutical photography, shallow depth of field, ultra-sharp edges, absolute stillness"
-  Bad example (too generic): "dark moody wellness photo, abstract background, premium brand"`;
+- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. Think like a top-tier ad creative director shooting for a premium lifestyle brand — NOT a science photo, NOT a product shot, NOT a macro of an ingredient. The visual must make someone STOP SCROLLING. Show the ASPIRATION (what life looks like when the problem is solved) or the RAW TENSION of the problem. Evoke emotion and desire, never literally illustrate the topic.
+  Structure: [specific aspirational lifestyle scene or tension-filled environment] + [lighting that creates longing or unease] + [camera/composition] + [colour palette] + [emotional mood].
+  Hard rules: no people, no faces, no text, no logos • ultra-sharp, editorial, premium lifestyle/wellness brand aesthetic • max 55 words.
+  Good example for hook "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH / Most adults are deficient and don't know it": "Pristine white linen sheets glowing in warm 8am light, minimalist nightstand with dimmed amber lamp and a glass of water, soft golden bokeh in background, luxury hotel suite stillness, aspirational lifestyle photography, shallow depth of field — the visual promise of a perfect night's sleep"
+  Bad example (never do this — too literal, too scientific): "Extreme macro of magnesium glycinate powder dissolving in dark water, navy background, pharmaceutical photography"`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>

@@ -25,21 +25,22 @@ export async function POST(req: Request) {
       return Response.json({ error: "topic or headline required" }, { status: 400 });
     }
 
-    const systemPrompt = `You are a creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
+    const systemPrompt = `You are a top-tier ad creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
 
-Your output is a single Recraft V3 prompt for a hook slide background image — cinematic, editorial, premium wellness brand.
+Your output is a single Recraft V3 prompt for a hook slide background image. The goal: make someone STOP SCROLLING. Think premium lifestyle brand ad, not science textbook. Show aspiration or tension — never literally illustrate the ingredient or topic.
 
 Rules (hard):
-- Dark background always: midnight navy, black, or deep charcoal
+- Show the OUTCOME (what life looks like when the problem is solved) or the TENSION (how the problem feels). Never show the molecule or ingredient.
+- Aspirational lifestyle scenes: luxury environments, morning light, beautiful objects, emotional moments without people
 - No people, no faces, no text, no logos
-- Ultra-sharp, editorial, premium wellness brand aesthetic
-- Name the exact material or object (e.g. "magnesium glycinate crystals", not "minerals")
+- Ultra-sharp, editorial, premium lifestyle/wellness brand aesthetic
 - Max 55 words
 - Output ONLY the prompt text — no quotes, no explanation, no JSON
 
-Structure: [precise subject/material] + [action or state] + [lighting description] + [camera/composition] + [colour palette] + [mood]
+Structure: [aspirational lifestyle scene or tension-filled environment] + [lighting that creates desire or unease] + [camera/composition] + [colour palette] + [emotional mood]
 
-Good example: "Extreme macro of magnesium glycinate powder dissolving in still dark water, single cold shaft of light, crystal clarity, deep navy background, editorial pharmaceutical photography, shallow depth of field, ultra-sharp edges, absolute stillness"`;
+Good example for a magnesium/sleep hook: "Pristine white linen sheets glowing in warm 8am light, minimalist nightstand with dimmed amber lamp and a glass of water, soft golden bokeh in background, luxury hotel suite stillness, aspirational lifestyle photography, shallow depth of field"
+Bad example (NEVER do this): "Extreme macro of magnesium glycinate powder dissolving in dark water, pharmaceutical photography"`;
 
     const userMessage = [
       `Hook headline: "${headline}"`,

@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Subject } from "@/lib/types";
 
+const CONFIRM_DELETE_MS = 2000; // hold for 2s to confirm
+
 const CATEGORIES = [
   "All",
   "Sleep Science",
@@ -23,6 +25,7 @@ export default function SubjectsView() {
   const [category, setCategory] = useState("All");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function loadSubjects() {
@@ -56,6 +59,12 @@ export default function SubjectsView() {
   function startEdit(s: Subject) {
     setEditingId(s.id);
     setEditText(s.text);
+  }
+
+  async function handleDelete(id: string) {
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    setDeletingId(null);
+    await fetch(`/api/subjects/${id}`, { method: "DELETE" });
   }
 
   async function commitEdit(id: string) {
@@ -146,7 +155,7 @@ export default function SubjectsView() {
           {/* Table header */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "36px 1fr 180px 80px",
+            gridTemplateColumns: "36px 1fr 180px 80px 52px",
             padding: "10px 16px",
             background: "var(--surface)",
             borderBottom: "1px solid var(--border)",
@@ -160,6 +169,7 @@ export default function SubjectsView() {
             <div>Subject</div>
             <div>Category</div>
             <div>Status</div>
+            <div></div>
           </div>
 
           {filtered.length === 0 && (
@@ -194,7 +204,7 @@ export default function SubjectsView() {
                 key={s.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "36px 1fr 180px 80px",
+                  gridTemplateColumns: "36px 1fr 180px 80px 52px",
                   padding: "10px 16px",
                   borderBottom: "1px solid var(--border)",
                   background: used ? "rgba(34,197,94,0.06)" : "var(--bg)",
@@ -261,6 +271,42 @@ export default function SubjectsView() {
                     }}>Used</span>
                   ) : (
                     <span style={{ color: "var(--subtle)", fontSize: 12 }}>—</span>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  {deletingId === s.id ? (
+                    <button
+                      onClick={() => handleDelete(s.id)}
+                      onBlur={() => setDeletingId(null)}
+                      autoFocus
+                      style={{
+                        padding: "2px 6px", fontSize: 10, fontWeight: 700,
+                        background: "#dc2626", color: "#fff",
+                        border: "none", borderRadius: 4,
+                        cursor: "pointer", fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setDeletingId(s.id)}
+                      title="Delete subject"
+                      style={{
+                        padding: "2px 6px", fontSize: 13, fontWeight: 700,
+                        background: "none", color: "var(--subtle)",
+                        border: "none", borderRadius: 4,
+                        cursor: "pointer", fontFamily: "inherit",
+                        lineHeight: 1,
+                        opacity: 0.5,
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; (e.currentTarget as HTMLButtonElement).style.color = "#dc2626"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.5"; (e.currentTarget as HTMLButtonElement).style.color = "var(--subtle)"; }}
+                    >
+                      ×
+                    </button>
                   )}
                 </div>
               </div>

@@ -43,30 +43,31 @@ export function buildPrompt(
 }
 
 // Derive a visual scene from the topic string for the hook slide
+// Goal: aspirational lifestyle ad imagery, not literal ingredient shots
 function deriveHookSubject(topic: string): string {
   const lower = topic.toLowerCase();
 
   if (/cortisol|stress|anxiety|nervous/.test(lower))
-    return 'Close-up of still dark water at night, single ripple, moonlight reflection, deep shadows';
+    return 'Empty leather journal open on a minimalist wooden desk, afternoon light casting long shadows, pen resting across the page, half-drunk glass of water, the stillness after the storm, warm neutrals';
   if (/sleep|melatonin|circadian|rem|deep sleep/.test(lower))
-    return 'Dark bedroom scene, single shaft of moonlight through curtains, clean white bedding, absolute stillness';
+    return 'Pristine white linen sheets glowing in warm 8am light, minimalist nightstand with dimmed amber lamp, soft golden bokeh in background, luxury hotel suite stillness, aspirational morning calm';
   if (/magnesium|glycinate|mineral/.test(lower))
-    return 'Macro photography of raw mineral crystals, dark slate background, soft side-lighting, crystalline detail';
+    return 'Warm morning bathroom counter, elegant amber glass bottle and a crystal-clear glass of water, soft diffused light through frosted window, premium spa aesthetic, serene and aspirational';
   if (/theanine|botanical|herb|plant/.test(lower))
-    return 'Botanical macro photography, dark green leaves with water droplets, black background, moody studio lighting';
+    return 'Lush green tea garden at golden hour, soft mist rising, ancient stone path leading into the trees, cinematic travel photography, warmth and tranquility, nature as luxury';
   if (/supplement|capsule|ingredient/.test(lower))
-    return 'Overhead flat lay of dark botanical ingredients on matte black surface, dramatic side-lighting';
+    return 'Minimalist white marble bathroom shelf with a single premium glass bottle, morning light catching the amber liquid inside, luxury medicine cabinet aesthetic, clean and aspirational';
   if (/gut|digestion|microbiome/.test(lower))
-    return 'Abstract organic biological macro forms, dark blue-black background, bioluminescent-style glow';
+    return 'Vibrant farmers market spread — deep greens, rich purples, fermented jars catching golden light, abundance and vitality, editorial food photography, warm earthy tones';
   if (/longevity|aging|lifespan/.test(lower))
-    return 'Ancient dark wood grain texture, deep forest scene at night, atmospheric fog, timeless stillness';
+    return 'Serene 80-year-old hands tending a thriving garden at sunrise, dew on the leaves, warm light, cinematic depth of field — the promise of decades ahead, timeless vitality';
   if (/routine|ritual|habit|wind.?down/.test(lower))
-    return 'Minimalist dark nightstand scene, single lit candle, soft warm glow, absolute calm';
+    return 'Luxury nightstand vignette: a lit candle, open book face-down, amber glass of water, warm low light, crisp white sheets in the background, the aesthetic of the perfect night';
   if (/hormone|testosterone|estrogen/.test(lower))
-    return 'Abstract dark molecular structure, glowing nodes on black background, scientific editorial';
+    return 'Athlete\'s hands gripping a clean white towel post-workout, sweat on warm skin, soft side lighting, cinematic crop, quiet confidence and physical vitality, warm neutral tones';
   if (/recovery|performance|muscle/.test(lower))
-    return 'Dark athletic scene, motion blur of still water, cool blue tones, strength and recovery';
+    return 'Cold plunge pool at dawn, steam rising off still water, luxury wellness resort aesthetic, blue and silver tones, the visual promise of recovery and peak performance';
 
   // Generic wellness / Lunia fallback
-  return `Abstract dark editorial scene evoking "${topic}", deep shadows, premium wellness brand aesthetic`;
+  return `Aspirational premium lifestyle scene evoking the feeling of "${topic}", warm editorial light, luxury wellness aesthetic, shallow depth of field`;
 }

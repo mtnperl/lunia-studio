@@ -155,8 +155,8 @@ export async function getSubjects(): Promise<Subject[]> {
   try {
     const { DEFAULT_SUBJECTS } = await import("./default-subjects");
     const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
-    // Reseed if empty OR if stored count is less than the canonical defaults
-    if (stored && stored.length >= DEFAULT_SUBJECTS.length) return stored;
+    // Only auto-seed when there's nothing stored (first run). Respect manual deletes.
+    if (stored && stored.length > 0) return stored;
     // Preserve usedAt flags when reseeding
     const usedMap = new Map((stored ?? []).map((s) => [s.text, s.usedAt]));
     const seeded = DEFAULT_SUBJECTS.map((s) => {
@@ -192,6 +192,12 @@ export async function markSubjectUsed(id: string): Promise<void> {
     all[idx] = { ...all[idx], usedAt: new Date().toISOString() };
     await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
   }
+}
+
+export async function deleteSubject(id: string): Promise<void> {
+  const all = await getSubjects();
+  const filtered = all.filter((s) => s.id !== id);
+  await redis.set(SUBJECTS_KEY, filtered, { ex: TTL_SECONDS });
 }
 
 // ─── Carousel Templates ───────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { updateSubject, markSubjectUsed } from "@/lib/kv";
+import { updateSubject, markSubjectUsed, deleteSubject } from "@/lib/kv";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -17,4 +17,10 @@ export async function PATCH(req: Request, { params }: Props) {
   }
 
   return Response.json({ error: "Invalid request" }, { status: 400 });
+}
+
+export async function DELETE(_req: Request, { params }: Props) {
+  const { id } = await params;
+  await deleteSubject(id);
+  return Response.json({ ok: true });
 }

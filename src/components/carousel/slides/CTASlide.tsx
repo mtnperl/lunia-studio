@@ -10,9 +10,10 @@ type Props = {
   brandStyle?: BrandStyle;
   backgroundImage?: string | null;  // fal.ai generated background
   shimmer?: boolean;                // show shimmer while loading
+  logoScale?: number;
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1 }: Props) {
   const parts = followLine.split("@lunia_life");
 
   const bg = brandStyle?.background ?? "#f0ece6";
@@ -39,7 +40,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <LuniaLogo variant="dark" />
+      <LuniaLogo variant="dark" sizeScale={logoScale} />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",

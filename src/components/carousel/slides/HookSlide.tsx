@@ -20,9 +20,12 @@ type Props = {
   backgroundImageUrl?: string;
   isFalImage?: boolean;  // true = fal.ai generated; use lighter overlay (more dramatic)
   shimmer?: boolean;     // true = show loading shimmer while fal image generates
+  showDecoration?: boolean;
+  logoScale?: number;
+  arrowScale?: number;
 };
 
-export default function HookSlide({ headline, subline, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false }: Props) {
+export default function HookSlide({ headline, subline, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1 }: Props) {
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
@@ -58,10 +61,10 @@ export default function HookSlide({ headline, subline, topic, scale = 1, id, bra
         }} />
       ) : null}
 
-      <ArrowIcons color={arrowColor} />
+      <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
 
       {/* Topic-matched decoration — replaces static WaveLines */}
-      <HookDecoration type={decorationType} color="#ffffff" accent={decoAccent} />
+      {showDecoration && <HookDecoration type={decorationType} color="#ffffff" accent={decoAccent} />}
 
       {/* Flex column content block — headline + subline stacked with padding tokens */}
       <div style={{
@@ -102,7 +105,7 @@ export default function HookSlide({ headline, subline, topic, scale = 1, id, bra
         </div>
       </div>
 
-      <LuniaLogo />
+      <LuniaLogo sizeScale={logoScale} />
     </SlideWrapper>
   );
 }

@@ -30,6 +30,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // Hook decoration / logo / arrow controls
+  const [showDecoration, setShowDecoration] = useState(true);
+  const [logoScale, setLogoScale] = useState(1);
+  const [arrowScale, setArrowScale] = useState(1);
+
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
   const [imageGuidelines, setImageGuidelines] = useState("");
@@ -219,22 +224,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const slideNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
-      isFalImage={!!imgs[0]} shimmer={imgs[0] === null} />,
+      isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
-      isFalImage={!!imgs[0]} />,
+      isFalImage={!!imgs[0]}
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -297,6 +304,53 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           <button onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#991b1b", padding: "0 4px", fontFamily: "inherit" }}>×</button>
         </div>
       )}
+
+      {/* Slide controls toolbar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+        {/* Logo size */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Logo</span>
+          {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
+            const labels = ["S", "M", "L", "XL"];
+            return (
+              <button key={s} onClick={() => setLogoScale(s)} style={{
+                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                background: logoScale === s ? "var(--text)" : "var(--surface)",
+                color: logoScale === s ? "var(--bg)" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 5,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>{labels[idx]}</button>
+            );
+          })}
+        </div>
+        {/* Arrow size */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Arrows</span>
+          {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
+            const labels = ["S", "M", "L", "XL"];
+            return (
+              <button key={s} onClick={() => setArrowScale(s)} style={{
+                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                background: arrowScale === s ? "var(--text)" : "var(--surface)",
+                color: arrowScale === s ? "var(--bg)" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 5,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>{labels[idx]}</button>
+            );
+          })}
+        </div>
+        {/* Decoration toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Hook deco</span>
+          <button onClick={() => setShowDecoration((v) => !v)} style={{
+            padding: "3px 10px", fontSize: 11, fontWeight: 700,
+            background: showDecoration ? "var(--text)" : "var(--surface)",
+            color: showDecoration ? "var(--bg)" : "var(--muted)",
+            border: "1px solid var(--border)", borderRadius: 5,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>{showDecoration ? "On" : "Off"}</button>
+        </div>
+      </div>
 
       {/* Slide strip */}
       <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>

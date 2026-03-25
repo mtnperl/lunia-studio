@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { nanoid } from "nanoid";
-import { CarouselContent, HookTone } from "@/lib/types";
+import { CarouselContent, HookTone, Subject } from "@/lib/types";
 
 type QueueItem = {
   id: string;
@@ -51,6 +51,21 @@ export default function BatchView() {
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjectSearch, setSubjectSearch] = useState("");
+  const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/subjects").then((r) => r.json()).then((d) => setSubjects(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
+  function addSubjectToTopics(text: string) {
+    setTopicsText((prev) => {
+      const lines = prev.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (lines.includes(text)) return prev;
+      return lines.length > 0 ? prev.trimEnd() + "\n" + text : text;
+    });
+  }
 
   function updateItem(id: string, patch: Partial<QueueItem>) {
     setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -204,9 +219,80 @@ export default function BatchView() {
             lineHeight: 1.6,
           }}
         />
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-          {topics.length > 0 ? `${Math.min(topics.length, 10)} topic${topics.length !== 1 ? "s" : ""} queued${topics.length > 10 ? " (max 10)" : ""}` : "No topics entered"}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            {topics.length > 0 ? `${Math.min(topics.length, 10)} topic${topics.length !== 1 ? "s" : ""} queued${topics.length > 10 ? " (max 10)" : ""}` : "No topics entered"}
+          </div>
+          {subjects.length > 0 && (
+            <button
+              onClick={() => setSubjectPickerOpen((v) => !v)}
+              style={{
+                fontSize: 12, fontWeight: 600,
+                background: subjectPickerOpen ? "rgba(30,122,138,0.1)" : "var(--surface)",
+                color: subjectPickerOpen ? "#1e7a8a" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 6,
+                padding: "4px 10px", cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              {subjectPickerOpen ? "▲ Hide subjects" : "▼ Pick from subjects"}
+            </button>
+          )}
         </div>
+
+        {/* Subject picker */}
+        {subjectPickerOpen && (
+          <div style={{
+            marginTop: 10, border: "1px solid var(--border)", borderRadius: 8,
+            background: "var(--surface)", overflow: "hidden",
+          }}>
+            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)" }}>
+              <input
+                type="text"
+                value={subjectSearch}
+                onChange={(e) => setSubjectSearch(e.target.value)}
+                placeholder="Search subjects..."
+                style={{
+                  width: "100%", padding: "5px 8px", fontSize: 12,
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {subjects
+                .filter((s) => !s.usedAt && s.text.toLowerCase().includes(subjectSearch.toLowerCase()))
+                .slice(0, 60)
+                .map((s) => {
+                  const alreadyAdded = topicsText.split("\n").map((l) => l.trim()).includes(s.text);
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => !alreadyAdded && addSubjectToTopics(s.text)}
+                      style={{
+                        padding: "7px 12px",
+                        fontSize: 12,
+                        borderBottom: "1px solid var(--border)",
+                        cursor: alreadyAdded ? "default" : "pointer",
+                        background: alreadyAdded ? "rgba(30,122,138,0.06)" : "transparent",
+                        color: alreadyAdded ? "#1e7a8a" : "var(--text)",
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                        transition: "background 0.1s",
+                      }}
+                      onMouseEnter={(e) => { if (!alreadyAdded) (e.currentTarget as HTMLDivElement).style.background = "var(--bg)"; }}
+                      onMouseLeave={(e) => { if (!alreadyAdded) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+                    >
+                      <span>{s.text}</span>
+                      {alreadyAdded
+                        ? <span style={{ fontSize: 10, color: "#1e7a8a", fontWeight: 700 }}>Added</span>
+                        : <span style={{ fontSize: 11, color: "var(--subtle)" }}>+ Add</span>
+                      }
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Hook tone selector */}
