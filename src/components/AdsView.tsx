@@ -307,7 +307,7 @@ export default function AdsView() {
                     key={a}
                     onClick={() => setAngle(angle === a ? "" : a)}
                     style={{
-                      fontSize: 12, fontWeight: 500, padding: "4px 10px",
+                      fontSize: 12, fontWeight: 500, padding: "10px 14px", minHeight: 44,
                       background: angle === a ? "var(--accent-dim)" : "var(--surface)",
                       color: angle === a ? "var(--accent)" : "var(--muted)",
                       border: `1px solid ${angle === a ? "var(--accent-mid)" : "var(--border)"}`,
@@ -347,7 +347,7 @@ export default function AdsView() {
                     key={e}
                     onClick={() => setEmotion(emotion === e ? "" : e)}
                     style={{
-                      fontSize: 12, fontWeight: 500, padding: "4px 10px",
+                      fontSize: 12, fontWeight: 500, padding: "10px 14px", minHeight: 44,
                       background: emotion === e ? "var(--accent-dim)" : "var(--surface)",
                       color: emotion === e ? "var(--accent)" : "var(--muted)",
                       border: `1px solid ${emotion === e ? "var(--accent-mid)" : "var(--border)"}`,
@@ -476,7 +476,7 @@ export default function AdsView() {
                       key={c}
                       onClick={() => setCta(c)}
                       style={{
-                        fontSize: 12, fontWeight: 500, padding: "5px 12px",
+                        fontSize: 12, fontWeight: 500, padding: "10px 14px", minHeight: 44,
                         background: cta === c ? "var(--accent-dim)" : "var(--surface)",
                         color: cta === c ? "var(--accent)" : "var(--muted)",
                         border: `1px solid ${cta === c ? "var(--accent-mid)" : "var(--border)"}`,
