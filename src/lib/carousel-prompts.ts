@@ -135,14 +135,14 @@ Brand rules (follow exactly):
 - Headline: uppercase, max 8 words
 - graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
 
-export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string) =>
+export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, currentComponent?: string) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
 
 Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
-
-Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. Use a DIFFERENT component than the current one — the goal is variety. Available components (use REAL numbers/facts from the body, never invent):
+${currentComponent ? `Current component (DO NOT use this — pick a different one): "${currentComponent}"` : ''}
+Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. MANDATORY: you MUST use a different component type than the current one above. Available components (use REAL numbers/facts from the body, never invent):
 
 {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER}],"unit":"optional unit"}}

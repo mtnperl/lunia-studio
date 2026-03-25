@@ -158,7 +158,7 @@ export default function ContentSlide({
   const hasInlineGraphic = hasGraphicSpec || hasSvg;            // shown inside flex column
 
   // Colors — dark mode overrides when darkBackground=true
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#0d2137') : (brandStyle?.background ?? '#f0ece6');
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? '#f0ece6');
   const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? '#1e7a8a');
   const bodyColor = darkBackground ? 'rgba(255,255,255,0.88)' : (brandStyle?.body ?? '#1a2535');
   const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
