@@ -217,8 +217,8 @@ export default function Page() {
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             style={{
               background: "var(--surface-r)", border: "1px solid var(--border-strong)",
-              borderRadius: 6, cursor: "pointer",
-              width: 32, height: 20, padding: 0,
+              borderRadius: 8, cursor: "pointer",
+              width: 44, height: 26, padding: 0,
               display: "flex", alignItems: "center",
               position: "relative", flexShrink: 0,
               transition: "background 0.2s",
@@ -227,13 +227,13 @@ export default function Page() {
           >
             <span style={{
               position: "absolute",
-              left: theme === "light" ? 14 : 2,
-              width: 14, height: 14,
-              borderRadius: 4,
+              left: theme === "light" ? 20 : 3,
+              width: 20, height: 20,
+              borderRadius: 5,
               background: "var(--accent)",
               transition: "left 0.18s ease",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 8,
+              fontSize: 10,
             }}>
               {theme === "light" ? "☀" : "◑"}
             </span>
