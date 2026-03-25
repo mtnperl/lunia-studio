@@ -182,7 +182,7 @@ export default function Page() {
                 return (
                   <button key={key} onClick={() => navigate(key)} style={{
                     display: "block", width: "100%", textAlign: "left",
-                    padding: "7px 24px",
+                    padding: "10px 24px",
                     fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: active ? 500 : 400,
                     color: active ? "var(--text)" : "var(--muted)",
                     background: active ? "var(--accent-dim)" : "transparent",
