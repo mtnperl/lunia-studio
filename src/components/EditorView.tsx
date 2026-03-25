@@ -244,15 +244,15 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 8,
                   marginBottom: 2, cursor: "pointer", borderRadius: 6,
-                  background: isSelected ? "#f0f4ff" : "transparent",
-                  border: `1px solid ${isSelected ? "#c7d7fd" : "transparent"}`,
+                  background: isSelected ? "var(--accent-dim)" : "transparent",
+                  border: `1px solid ${isSelected ? "var(--accent-mid)" : "transparent"}`,
                   transition: "background .1s, border-color .1s",
                 }}
               >
                 {/* Line number */}
                 <span style={{
                   fontSize: 11, minWidth: 28, paddingTop: 9, textAlign: "right" as const,
-                  color: isSelected ? "#4f6ef7" : hasComments ? "var(--accent)" : "var(--subtle)",
+                  color: isSelected ? "var(--accent)" : hasComments ? "var(--accent)" : "var(--subtle)",
                   fontWeight: isSelected || hasComments ? 600 : 400,
                   flexShrink: 0, userSelect: "none" as const,
                 }}>
@@ -289,11 +289,11 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 {/* Indicators */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0, marginTop: 12, marginRight: 6 }}>
                   {hasComments && (
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7" }}
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }}
                       title={`${script.comments[i].length} comment${script.comments[i].length !== 1 ? "s" : ""}`} />
                   )}
                   {hasFilmingNotes && (
-                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "#f59e0b" }}
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)" }}
                       title="Has filming notes" />
                   )}
                 </div>
@@ -326,12 +326,12 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 ) : (
                   <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                     {selectedComments.map((c, ci) => (
-                      <div key={ci} style={{ background: "#eef2ff", border: "1px solid #c7d7fd", borderLeft: "3px solid #4f6ef7", borderRadius: 6, padding: "10px 12px" }}>
+                      <div key={ci} style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderLeft: "3px solid var(--accent)", borderRadius: 6, padding: "10px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "#3730a3" }}>{c.author}</span>
-                          <span style={{ fontSize: 11, color: "#818cf8" }}>{c.time}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.author}</span>
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}>{c.time}</span>
                         </div>
-                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "#1e1b4b" }}>{c.text}</p>
+                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "var(--text)" }}>{c.text}</p>
                       </div>
                     ))}
                   </div>
@@ -376,10 +376,10 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                 </p>
                 <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)" }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7", display: "inline-block" }} /> Comments
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} /> Comments
                   </span>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "#f59e0b", display: "inline-block" }} /> Filming notes
+                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)", display: "inline-block" }} /> Filming notes
                   </span>
                 </div>
               </div>
