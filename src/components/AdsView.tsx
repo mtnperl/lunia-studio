@@ -63,7 +63,7 @@ function PhoneMockup({ result }: { result: AdResult }) {
         <div style={{ background: "#fff", padding: "10px 0 0" }}>
           {/* Fake account header */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 10px 8px" }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #1e7a8a, #0d4f5c)" }} />
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, var(--accent), #8a6b3a)" }} />
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#000" }}>Lunia Life</div>
               <div style={{ fontSize: 10, color: "#888" }}>Sponsored</div>
@@ -99,8 +99,8 @@ function PhoneMockup({ result }: { result: AdResult }) {
             </div>
             {/* CTA button */}
             <div style={{
-              background: "#1e7a8a",
-              color: "#fff",
+              background: "var(--accent)",
+              color: "var(--bg)",
               fontSize: 10,
               fontWeight: 700,
               padding: "5px 10px",
@@ -308,9 +308,9 @@ export default function AdsView() {
                     onClick={() => setAngle(angle === a ? "" : a)}
                     style={{
                       fontSize: 12, fontWeight: 500, padding: "4px 10px",
-                      background: angle === a ? "#1e7a8a" : "var(--surface)",
-                      color: angle === a ? "#fff" : "var(--muted)",
-                      border: `1px solid ${angle === a ? "#1e7a8a" : "var(--border)"}`,
+                      background: angle === a ? "var(--accent-dim)" : "var(--surface)",
+                      color: angle === a ? "var(--accent)" : "var(--muted)",
+                      border: `1px solid ${angle === a ? "var(--accent-mid)" : "var(--border)"}`,
                       borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
                       transition: "all .12s",
                     }}
@@ -348,9 +348,9 @@ export default function AdsView() {
                     onClick={() => setEmotion(emotion === e ? "" : e)}
                     style={{
                       fontSize: 12, fontWeight: 500, padding: "4px 10px",
-                      background: emotion === e ? "#1e7a8a" : "var(--surface)",
-                      color: emotion === e ? "#fff" : "var(--muted)",
-                      border: `1px solid ${emotion === e ? "#1e7a8a" : "var(--border)"}`,
+                      background: emotion === e ? "var(--accent-dim)" : "var(--surface)",
+                      color: emotion === e ? "var(--accent)" : "var(--muted)",
+                      border: `1px solid ${emotion === e ? "var(--accent-mid)" : "var(--border)"}`,
                       borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
                       transition: "all .12s",
                     }}
@@ -367,9 +367,9 @@ export default function AdsView() {
                 padding: "11px 0",
                 fontSize: 14,
                 fontWeight: 700,
-                background: canGenerate ? "#1e7a8a" : "var(--surface)",
-                color: canGenerate ? "#fff" : "var(--muted)",
-                border: `1px solid ${canGenerate ? "#1e7a8a" : "var(--border)"}`,
+                background: canGenerate ? "var(--accent)" : "var(--surface)",
+                color: canGenerate ? "var(--bg)" : "var(--muted)",
+                border: `1px solid ${canGenerate ? "var(--accent)" : "var(--border)"}`,
                 borderRadius: 8,
                 cursor: canGenerate ? "pointer" : "not-allowed",
                 fontFamily: "inherit",
@@ -392,23 +392,23 @@ export default function AdsView() {
               {result.complianceNote ? (
                 <div style={{
                   display: "flex", alignItems: "flex-start", gap: 8,
-                  background: "#fefce8", border: "1px solid #fde047",
+                  background: "rgba(196,122,90,0.1)", border: "1px solid rgba(196,122,90,0.3)",
                   borderRadius: 8, padding: "10px 12px", marginBottom: 14,
                 }}>
                   <span style={{ fontSize: 14 }}>⚠️</span>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#854d0e" }}>Review flagged</div>
-                    <div style={{ fontSize: 12, color: "#713f12", marginTop: 2 }}>{result.complianceNote}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warning)" }}>Review flagged</div>
+                    <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 2 }}>{result.complianceNote}</div>
                   </div>
                 </div>
               ) : (
                 <div style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  background: "#f0fdf4", border: "1px solid #86efac",
+                  background: "rgba(95,158,117,0.1)", border: "1px solid rgba(95,158,117,0.3)",
                   borderRadius: 8, padding: "8px 12px", marginBottom: 14,
                 }}>
                   <span style={{ fontSize: 13 }}>✓</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>Compliance clean</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--success)" }}>Compliance clean</span>
                 </div>
               )}
 
@@ -477,9 +477,9 @@ export default function AdsView() {
                       onClick={() => setCta(c)}
                       style={{
                         fontSize: 12, fontWeight: 500, padding: "5px 12px",
-                        background: cta === c ? "#1e7a8a" : "var(--surface)",
-                        color: cta === c ? "#fff" : "var(--muted)",
-                        border: `1px solid ${cta === c ? "#1e7a8a" : "var(--border)"}`,
+                        background: cta === c ? "var(--accent-dim)" : "var(--surface)",
+                        color: cta === c ? "var(--accent)" : "var(--muted)",
+                        border: `1px solid ${cta === c ? "var(--accent-mid)" : "var(--border)"}`,
                         borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
                         transition: "all .12s",
                       }}
@@ -523,9 +523,9 @@ export default function AdsView() {
                   style={{
                     fontSize: 13, fontWeight: 700,
                     padding: "7px 18px",
-                    background: savedId ? "#f0fdf4" : canSave ? "#1e7a8a" : "var(--surface)",
-                    color: savedId ? "#166534" : canSave ? "#fff" : "var(--muted)",
-                    border: `1px solid ${savedId ? "#86efac" : canSave ? "#1e7a8a" : "var(--border)"}`,
+                    background: savedId ? "rgba(95,158,117,0.12)" : canSave ? "var(--accent)" : "var(--surface)",
+                    color: savedId ? "var(--success)" : canSave ? "var(--bg)" : "var(--muted)",
+                    border: `1px solid ${savedId ? "rgba(95,158,117,0.4)" : canSave ? "var(--accent)" : "var(--border)"}`,
                     borderRadius: 6,
                     cursor: canSave ? "pointer" : "not-allowed",
                     fontFamily: "inherit",

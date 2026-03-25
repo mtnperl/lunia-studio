@@ -307,14 +307,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       </div>
 
       {exportError && (
-        <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b" }}>
+        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
           ⚠ {exportError}
         </div>
       )}
       {graphicError && (
-        <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>⚠ {graphicError}</span>
-          <button onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#991b1b", padding: "0 4px", fontFamily: "inherit" }}>×</button>
+          <button onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--error)", padding: "0 4px", fontFamily: "inherit" }}>×</button>
         </div>
       )}
 
@@ -427,7 +427,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <div style={{
                   borderRadius: 8,
                   overflow: "hidden",
-                  outline: isActive ? "2px solid #1e7a8a" : "2px solid transparent",
+                  outline: isActive ? "2px solid var(--accent)" : "2px solid transparent",
                   outlineOffset: 2,
                   transition: "outline-color 0.15s, opacity 0.2s",
                   boxShadow: isActive
@@ -447,7 +447,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     <div style={{
                       width: 28, height: 28, borderRadius: "50%",
                       border: "2.5px solid rgba(255,255,255,0.15)",
-                      borderTopColor: "#1e7a8a",
+                      borderTopColor: "var(--accent)",
                       animation: "spin 0.7s linear infinite",
                     }} />
                     <span style={{
@@ -486,8 +486,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     onClick={(e) => { e.stopPropagation(); setImageRefineOpen(v => !v); }}
                     title="Refine hook image"
                     style={{
-                      background: imageRefineOpen ? "#1e7a8a" : "var(--surface)",
-                      color: imageRefineOpen ? "#fff" : "var(--muted)",
+                      background: imageRefineOpen ? "var(--accent)" : "var(--surface)",
+                      color: imageRefineOpen ? "var(--bg)" : "var(--muted)",
                       border: "1px solid var(--border)",
                       borderRadius: 6,
                       padding: "7px 10px",
@@ -608,8 +608,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               onClick={handleRegenerateHookImage}
               disabled={regeneratingImage}
               style={{
-                background: regeneratingImage ? "var(--border)" : "#1e7a8a",
-                color: "#fff",
+                background: regeneratingImage ? "var(--border)" : "var(--accent)",
+                color: regeneratingImage ? "var(--muted)" : "var(--bg)",
                 border: "none", borderRadius: 6,
                 padding: "9px 20px", fontSize: 12, fontWeight: 700,
                 fontFamily: "inherit", cursor: regeneratingImage ? "not-allowed" : "pointer",
@@ -620,7 +620,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <>
                   <span style={{
                     display: "inline-block", width: 12, height: 12,
-                    border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff",
+                    border: "2px solid var(--subtle)", borderTopColor: "var(--muted)",
                     borderRadius: "50%", animation: "spin 0.7s linear infinite",
                   }} />
                   Generating new image…
@@ -643,7 +643,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               width: activeSlide === i ? 20 : 6,
               height: 6,
               borderRadius: 3,
-              background: activeSlide === i ? "#1e7a8a" : "var(--border)",
+              background: activeSlide === i ? "var(--accent)" : "var(--border)",
               border: "none",
               cursor: "pointer",
               padding: 0,
@@ -687,7 +687,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 });
               }}
               style={{
-                background: captionCopyLabel === "Copied!" ? "#f0fdf4" : "var(--bg)",
+                background: captionCopyLabel === "Copied!" ? "rgba(95,158,117,0.12)" : "var(--bg)",
                 border: `1px solid ${captionCopyLabel === "Copied!" ? "#bbf7d0" : "var(--border-strong)"}`,
                 borderRadius: 6,
                 padding: "5px 12px",

@@ -172,7 +172,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
       {loading && <RetroLoader streamText={streamText} />}
 
       {error && (
-        <div style={{ padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, color: "#991b1b", fontSize: 13 }}>
+        <div style={{ padding: "12px 16px", background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 6, color: "var(--error)", fontSize: 13 }}>
           {error}
         </div>
       )}
@@ -186,15 +186,15 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
               const sel = selectedHook === h.num;
               return (
                 <button key={h.num} onClick={() => setSelectedHook(h.num)} style={{
-                  textAlign: "left", padding: 16, background: sel ? "#000" : "var(--bg)",
-                  border: `1px solid ${sel ? "#000" : "var(--border-strong)"}`,
+                  textAlign: "left", padding: 16, background: sel ? "var(--surface-r)" : "var(--surface)",
+                  border: `1px solid ${sel ? "var(--accent-mid)" : "var(--border)"}`,
                   borderRadius: 8, cursor: "pointer", transition: "all .15s",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: sel ? "#aaa" : "var(--muted)" }}>HOOK {h.num}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 3, background: sel ? "#333" : "var(--surface)", color: sel ? "#ccc" : "var(--muted)" }}>{h.type}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: sel ? "var(--accent)" : "var(--muted)" }}>HOOK {h.num}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 3, background: sel ? "var(--accent-dim)" : "var(--surface-h)", color: sel ? "var(--accent)" : "var(--muted)" }}>{h.type}</span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 15, color: sel ? "#fff" : "var(--text)", lineHeight: 1.5 }}>{h.text}</p>
+                  <p style={{ margin: 0, fontSize: 15, color: "var(--text)", lineHeight: 1.5 }}>{h.text}</p>
                 </button>
               );
             })}

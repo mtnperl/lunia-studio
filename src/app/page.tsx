@@ -16,241 +16,204 @@ import { getLibrary, saveScript } from "@/lib/storage";
 type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar" | "ads";
 type Product = "home" | "script" | "carousel" | "ads";
 
-function LuniaLogoMark() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 34, width: "auto", display: "block", objectFit: "contain" }} />
-  );
-}
+const NAV: { section: string; items: { key: Tab; product: Product; label: string }[] }[] = [
+  {
+    section: "Script",
+    items: [
+      { key: "generate", product: "script", label: "Generate" },
+      { key: "editor",   product: "script", label: "Editor"   },
+      { key: "library",  product: "script", label: "Library"  },
+    ],
+  },
+  {
+    section: "Carousel",
+    items: [
+      { key: "carousel",  product: "carousel", label: "Builder"  },
+      { key: "batch",     product: "carousel", label: "Batch"    },
+      { key: "subjects",  product: "carousel", label: "Subjects" },
+      { key: "assets",    product: "carousel", label: "Assets"   },
+    ],
+  },
+  {
+    section: "Ads",
+    items: [
+      { key: "ads",      product: "ads",  label: "Generate"  },
+      { key: "calendar", product: "home", label: "Calendar"  },
+    ],
+  },
+];
 
 export default function Page() {
-  const [tab, setTab] = useState<Tab>("home");
-  const [product, setProduct] = useState<Product>("home");
+  const [tab, setTab]               = useState<Tab>("home");
   const [activeScript, setActiveScript] = useState<Script | null>(null);
-  const [scriptCount, setScriptCount] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  useEffect(() => { getLibrary().then((lib) => setScriptCount(lib.length)).catch(() => {}); }, [tab]);
+  useEffect(() => { getLibrary().catch(() => {}); }, [tab]);
 
   function openEditor(script: Script) {
     setActiveScript(script);
     setTab("editor");
-    setProduct("script");
     setMobileNavOpen(false);
   }
 
   function handleScriptUpdate(s: Script) {
     setActiveScript(s);
     saveScript(s);
-    getLibrary().then((lib) => setScriptCount(lib.length)).catch(() => {});
   }
 
-  function switchProduct(p: Product) {
-    setProduct(p);
-    if (p === "home") setTab("home");
-    else if (p === "script") setTab("generate");
-    else if (p === "carousel") setTab("carousel");
-    else if (p === "ads") setTab("ads");
-    setMobileNavOpen(false);
-  }
-
-  function switchTab(t: Tab) {
+  function navigate(t: Tab) {
     setTab(t);
     setMobileNavOpen(false);
   }
 
-  const scriptTabs: { key: Tab; label: string }[] = [
-    { key: "generate", label: "Generate" },
-    { key: "editor", label: "Editor" },
-    { key: "library", label: "Library" },
-  ];
-
-  const carouselTabs: { key: Tab; label: string }[] = [
-    { key: "carousel", label: "Builder" },
-    { key: "batch", label: "Batch" },
-    { key: "subjects", label: "Subjects" },
-    { key: "assets", label: "Assets" },
-  ];
-
-  const activeTabs = product === "script" ? scriptTabs : product === "carousel" ? carouselTabs : [];
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }).toUpperCase();
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
       <style>{`
-        @media (max-width: 680px) {
-          .lunia-nav-desktop { display: none !important; }
-          .lunia-nav-mobile-btn { display: flex !important; }
-          .lunia-script-count { display: none !important; }
+        @media (max-width: 700px) {
+          .lunia-sidebar { transform: translateX(-100%); transition: transform 0.22s ease; position: fixed !important; z-index: 100; }
+          .lunia-sidebar.open { transform: translateX(0); }
+          .lunia-mobile-toggle { display: flex !important; }
+          .lunia-main { padding-left: 0 !important; }
         }
-        @media (min-width: 681px) {
-          .lunia-nav-mobile-btn { display: none !important; }
-          .lunia-mobile-menu { display: none !important; }
+        @media (min-width: 701px) {
+          .lunia-mobile-toggle { display: none !important; }
+          .lunia-mobile-overlay { display: none !important; }
         }
       `}</style>
 
-      {/* Nav */}
-      <header style={{
-        borderBottom: "1px solid var(--border)", background: "var(--bg)",
-        position: "sticky", top: 0, zIndex: 50,
-        padding: "0 24px", height: 52,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        {/* Logo — always links to home */}
-        <div
-          style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, cursor: "pointer" }}
-          onClick={() => switchProduct("home")}
-        >
-          <LuniaLogoMark />
-          <span style={{ fontWeight: 600, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>Studio</span>
-        </div>
-
-        {/* Desktop nav */}
-        <nav className="lunia-nav-desktop" style={{ display: "flex", alignItems: "center", gap: 0, position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-          {/* Product switcher */}
-          <div style={{ display: "flex", alignItems: "center", gap: 2, marginRight: 8 }}>
-            {([
-              { key: "script" as Product, label: "Script" },
-              { key: "carousel" as Product, label: "Carousel" },
-              { key: "ads" as Product, label: "Ads" },
-            ]).map(p => (
-              <button key={p.key} onClick={() => switchProduct(p.key)} style={{
-                padding: "5px 12px", fontSize: 13, fontWeight: 600,
-                background: product === p.key ? "var(--text)" : "transparent",
-                color: product === p.key ? "var(--bg)" : "var(--muted)",
-                border: "1px solid",
-                borderColor: product === p.key ? "var(--text)" : "transparent",
-                borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
-                transition: "all 0.12s",
-              }}>{p.label}</button>
-            ))}
-            {/* Calendar — always visible */}
-            <button onClick={() => { setProduct("home"); setTab("calendar"); setMobileNavOpen(false); }} style={{
-              padding: "5px 12px", fontSize: 13, fontWeight: 600,
-              background: tab === "calendar" ? "var(--text)" : "transparent",
-              color: tab === "calendar" ? "var(--bg)" : "var(--muted)",
-              border: "1px solid",
-              borderColor: tab === "calendar" ? "var(--text)" : "transparent",
-              borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
-              transition: "all 0.12s",
-            }}>Calendar</button>
-          </div>
-
-          {/* Sub-tabs for active product */}
-          {activeTabs.length > 0 && (
-            <>
-              <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 8px" }} />
-              {activeTabs.map((t) => (
-                <button key={t.key} onClick={() => switchTab(t.key)} style={{
-                  padding: "6px 12px", fontSize: 13,
-                  fontWeight: tab === t.key ? 600 : 400,
-                  background: "transparent",
-                  color: tab === t.key ? "var(--text)" : "var(--muted)",
-                  border: "none",
-                  borderBottom: tab === t.key ? "2px solid #1e7a8a" : "2px solid transparent",
-                  borderRadius: 0,
-                  cursor: "pointer", fontFamily: "inherit",
-                  height: 52, transition: "color 0.15s, border-color 0.15s",
-                }}>{t.label}</button>
-              ))}
-            </>
-          )}
-        </nav>
-
-        {/* Right side */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="lunia-script-count" style={{ fontSize: 12, color: "var(--subtle)" }}>{scriptCount} scripts</span>
-          <button
-            className="lunia-nav-mobile-btn"
-            onClick={() => setMobileNavOpen((v) => !v)}
-            style={{
-              display: "none", alignItems: "center", justifyContent: "center",
-              width: 36, height: 36, background: "transparent",
-              border: "1px solid var(--border)", borderRadius: 7,
-              cursor: "pointer", flexShrink: 0,
-            }}
-            aria-label="Menu"
-          >
-            <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <line x1="0" y1="1" x2="16" y2="1"/>
-              <line x1="0" y1="6" x2="16" y2="6"/>
-              <line x1="0" y1="11" x2="16" y2="11"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile nav dropdown */}
+      {/* ── Mobile overlay ── */}
       {mobileNavOpen && (
-        <div className="lunia-mobile-menu" style={{
-          position: "fixed", top: 52, left: 0, right: 0, zIndex: 49,
-          background: "var(--bg)", borderBottom: "1px solid var(--border)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-        }}>
-          <div style={{ padding: "8px 16px", fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Script</div>
-          {scriptTabs.map((t) => (
-            <button key={t.key} onClick={() => { setProduct("script"); switchTab(t.key); }} style={{
-              display: "block", width: "100%", textAlign: "left",
-              padding: "12px 24px", fontSize: 15, fontWeight: tab === t.key ? 700 : 400,
-              background: tab === t.key ? "rgba(30,122,138,0.06)" : "transparent",
-              color: tab === t.key ? "#1e7a8a" : "var(--text)",
-              border: "none", borderBottom: "1px solid var(--border)",
-              cursor: "pointer", fontFamily: "inherit",
-            }}>{t.label}</button>
-          ))}
-          <div style={{ padding: "8px 16px", fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Carousel</div>
-          {carouselTabs.map((t) => (
-            <button key={t.key} onClick={() => { setProduct("carousel"); switchTab(t.key); }} style={{
-              display: "block", width: "100%", textAlign: "left",
-              padding: "12px 24px", fontSize: 15, fontWeight: tab === t.key ? 700 : 400,
-              background: tab === t.key ? "rgba(30,122,138,0.06)" : "transparent",
-              color: tab === t.key ? "#1e7a8a" : "var(--text)",
-              border: "none", borderBottom: "1px solid var(--border)",
-              cursor: "pointer", fontFamily: "inherit",
-            }}>{t.label}</button>
-          ))}
-          <div style={{ padding: "8px 16px", fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Ads</div>
-          <button onClick={() => { switchProduct("ads"); }} style={{
-            display: "block", width: "100%", textAlign: "left",
-            padding: "12px 24px", fontSize: 15, fontWeight: tab === "ads" ? 700 : 400,
-            background: tab === "ads" ? "rgba(30,122,138,0.06)" : "transparent",
-            color: tab === "ads" ? "#1e7a8a" : "var(--text)",
-            border: "none", borderBottom: "1px solid var(--border)",
-            cursor: "pointer", fontFamily: "inherit",
-          }}>Generate</button>
-          <button onClick={() => { setProduct("home"); switchTab("calendar"); }} style={{
-            display: "block", width: "100%", textAlign: "left",
-            padding: "12px 24px", fontSize: 15, fontWeight: tab === "calendar" ? 700 : 400,
-            background: tab === "calendar" ? "rgba(30,122,138,0.06)" : "transparent",
-            color: tab === "calendar" ? "#1e7a8a" : "var(--text)",
-            border: "none", borderBottom: "1px solid var(--border)",
-            cursor: "pointer", fontFamily: "inherit",
-          }}>Calendar</button>
-        </div>
+        <div className="lunia-mobile-overlay" onClick={() => setMobileNavOpen(false)} style={{
+          position: "fixed", inset: 0, zIndex: 99,
+          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
+        }} />
       )}
 
-      <main style={{ flex: 1 }}>
+      {/* ── Sidebar ── */}
+      <aside className={`lunia-sidebar${mobileNavOpen ? " open" : ""}`} style={{
+        width: 240, flexShrink: 0,
+        background: "var(--surface)", borderRight: "1px solid var(--border)",
+        display: "flex", flexDirection: "column",
+        position: "sticky", top: 0, height: "100vh",
+        overflow: "hidden",
+      }}>
+        {/* Brand */}
+        <div style={{
+          padding: "24px 24px 18px",
+          borderBottom: "1px solid var(--border)",
+          cursor: "pointer",
+        }} onClick={() => navigate("home")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
+            <span style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 11, fontWeight: 700,
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              color: "var(--text)",
+            }}>Studio</span>
+          </div>
+        </div>
+
+        {/* Date */}
+        <div style={{
+          padding: "14px 24px 2px",
+          fontFamily: "var(--font-mono)", fontSize: 10,
+          color: "var(--subtle)", letterSpacing: "0.06em",
+        }}>
+          {dateLabel}
+        </div>
+
+        {/* Nav */}
+        <nav style={{ flex: 1, padding: "14px 0 20px", overflowY: "auto" }}>
+          {NAV.map(({ section, items }) => (
+            <div key={section} style={{ marginBottom: 24 }}>
+              <div style={{
+                padding: "0 24px",
+                fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "var(--subtle)", marginBottom: 4,
+              }}>
+                {section}
+              </div>
+              {items.map(({ key, label }) => {
+                const active = tab === key;
+                return (
+                  <button key={key} onClick={() => navigate(key)} style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "7px 24px",
+                    fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: active ? 500 : 400,
+                    color: active ? "var(--text)" : "var(--muted)",
+                    background: active ? "var(--accent-dim)" : "transparent",
+                    border: "none",
+                    borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
+                    cursor: "pointer",
+                    transition: "color 0.12s, background 0.12s",
+                    letterSpacing: "0.01em",
+                  }}
+                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)"; }}}
+                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div style={{
+          padding: "14px 24px",
+          borderTop: "1px solid var(--border)",
+          fontFamily: "var(--font-mono)", fontSize: 10,
+          color: "var(--subtle)", letterSpacing: "0.04em",
+        }}>
+          lunia.life · studio
+        </div>
+      </aside>
+
+      {/* ── Mobile toggle ── */}
+      <button
+        className="lunia-mobile-toggle"
+        onClick={() => setMobileNavOpen(v => !v)}
+        style={{
+          display: "none", position: "fixed", top: 16, left: 16, zIndex: 101,
+          width: 36, height: 36, alignItems: "center", justifyContent: "center",
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: 7, cursor: "pointer",
+        }}
+        aria-label="Menu"
+      >
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round">
+          <line x1="0" y1="1"  x2="15" y2="1"/>
+          <line x1="0" y1="5.5" x2="15" y2="5.5"/>
+          <line x1="0" y1="10" x2="15" y2="10"/>
+        </svg>
+      </button>
+
+      {/* ── Main ── */}
+      <main className="lunia-main" style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
         {tab === "home" && (
           <HomeView
-            onNewScript={() => switchProduct("script")}
-            onNewCarousel={() => switchProduct("carousel")}
+            onNewScript={() => navigate("generate")}
+            onNewCarousel={() => navigate("carousel")}
             onOpenScript={openEditor}
-            onOpenCarousel={() => switchProduct("carousel")}
+            onOpenCarousel={() => navigate("carousel")}
           />
         )}
-        {tab === "generate" && <GenerateView onOpenEditor={openEditor} />}
-        {tab === "editor" && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
-        {tab === "library" && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
-        {tab === "carousel" && <CarouselView />}
-        {tab === "batch" && <BatchView />}
-        {tab === "subjects" && <SubjectsView />}
-        {tab === "assets" && <AssetsView />}
-        {tab === "calendar" && (
-          <CalendarView
-            onNewCarousel={() => switchProduct("carousel")}
-            onNewScript={() => switchProduct("script")}
-          />
-        )}
-        {tab === "ads" && <AdsView />}
+        {tab === "generate"  && <GenerateView onOpenEditor={openEditor} />}
+        {tab === "editor"    && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
+        {tab === "library"   && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
+        {tab === "carousel"  && <CarouselView />}
+        {tab === "batch"     && <BatchView />}
+        {tab === "subjects"  && <SubjectsView />}
+        {tab === "assets"    && <AssetsView />}
+        {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
+        {tab === "ads"       && <AdsView />}
       </main>
     </div>
   );

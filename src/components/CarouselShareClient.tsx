@@ -99,7 +99,7 @@ export default function CarouselShareClient({ carousel }: Props) {
             onClick={downloadAll}
             disabled={downloadingAll}
             style={{
-              background: "#1e7a8a", color: "#fff", border: "none", borderRadius: 7,
+              background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
               padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
               cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
               display: "flex", alignItems: "center", gap: 8,
@@ -122,7 +122,7 @@ export default function CarouselShareClient({ carousel }: Props) {
         </div>
 
         {exportError && (
-          <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b" }}>
+          <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
             ⚠ {exportError}
           </div>
         )}

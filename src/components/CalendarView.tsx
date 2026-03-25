@@ -155,7 +155,7 @@ export default function CalendarView({ onNewCarousel, onNewScript }: {
           return (
             <div key={key} style={{ position: "relative" }}>
               <div style={{
-                border: `1.5px solid ${isToday ? "#1e7a8a" : "var(--border)"}`,
+                border: `1.5px solid ${isToday ? "var(--accent)" : "var(--border)"}`,
                 borderRadius: 8,
                 padding: "10px 8px",
                 minHeight: 100,
@@ -165,7 +165,7 @@ export default function CalendarView({ onNewCarousel, onNewScript }: {
                 gap: 6,
               }}>
                 {/* Day header */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? "#1e7a8a" : "var(--muted)", letterSpacing: "0.04em" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? "var(--accent)" : "var(--muted)", letterSpacing: "0.04em" }}>
                   {DAY_LABELS[i]} <span style={{ fontWeight: 500 }}>{day.getDate()}</span>
                 </div>
 
@@ -177,9 +177,9 @@ export default function CalendarView({ onNewCarousel, onNewScript }: {
                   </div>
                 )}
                 {carousel && (
-                  <div style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, background: "rgba(30,122,138,0.1)", color: "#1e7a8a", border: "1px solid rgba(30,122,138,0.2)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4 }}>
+                  <div style={{ fontSize: 10, padding: "3px 6px", borderRadius: 4, background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent-mid)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 4 }}>
                     <span style={{ overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.4 }}>{carousel.topic}</span>
-                    <button onClick={() => clear(key)} style={{ background: "none", border: "none", cursor: "pointer", color: "#1e7a8a", padding: 0, fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
+                    <button onClick={() => clear(key)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
                   </div>
                 )}
                 {script && (
@@ -232,7 +232,7 @@ export default function CalendarView({ onNewCarousel, onNewScript }: {
                     <>
                       {sortedCarousels.length > 0 && (
                         <>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#1e7a8a", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Carousels</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Carousels</div>
                           <div style={{ maxHeight: 140, overflowY: "auto", marginBottom: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                             {sortedCarousels.slice(0, 8).map(c => (
                               <div

@@ -269,12 +269,12 @@ export default function CarouselView() {
       borderRadius: 20,
       fontSize: 11, fontWeight: 700,
       border: "1px solid",
-      borderColor: falStatus === "done" ? "rgba(34,197,94,0.4)" : falStatus === "failed" ? "rgba(239,68,68,0.4)" : "rgba(30,122,138,0.4)",
-      background: falStatus === "done" ? "rgba(34,197,94,0.08)" : falStatus === "failed" ? "rgba(239,68,68,0.08)" : "rgba(30,122,138,0.08)",
-      color: falStatus === "done" ? "#15803d" : falStatus === "failed" ? "#dc2626" : "#1e7a8a",
+      borderColor: falStatus === "done" ? "rgba(95,158,117,0.4)" : falStatus === "failed" ? "rgba(184,92,92,0.4)" : "var(--accent-mid)",
+      background: falStatus === "done" ? "rgba(95,158,117,0.08)" : falStatus === "failed" ? "rgba(184,92,92,0.08)" : "var(--accent-dim)",
+      color: falStatus === "done" ? "var(--success)" : falStatus === "failed" ? "var(--error)" : "var(--accent)",
     }}>
       {falStatus === "loading" && (
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#1e7a8a", display: "inline-block", animation: "pulse 1s ease-in-out infinite" }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block", animation: "pulse 1s ease-in-out infinite" }} />
       )}
       {falStatus === "done" && "✓"}
       {falStatus === "failed" && "✗"}
@@ -302,9 +302,9 @@ export default function CarouselView() {
             title="Skip content generation and jump straight to design"
             style={{
               padding: "5px 12px", fontSize: 12, fontWeight: 700,
-              background: testMode ? "#1e7a8a" : "transparent",
-              color: testMode ? "#fff" : "var(--muted)",
-              border: `1px solid ${testMode ? "#1e7a8a" : "var(--border)"}`,
+              background: testMode ? "var(--accent-dim)" : "transparent",
+              color: testMode ? "var(--accent)" : "var(--muted)",
+              border: `1px solid ${testMode ? "var(--accent-mid)" : "var(--border)"}`,
               borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
               letterSpacing: "0.02em",
             }}
@@ -357,9 +357,9 @@ export default function CarouselView() {
                 marginLeft: "auto", marginBottom: -1,
                 padding: "4px 10px",
                 fontSize: 11, fontWeight: 700,
-                color: "#1e7a8a",
-                background: "rgba(30,122,138,0.08)",
-                border: "1px solid rgba(30,122,138,0.3)",
+                color: "var(--accent)",
+                background: "var(--accent-dim)",
+                border: "1px solid var(--accent-mid)",
                 borderRadius: 20,
               }}>
                 ⚡ Test mode — content step skipped
@@ -374,10 +374,10 @@ export default function CarouselView() {
           )}
 
           {error && !loading && (
-            <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "14px 18px", marginBottom: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#9b1c1c", marginBottom: 4 }}>Generation failed</div>
-              <div style={{ fontSize: 13, color: "#9b1c1c", marginBottom: 12 }}>{error}</div>
-              <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", fontSize: 13, fontWeight: 600, color: "#9b1c1c", cursor: "pointer", padding: 0, textDecoration: "underline", fontFamily: "inherit" }}>
+            <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "14px 18px", marginBottom: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--error)", marginBottom: 4 }}>Generation failed</div>
+              <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 12 }}>{error}</div>
+              <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", fontSize: 13, fontWeight: 600, color: "var(--error)", cursor: "pointer", padding: 0, textDecoration: "underline", fontFamily: "inherit" }}>
                 Try again
               </button>
             </div>

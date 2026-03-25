@@ -72,7 +72,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 position: "relative",
                 borderRadius: 10,
                 overflow: "hidden",
-                outline: isSelected ? "3px solid #1e7a8a" : "3px solid transparent",
+                outline: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 outlineOffset: 2,
                 transition: "outline-color 0.15s",
                 boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
@@ -84,12 +84,12 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 <div style={{
                   position: "absolute", top: 10, right: 10,
                   width: 28, height: 28, borderRadius: "50%",
-                  background: "#1e7a8a",
+                  background: "var(--accent)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                 }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2.5 7L5.5 10L11.5 4" stroke="var(--bg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               )}
@@ -97,7 +97,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
               <div style={{
                 marginTop: 8, textAlign: "center",
                 fontSize: 12, fontWeight: isSelected ? 700 : 500,
-                color: isSelected ? "#1e7a8a" : "var(--muted)",
+                color: isSelected ? "var(--accent)" : "var(--muted)",
                 paddingBottom: 4,
               }}>
                 {isSelected ? `✓ Hook ${i + 1} selected` : `Hook ${i + 1}`}

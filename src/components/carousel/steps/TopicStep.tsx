@@ -247,7 +247,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
                 key={opt.value}
                 onClick={() => setHookTone(opt.value)}
                 style={{
-                  border: `1.5px solid ${sel ? "#1e7a8a" : "var(--border)"}`,
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
                   borderRadius: 8,
                   padding: "10px 12px",
                   cursor: "pointer",
@@ -256,8 +256,8 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
                   boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "#1e7a8a" : "var(--text)" }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: sel ? "#1e7a8a" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
               </div>
             );
           })}
@@ -268,7 +268,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
         disabled={!topic || topicTooLong}
         onClick={handleNext}
         style={{
-          background: topic && !topicTooLong ? (testMode ? "#1e7a8a" : "var(--text)") : "var(--border)",
+          background: topic && !topicTooLong ? (testMode ? "var(--accent)" : "var(--text)") : "var(--border)",
           color: topic && !topicTooLong ? "var(--bg)" : "var(--muted)",
           border: "none",
           borderRadius: 8,
