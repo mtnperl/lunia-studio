@@ -128,6 +128,7 @@ type Props = {
   shimmer?: boolean;                // show shimmer while fal image is loading
   logoScale?: number;
   arrowScale?: number;
+  darkBackground?: boolean;         // match hook slide dark background
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -144,6 +145,7 @@ export default function ContentSlide({
   shimmer = false,
   logoScale = 1,
   arrowScale = 1,
+  darkBackground = false,
 }: Props) {
   // Determine rendering path
   const graphicSpec = parseGraphicSpec(graphic);
@@ -155,12 +157,12 @@ export default function ContentSlide({
   const hasLegacyGraphic = !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
   const hasInlineGraphic = hasGraphicSpec || hasSvg;            // shown inside flex column
 
-  // Colors
-  const bg = brandStyle?.background ?? '#f0ece6';
-  const headlineColor = brandStyle?.headline ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body ?? '#1a2535';
-  const citationColor = brandStyle?.secondary ?? '#6b7280';
-  const arrowColor = brandStyle?.secondary ?? '#9ab0b8';
+  // Colors — dark mode overrides when darkBackground=true
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#0d2137') : (brandStyle?.background ?? '#f0ece6');
+  const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? '#1e7a8a');
+  const bodyColor = darkBackground ? 'rgba(255,255,255,0.88)' : (brandStyle?.body ?? '#1a2535');
+  const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
+  const arrowColor = darkBackground ? 'rgba(255,255,255,0.4)' : (brandStyle?.secondary ?? '#9ab0b8');
 
   // Body font size: smaller when a graphic occupies the graphic zone
   const bodyFontSize = hasInlineGraphic ? 27 : (hasLegacyGraphic ? 30 : 34);
@@ -186,7 +188,7 @@ export default function ContentSlide({
       ) : null}
 
       <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
-      <LuniaLogo variant="dark" sizeScale={logoScale} />
+      <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
 
       {/* Flex column layout — headline / body+citation / graphic */}
       <div style={{

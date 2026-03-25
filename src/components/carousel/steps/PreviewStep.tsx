@@ -10,7 +10,7 @@ type Props = {
   config: CarouselConfig;
   hookTone: HookTone;
   onRestart: () => void;
-  onChangeHook: () => void;
+  onChangeHook?: () => void;
   onContentChange: (config: CarouselConfig) => void;
 };
 
@@ -30,10 +30,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Hook decoration / logo / arrow controls
+  // Hook decoration / logo / arrow / background controls
   const [showDecoration, setShowDecoration] = useState(true);
   const [logoScale, setLogoScale] = useState(1);
   const [arrowScale, setArrowScale] = useState(1);
+  const [darkBackground, setDarkBackground] = useState(false);
 
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
@@ -226,10 +227,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -238,10 +239,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -349,6 +350,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             border: "1px solid var(--border)", borderRadius: 5,
             cursor: "pointer", fontFamily: "inherit",
           }}>{showDecoration ? "On" : "Off"}</button>
+        </div>
+        {/* Background toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Slides bg</span>
+          <button onClick={() => setDarkBackground(false)} style={{
+            padding: "3px 8px", fontSize: 11, fontWeight: 700,
+            background: !darkBackground ? "var(--text)" : "var(--surface)",
+            color: !darkBackground ? "var(--bg)" : "var(--muted)",
+            border: "1px solid var(--border)", borderRadius: 5,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>Classic</button>
+          <button onClick={() => setDarkBackground(true)} style={{
+            padding: "3px 8px", fontSize: 11, fontWeight: 700,
+            background: darkBackground ? "var(--text)" : "var(--surface)",
+            color: darkBackground ? "var(--bg)" : "var(--muted)",
+            border: "1px solid var(--border)", borderRadius: 5,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>Match hook</button>
         </div>
       </div>
 
@@ -686,24 +705,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       {/* Footer actions */}
       <div style={{ display: "flex", gap: 20, marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-        <button
-          onClick={onChangeHook}
-          style={{
-            background: "transparent",
-            color: "var(--text)",
-            border: "none",
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: "inherit",
-            cursor: "pointer",
-            padding: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          ← Change hook
-        </button>
+        {onChangeHook && (
+          <button
+            onClick={onChangeHook}
+            style={{
+              background: "transparent",
+              color: "var(--text)",
+              border: "none",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: "pointer",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            ← Change hook
+          </button>
+        )}
         <button
           onClick={onRestart}
           style={{
@@ -716,7 +737,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             padding: 0,
           }}
         >
-          Start over
+          {onChangeHook ? "Start over" : "← Back"}
         </button>
       </div>
 

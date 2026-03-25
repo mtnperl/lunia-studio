@@ -1,4 +1,4 @@
-import { updateSubject, markSubjectUsed, deleteSubject } from "@/lib/kv";
+import { updateSubject, markSubjectUsed, markSubjectUnused, deleteSubject } from "@/lib/kv";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -8,6 +8,11 @@ export async function PATCH(req: Request, { params }: Props) {
 
   if (body.action === "markUsed") {
     await markSubjectUsed(id);
+    return Response.json({ ok: true });
+  }
+
+  if (body.action === "markUnused") {
+    await markSubjectUnused(id);
     return Response.json({ ok: true });
   }
 
