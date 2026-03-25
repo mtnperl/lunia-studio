@@ -1,4 +1,3 @@
-import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
@@ -12,11 +11,9 @@ type Props = {
   backgroundImage?: string | null;  // fal.ai generated background
   shimmer?: boolean;                // show shimmer while loading
   logoScale?: number;
-  arrowScale?: number;
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, arrowScale = 1 }: Props) {
-  const arrowColor = brandStyle?.secondary ?? "#9ab0b8";
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1 }: Props) {
   const parts = followLine.split("@lunia_life");
 
   const bg = brandStyle?.background ?? "#f0ece6";
@@ -43,7 +40,6 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
       <LuniaLogo variant="dark" sizeScale={logoScale} />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
