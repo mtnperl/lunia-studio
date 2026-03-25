@@ -117,7 +117,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Generate script</h1>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Generate script</h1>
         <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 14 }}>Fill in the brief and get 3 hooks + a full script.</p>
       </div>
 
