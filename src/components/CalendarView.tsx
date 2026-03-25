@@ -107,7 +107,7 @@ export default function CalendarView({ onNewCarousel, onNewScript }: {
       {/* Header */}
       <div style={{ marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Content Calendar</h1>
+          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Content Calendar</h1>
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Plan your weekly content schedule</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
