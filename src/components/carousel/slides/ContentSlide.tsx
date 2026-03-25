@@ -18,7 +18,19 @@ import { ChecklistGraphic } from '@/components/carousel/graphics/ChecklistGraphi
 import { CalloutQuote } from '@/components/carousel/graphics/CalloutQuote';
 import { ComparisonTable } from '@/components/carousel/graphics/ComparisonTable';
 import { PyramidGraphic } from '@/components/carousel/graphics/PyramidGraphic';
+import { RadialProgress } from '@/components/carousel/graphics/RadialProgress';
+import { CircleStats } from '@/components/carousel/graphics/CircleStats';
+import { SpectrumBar } from '@/components/carousel/graphics/SpectrumBar';
+import { FunnelChart } from '@/components/carousel/graphics/FunnelChart';
+import { ScoreCard } from '@/components/carousel/graphics/ScoreCard';
+import { BubbleCluster } from '@/components/carousel/graphics/BubbleCluster';
+import { IconStat } from '@/components/carousel/graphics/IconStat';
+import { Matrix2x2 } from '@/components/carousel/graphics/Matrix2x2';
+import { StackedBar } from '@/components/carousel/graphics/StackedBar';
+import { ProcessFlow } from '@/components/carousel/graphics/ProcessFlow';
+import { HeatGrid } from '@/components/carousel/graphics/HeatGrid';
 import { GraphicErrorBoundary } from '@/components/carousel/graphics/GraphicErrorBoundary';
+import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 
@@ -70,6 +82,19 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   callout: CalloutQuote,
   table: ComparisonTable,
   pyramid: PyramidGraphic,
+  // Tier 1
+  radial: RadialProgress,
+  circleStats: CircleStats,
+  spectrum: SpectrumBar,
+  funnel: FunnelChart,
+  scorecard: ScoreCard,
+  bubbles: BubbleCluster,
+  iconStat: IconStat,
+  // Tier 2
+  matrix2x2: Matrix2x2,
+  stackedBar: StackedBar,
+  processFlow: ProcessFlow,
+  heatGrid: HeatGrid,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {
@@ -158,7 +183,7 @@ export default function ContentSlide({
   const hasInlineGraphic = hasGraphicSpec || hasSvg;            // shown inside flex column
 
   // Colors — dark mode overrides when darkBackground=true
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#0d2137') : (brandStyle?.background ?? '#f0ece6');
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? '#f0ece6');
   const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? '#1e7a8a');
   const bodyColor = darkBackground ? 'rgba(255,255,255,0.88)' : (brandStyle?.body ?? '#1a2535');
   const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
@@ -167,8 +192,21 @@ export default function ContentSlide({
   // Body font size: smaller when a graphic occupies the graphic zone
   const bodyFontSize = hasInlineGraphic ? 27 : (hasLegacyGraphic ? 30 : 34);
 
+  const decoAccent = brandStyle?.accent ?? '#1e7a8a';
+
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+      {/* Dark background decoration — mirrors hook slide pattern at low opacity for continuity */}
+      {darkBackground && (
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.18, pointerEvents: 'none' }}>
+          <HookDecoration
+            type={getHookDecorationType(headline)}
+            color="#ffffff"
+            accent={decoAccent}
+          />
+        </div>
+      )}
+
       {/* fal.ai background image — 15% opacity, purely atmospheric behind all content */}
       {backgroundImage ? (
         <div style={{
@@ -233,7 +271,7 @@ export default function ContentSlide({
             fontFamily: 'Cormorant Garamond, Lora, serif',
             fontWeight: 400,
             fontStyle: 'italic',
-            fontSize: 17,
+            fontSize: 21,
             color: citationColor,
             lineHeight: 1.4,
           }}>

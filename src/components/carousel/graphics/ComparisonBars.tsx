@@ -46,7 +46,7 @@ export function ComparisonBars({
           <g key={i}>
             {/* Label */}
             <text
-              x={0} y={y + barHeight / 2 + 6}
+              x={10} y={y + barHeight / 2 + 6}
               fontFamily="Outfit, sans-serif" fontSize="24" fill={bodyColor}
             >
               {item.label}
@@ -58,6 +58,15 @@ export function ComparisonBars({
               rx={barHeight / 2}
               fill={`${bodyColor}15`}
             />
+            {/* Glow halo on top bar */}
+            {i === 0 && (
+              <rect
+                x={labelW - 2} y={y - 2}
+                width={barW + 4} height={barHeight + 4}
+                rx={barHeight / 2 + 2}
+                fill={`${accent}20`}
+              />
+            )}
             {/* Value bar */}
             <rect
               x={labelW} y={y}

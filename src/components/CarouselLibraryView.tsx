@@ -2,10 +2,14 @@
 import { useState, useEffect } from "react";
 import { SavedCarousel } from "@/lib/types";
 
+const CAPTION_PREVIEW_LENGTH = 120;
+
 export default function CarouselLibraryView() {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [captionCopied, setCaptionCopied] = useState<string | null>(null);
+  const [captionExpanded, setCaptionExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/api/carousel/library")
@@ -40,6 +44,16 @@ export default function CarouselLibraryView() {
 
   function copyShareLink(id: string) {
     navigator.clipboard.writeText(`${window.location.origin}/carousels/${id}`);
+  }
+
+  function copyCaption(id: string, caption: string) {
+    navigator.clipboard.writeText(caption);
+    setCaptionCopied(id);
+    setTimeout(() => setCaptionCopied(null), 1500);
+  }
+
+  function toggleCaption(id: string) {
+    setCaptionExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   return (
@@ -80,6 +94,35 @@ export default function CarouselLibraryView() {
             <div style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", marginBottom: 14, lineHeight: 1.4, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>
               "{c.content.hooks[c.selectedHook]?.headline}"
             </div>
+            {c.content.caption && (() => {
+              const isExpanded = captionExpanded[c.id];
+              const isLong = c.content.caption.length > CAPTION_PREVIEW_LENGTH;
+              const displayText = isExpanded || !isLong
+                ? c.content.caption
+                : c.content.caption.slice(0, CAPTION_PREVIEW_LENGTH) + "…";
+              return (
+                <div style={{ marginBottom: 14, padding: "10px 12px", background: "var(--bg)", borderRadius: 7, border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--subtle)" }}>Caption</span>
+                    <button
+                      onClick={() => copyCaption(c.id, c.content.caption!)}
+                      style={{ fontSize: 11, fontWeight: 600, color: captionCopied === c.id ? "#15803d" : "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, flexShrink: 0 }}
+                    >
+                      {captionCopied === c.id ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{displayText}</div>
+                  {isLong && (
+                    <button
+                      onClick={() => toggleCaption(c.id)}
+                      style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                    >
+                      {isExpanded ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <a
                 href={`/carousels/${c.id}`}

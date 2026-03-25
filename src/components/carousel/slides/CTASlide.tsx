@@ -17,7 +17,7 @@ type Props = {
 export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false }: Props) {
   const parts = followLine.split("@lunia_life");
 
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#0d2137') : (brandStyle?.background ?? "#f0ece6");
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? "#f0ece6");
   const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? "#1e7a8a");
   const followColor = darkBackground ? 'rgba(255,255,255,0.8)' : (brandStyle?.headline ?? "#1e7a8a");
 

@@ -107,6 +107,17 @@ Brand rules (follow exactly):
   {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
   {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
   {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions
+  {"component":"radial","data":{"value":"87%","label":"ADULTS MAGNESIUM DEFICIENT","sublabel":"optional context"}}  — single big % or score on a bold speedometer arc
+  {"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM SLEEP"}]}}  — 2-4 ringed stat circles side by side, ideal for comparing 2-4 related metrics
+  {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}  — highlight a healthy/optimal range on a min-max scale
+  {"component":"funnel","data":{"stages":[{"label":"AWARENESS","percent":100},{"label":"INTEREST","percent":62},{"label":"CONVERSION","percent":18}]}}  — 2-5 stage funnel showing drop-off or progression
+  {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY RATING","sublabel":"optional"}}  — large grade/score with corner bracket styling
+  {"component":"bubbles","data":{"items":[{"label":"Magnesium","size":3},{"label":"L-Theanine","size":2},{"label":"Glycine","size":1}]}}  — 2-5 bubbles sized by importance (size 1-3), ideal for ingredient clusters
+  {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA BRAIN WAVES","sublabel":"optional"}}  — hero emoji + big number + label, for one standout stat with a visual anchor
+  {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast,Less Effective","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}  — 2x2 quadrant matrix for positioning or trade-off analysis
+  {"component":"stackedBar","data":{"segments":[{"label":"LIGHT SLEEP","percent":55,"value":"4.4 hrs"},{"label":"DEEP SLEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}  — single stacked bar showing how a whole divides into parts (2-5 segments)
+  {"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}  — 2-5 arrow-connected process steps in a horizontal flow
+  {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}  — grid of cells coloured by intensity (1=low 2=mid 3=high), for patterns across days/items
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
 - imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
   Examples of hook-to-image translation:
@@ -135,14 +146,14 @@ Brand rules (follow exactly):
 - Headline: uppercase, max 8 words
 - graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
 
-export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string) =>
+export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, currentComponent?: string) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
 
 Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
-
-Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. Use a DIFFERENT component than the current one — the goal is variety. Available components (use REAL numbers/facts from the body, never invent):
+${currentComponent ? `Current component (DO NOT use this — pick a different one): "${currentComponent}"` : ''}
+Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. MANDATORY: you MUST use a different component type than the current one above. Available components (use REAL numbers/facts from the body, never invent):
 
 {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER}],"unit":"optional unit"}}
@@ -158,5 +169,16 @@ Return ONLY a valid compact single-line JSON object. Pick the component that bes
 {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
 {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
+{"component":"radial","data":{"value":"87%","label":"ADULTS MAGNESIUM DEFICIENT","sublabel":"optional context"}}
+{"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM"}]}}
+{"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}
+{"component":"funnel","data":{"stages":[{"label":"STAGE 1","percent":100},{"label":"STAGE 2","percent":60},{"label":"STAGE 3","percent":28}]}}
+{"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY RATING","sublabel":"optional"}}
+{"component":"bubbles","data":{"items":[{"label":"Magnesium","size":3},{"label":"L-Theanine","size":2},{"label":"Glycine","size":1}]}}
+{"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA BRAIN WAVES"}}
+{"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}
+{"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}
+{"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}
+{"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}
 
 Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits, output exactly "".`;

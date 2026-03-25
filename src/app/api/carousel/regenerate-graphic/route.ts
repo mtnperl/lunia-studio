@@ -17,16 +17,26 @@ export async function POST(req: Request) {
     const topic: string = body.topic ?? "";
     const headline: string = body.headline ?? "";
     const slideBody: string = body.body ?? "";
+    const currentGraphicRaw: string = body.currentGraphic ?? "";
 
     if (!topic || !headline) {
       return Response.json({ error: "topic and headline required" }, { status: 400 });
     }
 
+    // Extract current component name so the prompt can avoid repeating it
+    let currentComponent: string | undefined;
+    try {
+      if (currentGraphicRaw) {
+        const parsed = JSON.parse(currentGraphicRaw);
+        if (parsed?.component) currentComponent = parsed.component;
+      }
+    } catch { /* ignore parse errors */ }
+
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 512,
       messages: [
-        { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody) },
+        { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, currentComponent) },
       ],
     });
 
