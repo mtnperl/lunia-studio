@@ -69,14 +69,13 @@ export default function Page() {
   const [tab, setTab]               = useState<Tab>("home");
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
-    if (saved === "light") {
-      setTheme("light");
-      applyThemeVars("light");
-    }
+    const initial = saved ?? "light";
+    setTheme(initial);
+    applyThemeVars(initial);
   }, []);
 
   function toggleTheme() {

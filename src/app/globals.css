@@ -2,22 +2,22 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Warm Atelier Dark ── */
-  --bg:           #0D0C0A;
-  --surface:      #171512;
-  --surface-r:    #201E1B;
-  --surface-h:    #252219;
-  --text:         #EDE8DF;
-  --muted:        #7A7268;
-  --subtle:       #4A4640;
-  --accent:       #C8A96E;
-  --accent-dim:   rgba(200, 169, 110, 0.12);
-  --accent-mid:   rgba(200, 169, 110, 0.30);
-  --border:       #2A2723;
-  --border-strong: #332F2B;
-  --success:      #5F9E75;
-  --warning:      #C47A5A;
-  --error:        #B85C5C;
+  /* ── Warm Atelier Light (default) ── */
+  --bg:           #F5F0E8;
+  --surface:      #EDE8DF;
+  --surface-r:    #E5DFD0;
+  --surface-h:    #DDD7C8;
+  --text:         #1C1916;
+  --muted:        #6B6359;
+  --subtle:       #9B9389;
+  --accent:       #A07830;
+  --accent-dim:   rgba(160, 120, 48, 0.10);
+  --accent-mid:   rgba(160, 120, 48, 0.28);
+  --border:       #D8D1C0;
+  --border-strong: #C8C0B0;
+  --success:      #3D7A52;
+  --warning:      #B86040;
+  --error:        #A04040;
 
   /* ── Typography ── */
   --font-serif:  'Instrument Serif', Georgia, serif;
