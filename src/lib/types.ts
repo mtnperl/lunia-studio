@@ -212,6 +212,13 @@ export type SavedCarousel = {
   content: CarouselContent;
   selectedHook: number;
   graphicStyles?: [GraphicStyle, GraphicStyle, GraphicStyle]; // legacy
+  brandStyle?: BrandStyle;
+  hookImageUrl?: string;
+  slideImages?: (string | null)[];
+  showDecoration?: boolean;
+  logoScale?: number;
+  arrowScale?: number;
+  darkBackground?: boolean;
   savedAt: string;
 };
 

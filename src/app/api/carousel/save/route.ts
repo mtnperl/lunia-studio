@@ -5,9 +5,13 @@ import { randomUUID } from "crypto";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { topic, hookTone, content, selectedHook, graphicStyles } = body;
+    const {
+      topic, hookTone, content, selectedHook,
+      brandStyle, hookImageUrl, slideImages,
+      showDecoration, logoScale, arrowScale, darkBackground,
+    } = body;
 
-    if (!topic || !content || selectedHook == null || !graphicStyles) {
+    if (!topic || !content || selectedHook == null) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -17,7 +21,13 @@ export async function POST(req: Request) {
       hookTone: hookTone ?? "educational",
       content,
       selectedHook,
-      graphicStyles,
+      brandStyle,
+      hookImageUrl,
+      slideImages,
+      showDecoration,
+      logoScale,
+      arrowScale,
+      darkBackground,
       savedAt: new Date().toISOString(),
     };
 

@@ -139,7 +139,7 @@ export default function CarouselLibraryView() {
                   background: "var(--bg)",
                 }}
               >
-                View ↗
+                ↓ Download ↗
               </a>
               <button
                 onClick={() => copyShareLink(c.id)}

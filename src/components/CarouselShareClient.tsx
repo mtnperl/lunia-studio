@@ -1,0 +1,184 @@
+"use client";
+import { useRef, useState } from "react";
+import { toPng } from "html-to-image";
+import HookSlide from "@/components/carousel/slides/HookSlide";
+import ContentSlide from "@/components/carousel/slides/ContentSlide";
+import CTASlide from "@/components/carousel/slides/CTASlide";
+import { SavedCarousel, BrandStyle } from "@/lib/types";
+
+type Props = { carousel: SavedCarousel };
+
+const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
+const PREVIEW_SCALE = 0.5;
+
+export default function CarouselShareClient({ carousel }: Props) {
+  const {
+    content, selectedHook, topic, hookTone,
+    brandStyle, hookImageUrl, slideImages,
+    showDecoration = true, logoScale = 1, arrowScale = 1, darkBackground = false,
+  } = carousel;
+
+  const hook = content.hooks[selectedHook];
+  const imgs = slideImages ?? [null, null, null, null, null];
+  const bs: BrandStyle | undefined = brandStyle;
+
+  const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+
+  function proxyUrl(url: string | null | undefined): string | undefined {
+    if (!url) return undefined;
+    if (url.startsWith("/")) return url;
+    return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+
+  async function downloadSlide(index: number) {
+    setDownloading(index);
+    setExportError(null);
+    try {
+      const el = exportRefs.current[index];
+      if (!el) throw new Error("Element not found");
+      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: true });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
+      a.click();
+    } catch {
+      setExportError("Export failed — try again");
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function downloadAll() {
+    setDownloadingAll(true);
+    setExportError(null);
+    for (let i = 0; i < 5; i++) {
+      await downloadSlide(i);
+    }
+    setDownloadingAll(false);
+  }
+
+  const previewNodes = [
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
+      backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
+      isFalImage={!!imgs[0]}
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
+  ];
+
+  const exportNodes = [
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      isFalImage={!!imgs[0]}
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
+  ];
+
+  const slideW = Math.round(1080 * PREVIEW_SCALE);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 24px 80px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 32, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 20, height: 20, background: "#000", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>L</span>
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Studio</span>
+          </div>
+          <button
+            onClick={downloadAll}
+            disabled={downloadingAll}
+            style={{
+              background: "#1e7a8a", color: "#fff", border: "none", borderRadius: 7,
+              padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+              cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            {downloadingAll ? (
+              <>
+                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+                Exporting…
+              </>
+            ) : "↓ Download all (5 PNGs)"}
+          </button>
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>{topic}</h1>
+          <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>
+            {hookTone} · saved {new Date(carousel.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </p>
+        </div>
+
+        {exportError && (
+          <div style={{ background: "#fff3f3", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#991b1b" }}>
+            ⚠ {exportError}
+          </div>
+        )}
+
+        {/* Slides */}
+        <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 16 }}>
+          {previewNodes.map((node, i) => (
+            <div key={i} style={{ flexShrink: 0, width: slideW }}>
+              <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+                {SLIDE_LABELS[i]}
+              </div>
+              <div style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+                {node}
+              </div>
+              <button
+                onClick={() => downloadSlide(i)}
+                disabled={downloading === i || downloadingAll}
+                style={{
+                  marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
+                  border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
+                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                  cursor: (downloading === i || downloadingAll) ? "not-allowed" : "pointer",
+                  opacity: (downloading === i || downloadingAll) ? 0.5 : 1,
+                }}
+              >
+                {downloading === i ? "…" : "↓ PNG"}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Citations */}
+        {content.slides.some(s => s.citation) && (
+          <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 10 }}>
+              Citations
+            </div>
+            {content.slides.map((slide, i) =>
+              slide.citation ? (
+                <div key={i} style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
+                  [{i + 1}] {slide.citation}
+                </div>
+              ) : null
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Hidden full-size slides for accurate PNG export */}
+      <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
+        {exportNodes.map((node, i) => (
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: 1350 }}>
+            {node}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

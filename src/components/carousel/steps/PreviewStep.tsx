@@ -100,7 +100,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const res = await fetch("/api/carousel/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, hookTone, content, selectedHook, graphicStyles: [null, null, null, null, null] }),
+        body: JSON.stringify({
+          topic,
+          hookTone,
+          content,
+          selectedHook,
+          brandStyle,
+          hookImageUrl: config.hookImageUrl,
+          slideImages: config.slideImages,
+          showDecoration,
+          logoScale,
+          arrowScale,
+          darkBackground,
+        }),
       });
       if (!res.ok) return;
       const { id } = await res.json();
