@@ -11,14 +11,15 @@ type Props = {
   backgroundImage?: string | null;  // fal.ai generated background
   shimmer?: boolean;                // show shimmer while loading
   logoScale?: number;
+  darkBackground?: boolean;         // match hook slide dark background
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1 }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false }: Props) {
   const parts = followLine.split("@lunia_life");
 
-  const bg = brandStyle?.background ?? "#f0ece6";
-  const headlineColor = brandStyle?.headline ?? "#1e7a8a";
-  const followColor = brandStyle?.headline ?? "#1e7a8a";
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#0d2137') : (brandStyle?.background ?? "#f0ece6");
+  const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? "#1e7a8a");
+  const followColor = darkBackground ? 'rgba(255,255,255,0.8)' : (brandStyle?.headline ?? "#1e7a8a");
 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
@@ -40,7 +41,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <LuniaLogo variant="dark" sizeScale={logoScale} />
+      <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",

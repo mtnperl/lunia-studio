@@ -26,6 +26,7 @@ export default function SubjectsView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [unmarkingId, setUnmarkingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function loadSubjects() {
@@ -59,6 +60,16 @@ export default function SubjectsView() {
   function startEdit(s: Subject) {
     setEditingId(s.id);
     setEditText(s.text);
+  }
+
+  async function handleMarkUnused(id: string) {
+    setSubjects((prev) => prev.map((s) => s.id === id ? { ...s, usedAt: undefined } : s));
+    setUnmarkingId(null);
+    await fetch(`/api/subjects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "markUnused" }),
+    });
   }
 
   async function handleDelete(id: string) {
@@ -258,17 +269,45 @@ export default function SubjectsView() {
 
                 <div>
                   {used ? (
-                    <span style={{
-                      display: "inline-block",
-                      background: "rgba(34,197,94,0.15)",
-                      color: "#15803d",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "2px 7px",
-                      borderRadius: 4,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}>Used</span>
+                    unmarkingId === s.id ? (
+                      <button
+                        onClick={() => handleMarkUnused(s.id)}
+                        onBlur={() => setUnmarkingId(null)}
+                        autoFocus
+                        style={{
+                          padding: "2px 6px", fontSize: 10, fontWeight: 700,
+                          background: "#d97706", color: "#fff",
+                          border: "none", borderRadius: 4,
+                          cursor: "pointer", fontFamily: "inherit",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Confirm
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setUnmarkingId(s.id)}
+                        title="Mark as unused"
+                        style={{
+                          display: "inline-block",
+                          background: "rgba(34,197,94,0.15)",
+                          color: "#15803d",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 7px",
+                          borderRadius: 4,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          border: "none",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(217,119,6,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#d97706"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#15803d"; }}
+                      >
+                        Used
+                      </button>
+                    )
                   ) : (
                     <span style={{ color: "var(--subtle)", fontSize: 12 }}>—</span>
                   )}

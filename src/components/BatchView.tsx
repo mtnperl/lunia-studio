@@ -4,7 +4,9 @@ import { nanoid } from "nanoid";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
-import { CarouselContent, HookTone, Subject } from "@/lib/types";
+import PreviewStep from "@/components/carousel/steps/PreviewStep";
+import { MiniRetroLoader } from "@/components/carousel/shared/RetroLoader";
+import { BrandStyle, CarouselContent, HookTone, Subject } from "@/lib/types";
 
 const HOOK_SCALE = 0.22;
 const SLIDE_SCALE = 0.22;
@@ -20,6 +22,7 @@ type QueueItem = {
   savedId?: string;
   imagePromptDraft?: string;
   imagePromptOpen?: boolean;
+  brandStyle?: BrandStyle;
 };
 
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
@@ -60,20 +63,24 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
 // ─── ReviewCard ───────────────────────────────────────────────────────────────
 function ReviewCard({
   item,
+  hookTone,
   onSelectHook,
   onGenerateImage,
-  onSave,
   onRetry,
   onImagePromptChange,
   onToggleImagePrompt,
+  onContentUpdate,
+  onGoBackToReview,
 }: {
   item: QueueItem;
+  hookTone: HookTone;
   onSelectHook: (id: string, hookIndex: number) => void;
   onGenerateImage: (item: QueueItem) => void;
-  onSave: (item: QueueItem) => void;
   onRetry: (item: QueueItem) => void;
   onImagePromptChange: (id: string, prompt: string) => void;
   onToggleImagePrompt: (id: string) => void;
+  onContentUpdate: (id: string, content: CarouselContent) => void;
+  onGoBackToReview: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(item.status === "reviewing");
   const content = item.content;
@@ -107,9 +114,9 @@ function ReviewCard({
           </div>
           <div style={{ fontSize: 12, color: statusColor(item.status), fontWeight: 600 }}>
             {item.status === "done" && item.savedId
-              ? "✓ Saved to library"
+              ? "✓ Saved · click to edit"
               : item.status === "done"
-              ? "✓ Done — click to review or save"
+              ? "✓ Ready · click to edit, download & save"
               : item.status === "reviewing"
               ? "✎ Review hooks & slides"
               : item.status === "error"
@@ -124,19 +131,6 @@ function ReviewCard({
               borderTopColor: statusColor(item.status),
               borderRadius: "50%", animation: "spin 0.8s linear infinite",
             }} />
-          )}
-          {item.status === "done" && item.content && !item.savedId && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onSave(item); }}
-              style={{
-                fontSize: 12, fontWeight: 700, color: "#1e7a8a",
-                padding: "5px 12px", border: "1px solid rgba(30,122,138,0.3)",
-                borderRadius: 6, background: "rgba(30,122,138,0.06)",
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              Save →
-            </button>
           )}
           {item.status === "done" && item.savedId && (
             <span style={{
@@ -317,31 +311,31 @@ function ReviewCard({
               </button>
             )}
             {item.status === "imaging" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#d97706", fontWeight: 600 }}>
-                <div style={{
-                  width: 14, height: 14, border: "2px solid rgba(217,119,6,0.3)",
-                  borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.7s linear infinite",
-                }} />
-                Generating image…
+              <div style={{ width: "100%" }}>
+                <MiniRetroLoader label={item.content?.hooks[item.selectedHook]?.headline ?? "HOOK SLIDE"} />
               </div>
             )}
-            {item.status === "done" && !item.savedId && (
-              <button
-                onClick={() => onSave(item)}
-                style={{
-                  background: "var(--text)", color: "var(--bg)",
-                  border: "none", borderRadius: 8,
-                  padding: "11px 24px", fontSize: 13, fontWeight: 700,
-                  fontFamily: "inherit", cursor: "pointer",
-                }}
-              >
-                Save to library →
-              </button>
-            )}
-            {item.status === "done" && item.savedId && (
-              <span style={{ fontSize: 13, color: "#15803d", fontWeight: 700 }}>✓ Saved to library</span>
-            )}
           </div>
+        </div>
+      )}
+
+      {/* Full PreviewStep when done */}
+      {expanded && item.status === "done" && item.content && (
+        <div style={{ padding: "20px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+          <PreviewStep
+            config={{
+              topic: item.topic,
+              content: item.content,
+              selectedHook: item.selectedHook,
+              brandStyle: item.brandStyle,
+              hookImageUrl: undefined,
+              slideImages: [item.imageUrl ?? null, null, null, null, null],
+            }}
+            hookTone={hookTone}
+            onRestart={() => setExpanded(false)}
+            onChangeHook={() => onGoBackToReview(item.id)}
+            onContentChange={(cfg) => onContentUpdate(item.id, cfg.content)}
+          />
         </div>
       )}
     </div>
@@ -393,7 +387,8 @@ export default function BatchView() {
         updateItem(item.id, { status: "error", error: "No content returned" });
         return;
       }
-      updateItem(item.id, { content, status: "reviewing" });
+      const brandStyle = data?.brandStyle as BrandStyle | undefined;
+      updateItem(item.id, { content, brandStyle, status: "reviewing" });
     } catch (e) {
       updateItem(item.id, { status: "error", error: String(e) });
     }
@@ -627,12 +622,14 @@ export default function BatchView() {
               <ReviewCard
                 key={item.id}
                 item={item}
+                hookTone={hookTone}
                 onSelectHook={(id, hookIndex) => updateItem(id, { selectedHook: hookIndex })}
                 onGenerateImage={generateImage}
-                onSave={handleSave}
                 onRetry={handleRetry}
                 onImagePromptChange={(id, prompt) => updateItem(id, { imagePromptDraft: prompt })}
                 onToggleImagePrompt={(id) => updateItem(id, { imagePromptOpen: !queue.find(i => i.id === id)?.imagePromptOpen })}
+                onContentUpdate={(id, content) => updateItem(id, { content })}
+                onGoBackToReview={(id) => updateItem(id, { status: "reviewing" })}
               />
             ))}
           </div>

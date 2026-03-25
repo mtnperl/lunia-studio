@@ -194,6 +194,16 @@ export async function markSubjectUsed(id: string): Promise<void> {
   }
 }
 
+export async function markSubjectUnused(id: string): Promise<void> {
+  const all = await getSubjects();
+  const idx = all.findIndex((s) => s.id === id);
+  if (idx >= 0) {
+    const { usedAt: _removed, ...rest } = all[idx];
+    all[idx] = rest;
+    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+  }
+}
+
 export async function deleteSubject(id: string): Promise<void> {
   const all = await getSubjects();
   const filtered = all.filter((s) => s.id !== id);

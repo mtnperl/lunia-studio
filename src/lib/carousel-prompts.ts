@@ -92,21 +92,21 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. Pick the component that best fits the slide's data. For lists of discrete items, prefer checklist or iconGrid over steps. For trends over time, use wave. For proportions adding to 100%, use donut or split. Available components (use REAL numbers/facts from the slide, never invent):
-  {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big number or percentage
-  {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
-  {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
-  {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
-  {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions
-  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — two-way comparison
-  {"component":"callout","data":{"text":"KEY STAT OR QUOTE FROM THE BODY","source":"optional brief citation"}}  — bold pull-quote highlight
-  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
-  {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
-  {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
+- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. MANDATORY VARIETY RULE: All 3 slides MUST use 3 DIFFERENT component types — never repeat the same component across slides. Rotate through the full range of available components. Available components (use REAL numbers/facts from the slide, never invent) — listed in suggested rotation order:
   {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 connected chain steps showing a process or mechanism
   {"component":"wave","data":{"points":[{"label":"TIME OR LABEL","value":NUMBER},{"label":"TIME OR LABEL","value":NUMBER}],"unit":"optional unit"}}  — trend/wave line showing values over time or stages, 2-6 points
   {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"},{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — grid of icon+label pairs, 2-9 items, use for lists of benefits/features
   {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER,"color":"optional hex"},{"label":"NAME","value":NUMBER}],"centerLabel":"optional total or key stat"}}  — donut/pie chart for 2-5 part breakdown
+  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — two-way comparison
+  {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
+  {"component":"callout","data":{"text":"KEY STAT OR QUOTE FROM THE BODY","source":"optional brief citation"}}  — bold pull-quote highlight
+  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
+  {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
+  {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
+  {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big number or percentage
+  {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
+  {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
+  {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
 - imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
   Examples of hook-to-image translation:
@@ -142,17 +142,21 @@ Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
 
-Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. Available components (use REAL numbers/facts from the body, never invent):
+Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. Use a DIFFERENT component than the current one — the goal is variety. Available components (use REAL numbers/facts from the body, never invent):
 
-{"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}
-{"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
-{"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
-{"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
-{"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
+{"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER}],"unit":"optional unit"}}
+{"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}
+{"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}
 {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}
+{"component":"pyramid","data":{"levels":["Top level","Middle","Base"]}}
 {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}
 {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
 {"component":"split","data":{"parts":[{"label":"NAME","percent":70},{"label":"NAME","percent":30}]}}
-{"component":"pyramid","data":{"levels":["Top level","Middle","Base"]}}
+{"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
+{"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}
+{"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
+{"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
 
 Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits, output exactly "".`;
