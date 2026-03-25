@@ -18,6 +18,17 @@ import { ChecklistGraphic } from '@/components/carousel/graphics/ChecklistGraphi
 import { CalloutQuote } from '@/components/carousel/graphics/CalloutQuote';
 import { ComparisonTable } from '@/components/carousel/graphics/ComparisonTable';
 import { PyramidGraphic } from '@/components/carousel/graphics/PyramidGraphic';
+import { RadialProgress } from '@/components/carousel/graphics/RadialProgress';
+import { CircleStats } from '@/components/carousel/graphics/CircleStats';
+import { SpectrumBar } from '@/components/carousel/graphics/SpectrumBar';
+import { FunnelChart } from '@/components/carousel/graphics/FunnelChart';
+import { ScoreCard } from '@/components/carousel/graphics/ScoreCard';
+import { BubbleCluster } from '@/components/carousel/graphics/BubbleCluster';
+import { IconStat } from '@/components/carousel/graphics/IconStat';
+import { Matrix2x2 } from '@/components/carousel/graphics/Matrix2x2';
+import { StackedBar } from '@/components/carousel/graphics/StackedBar';
+import { ProcessFlow } from '@/components/carousel/graphics/ProcessFlow';
+import { HeatGrid } from '@/components/carousel/graphics/HeatGrid';
 import { GraphicErrorBoundary } from '@/components/carousel/graphics/GraphicErrorBoundary';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
@@ -70,6 +81,19 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   callout: CalloutQuote,
   table: ComparisonTable,
   pyramid: PyramidGraphic,
+  // Tier 1
+  radial: RadialProgress,
+  circleStats: CircleStats,
+  spectrum: SpectrumBar,
+  funnel: FunnelChart,
+  scorecard: ScoreCard,
+  bubbles: BubbleCluster,
+  iconStat: IconStat,
+  // Tier 2
+  matrix2x2: Matrix2x2,
+  stackedBar: StackedBar,
+  processFlow: ProcessFlow,
+  heatGrid: HeatGrid,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {

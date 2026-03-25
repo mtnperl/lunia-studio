@@ -58,6 +58,15 @@ export function ComparisonBars({
               rx={barHeight / 2}
               fill={`${bodyColor}15`}
             />
+            {/* Glow halo on top bar */}
+            {i === 0 && (
+              <rect
+                x={labelW - 2} y={y - 2}
+                width={barW + 4} height={barHeight + 4}
+                rx={barHeight / 2 + 2}
+                fill={`${accent}20`}
+              />
+            )}
             {/* Value bar */}
             <rect
               x={labelW} y={y}

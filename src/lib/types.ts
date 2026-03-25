@@ -119,6 +119,52 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
     component: z.literal('pyramid'),
     data: z.object({ levels: z.array(z.string()).min(2).max(5) }),
   }),
+  // ── New (Tier 1) ──────────────────────────────────────────────────────────
+  z.object({
+    component: z.literal('radial'),
+    data: z.object({ value: z.string(), label: z.string(), sublabel: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('circleStats'),
+    data: z.object({ items: z.array(z.object({ value: z.string(), label: z.string(), sublabel: z.string().optional() })).min(2).max(4) }),
+  }),
+  z.object({
+    component: z.literal('spectrum'),
+    data: z.object({ min: z.number(), max: z.number(), from: z.number(), to: z.number(), label: z.string(), unit: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('funnel'),
+    data: z.object({ stages: z.array(z.object({ label: z.string(), value: z.string().optional(), percent: z.number().optional() })).min(2).max(5) }),
+  }),
+  z.object({
+    component: z.literal('scorecard'),
+    data: z.object({ score: z.string(), label: z.string(), sublabel: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('bubbles'),
+    data: z.object({ items: z.array(z.object({ label: z.string(), size: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(), sublabel: z.string().optional() })).min(2).max(5) }),
+  }),
+  z.object({
+    component: z.literal('iconStat'),
+    data: z.object({ icon: z.string(), value: z.string(), unit: z.string().optional(), label: z.string(), sublabel: z.string().optional() }),
+  }),
+  // ── New (Tier 2) ──────────────────────────────────────────────────────────
+  z.object({
+    component: z.literal('matrix2x2'),
+    data: z.object({ topLeft: z.string(), topRight: z.string(), bottomLeft: z.string(), bottomRight: z.string(), xLabel: z.string().optional(), yLabel: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('stackedBar'),
+    data: z.object({ segments: z.array(z.object({ label: z.string(), percent: z.number(), value: z.string().optional() })).min(2).max(5), title: z.string().optional() }),
+  }),
+  z.object({
+    component: z.literal('processFlow'),
+    data: z.object({ steps: z.array(z.string()).min(2).max(5) }),
+  }),
+  z.object({
+    component: z.literal('heatGrid'),
+    data: z.object({ cells: z.array(z.object({ label: z.string(), value: z.number().int().min(1).max(3) })).min(2).max(12), title: z.string().optional() }),
+  }),
 ]);
 
 export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;
