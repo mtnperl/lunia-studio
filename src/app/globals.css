@@ -29,6 +29,25 @@
   --white: #fff;
 }
 
+/* ── Warm Atelier Light ── */
+[data-theme="light"] {
+  --bg:           #F5F0E8;
+  --surface:      #EDE8DF;
+  --surface-r:    #E5DFD0;
+  --surface-h:    #DDD7C8;
+  --text:         #1C1916;
+  --muted:        #6B6359;
+  --subtle:       #9B9389;
+  --accent:       #A07830;
+  --accent-dim:   rgba(160, 120, 48, 0.10);
+  --accent-mid:   rgba(160, 120, 48, 0.28);
+  --border:       #D8D1C0;
+  --border-strong: #C8C0B0;
+  --success:      #3D7A52;
+  --warning:      #B86040;
+  --error:        #A04040;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {

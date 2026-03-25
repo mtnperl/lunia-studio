@@ -16,6 +16,28 @@ import { getLibrary, saveScript } from "@/lib/storage";
 type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar" | "ads";
 type Product = "home" | "script" | "carousel" | "ads";
 
+const LIGHT_VARS: Record<string, string> = {
+  "--bg": "#F5F0E8", "--surface": "#EDE8DF", "--surface-r": "#E5DFD0",
+  "--surface-h": "#DDD7C8", "--text": "#1C1916", "--muted": "#6B6359",
+  "--subtle": "#9B9389", "--accent": "#A07830",
+  "--accent-dim": "rgba(160,120,48,0.10)", "--accent-mid": "rgba(160,120,48,0.28)",
+  "--border": "#D8D1C0", "--border-strong": "#C8C0B0",
+  "--success": "#3D7A52", "--warning": "#B86040", "--error": "#A04040",
+};
+const DARK_VARS: Record<string, string> = {
+  "--bg": "#0D0C0A", "--surface": "#171512", "--surface-r": "#201E1B",
+  "--surface-h": "#252219", "--text": "#EDE8DF", "--muted": "#7A7268",
+  "--subtle": "#4A4640", "--accent": "#C8A96E",
+  "--accent-dim": "rgba(200,169,110,0.12)", "--accent-mid": "rgba(200,169,110,0.30)",
+  "--border": "#2A2723", "--border-strong": "#332F2B",
+  "--success": "#5F9E75", "--warning": "#C47A5A", "--error": "#B85C5C",
+};
+function applyThemeVars(t: "dark" | "light") {
+  const vars = t === "light" ? LIGHT_VARS : DARK_VARS;
+  const el = document.documentElement;
+  Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
+}
+
 const NAV: { section: string; items: { key: Tab; product: Product; label: string }[] }[] = [
   {
     section: "Script",
@@ -47,6 +69,22 @@ export default function Page() {
   const [tab, setTab]               = useState<Tab>("home");
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
+    if (saved === "light") {
+      setTheme("light");
+      applyThemeVars("light");
+    }
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("lunia:theme", next);
+    applyThemeVars(next);
+  }
 
   useEffect(() => { getLibrary().catch(() => {}); }, [tab]);
 
@@ -167,12 +205,39 @@ export default function Page() {
 
         {/* Footer */}
         <div style={{
-          padding: "14px 24px",
+          padding: "12px 24px",
           borderTop: "1px solid var(--border)",
-          fontFamily: "var(--font-mono)", fontSize: 10,
-          color: "var(--subtle)", letterSpacing: "0.04em",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
-          lunia.life · studio
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)", letterSpacing: "0.04em" }}>
+            lunia.life · studio
+          </span>
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            style={{
+              background: "var(--surface-r)", border: "1px solid var(--border-strong)",
+              borderRadius: 6, cursor: "pointer",
+              width: 32, height: 20, padding: 0,
+              display: "flex", alignItems: "center",
+              position: "relative", flexShrink: 0,
+              transition: "background 0.2s",
+            }}
+            aria-label="Toggle theme"
+          >
+            <span style={{
+              position: "absolute",
+              left: theme === "light" ? 14 : 2,
+              width: 14, height: 14,
+              borderRadius: 4,
+              background: "var(--accent)",
+              transition: "left 0.18s ease",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 8,
+            }}>
+              {theme === "light" ? "☀" : "◑"}
+            </span>
+          </button>
         </div>
       </aside>
 
