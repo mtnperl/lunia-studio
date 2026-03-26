@@ -19,12 +19,14 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
   const [guidelines, setGuidelines] = useState("");
   const [regenerating, setRegenerating] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
+  const [alternatives, setAlternatives] = useState<string[]>([]);
   const imagePrompt = content.imagePrompt ?? "";
   const hook = content.hooks[selectedHook];
 
   async function handleRegeneratePrompt() {
     setRegenerating(true);
     setRegenError(null);
+    setAlternatives([]);
     try {
       const res = await fetch("/api/carousel/regenerate-image-prompt", {
         method: "POST",
@@ -42,6 +44,9 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
         setRegenError(data.error ?? "Failed to regenerate prompt");
       } else {
         onImagePromptChange?.(data.prompt);
+        if (Array.isArray(data.alternatives) && data.alternatives.length > 0) {
+          setAlternatives(data.alternatives);
+        }
       }
     } catch {
       setRegenError("Network error — please try again");
@@ -65,7 +70,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           return (
             <div
               key={i}
-              onClick={() => onSelectHook(i)}
+              onClick={() => { onSelectHook(i); setAlternatives([]); }}
               style={{
                 flexShrink: 0,
                 cursor: "pointer",
@@ -78,7 +83,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
               }}
             >
-              <HookSlide headline={h.headline} subline={h.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} />
+              <HookSlide headline={h.headline} subline={h.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} backgroundImageUrl={backgroundImageUrl ?? undefined} showDecoration={false} />
 
               {isSelected && (
                 <div style={{
@@ -200,12 +205,54 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                     border: "2px solid var(--muted)", borderTopColor: "transparent",
                     borderRadius: "50%", animation: "spin 0.7s linear infinite",
                   }} />
-                  Regenerating prompt...
+                  Generating 3 directions...
                 </>
               ) : (
-                <>↺ Regenerate prompt</>
+                <>↺ Generate 3 prompt directions</>
               )}
             </button>
+
+            {/* Alternative prompt suggestions */}
+            {alternatives.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+                }}>
+                  2 more directions — click to use
+                </div>
+                {alternatives.map((alt, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      marginBottom: 6,
+                      fontSize: 12,
+                      color: "var(--text)",
+                      lineHeight: 1.5,
+                      cursor: "pointer",
+                      transition: "border-color 0.15s",
+                      display: "flex", alignItems: "flex-start", gap: 8,
+                    }}
+                    onClick={() => onImagePromptChange?.(alt)}
+                    title="Click to use this prompt"
+                  >
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "var(--accent)",
+                      background: "var(--accent-dim)", borderRadius: 4,
+                      padding: "2px 5px", flexShrink: 0, marginTop: 1,
+                      fontFamily: "var(--font-ui)",
+                    }}>
+                      {i + 2}
+                    </span>
+                    <span>{alt}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
