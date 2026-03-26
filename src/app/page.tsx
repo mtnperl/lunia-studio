@@ -147,9 +147,9 @@ export default function Page() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
             <span style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: 15, fontWeight: 500,
-              letterSpacing: "0.04em",
+              fontFamily: "var(--font-ui)",
+              fontSize: 12, fontWeight: 600,
+              letterSpacing: "0.08em", textTransform: "uppercase",
               color: "var(--text)",
             }}>Studio</span>
           </div>

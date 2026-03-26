@@ -289,7 +289,7 @@ export default function CarouselView() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Carousel builder</h1>
+          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em" }}>Carousel builder</h1>
           <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>Generate a 5-slide Instagram carousel for Lunia Life.</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -45,7 +45,7 @@ export default function LibraryView({ onOpen }: { onOpen: (s: Script) => void })
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Library</h1>
+        <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em" }}>Library</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, marginBottom: 16 }}>
           {scripts.length} script{scripts.length !== 1 ? "s" : ""} saved
         </p>

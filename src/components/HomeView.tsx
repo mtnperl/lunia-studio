@@ -180,7 +180,7 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
             }}
           >
             <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>{card.label}</div>
-            <div style={{ fontFamily: "var(--font-serif)", fontSize: 24, fontWeight: 400, color: "var(--text)", marginBottom: 6, lineHeight: 1.2 }}>{card.title}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 20, fontWeight: 500, color: "var(--text)", marginBottom: 6, lineHeight: 1.2, letterSpacing: "-0.02em" }}>{card.title}</div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.55 }}>{card.desc}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", letterSpacing: "0.02em" }}>{card.cta}</div>
           </div>

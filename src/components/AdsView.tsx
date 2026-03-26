@@ -233,7 +233,7 @@ export default function AdsView() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 80px" }}>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: 28, fontWeight: 400, margin: 0, lineHeight: 1.2 }}>Ads</h1>
+        <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em" }}>Ads</h1>
         <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, marginBottom: 16 }}>
           Paste a competitor ad and get a Lunia-branded version in under a minute.
         </p>
