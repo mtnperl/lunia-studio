@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { MetaData, ShopifyData, ShopifyLTVData, Insight, CombinedDayRow } from "@/lib/types";
+import type { MetaData, ShopifyData, Insight, CombinedDayRow } from "@/lib/types";
 import { joinDays } from "@/lib/analytics-utils";
 import KPICard from "./dashboard/KPICard";
 import PerformanceChart from "./dashboard/PerformanceChart";
@@ -77,11 +77,9 @@ export default function DashboardView() {
   const [unlocked, setUnlocked] = useState(false);
   const [metaData, setMetaData] = useState<MetaData | null>(null);
   const [shopifyData, setShopifyData] = useState<ShopifyData | null>(null);
-  const [ltvData, setLtvData] = useState<ShopifyLTVData | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [metaLoading, setMetaLoading] = useState(false);
   const [shopifyLoading, setShopifyLoading] = useState(false);
-  const [ltvLoading, setLtvLoading] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [shopifyError, setShopifyError] = useState<string | null>(null);
@@ -90,8 +88,8 @@ export default function DashboardView() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [chartColors, setChartColors] = useState<ChartColors | null>(null);
 
-  // Campaign type filter (multi-select set of objective strings)
-  const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
+  // Campaign type filter — default to Sales campaigns only
+  const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set(['OUTCOME_SALES']));
 
   useEffect(() => {
     const stored = localStorage.getItem("lunia:analytics:unlocked");
@@ -102,20 +100,6 @@ export default function DashboardView() {
     if (!unlocked) return;
     setChartColors(resolveChartColors());
   }, [unlocked]);
-
-  const fetchLTV = useCallback(async (bust = false) => {
-    setLtvLoading(true);
-    try {
-      const bustParam = bust ? "&bust=1" : "";
-      const res = await fetch(`/api/shopify/ltv?placeholder=1${bustParam}`);
-      const data = await res.json();
-      if (res.ok && !data.error) {
-        setLtvData(data as ShopifyLTVData);
-      }
-    } catch { /* silently skip */ } finally {
-      setLtvLoading(false);
-    }
-  }, []);
 
   const fetchAll = useCallback(async (d: Days, bust = false) => {
     setMetaLoading(true);
@@ -185,12 +169,6 @@ export default function DashboardView() {
     if (!unlocked) return;
     fetchAll(days);
   }, [days, unlocked, fetchAll]);
-
-  // Fetch LTV once on unlock (doesn't depend on day range)
-  useEffect(() => {
-    if (!unlocked) return;
-    fetchLTV();
-  }, [unlocked, fetchLTV]);
 
   if (!unlocked) {
     return <PasswordGate onUnlock={() => setUnlocked(true)} />;
@@ -319,7 +297,6 @@ export default function DashboardView() {
             onClick={() => {
               setChartColors(resolveChartColors());
               fetchAll(days, true);
-              fetchLTV(true);
             }}
             lastRefreshed={lastRefreshed ?? undefined}
           />
@@ -419,29 +396,6 @@ export default function DashboardView() {
           />
         </div>
 
-        {/* LTV row */}
-        <div className="kpi-grid-2" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 12,
-        }}>
-          <KPICard
-            label="Avg Sub LTV"
-            value={ltvData?.avgSubscriptionLTV ?? 0}
-            prefix="$"
-            decimals={2}
-            loading={ltvLoading}
-            tooltip={`All-time average revenue per subscription customer (${ltvData?.subscriptionCustomerCount ?? 0} customers, 24-month window)`}
-          />
-          <KPICard
-            label="Avg One-time LTV"
-            value={ltvData?.avgOnetimeLTV ?? 0}
-            prefix="$"
-            decimals={2}
-            loading={ltvLoading}
-            tooltip={`All-time average revenue per one-time customer (${ltvData?.onetimeCustomerCount ?? 0} customers, 24-month window)`}
-          />
-        </div>
       </div>
 
       {/* Chart */}
