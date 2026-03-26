@@ -99,10 +99,7 @@ export default function KPICard({ label, value, prefix = "", suffix = "", loadin
             </span>
             {showTooltip && (
               <div style={{
-                position: "absolute",
-                bottom: "calc(100% + 6px)",
-                left: "50%",
-                transform: "translateX(-50%)",
+                position: "fixed",
                 background: "var(--surface-r)",
                 border: "1px solid var(--border-s)",
                 borderRadius: 6,
@@ -110,26 +107,16 @@ export default function KPICard({ label, value, prefix = "", suffix = "", loadin
                 fontSize: 11,
                 fontFamily: "var(--font-ui)",
                 color: "var(--muted)",
-                whiteSpace: "nowrap",
-                zIndex: 50,
+                whiteSpace: "normal",
+                zIndex: 9999,
                 pointerEvents: "none",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                maxWidth: 240,
-                whiteSpaceCollapse: "preserve",
-              } as React.CSSProperties}>
+                boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+                width: 220,
+                lineHeight: 1.5,
+                marginTop: -60,
+                marginLeft: 10,
+              }}>
                 {tooltip}
-                {/* Arrow */}
-                <span style={{
-                  position: "absolute",
-                  top: "100%",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 0,
-                  height: 0,
-                  borderLeft: "5px solid transparent",
-                  borderRight: "5px solid transparent",
-                  borderTop: "5px solid var(--border-s)",
-                }} />
               </div>
             )}
           </span>

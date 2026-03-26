@@ -81,7 +81,7 @@ export default function PerformanceChart({ data, loading, accentColor, accentMid
       </div>
 
       <ResponsiveContainer width="100%" height={260}>
-        <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} vertical={false} />
           <XAxis
             dataKey="date"
@@ -92,16 +92,6 @@ export default function PerformanceChart({ data, loading, accentColor, accentMid
             interval="preserveStartEnd"
           />
           <YAxis
-            yAxisId="left"
-            tickFormatter={formatCurrency}
-            tick={{ fontSize: 11, fontFamily: "var(--font-mono)", fill: mutedColor }}
-            axisLine={false}
-            tickLine={false}
-            width={52}
-          />
-          <YAxis
-            yAxisId="right"
-            orientation="right"
             tickFormatter={formatCurrency}
             tick={{ fontSize: 11, fontFamily: "var(--font-mono)", fill: mutedColor }}
             axisLine={false}
@@ -109,7 +99,7 @@ export default function PerformanceChart({ data, loading, accentColor, accentMid
             width={52}
           />
           <Tooltip content={<CustomTooltip surfaceRColor={surfaceRColor} />} />
-          <Bar yAxisId="left" dataKey="spend" name="Ad Spend" fill={accentMidColor} radius={[2, 2, 0, 0]} maxBarSize={24}>
+          <Bar dataKey="spend" name="Ad Spend" fill={accentMidColor} radius={[2, 2, 0, 0]} maxBarSize={24}>
             {data.length <= 14 && (
               <LabelList
                 dataKey="spend"
@@ -120,7 +110,7 @@ export default function PerformanceChart({ data, loading, accentColor, accentMid
               />
             )}
           </Bar>
-          <Line yAxisId="right" type="monotone" dataKey="shopifyRevenue" name="Shopify Revenue" stroke={accentColor} strokeWidth={2} dot={false} />
+          <Line type="monotone" dataKey="shopifyRevenue" name="Shopify Revenue" stroke={accentColor} strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
