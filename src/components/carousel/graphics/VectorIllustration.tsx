@@ -566,24 +566,39 @@ function themeFromKeywords(keywords: string): VectorTheme {
   return "default";
 }
 
+type VectorMood = 'calm' | 'energetic' | 'scientific' | 'playful';
+
+// Mood adjusts opacity and rendering intensity
+function moodOpacity(mood?: VectorMood): number {
+  switch (mood) {
+    case 'calm':       return 0.75;
+    case 'energetic':  return 1.0;
+    case 'scientific': return 0.85;
+    case 'playful':    return 0.9;
+    default:           return 0.85;
+  }
+}
+
 type Props = {
   keywords: string;
   label?: string;
+  mood?: VectorMood;
   brandStyle?: BrandStyle;
 };
 
-export function VectorIllustration({ keywords, label, brandStyle }: Props) {
+export function VectorIllustration({ keywords, label, mood, brandStyle }: Props) {
   const theme = themeFromKeywords(keywords);
   const accent = brandStyle?.accent ?? "#1e7a8a";
   const body = brandStyle?.body ?? "#1a2535";
   const bg = brandStyle?.background ?? "#f0ece6";
+  const opacity = moodOpacity(mood);
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <svg
         viewBox="0 0 600 520"
         width="100%"
-        style={{ maxHeight: 320 }}
+        style={{ maxHeight: 320, opacity }}
         xmlns="http://www.w3.org/2000/svg"
       >
         <rect width="600" height="520" fill="transparent"/>

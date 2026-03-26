@@ -10,3 +10,10 @@ export { DotChainGraphic } from './DotChainGraphic';
 export { WaveGraphic } from './WaveGraphic';
 export { IconGrid } from './IconGrid';
 export { GraphicErrorBoundary } from './GraphicErrorBoundary';
+// Layout Infographics (Tier 3)
+export { HubSpokeGraphic } from './HubSpokeGraphic';
+export { IcebergGraphic } from './IcebergGraphic';
+export { BridgeGraphic } from './BridgeGraphic';
+export { CircularCycleGraphic } from './CircularCycleGraphic';
+export { BentoTiles } from './BentoTiles';
+export { ConceptFlowGraphic } from './ConceptFlowGraphic';

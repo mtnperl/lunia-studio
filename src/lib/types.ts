@@ -167,7 +167,55 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
   }),
   z.object({
     component: z.literal('vector'),
-    data: z.object({ keywords: z.string(), label: z.string().optional() }),
+    data: z.object({
+      keywords: z.string(),
+      label: z.string().optional(),
+      mood: z.enum(['calm', 'energetic', 'scientific', 'playful']).optional(),
+    }),
+  }),
+  // ── Layout Infographics (Tier 3) ──────────────────────────────────────────
+  z.object({
+    component: z.literal('hubSpoke'),
+    data: z.object({
+      center: z.string(),
+      spokes: z.array(z.object({ label: z.string() })).min(3).max(5),
+    }),
+  }),
+  z.object({
+    component: z.literal('iceberg'),
+    data: z.object({
+      surface: z.array(z.string()).min(1).max(3),
+      hidden: z.array(z.string()).min(2).max(4),
+      surfaceLabel: z.string().optional(),
+      hiddenLabel: z.string().optional(),
+    }),
+  }),
+  z.object({
+    component: z.literal('bridge'),
+    data: z.object({
+      from: z.string(),
+      to: z.string(),
+      label: z.string().optional(),
+    }),
+  }),
+  z.object({
+    component: z.literal('circularCycle'),
+    data: z.object({
+      steps: z.array(z.object({ label: z.string() })).min(3).max(5),
+    }),
+  }),
+  z.object({
+    component: z.literal('bento'),
+    data: z.object({
+      tiles: z.array(z.object({ icon: z.string(), label: z.string(), body: z.string().optional() })).min(2).max(4),
+    }),
+  }),
+  z.object({
+    component: z.literal('conceptFlow'),
+    data: z.object({
+      nodes: z.array(z.object({ label: z.string(), sublabel: z.string().optional() })).min(3).max(5),
+      title: z.string().optional(),
+    }),
   }),
 ]);
 

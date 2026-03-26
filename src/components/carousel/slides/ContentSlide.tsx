@@ -31,6 +31,12 @@ import { ProcessFlow } from '@/components/carousel/graphics/ProcessFlow';
 import { HeatGrid } from '@/components/carousel/graphics/HeatGrid';
 import { VectorIllustration } from '@/components/carousel/graphics/VectorIllustration';
 import { GraphicErrorBoundary } from '@/components/carousel/graphics/GraphicErrorBoundary';
+import { HubSpokeGraphic } from '@/components/carousel/graphics/HubSpokeGraphic';
+import { IcebergGraphic } from '@/components/carousel/graphics/IcebergGraphic';
+import { BridgeGraphic } from '@/components/carousel/graphics/BridgeGraphic';
+import { CircularCycleGraphic } from '@/components/carousel/graphics/CircularCycleGraphic';
+import { BentoTiles } from '@/components/carousel/graphics/BentoTiles';
+import { ConceptFlowGraphic } from '@/components/carousel/graphics/ConceptFlowGraphic';
 import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
@@ -97,6 +103,13 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   processFlow: ProcessFlow,
   heatGrid: HeatGrid,
   vector: VectorIllustration as React.FC<any>,
+  // Layout Infographics (Tier 3)
+  hubSpoke: HubSpokeGraphic as React.FC<any>,
+  iceberg: IcebergGraphic as React.FC<any>,
+  bridge: BridgeGraphic as React.FC<any>,
+  circularCycle: CircularCycleGraphic as React.FC<any>,
+  bento: BentoTiles as React.FC<any>,
+  conceptFlow: ConceptFlowGraphic as React.FC<any>,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {
