@@ -8,10 +8,10 @@ export const maxDuration = 30;
 
 function buildMockData(days: number): MetaData {
   const campaigns: MetaCampaign[] = [
-    { campaignId: 'c1', campaignName: 'Sleep Formula | Prospecting', spend: 4200, revenue: 17640, roas: 4.2, impressions: 310000, clicks: 4800, ctr: 1.55 },
-    { campaignId: 'c2', campaignName: 'Retargeting — 30d',           spend: 1800, revenue: 6120,  roas: 3.4, impressions: 95000,  clicks: 2100, ctr: 2.21 },
-    { campaignId: 'c3', campaignName: 'Lookalike 3% — Sleep',        spend: 2100, revenue: 5040,  roas: 2.4, impressions: 180000, clicks: 2900, ctr: 1.61 },
-    { campaignId: 'c4', campaignName: 'Broad — Wellness',            spend: 950,  revenue: 1330,  roas: 1.4, impressions: 120000, clicks: 1400, ctr: 1.17 },
+    { campaignId: 'c1', campaignName: 'Sleep Formula | Prospecting', campaignObjective: 'OUTCOME_SALES',       spend: 4200, revenue: 17640, roas: 4.2, impressions: 310000, clicks: 4800, ctr: 1.55 },
+    { campaignId: 'c2', campaignName: 'Retargeting — 30d',           campaignObjective: 'OUTCOME_SALES',       spend: 1800, revenue: 6120,  roas: 3.4, impressions: 95000,  clicks: 2100, ctr: 2.21 },
+    { campaignId: 'c3', campaignName: 'Lookalike 3% — Sleep',        campaignObjective: 'OUTCOME_TRAFFIC',     spend: 2100, revenue: 5040,  roas: 2.4, impressions: 180000, clicks: 2900, ctr: 1.61 },
+    { campaignId: 'c4', campaignName: 'Broad — Wellness',            campaignObjective: 'OUTCOME_AWARENESS',   spend: 950,  revenue: 1330,  roas: 1.4, impressions: 120000, clicks: 1400, ctr: 1.17 },
   ];
 
   const totalSpend   = campaigns.reduce((s, c) => s + c.spend,   0);
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
     // Fetch campaign-level insights with daily breakdown
     const params = new URLSearchParams({
-      fields: 'campaign_id,campaign_name,spend,impressions,clicks,action_values,actions',
+      fields: 'campaign_id,campaign_name,campaign_objective,spend,impressions,clicks,action_values,actions',
       level: 'campaign',
       time_range: JSON.stringify({ since: start, until: end }),
       time_increment: '1',
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     const baseUrl = `https://graph.facebook.com/v21.0/act_${META_AD_ACCOUNT_ID}/insights`;
 
     // Campaign-level aggregation maps
-    const campaignMap = new Map<string, { name: string; spend: number; revenue: number; impressions: number; clicks: number }>();
+    const campaignMap = new Map<string, { name: string; objective?: string; spend: number; revenue: number; impressions: number; clicks: number }>();
     const dayMap = new Map<string, { spend: number; revenue: number }>();
 
     let nextUrl: string | null = `${baseUrl}?${params}`;
@@ -118,6 +118,7 @@ export async function GET(req: Request) {
         data: Array<{
           campaign_id: string;
           campaign_name: string;
+          campaign_objective?: string;
           spend: string;
           impressions: string;
           clicks: string;
@@ -143,7 +144,7 @@ export async function GET(req: Request) {
           existing.impressions += impressions;
           existing.clicks += clicks;
         } else {
-          campaignMap.set(row.campaign_id, { name: row.campaign_name, spend, revenue, impressions, clicks });
+          campaignMap.set(row.campaign_id, { name: row.campaign_name, objective: row.campaign_objective, spend, revenue, impressions, clicks });
         }
 
         // Day aggregation
@@ -160,6 +161,7 @@ export async function GET(req: Request) {
     const campaigns: MetaCampaign[] = Array.from(campaignMap.entries()).map(([id, c]) => ({
       campaignId: id,
       campaignName: c.name,
+      campaignObjective: c.objective,
       spend: c.spend,
       revenue: c.revenue,
       roas: calcROAS(c.spend, c.revenue),

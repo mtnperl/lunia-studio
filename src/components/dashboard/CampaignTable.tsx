@@ -10,6 +10,48 @@ type Props = {
   loading?: boolean;
 };
 
+// Map Meta objective strings to short human-readable labels + colors
+const OBJECTIVE_MAP: Record<string, { label: string; color: string }> = {
+  OUTCOME_SALES:            { label: "Sales",       color: "var(--success)" },
+  OUTCOME_AWARENESS:        { label: "Awareness",   color: "var(--muted)" },
+  OUTCOME_TRAFFIC:          { label: "Traffic",     color: "var(--accent)" },
+  OUTCOME_ENGAGEMENT:       { label: "Engagement",  color: "#7E9ECC" },
+  OUTCOME_LEADS:            { label: "Leads",       color: "#C47A5A" },
+  OUTCOME_APP_PROMOTION:    { label: "App",         color: "#9E7ECC" },
+};
+
+function ObjectiveBadge({ objective }: { objective?: string }) {
+  if (!objective) return null;
+  const mapped = OBJECTIVE_MAP[objective] ?? { label: objective, color: "var(--muted)" };
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      padding: "2px 6px",
+      borderRadius: 4,
+      background: "var(--surface-r)",
+      border: "1px solid var(--border)",
+      fontSize: 10,
+      fontFamily: "var(--font-ui)",
+      fontWeight: 600,
+      letterSpacing: "0.04em",
+      color: mapped.color,
+      whiteSpace: "nowrap",
+    }}>
+      <span style={{
+        width: 5,
+        height: 5,
+        borderRadius: "50%",
+        background: mapped.color,
+        display: "inline-block",
+        flexShrink: 0,
+      }} />
+      {mapped.label}
+    </span>
+  );
+}
+
 function roasColor(roas: number): string {
   if (roas >= 3) return "var(--success)";
   if (roas >= 1.5) return "var(--accent)";
@@ -77,7 +119,7 @@ export default function CampaignTable({ campaigns, loading = false }: Props) {
     <div style={{ overflowX: "auto" }}>
       <style>{`
         @media (max-width: 700px) {
-          .col-impressions, .col-clicks { display: none !important; }
+          .col-impressions, .col-clicks, .col-type { display: none !important; }
         }
       `}</style>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -85,6 +127,9 @@ export default function CampaignTable({ campaigns, loading = false }: Props) {
           <tr>
             <th style={thStyle} onClick={() => toggleSort("campaignName")}>
               Campaign<SortArrow col="campaignName" />
+            </th>
+            <th className="col-type" style={thStyle}>
+              Type
             </th>
             <th style={{ ...thStyle, textAlign: "right" }} onClick={() => toggleSort("spend")}>
               Spend<SortArrow col="spend" />
@@ -106,10 +151,13 @@ export default function CampaignTable({ campaigns, loading = false }: Props) {
               onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-h)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <td style={{ ...tdStyle, color: "var(--text)", maxWidth: 200 }}>
+              <td style={{ ...tdStyle, color: "var(--text)", maxWidth: 180 }}>
                 <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.campaignName}
                 </span>
+              </td>
+              <td className="col-type" style={{ ...tdStyle }}>
+                <ObjectiveBadge objective={c.campaignObjective} />
               </td>
               <td style={{ ...tdStyle, ...MONO, textAlign: "right", color: "var(--text)" }}>
                 ${c.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
