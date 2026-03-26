@@ -329,3 +329,70 @@ export type SavedAd = {
   imageUrl: string;                // fal.ai hosted URL
   complianceNote?: string;         // empty = clean, non-empty = review flag
 };
+
+// ─── Analytics / Dashboard ───────────────────────────────────────────────────
+
+export type MetaCampaign = {
+  campaignId: string;
+  campaignName: string;
+  spend: number;           // USD
+  revenue: number;         // from action_values[offsite_conversion.fb_pixel_purchase]
+  roas: number;            // revenue / spend
+  impressions: number;
+  clicks: number;
+  ctr: number;             // clicks / impressions * 100
+};
+
+export type MetaAdInsight = {
+  date: string;            // YYYY-MM-DD
+  spend: number;
+  revenue: number;
+};
+
+export type MetaData = {
+  summary: {
+    spend: number;
+    revenue: number;
+    roas: number;
+    impressions: number;
+    clicks: number;
+  };
+  campaigns: MetaCampaign[];
+  by_day: MetaAdInsight[];
+};
+
+export type ShopifyDayRow = {
+  date: string;            // YYYY-MM-DD
+  orders: number;
+  revenue: number;
+};
+
+export type ShopifyProduct = {
+  productTitle: string;
+  variantTitle?: string;
+  orders: number;
+  revenue: number;
+};
+
+export type ShopifyData = {
+  summary: {
+    orders: number;
+    revenue: number;
+    aov: number;           // 0 if orders === 0 (guard against div/0)
+  };
+  by_day: ShopifyDayRow[];
+  products: ShopifyProduct[];  // top products by revenue
+};
+
+export type CombinedDayRow = {
+  date: string;            // YYYY-MM-DD; sorts lexicographically
+  spend: number;           // Meta spend
+  shopifyRevenue: number;  // Shopify paid revenue; 0 if no orders that day
+  shopifyOrders: number;
+};
+
+export type Insight = {
+  title: string;
+  body: string;
+  type: 'positive' | 'warning' | 'neutral';
+};
