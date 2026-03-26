@@ -93,34 +93,53 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
-- graphic: compact single-line JSON object — pick the component that best visualises this slide's key data point or insight. MANDATORY VARIETY RULE: All 3 slides MUST use 3 DIFFERENT component types — never repeat the same component across slides. Rotate through the full range of available components. Available components (use REAL numbers/facts from the slide, never invent) — listed in suggested rotation order:
-  {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 connected chain steps showing a process or mechanism
-  {"component":"wave","data":{"points":[{"label":"TIME OR LABEL","value":NUMBER},{"label":"TIME OR LABEL","value":NUMBER}],"unit":"optional unit"}}  — trend/wave line showing values over time or stages, 2-6 points
-  {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"},{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — grid of icon+label pairs, 2-9 items, use for lists of benefits/features
-  {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER,"color":"optional hex"},{"label":"NAME","value":NUMBER}],"centerLabel":"optional total or key stat"}}  — donut/pie chart for 2-5 part breakdown
-  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — two-way comparison
-  {"component":"pyramid","data":{"levels":["Most specific (top)","Middle","Base (widest)"]}}  — 2-5 level hierarchy
-  {"component":"callout","data":{"text":"KEY STAT OR QUOTE FROM THE BODY","source":"optional brief citation"}}  — bold pull-quote highlight
-  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
-  {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage breakdown of 2-4 parts
+- graphic: compact single-line JSON. MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types. Use this 3-tier routing to pick:
+
+  STEP 1 — CLASSIFY the slide:
+    A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A
+    B) LAYOUT → slide explains 3-6 discrete concepts that relate structurally (a cycle, contrast, hierarchy, cause-effect chain, or mechanism) with no hard numbers required → pick from TIER B
+    C) CONCEPT → emotional/metaphorical/abstract, or ≤1 hard number → pick from TIER C
+
+  TIER A — DATA components (use REAL numbers from the slide, never invent):
+  {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big standout number
+  {"component":"radial","data":{"value":"87%","label":"ADULTS DEFICIENT","sublabel":"optional"}}  — single % on a speedometer arc
+  {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 side-by-side comparison bars
+  {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER},{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}  — 2-5 part breakdown
+  {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage split 2-4 parts
+  {"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM"}]}}  — 2-4 ringed stat circles
+  {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}  — range on a min-max scale
+  {"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional"}}  — stacked bar 2-5 segments
+  {"component":"funnel","data":{"stages":[{"label":"STAGE","percent":100},{"label":"STAGE","percent":60}]}}  — 2-5 stage funnel with drop-off
+  {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — large grade/score
+  {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES","sublabel":"optional"}}  — hero emoji + big number
+  {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1}],"title":"optional"}}  — grid coloured by intensity 1-3
+  {"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER},{"label":"LABEL","value":NUMBER}],"unit":"optional"}}  — trend line 2-6 points
   {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
-  {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big number or percentage
-  {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 items for side-by-side comparison
-  {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 sequential steps or a mechanism
-  {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions
-  {"component":"radial","data":{"value":"87%","label":"ADULTS MAGNESIUM DEFICIENT","sublabel":"optional context"}}  — single big % or score on a bold speedometer arc
-  {"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM SLEEP"}]}}  — 2-4 ringed stat circles side by side, ideal for comparing 2-4 related metrics
-  {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}  — highlight a healthy/optimal range on a min-max scale
-  {"component":"funnel","data":{"stages":[{"label":"AWARENESS","percent":100},{"label":"INTEREST","percent":62},{"label":"CONVERSION","percent":18}]}}  — 2-5 stage funnel showing drop-off or progression
-  {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY RATING","sublabel":"optional"}}  — large grade/score with corner bracket styling
-  {"component":"bubbles","data":{"items":[{"label":"Magnesium","size":3},{"label":"L-Theanine","size":2},{"label":"Glycine","size":1}]}}  — 2-5 bubbles sized by importance (size 1-3), ideal for ingredient clusters
-  {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA BRAIN WAVES","sublabel":"optional"}}  — hero emoji + big number + label, for one standout stat with a visual anchor
-  {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast,Less Effective","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}  — 2x2 quadrant matrix for positioning or trade-off analysis
-  {"component":"stackedBar","data":{"segments":[{"label":"LIGHT SLEEP","percent":55,"value":"4.4 hrs"},{"label":"DEEP SLEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}  — single stacked bar showing how a whole divides into parts (2-5 segments)
-  {"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}  — 2-5 arrow-connected process steps in a horizontal flow
-  {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}  — grid of cells coloured by intensity (1=low 2=mid 3=high), for patterns across days/items
-  {"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS from the slide (e.g. sleep cortisol rhythm)","label":"OPTIONAL SHORT LABEL"}}  — elegant SVG illustration; use when the slide is conceptual/emotional rather than data-driven, or when all data components have been used
-  Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
+  {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}  — 2x2 quadrant
+  {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}  — bold pull-quote (last resort if only 1 number)
+
+  TIER B — LAYOUT components (match the structural shape of the content):
+  {"component":"hubSpoke","data":{"center":"CENTRAL CONCEPT","spokes":[{"label":"EFFECT 1"},{"label":"EFFECT 2"},{"label":"EFFECT 3"}]}}  — one central mechanism with 3-5 radiating effects; use when slide has one cause with multiple downstream outcomes
+  {"component":"iceberg","data":{"surface":["visible item 1"],"hidden":["hidden truth 1","hidden truth 2","hidden truth 3"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}  — use when slide reveals a hidden reality beneath surface-level perception
+  {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}  — problem → result arc; use when slide shows a causal link or mechanism between two states
+  {"component":"circularCycle","data":{"steps":[{"label":"Step 1"},{"label":"Step 2"},{"label":"Step 3"}]}}  — 3-5 step repeating cycle; use for biological rhythms, feedback loops, habit cycles
+  {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"SHORT LABEL","body":"optional 1-line note"},{"icon":"💤","label":"SHORT LABEL"}]}}  — 2-4 independent insight tiles; use for lists of distinct benefits or mechanisms
+  {"component":"conceptFlow","data":{"nodes":[{"label":"CONCEPT","sublabel":"what it does"},{"label":"CONCEPT","sublabel":"mechanism"},{"label":"OUTCOME","sublabel":"end result"}]}}  — 3-5 cause-effect nodes each with a sublabel; use when slide traces a chain of events or mechanisms
+  {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 simple connected steps (simpler than conceptFlow, no sublabels)
+  {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 numbered sequential steps
+  {"component":"processFlow","data":{"steps":["Step 1","Step 2","Step 3","Step 4"]}}  — 2-5 horizontal process boxes with arrows (technical/biochemical sequence)
+  {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions as a list
+  {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — 2-9 icon+label grid
+  {"component":"pyramid","data":{"levels":["Top (most specific)","Middle","Base (widest)"]}}  — 2-5 level priority hierarchy
+  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — A vs B comparison
+  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
+  {"component":"bubbles","data":{"items":[{"label":"Item","size":3},{"label":"Item","size":2}]}}  — 2-5 bubbles sized by importance
+  {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — grade or score
+
+  TIER C — VECTOR illustration:
+  {"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS (3-5 evocative words)","label":"SHORT LABEL","mood":"calm|energetic|scientific|playful"}}  — SVG illustration for emotional/conceptual slides; mood: calm=relaxation/recovery, energetic=activation/performance, scientific=mechanisms/biology, playful=habits/lifestyle
+
+  Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string.
 - imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
   Examples of hook-to-image translation:
   • "ADENOSINE IS DROWNING YOUR BRAIN" → dark water engulfing, objects sinking into deep blue, air bubbles rising from below, cold undercurrent light
@@ -146,7 +165,7 @@ Brand rules (follow exactly):
 - Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
-- graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
+- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (hubSpoke/iceberg/bridge/circularCycle/bento/conceptFlow/dotchain/steps/etc.) for structural slides, TIER C (vector with mood) for conceptual slides. Always output a valid component JSON.`;
 
 export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = []) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
@@ -155,36 +174,52 @@ Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
 ${avoidComponents.length > 0 ? `ALREADY USED — do NOT pick any of these: ${avoidComponents.join(", ")}. You MUST choose a completely different component type.` : ''}
-Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. MANDATORY: you MUST use a different component type than the ones listed above. Available components (use REAL numbers/facts from the body, never invent):
+Return ONLY a valid compact single-line JSON object. MANDATORY: you MUST use a different component type than the ones already used. Use this 3-tier routing:
 
-{"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
-{"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER}],"unit":"optional unit"}}
-{"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}
-{"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}
-{"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}
-{"component":"pyramid","data":{"levels":["Top level","Middle","Base"]}}
-{"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}
-{"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
-{"component":"split","data":{"parts":[{"label":"NAME","percent":70},{"label":"NAME","percent":30}]}}
-{"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
-{"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}
+STEP 1 — CLASSIFY the slide:
+  A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A
+  B) LAYOUT → slide has 3-6 discrete concepts that relate structurally (cycle, contrast, hierarchy, cause-effect) → pick from TIER B
+  C) CONCEPT → emotional/metaphorical/abstract → pick from TIER C
+
+TIER A — DATA (use REAL numbers/facts only):
+{"component":"stat","data":{"stat":"NUMBER","unit":"UNIT","label":"WHAT IT MEANS"}}
+{"component":"radial","data":{"value":"87%","label":"ADULTS DEFICIENT","sublabel":"optional"}}
 {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
-{"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
-{"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
-{"component":"radial","data":{"value":"87%","label":"ADULTS MAGNESIUM DEFICIENT","sublabel":"optional context"}}
-{"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM"}]}}
-{"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}
-{"component":"funnel","data":{"stages":[{"label":"STAGE 1","percent":100},{"label":"STAGE 2","percent":60},{"label":"STAGE 3","percent":28}]}}
-{"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY RATING","sublabel":"optional"}}
-{"component":"bubbles","data":{"items":[{"label":"Magnesium","size":3},{"label":"L-Theanine","size":2},{"label":"Glycine","size":1}]}}
-{"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA BRAIN WAVES"}}
+{"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER},{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}
+{"component":"split","data":{"parts":[{"label":"NAME","percent":70},{"label":"NAME","percent":30}]}}
+{"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"SLEEP"},{"value":"23%","label":"MORE REM"}]}}
+{"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"SLEEP RANGE","unit":"hrs"}}
+{"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22},{"label":"REM","percent":23}],"title":"optional"}}
+{"component":"funnel","data":{"stages":[{"label":"STAGE","percent":100},{"label":"STAGE","percent":60},{"label":"STAGE","percent":28}]}}
+{"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}
+{"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES"}}
+{"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional"}}
+{"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER},{"label":"LABEL","value":NUMBER}],"unit":"optional"}}
+{"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
 {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}
-{"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}
-{"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}
-{"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}
-{"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS from the slide (e.g. sleep cortisol rhythm)","label":"OPTIONAL SHORT LABEL"}}  — elegant SVG illustration; use when the slide is conceptual/emotional rather than data-driven, or when all data components have been used
+{"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional citation"}}
 
-Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string. If data is limited, use 'callout' with a key insight from the body text.`;
+TIER B — LAYOUT:
+{"component":"hubSpoke","data":{"center":"CENTRAL CONCEPT","spokes":[{"label":"EFFECT 1"},{"label":"EFFECT 2"},{"label":"EFFECT 3"}]}}
+{"component":"iceberg","data":{"surface":["visible 1"],"hidden":["truth 1","truth 2","truth 3"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}
+{"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}
+{"component":"circularCycle","data":{"steps":[{"label":"Step 1"},{"label":"Step 2"},{"label":"Step 3"}]}}
+{"component":"bento","data":{"tiles":[{"icon":"🧠","label":"SHORT LABEL","body":"optional note"},{"icon":"💤","label":"SHORT LABEL"}]}}
+{"component":"conceptFlow","data":{"nodes":[{"label":"CONCEPT","sublabel":"what it does"},{"label":"CONCEPT","sublabel":"mechanism"},{"label":"OUTCOME","sublabel":"result"}]}}
+{"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"processFlow","data":{"steps":["Tryptophan","5-HTP","Serotonin","Melatonin"]}}
+{"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
+{"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}
+{"component":"pyramid","data":{"levels":["Top","Middle","Base"]}}
+{"component":"versus","data":{"left":{"label":"OPTION A","items":["fact"]},"right":{"label":"OPTION B","items":["fact"]}}}
+{"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
+{"component":"bubbles","data":{"items":[{"label":"Item","size":3},{"label":"Item","size":2}]}}
+
+TIER C — VECTOR:
+{"component":"vector","data":{"keywords":"EVOCATIVE TOPIC KEYWORDS (3-5 words)","label":"SHORT LABEL","mood":"calm|energetic|scientific|playful"}}
+
+Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string. If data is limited, use 'callout'.`;
 
 export const REGENERATE_VECTOR_PROMPT = (topic: string, headline: string, body: string) =>
   `You are a visual designer for Lunia Life, a sleep supplement brand. Generate a vector illustration spec for this carousel slide.
@@ -194,9 +229,10 @@ Headline: "${headline}"
 Body: "${body}"
 
 Output ONLY this exact JSON format, nothing else:
-{"component":"vector","data":{"keywords":"SPACE-SEPARATED KEYWORDS from the slide topic and headline (3-5 words, e.g. sleep cortisol rhythm brain)","label":"SHORT DESCRIPTIVE LABEL (2-4 words, lowercase)"}}
+{"component":"vector","data":{"keywords":"SPACE-SEPARATED KEYWORDS (3-5 evocative words, e.g. sleep cortisol rhythm brain)","label":"SHORT DESCRIPTIVE LABEL (2-4 words, lowercase)","mood":"calm|energetic|scientific|playful"}}
 
 Rules:
 - keywords: pick the most visually evocative, conceptual words from the slide. Think of what an editorial illustrator would draw.
 - label: a short lowercase caption that appears under the illustration (e.g. "sleep pressure", "cortisol peak", "neural recovery")
+- mood: calm=relaxation/recovery/rest, energetic=activation/performance/boost, scientific=mechanisms/biology/research, playful=habits/lifestyle/routine
 - Output ONLY the JSON object — no code fence, no explanation.`;
