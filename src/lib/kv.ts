@@ -269,3 +269,6 @@ export async function deleteAdKv(id: string): Promise<void> {
   const filtered = all.filter((a) => a.id !== id);
   await redis.set(ADS_KEY, filtered, { ex: TTL_SECONDS });
 }
+
+// Re-export the internal redis wrapper so analytics routes can import { kv }
+export const kv = redis;

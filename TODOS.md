@@ -50,4 +50,36 @@ Build this after creator workflow is in place. Client-side regex scan — no new
 **Effort:** S (human: ~2h / CC: ~15min)
 **Depends on:** Ads v1 shipped
 
+## Analytics Dashboard
+
+### KPI Period-over-Period Deltas
+**Priority:** P2
+**What:** Each KPI card shows % change vs the prior equivalent period (e.g., ROAS 3.2x ↑12% vs prior 30d).
+**Why:** Trending direction is more actionable than absolute numbers — knowing ROAS improved matters more than the raw number.
+**Pros:** Immediate signal on whether campaigns are improving; no UI redesign needed; KPICard prop scaffolding is trivial.
+**Cons:** Doubles API calls (parallel prior-window fetch); adds complexity to DashboardView state.
+**Context:** Requires parallel Meta + Shopify calls for the prior window (e.g., days 31-60 when current is 1-30). The KPICard `suffix` prop can show the delta. Build after Analytics v1 is stable in production.
+**Effort:** S (human: ~3h / CC: ~15min)
+**Depends on:** Analytics Dashboard shipped
+
+### Copy Brief Button
+**Priority:** P2
+**What:** One-click copies a Markdown summary (KPIs + top campaigns + insights) to clipboard.
+**Why:** Eliminates the Monday-morning screenshot/copy-paste workflow that this dashboard was built to replace.
+**Pros:** Pure client-side `navigator.clipboard`; ~20 lines in DashboardView; huge daily time save.
+**Cons:** Minimal — clipboard API needs HTTPS (already the case on Vercel).
+**Context:** Add a "Copy Brief" button next to the Refresh button in the header. Format: date range, 5 KPIs, top 3 campaigns, all insights. Plain Markdown that pastes cleanly into Slack/Notion.
+**Effort:** XS (human: ~1h / CC: ~5min)
+**Depends on:** Analytics Dashboard shipped
+
+### Budget Pacing Indicator
+**Priority:** P3
+**What:** Badge on the Spend KPI card showing whether spend is on-pace, over, or under vs a monthly budget target.
+**Why:** Prevents end-of-month overspend surprises.
+**Pros:** No new API calls; just math on current spend vs days elapsed; hidden when env var not set.
+**Cons:** Requires optional `META_MONTHLY_BUDGET` env var; only meaningful mid-month.
+**Context:** Add optional env var `META_MONTHLY_BUDGET` (USD). If set, compute: expected_spend = budget * (day_of_month / days_in_month). Badge: on-pace (±10%), over (red), under (amber). Displayed inline in KPICard below the value.
+**Effort:** XS (human: ~1h / CC: ~10min)
+**Depends on:** Analytics Dashboard shipped
+
 ## Completed

@@ -10,11 +10,12 @@ import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
 import AdsView from "@/components/AdsView";
+import DashboardView from "@/components/DashboardView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads";
-type Product = "home" | "script" | "carousel" | "ads";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "analytics";
+type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
   "--bg": "#F5F0E8", "--surface": "#EDE8DF", "--surface-r": "#E5DFD0",
@@ -61,6 +62,12 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     items: [
       { key: "ads",      product: "ads",  label: "Generate"  },
       { key: "calendar", product: "home", label: "Calendar"  },
+    ],
+  },
+  {
+    section: "Analytics",
+    items: [
+      { key: "analytics", product: "analytics", label: "Dashboard" },
     ],
   },
 ];
@@ -286,6 +293,7 @@ export default function Page() {
         )}
         {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
         {tab === "ads"       && <AdsView />}
+        {tab === "analytics" && <DashboardView />}
       </main>
     </div>
   );

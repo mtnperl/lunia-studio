@@ -6,7 +6,7 @@ export const maxDuration = 60; // seconds — sequential Claude + fal.ai can tak
 
 // Flow:
 // competitorCopy + angle + emotion
-//   → Claude (claude-sonnet-4-5)
+//   → Claude (claude-sonnet-4-6)
 //   → parse JSON { headline, primaryText, cta, imagePrompt, complianceNote }
 //   → [if !skipImage] fal.ai (fal-ai/recraft-v3, 1024x1024)
 //   → return { headline, primaryText, cta, imageUrl?, complianceNote }
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const message = await anthropic.messages.create({
-          model: "claude-sonnet-4-5",
+          model: "claude-sonnet-4-6",
           max_tokens: 512,
           system: attempt === 1 ? SYSTEM_PROMPT : SYSTEM_PROMPT + "\n\nCRITICAL: Your previous response was not valid JSON. Output ONLY the JSON object, nothing else.",
           messages: [{ role: "user", content: userMessage }],
