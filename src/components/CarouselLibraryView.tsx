@@ -130,8 +130,17 @@ function SkeletonCard() {
 }
 
 // ── CarouselCard ───────────────────────────────────────────────────────────────
-function CarouselCard({ c, onClick }: { c: SavedCarousel; onClick: () => void }) {
+function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () => void; onDelete: () => void }) {
   const [hovered, setHovered] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeleting(true);
+    await fetch(`/api/carousel/${c.id}`, { method: "DELETE" });
+    onDelete();
+  }
   const hookImg = c.slideImages?.[0] ?? c.hookImageUrl ?? null;
   const toneColor = TONE_COLORS[c.hookTone] ?? "var(--accent)";
   const caption = c.content?.caption ?? "";
@@ -238,8 +247,56 @@ function CarouselCard({ c, onClick }: { c: SavedCarousel; onClick: () => void })
           onClick={e => e.stopPropagation()}
           style={{ display: "flex", gap: 6, alignItems: "stretch" }}
         >
-          <CopyButton text={caption} />
-          <DownloadIconButton href={shareHref} />
+          {confirmDelete ? (
+            <>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, padding: "9px 0",
+                  background: "#A04040", border: "1px solid #A04040",
+                  borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  color: "#fff", cursor: deleting ? "not-allowed" : "pointer",
+                  fontFamily: "var(--font-ui)", opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting ? "Deleting…" : "Confirm delete"}
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(false); }}
+                style={{
+                  width: 36, flexShrink: 0,
+                  background: "var(--surface-r)", border: "1px solid var(--border)",
+                  borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  color: "var(--muted)", cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
+                }}
+              >✕</button>
+            </>
+          ) : (
+            <>
+              <CopyButton text={caption} />
+              <DownloadIconButton href={shareHref} />
+              {/* Trash */}
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmDelete(true); }}
+                title="Delete"
+                style={{
+                  width: 36, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "var(--surface-r)", border: "1px solid var(--border)",
+                  borderRadius: 8, cursor: "pointer", color: "var(--muted)",
+                  transition: "color 0.14s, border-color 0.14s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--error)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                  <path d="M1.5 3.5h11M5 3.5V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M2.5 3.5l.75 8a1 1 0 0 0 1 .916h5.5a1 1 0 0 0 1-.916l.75-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -298,6 +355,7 @@ export default function CarouselLibraryView({ onOpen }: { onOpen?: (c: SavedCaro
                 key={c.id}
                 c={c}
                 onClick={() => onOpen?.(c)}
+                onDelete={() => setCarousels(prev => prev.filter(x => x.id !== c.id))}
               />
             ))}
         </div>

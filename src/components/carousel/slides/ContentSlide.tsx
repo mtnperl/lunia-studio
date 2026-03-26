@@ -192,15 +192,15 @@ export default function ContentSlide({
   // Dynamic font sizes — scale up when text is short, down when long
   function bodySize(len: number, hasGraphic: boolean): number {
     if (hasGraphic) {
-      if (len < 60)  return 36;
-      if (len < 120) return 30;
-      if (len < 180) return 26;
-      return 22;
-    } else {
-      if (len < 80)  return 46;
-      if (len < 140) return 38;
-      if (len < 220) return 30;
+      if (len < 60)  return 40;
+      if (len < 120) return 34;
+      if (len < 180) return 29;
       return 24;
+    } else {
+      if (len < 80)  return 52;
+      if (len < 140) return 44;
+      if (len < 220) return 32;
+      return 26;
     }
   }
   function headlineSize(len: number): number {
