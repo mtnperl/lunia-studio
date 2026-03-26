@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2] - 2026-03-25
+
+### Added
+- Smart Graphic System v2: 3-tier routing for carousel content slides — DATA tier (≥2 real numbers → existing 27 data components), LAYOUT tier (3-6 structured concepts → 6 new layout infographics), CONCEPT tier (emotional/metaphorical → vector illustration with mood)
+- HubSpokeGraphic: central hub with 3-5 radiating spokes for category/pillar relationships
+- IcebergGraphic: horizontal waterline split showing 1-3 visible vs 2-4 hidden elements
+- BridgeGraphic: left-to-right arc connecting a problem block to a result block with optional label
+- CircularCycleGraphic: 3-5 nodes on a clockwise ring with step badges for process/cycle content
+- BentoTiles: 2-4 tiled icon grid (icon + label + optional body) in 2/3/4-tile bento layouts
+- ConceptFlowGraphic: 3-5 horizontal pill-shaped nodes showing mechanisms/sublabels in a linear flow
+- VectorIllustration mood parameter: `calm` | `energetic` | `scientific` | `playful` — adjusts opacity to express emotional tone
+
+### Changed
+- `carousel-prompts.ts`: Claude now classifies slide content before choosing a graphic component, improving selection accuracy for conceptual wellness slides with no hard numbers
+- `REGENERATE_GRAPHIC_PROMPT`, `REGENERATE_SLIDE_PROMPT`, `REGENERATE_VECTOR_PROMPT` all updated with 3-tier routing logic and mood guidance
+
 ## [0.2.1] - 2026-03-25
 
 ### Added
