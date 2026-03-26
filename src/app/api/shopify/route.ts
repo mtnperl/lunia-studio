@@ -17,6 +17,12 @@ function buildMockData(days: number): ShopifyData {
   const totalOrders  = products.reduce((s, p) => s + p.orders,  0);
   const totalRevenue = products.reduce((s, p) => s + p.revenue, 0);
 
+  // ~40% subscription, ~60% one-time
+  const subscriptionRevenue = Math.round(totalRevenue * 0.4 * 100) / 100;
+  const onetimeRevenue      = Math.round((totalRevenue - subscriptionRevenue) * 100) / 100;
+  const subscriptionOrders  = Math.round(totalOrders * 0.4);
+  const onetimeOrders       = totalOrders - subscriptionOrders;
+
   const by_day: ShopifyDayRow[] = [];
   const end = new Date();
   for (let i = days - 1; i >= 0; i--) {
@@ -30,7 +36,15 @@ function buildMockData(days: number): ShopifyData {
   }
 
   return {
-    summary: { orders: totalOrders, revenue: totalRevenue, aov: calcAOV(totalOrders, totalRevenue) },
+    summary: {
+      orders: totalOrders,
+      revenue: totalRevenue,
+      aov: calcAOV(totalOrders, totalRevenue),
+      subscriptionRevenue,
+      onetimeRevenue,
+      subscriptionOrders,
+      onetimeOrders,
+    },
     by_day,
     products,
   };
@@ -71,11 +85,11 @@ export async function GET(req: Request) {
   try {
     const created_at_min = new Date(Date.now() - days * 86_400_000).toISOString();
 
-    type ShopifyLineItem = { product_title: string; variant_title?: string; quantity: number; price: string };
-    type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; line_items: ShopifyLineItem[] };
+    type ShopifyLineItem = { product_title: string; variant_title?: string; quantity: number; price: string; selling_plan_allocation?: { selling_plan_id: number } | null };
+    type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; line_items: ShopifyLineItem[]; customer?: { id: number } | null };
 
     const allOrders: ShopifyOrder[] = [];
-    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,created_at,total_price,financial_status,line_items`;
+    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,created_at,total_price,financial_status,line_items,customer`;
     let pages = 0;
     let truncated = false;
 
@@ -149,8 +163,24 @@ export async function GET(req: Request) {
     const totalOrders  = paidOrders.length;
     const totalRevenue = paidOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
 
+    // Subscription vs one-time split — a subscription order has at least one line item with selling_plan_allocation
+    const isSubscription = (o: (typeof paidOrders)[0]) =>
+      o.line_items.some(li => li.selling_plan_allocation != null);
+    const subOrders      = paidOrders.filter(isSubscription);
+    const onetimeOrders  = paidOrders.filter(o => !isSubscription(o));
+    const subRevenue     = subOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+    const onetimeRevenue = onetimeOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+
     const data: ShopifyData = {
-      summary: { orders: totalOrders, revenue: totalRevenue, aov: calcAOV(totalOrders, totalRevenue) },
+      summary: {
+        orders: totalOrders,
+        revenue: totalRevenue,
+        aov: calcAOV(totalOrders, totalRevenue),
+        subscriptionRevenue: subRevenue,
+        onetimeRevenue,
+        subscriptionOrders: subOrders.length,
+        onetimeOrders: onetimeOrders.length,
+      },
       by_day,
       products,
     };

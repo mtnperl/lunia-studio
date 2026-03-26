@@ -8,6 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  LabelList,
 } from "recharts";
 import type { CombinedDayRow } from "@/lib/types";
 
@@ -108,7 +109,17 @@ export default function PerformanceChart({ data, loading, accentColor, accentMid
             width={52}
           />
           <Tooltip content={<CustomTooltip surfaceRColor={surfaceRColor} />} />
-          <Bar yAxisId="left" dataKey="spend" name="Ad Spend" fill={accentMidColor} radius={[2, 2, 0, 0]} maxBarSize={24} />
+          <Bar yAxisId="left" dataKey="spend" name="Ad Spend" fill={accentMidColor} radius={[2, 2, 0, 0]} maxBarSize={24}>
+            {data.length <= 14 && (
+              <LabelList
+                dataKey="spend"
+                position="top"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(v: any) => (v != null && typeof v === "number" ? formatCurrency(v) : "")}
+                style={{ fontSize: 9, fill: mutedColor, fontFamily: "var(--font-mono)" }}
+              />
+            )}
+          </Bar>
           <Line yAxisId="right" type="monotone" dataKey="shopifyRevenue" name="Shopify Revenue" stroke={accentColor} strokeWidth={2} dot={false} />
         </ComposedChart>
       </ResponsiveContainer>

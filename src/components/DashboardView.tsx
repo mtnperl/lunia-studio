@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { MetaData, ShopifyData, Insight, CombinedDayRow } from "@/lib/types";
+import type { MetaData, ShopifyData, ShopifyLTVData, Insight, CombinedDayRow } from "@/lib/types";
 import { joinDays } from "@/lib/analytics-utils";
 import KPICard from "./dashboard/KPICard";
 import PerformanceChart from "./dashboard/PerformanceChart";
@@ -31,13 +31,57 @@ function resolveChartColors(): ChartColors {
   };
 }
 
+// Map Meta objective strings → human-readable labels
+const OBJECTIVE_LABELS: Record<string, string> = {
+  OUTCOME_SALES:         "Sales",
+  OUTCOME_AWARENESS:     "Awareness",
+  OUTCOME_TRAFFIC:       "Traffic",
+  OUTCOME_ENGAGEMENT:    "Engagement",
+  OUTCOME_LEADS:         "Leads",
+  OUTCOME_APP_PROMOTION: "App",
+};
+
+function labelObjective(obj: string): string {
+  return OBJECTIVE_LABELS[obj] ?? obj;
+}
+
+// Section header shared style
+function SectionHeader({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+      paddingBottom: 10,
+      borderBottom: "1px solid var(--border)",
+      gap: 12,
+      flexWrap: "wrap",
+    }}>
+      <span style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "var(--muted)",
+      }}>
+        {title}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 export default function DashboardView() {
   const [unlocked, setUnlocked] = useState(false);
   const [metaData, setMetaData] = useState<MetaData | null>(null);
   const [shopifyData, setShopifyData] = useState<ShopifyData | null>(null);
+  const [ltvData, setLtvData] = useState<ShopifyLTVData | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [metaLoading, setMetaLoading] = useState(false);
   const [shopifyLoading, setShopifyLoading] = useState(false);
+  const [ltvLoading, setLtvLoading] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [shopifyError, setShopifyError] = useState<string | null>(null);
@@ -45,6 +89,9 @@ export default function DashboardView() {
   const [days, setDays] = useState<Days>(30);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [chartColors, setChartColors] = useState<ChartColors | null>(null);
+
+  // Campaign type filter (multi-select set of objective strings)
+  const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const stored = localStorage.getItem("lunia:analytics:unlocked");
@@ -55,6 +102,20 @@ export default function DashboardView() {
     if (!unlocked) return;
     setChartColors(resolveChartColors());
   }, [unlocked]);
+
+  const fetchLTV = useCallback(async (bust = false) => {
+    setLtvLoading(true);
+    try {
+      const bustParam = bust ? "&bust=1" : "";
+      const res = await fetch(`/api/shopify/ltv?placeholder=1${bustParam}`);
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        setLtvData(data as ShopifyLTVData);
+      }
+    } catch { /* silently skip */ } finally {
+      setLtvLoading(false);
+    }
+  }, []);
 
   const fetchAll = useCallback(async (d: Days, bust = false) => {
     setMetaLoading(true);
@@ -125,6 +186,12 @@ export default function DashboardView() {
     fetchAll(days);
   }, [days, unlocked, fetchAll]);
 
+  // Fetch LTV once on unlock (doesn't depend on day range)
+  useEffect(() => {
+    if (!unlocked) return;
+    fetchLTV();
+  }, [unlocked, fetchLTV]);
+
   if (!unlocked) {
     return <PasswordGate onUnlock={() => setUnlocked(true)} />;
   }
@@ -133,21 +200,69 @@ export default function DashboardView() {
     ? joinDays(metaData.by_day, shopifyData.by_day)
     : [];
 
-  const sectionLabel: React.CSSProperties = {
-    fontFamily: "var(--font-ui)",
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    color: "var(--muted)",
-    marginBottom: 12,
-  };
+  // ── Derive available objectives from campaigns ─────────────────────────────
+  const allObjectives = metaData
+    ? Array.from(new Set(metaData.campaigns.map(c => c.campaignObjective).filter(Boolean) as string[]))
+    : [];
+
+  const isFiltered = selectedObjectives.size > 0;
+
+  // ── Filtered campaigns ─────────────────────────────────────────────────────
+  const filteredCampaigns = isFiltered && metaData
+    ? metaData.campaigns.filter(c => c.campaignObjective && selectedObjectives.has(c.campaignObjective))
+    : (metaData?.campaigns ?? []);
+
+  // ── Recomputed KPI totals when filter is active ────────────────────────────
+  const displaySpend   = isFiltered ? filteredCampaigns.reduce((s, c) => s + c.spend,   0) : (metaData?.summary.spend   ?? 0);
+  const displayRevenue = isFiltered ? filteredCampaigns.reduce((s, c) => s + c.revenue, 0) : (metaData?.summary.revenue ?? 0);
+  const displayROAS    = displaySpend > 0 ? displayRevenue / displaySpend : 0;
+
+  function toggleObjective(obj: string) {
+    setSelectedObjectives(prev => {
+      const next = new Set(prev);
+      if (next.has(obj)) next.delete(obj); else next.add(obj);
+      return next;
+    });
+  }
+
+  // ── Pill button style helper ───────────────────────────────────────────────
+  function pillStyle(active: boolean): React.CSSProperties {
+    return {
+      padding: "3px 10px",
+      borderRadius: 5,
+      border: "1px solid",
+      borderColor: active ? "var(--accent)" : "var(--border)",
+      background: active ? "var(--accent-dim)" : "transparent",
+      color: active ? "var(--accent)" : "var(--muted)",
+      fontFamily: "var(--font-ui)",
+      fontSize: 10,
+      fontWeight: active ? 600 : 400,
+      cursor: "pointer",
+      letterSpacing: "0.04em",
+      transition: "all 120ms ease",
+      whiteSpace: "nowrap" as const,
+    };
+  }
+
+  const errorBanner = (msg: string) => (
+    <div style={{
+      borderLeft: "3px solid var(--warning)",
+      background: "var(--surface-r)",
+      padding: "12px 16px",
+      borderRadius: "0 6px 6px 0",
+      fontSize: 13,
+      color: "var(--warning)",
+    }}>
+      {msg}
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 80px" }}>
       <style>{`
         @media (max-width: 700px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .kpi-grid-2 { grid-template-columns: repeat(2, 1fr) !important; }
           .bottom-row { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -204,49 +319,129 @@ export default function DashboardView() {
             onClick={() => {
               setChartColors(resolveChartColors());
               fetchAll(days, true);
+              fetchLTV(true);
             }}
             lastRefreshed={lastRefreshed ?? undefined}
           />
         </div>
       </div>
 
-      {/* KPI row */}
-      <div className="kpi-grid" style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)",
-        gap: 12,
-        marginBottom: 24,
-      }}>
-        <KPICard
-          label="Ad Spend"
-          value={metaData?.summary.spend ?? 0}
-          prefix="$"
-          loading={metaLoading}
-        />
-        <KPICard
-          label="Meta Revenue"
-          value={metaData?.summary.revenue ?? 0}
-          prefix="$"
-          loading={metaLoading}
-        />
-        <KPICard
-          label="ROAS"
-          value={metaData?.summary.roas ?? 0}
-          suffix="x"
-          decimals={2}
-          loading={metaLoading}
-        />
-        <KPICard
-          label="Shopify Revenue"
-          value={shopifyData?.summary.revenue ?? 0}
-          prefix="$"
-          loading={shopifyLoading}
-        />
-        <KPICard
-          label="Orders"
-          value={shopifyData?.summary.orders ?? 0}
-          loading={shopifyLoading}
-        />
+      {/* KPI row — Meta + ROAS */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--subtle)",
+          marginBottom: 8,
+        }}>
+          Meta Ads {isFiltered && <span style={{ color: "var(--accent)", marginLeft: 4 }}>· filtered</span>}
+        </div>
+        <div className="kpi-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 12,
+          marginBottom: 16,
+        }}>
+          <KPICard
+            label="Ad Spend"
+            value={displaySpend}
+            prefix="$"
+            loading={metaLoading}
+            tooltip="Total USD spent on Meta ads in the selected period"
+          />
+          <KPICard
+            label="Meta Revenue"
+            value={displayRevenue}
+            prefix="$"
+            loading={metaLoading}
+            tooltip="Sum of purchase values tracked via Meta Pixel (offsite_conversion.fb_pixel_purchase)"
+          />
+          <KPICard
+            label="ROAS"
+            value={displayROAS}
+            suffix="x"
+            decimals={2}
+            loading={metaLoading}
+            tooltip="Return on Ad Spend = Meta Revenue ÷ Ad Spend"
+          />
+        </div>
+      </div>
+
+      {/* KPI row — Shopify */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--subtle)",
+          marginBottom: 8,
+        }}>
+          Shopify
+        </div>
+        <div className="kpi-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+          marginBottom: 16,
+        }}>
+          <KPICard
+            label="Sub Revenue"
+            value={shopifyData?.summary.subscriptionRevenue ?? 0}
+            prefix="$"
+            loading={shopifyLoading}
+            tooltip="Revenue from orders with an active selling plan (subscription)"
+          />
+          <KPICard
+            label="One-time Revenue"
+            value={shopifyData?.summary.onetimeRevenue ?? 0}
+            prefix="$"
+            loading={shopifyLoading}
+            tooltip="Revenue from standard one-time purchase orders"
+          />
+          <KPICard
+            label="Orders"
+            value={shopifyData?.summary.orders ?? 0}
+            loading={shopifyLoading}
+            tooltip="Count of paid Shopify orders in the selected period"
+          />
+          <KPICard
+            label="AOV"
+            value={shopifyData?.summary.aov ?? 0}
+            prefix="$"
+            decimals={2}
+            loading={shopifyLoading}
+            tooltip="Average Order Value = Shopify Revenue ÷ Orders"
+          />
+        </div>
+
+        {/* LTV row */}
+        <div className="kpi-grid-2" style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 12,
+        }}>
+          <KPICard
+            label="Avg Sub LTV"
+            value={ltvData?.avgSubscriptionLTV ?? 0}
+            prefix="$"
+            decimals={2}
+            loading={ltvLoading}
+            tooltip={`All-time average revenue per subscription customer (${ltvData?.subscriptionCustomerCount ?? 0} customers, 24-month window)`}
+          />
+          <KPICard
+            label="Avg One-time LTV"
+            value={ltvData?.avgOnetimeLTV ?? 0}
+            prefix="$"
+            decimals={2}
+            loading={ltvLoading}
+            tooltip={`All-time average revenue per one-time customer (${ltvData?.onetimeCustomerCount ?? 0} customers, 24-month window)`}
+          />
+        </div>
       </div>
 
       {/* Chart */}
@@ -257,7 +452,7 @@ export default function DashboardView() {
         padding: "20px 20px 12px",
         marginBottom: 24,
       }}>
-        <div style={sectionLabel}>Spend vs Revenue</div>
+        <SectionHeader title={`Spend vs Revenue${isFiltered ? " (all campaigns)" : ""}`} />
         <PerformanceChart
           data={combinedDays}
           loading={metaLoading || shopifyLoading}
@@ -282,20 +477,34 @@ export default function DashboardView() {
           borderRadius: 8,
           padding: 20,
         }}>
-          <div style={sectionLabel}>Campaigns</div>
+          <SectionHeader title="Campaigns">
+            {/* Campaign type filter pills */}
+            {allObjectives.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {allObjectives.map(obj => (
+                  <button
+                    key={obj}
+                    onClick={() => toggleObjective(obj)}
+                    style={pillStyle(selectedObjectives.has(obj))}
+                  >
+                    {labelObjective(obj)}
+                  </button>
+                ))}
+                {isFiltered && (
+                  <button
+                    onClick={() => setSelectedObjectives(new Set())}
+                    style={{ ...pillStyle(false), color: "var(--error)", borderColor: "var(--error)" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </SectionHeader>
           {metaError ? (
-            <div style={{
-              borderLeft: "3px solid var(--warning)",
-              background: "var(--surface-r)",
-              padding: "12px 16px",
-              borderRadius: "0 6px 6px 0",
-              fontSize: 13,
-              color: "var(--warning)",
-            }}>
-              {metaError}
-            </div>
+            errorBanner(metaError)
           ) : (
-            <CampaignTable campaigns={metaData?.campaigns ?? []} loading={metaLoading} />
+            <CampaignTable campaigns={filteredCampaigns} loading={metaLoading} />
           )}
         </div>
 
@@ -305,7 +514,7 @@ export default function DashboardView() {
           borderRadius: 8,
           padding: 20,
         }}>
-          <div style={sectionLabel}>AI Insights</div>
+          <SectionHeader title="AI Insights" />
           {(!metaError && !shopifyError) ? (
             <InsightsPanel
               insights={insights}
@@ -313,16 +522,7 @@ export default function DashboardView() {
               error={insightsError ?? undefined}
             />
           ) : (
-            <div style={{
-              borderLeft: "3px solid var(--warning)",
-              background: "var(--surface-r)",
-              padding: "12px 16px",
-              borderRadius: "0 6px 6px 0",
-              fontSize: 13,
-              color: "var(--warning)",
-            }}>
-              Data unavailable — fix the errors above to generate insights
-            </div>
+            errorBanner("Data unavailable — fix the errors above to generate insights")
           )}
         </div>
       </div>
@@ -334,18 +534,9 @@ export default function DashboardView() {
         borderRadius: 8,
         padding: 20,
       }}>
-        <div style={sectionLabel}>Product Breakdown</div>
+        <SectionHeader title="Product Breakdown" />
         {shopifyError ? (
-          <div style={{
-            borderLeft: "3px solid var(--warning)",
-            background: "var(--surface-r)",
-            padding: "12px 16px",
-            borderRadius: "0 6px 6px 0",
-            fontSize: 13,
-            color: "var(--warning)",
-          }}>
-            {shopifyError}
-          </div>
+          errorBanner(shopifyError)
         ) : (
           <ProductBreakdown products={shopifyData?.products ?? []} loading={shopifyLoading} />
         )}

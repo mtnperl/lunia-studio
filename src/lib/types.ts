@@ -335,6 +335,7 @@ export type SavedAd = {
 export type MetaCampaign = {
   campaignId: string;
   campaignName: string;
+  campaignObjective?: string; // e.g. OUTCOME_SALES, OUTCOME_AWARENESS
   spend: number;           // USD
   revenue: number;         // from action_values[offsite_conversion.fb_pixel_purchase]
   roas: number;            // revenue / spend
@@ -378,10 +379,21 @@ export type ShopifyData = {
   summary: {
     orders: number;
     revenue: number;
-    aov: number;           // 0 if orders === 0 (guard against div/0)
+    aov: number;                  // 0 if orders === 0 (guard against div/0)
+    subscriptionRevenue: number;  // revenue from subscription orders
+    onetimeRevenue: number;       // revenue from one-time purchase orders
+    subscriptionOrders: number;   // count of subscription orders
+    onetimeOrders: number;        // count of one-time purchase orders
   };
   by_day: ShopifyDayRow[];
   products: ShopifyProduct[];  // top products by revenue
+};
+
+export type ShopifyLTVData = {
+  avgSubscriptionLTV: number;    // mean all-time revenue per subscription customer
+  avgOnetimeLTV: number;         // mean all-time revenue per one-time customer
+  subscriptionCustomerCount: number;
+  onetimeCustomerCount: number;
 };
 
 export type CombinedDayRow = {
