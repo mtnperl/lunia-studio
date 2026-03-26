@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "topic and headline required" }, { status: 400 });
     }
 
-    // Extract current component name so the prompt can avoid repeating it
+    // Support explicit avoidComponents list (new) or derive from currentGraphic (backward compat)
     let currentComponent: string | undefined;
     try {
       if (currentGraphicRaw) {
@@ -32,11 +32,13 @@ export async function POST(req: Request) {
       }
     } catch { /* ignore parse errors */ }
 
+    const avoidComponents: string[] = body.avoidComponents ?? (currentComponent ? [currentComponent] : []);
+
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 512,
       messages: [
-        { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, currentComponent) },
+        { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents) },
       ],
     });
 

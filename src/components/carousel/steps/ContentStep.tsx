@@ -12,6 +12,8 @@ type Props = {
 
 export default function ContentStep({ content, topic, hookTone, onChange, onNext }: Props) {
   const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [shorteningSlide, setShorteningSlide] = useState<number | null>(null);
+  const [originalBodies, setOriginalBodies] = useState<Record<number, string>>({});
 
   const updateHook = (i: number, field: "headline" | "subline", val: string) => {
     const hooks = [...content.hooks];
@@ -24,6 +26,27 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     slides[i] = { ...slides[i], [field]: val };
     onChange({ ...content, slides });
   };
+
+  async function handleShorten(slideIndex: number) {
+    setShorteningSlide(slideIndex);
+    setOriginalBodies(prev => ({ ...prev, [slideIndex]: content.slides[slideIndex].body }));
+    try {
+      const res = await fetch("/api/carousel/shorten-slide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: content.slides[slideIndex].body }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("[shorten-slide]", err);
+        return;
+      }
+      const data = await res.json();
+      updateSlide(slideIndex, "body", data.body);
+    } finally {
+      setShorteningSlide(null);
+    }
+  }
 
   async function handleRegenerate(slideIndex: number) {
     setRegenerating(slideIndex);
@@ -99,24 +122,69 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
               Slide {i + 2} — Content
             </div>
-            <button
-              onClick={() => handleRegenerate(i)}
-              disabled={regenerating === i}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                padding: "4px 10px",
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: regenerating === i ? "not-allowed" : "pointer",
-                color: "var(--muted)",
-                fontFamily: "inherit",
-                opacity: regenerating === i ? 0.5 : 1,
-              }}
-            >
-              {regenerating === i ? "Regenerating..." : "↺ Regenerate"}
-            </button>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={() => handleRegenerate(i)}
+                disabled={regenerating === i}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: regenerating === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: regenerating === i ? 0.5 : 1,
+                }}
+              >
+                {regenerating === i ? "Regenerating..." : "↺ Regenerate"}
+              </button>
+              <button
+                onClick={() => handleShorten(i)}
+                disabled={shorteningSlide === i}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: shorteningSlide === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: shorteningSlide === i ? 0.5 : 1,
+                }}
+              >
+                {shorteningSlide === i ? "Shortening…" : "✂ Shorter"}
+              </button>
+              {originalBodies[i] !== undefined && (
+                <button
+                  onClick={() => {
+                    updateSlide(i, "body", originalBodies[i]);
+                    setOriginalBodies(prev => {
+                      const next = { ...prev };
+                      delete next[i];
+                      return next;
+                    });
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "var(--muted)",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  ↩ Undo
+                </button>
+              )}
+            </div>
           </div>
           <label style={labelStyle}>Headline</label>
           <input style={{ ...inputStyle, marginBottom: 8 }} value={slide.headline} onChange={(e) => updateSlide(i, "headline", e.target.value)} />

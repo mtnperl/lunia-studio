@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const hookTone: HookTone = body.hookTone ?? "educational";
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
     const templateId: string | undefined = typeof body.templateId === "string" ? body.templateId : undefined;
+    const concise: boolean = body.concise ?? false;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     console.log("[generate] templateId:", templateId, "→ found:", template ? `"${template.name}" (${template.images.length} images)` : "null");
 
     const hasStyleRef = styleRefs.length > 0;
-    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle);
+    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise);
 
     // Build message content
     type ContentBlock =

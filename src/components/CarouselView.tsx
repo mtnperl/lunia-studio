@@ -126,6 +126,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   const [warning, setWarning] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
+  const [concise, setConcise] = useState(false);
   const [variants, setVariants] = useState<CarouselContent[]>([]);
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedHook, setSelectedHook] = useState(0);
@@ -202,9 +203,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     });
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean) {
     setTopic(t);
     setHookTone(tone);
+    setConcise(conciseMode ?? false);
     setError(null);
     setWarning(null);
 
@@ -233,7 +235,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
       const res = await fetch("/api/carousel/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: t, hookTone: tone, count: 1 }),
+        body: JSON.stringify({ topic: t, hookTone: tone, count: 1, concise: conciseMode ?? false }),
       });
       const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; brandStyle?: BrandStyle } = await res.json();
       if (!res.ok || data.error) {
@@ -402,7 +404,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, subjectId) => handleTopicNext(t, tone, subjectId)} testMode={testMode} />
+            <TopicStep onNext={(t, tone, subjectId, conciseMode) => handleTopicNext(t, tone, subjectId, conciseMode)} testMode={testMode} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep

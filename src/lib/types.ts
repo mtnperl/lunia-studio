@@ -165,6 +165,10 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
     component: z.literal('heatGrid'),
     data: z.object({ cells: z.array(z.object({ label: z.string(), value: z.number().int().min(1).max(3) })).min(2).max(12), title: z.string().optional() }),
   }),
+  z.object({
+    component: z.literal('vector'),
+    data: z.object({ keywords: z.string(), label: z.string().optional() }),
+  }),
 ]);
 
 export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;

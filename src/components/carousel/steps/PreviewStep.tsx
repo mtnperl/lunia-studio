@@ -26,6 +26,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
+  const [graphicHistory, setGraphicHistory] = useState<Record<number, string[]>>({});
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -153,6 +154,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setGraphicError(null);
     try {
       const slide = content.slides[slideIndex];
+      // Extract current component name for history tracking
+      let currentComp = "";
+      try { currentComp = JSON.parse(slide.graphic ?? "{}").component ?? ""; } catch {}
+      // Build avoid list from history + current component
+      const avoid = [...(graphicHistory[slideIndex] ?? []), currentComp].filter(Boolean);
       const res = await fetch("/api/carousel/regenerate-graphic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -163,6 +169,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           headline: slide.headline,
           body: slide.body,
           currentGraphic: slide.graphic ?? "",
+          avoidComponents: avoid,
         }),
       });
       const data = await res.json();
@@ -175,6 +182,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (!graphic || graphic.trim() === '""' || graphic.trim() === '') {
         setGraphicError("No alternative graphic found for this slide — try again");
         return;
+      }
+      // Update history with the component we just replaced
+      if (currentComp) {
+        setGraphicHistory(prev => ({ ...prev, [slideIndex]: [...(prev[slideIndex] ?? []), currentComp] }));
       }
       const slides = [...content.slides];
       slides[slideIndex] = { ...slides[slideIndex], graphic };

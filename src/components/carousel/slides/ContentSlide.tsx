@@ -29,6 +29,7 @@ import { Matrix2x2 } from '@/components/carousel/graphics/Matrix2x2';
 import { StackedBar } from '@/components/carousel/graphics/StackedBar';
 import { ProcessFlow } from '@/components/carousel/graphics/ProcessFlow';
 import { HeatGrid } from '@/components/carousel/graphics/HeatGrid';
+import { VectorIllustration } from '@/components/carousel/graphics/VectorIllustration';
 import { GraphicErrorBoundary } from '@/components/carousel/graphics/GraphicErrorBoundary';
 import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
@@ -95,6 +96,7 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   stackedBar: StackedBar,
   processFlow: ProcessFlow,
   heatGrid: HeatGrid,
+  vector: VectorIllustration as React.FC<any>,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {

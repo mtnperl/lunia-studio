@@ -51,7 +51,8 @@ export const GENERATE_CAROUSEL_PROMPT = (
   hookTone = "educational",
   hasStyleRef = false,
   template: CarouselTemplate | null = null,
-  brandStyle?: BrandStyle
+  brandStyle?: BrandStyle,
+  concise = false
 ) => {
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
@@ -60,7 +61,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-
+${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. No caveats. One punch per slide. This OVERRIDES the default 3-5 sentence rule.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
@@ -118,6 +119,7 @@ Brand rules (follow exactly):
   {"component":"stackedBar","data":{"segments":[{"label":"LIGHT SLEEP","percent":55,"value":"4.4 hrs"},{"label":"DEEP SLEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}  — single stacked bar showing how a whole divides into parts (2-5 segments)
   {"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}  — 2-5 arrow-connected process steps in a horizontal flow
   {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}  — grid of cells coloured by intensity (1=low 2=mid 3=high), for patterns across days/items
+  {"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS from the slide (e.g. sleep cortisol rhythm)","label":"OPTIONAL SHORT LABEL"}}  — elegant SVG illustration; use when the slide is conceptual/emotional rather than data-driven, or when all data components have been used
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits the content, output exactly ""
 - imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
   Examples of hook-to-image translation:
@@ -146,14 +148,14 @@ Brand rules (follow exactly):
 - Headline: uppercase, max 8 words
 - graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
 
-export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, currentComponent?: string) =>
+export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = []) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
 
 Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
-${currentComponent ? `Current component (DO NOT use this — pick a different one): "${currentComponent}"` : ''}
-Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. MANDATORY: you MUST use a different component type than the current one above. Available components (use REAL numbers/facts from the body, never invent):
+${avoidComponents.length > 0 ? `ALREADY USED — do NOT pick any of these: ${avoidComponents.join(", ")}. You MUST choose a completely different component type.` : ''}
+Return ONLY a valid compact single-line JSON object. Pick the component that best visualises the key data point or insight from the body text. MANDATORY: you MUST use a different component type than the ones listed above. Available components (use REAL numbers/facts from the body, never invent):
 
 {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER}],"unit":"optional unit"}}
@@ -180,5 +182,6 @@ Return ONLY a valid compact single-line JSON object. Pick the component that bes
 {"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional title"}}
 {"component":"processFlow","data":{"steps":["Tryptophan absorbed","Converted to 5-HTP","Serotonin synthesised","Melatonin released"]}}
 {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional title"}}
+{"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS from the slide (e.g. sleep cortisol rhythm)","label":"OPTIONAL SHORT LABEL"}}  — elegant SVG illustration; use when the slide is conceptual/emotional rather than data-driven, or when all data components have been used
 
-Output valid JSON only — no wrapping quotes, no code fence, no explanation. If no meaningful visualisation fits, output exactly "".`;
+Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string. If data is limited, use 'callout' with a key insight from the body text.`;

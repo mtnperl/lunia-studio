@@ -25,7 +25,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean) => void;
   testMode?: boolean;
 };
 
@@ -40,6 +40,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
+  const [concise, setConcise] = useState(false);
 
   useEffect(() => {
     fetch("/api/subjects")
@@ -69,7 +70,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, subjectId);
+    onNext(topic, hookTone, subjectId, concise);
   }
 
   return (
@@ -261,6 +262,32 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Content length toggle */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Content length</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { val: false, label: "Standard", desc: "3-5 sentences per slide" },
+            { val: true,  label: "Concise",  desc: "1-2 sentences, punchy" },
+          ].map(opt => (
+            <div
+              key={String(opt.val)}
+              onClick={() => setConcise(opt.val)}
+              style={{
+                flex: 1,
+                border: `1.5px solid ${concise === opt.val ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                background: concise === opt.val ? "var(--accent-dim)" : "var(--bg)",
+                transition: "all 0.12s",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: concise === opt.val ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+              <div style={{ fontSize: 11, color: concise === opt.val ? "var(--accent)" : "var(--muted)" }}>{opt.desc}</div>
+            </div>
+          ))}
         </div>
       </div>
 
