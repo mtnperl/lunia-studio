@@ -44,6 +44,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [regeneratingImage, setRegeneratingImage] = useState(false);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [imageRegenError, setImageRegenError] = useState<string | null>(null);
+  const [promptAlternatives, setPromptAlternatives] = useState<string[]>([]);
 
   // Derive vector mode from actual graphic data rather than ephemeral UI state
   function isVectorSlide(slideIndex: number): boolean {
@@ -256,6 +257,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (regeneratingImage || regeneratingPrompt) return;
     setRegeneratingPrompt(true);
     setImageRegenError(null);
+    setPromptAlternatives([]);
     try {
       const res = await fetch("/api/carousel/regenerate-image-prompt", {
         method: "POST",
@@ -272,6 +274,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (!res.ok || data.error) throw new Error(data.error ?? "Failed to regenerate prompt");
       setImagePromptDraft(data.prompt);
       onContentChange({ ...config, content: { ...config.content, imagePrompt: data.prompt } });
+      if (Array.isArray(data.alternatives) && data.alternatives.length > 0) {
+        setPromptAlternatives(data.alternatives);
+      }
     } catch (err) {
       setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate prompt");
     } finally {
@@ -284,6 +289,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setGraphicError(null);
     try {
       const slide = content.slides[slideIndex];
+      if (!slide) { setGraphicError("Slide not found"); setRegeneratingGraphic(null); return; }
       const res = await fetch("/api/carousel/regenerate-graphic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -728,11 +734,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             {imageRegenError && (
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
             )}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: promptAlternatives.length > 0 ? 12 : 0 }}>
               <button
                 onClick={handleRegeneratePromptOnly}
                 disabled={regeneratingPrompt || regeneratingImage}
-                title="Regenerate the prompt only — does not generate a new image"
+                title="Regenerate the prompt — returns 3 directions"
                 style={{
                   background: "var(--surface)",
                   color: (regeneratingPrompt || regeneratingImage) ? "var(--subtle)" : "var(--text)",
@@ -745,9 +751,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 {regeneratingPrompt ? (
                   <>
                     <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                    Rewriting…
+                    Generating…
                   </>
-                ) : "↺ Prompt only"}
+                ) : "↺ 3 directions"}
               </button>
               <button
                 onClick={handleRegenerateHookImage}
@@ -769,6 +775,47 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 ) : "↺ New image"}
               </button>
             </div>
+
+            {/* Alternative prompt directions */}
+            {promptAlternatives.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  2 more directions — click to use
+                </div>
+                {promptAlternatives.map((alt, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setImagePromptDraft(alt);
+                      onContentChange({ ...config, content: { ...config.content, imagePrompt: alt } });
+                    }}
+                    style={{
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      marginBottom: 6,
+                      fontSize: 12,
+                      color: "var(--text)",
+                      lineHeight: 1.5,
+                      cursor: "pointer",
+                      display: "flex", alignItems: "flex-start", gap: 8,
+                    }}
+                    title="Click to use this prompt"
+                  >
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "var(--accent)",
+                      background: "var(--accent-dim)", borderRadius: 4,
+                      padding: "2px 5px", flexShrink: 0, marginTop: 1,
+                      fontFamily: "var(--font-ui)",
+                    }}>
+                      {i + 2}
+                    </span>
+                    <span>{alt}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -2,6 +2,8 @@ import { anthropic } from "@/lib/anthropic";
 import { REGENERATE_GRAPHIC_PROMPT, REGENERATE_VECTOR_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 
+export const maxDuration = 30;
+
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

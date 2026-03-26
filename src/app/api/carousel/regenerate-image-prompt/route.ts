@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const topic: string = body.topic ?? "";
     const headline: string = body.headline ?? "";
     const subline: string = body.subline ?? "";
-    const guidelines: string = body.guidelines ?? "";
+    const guidelines: string = (body.guidelines ?? "").slice(0, 400); // cap to prevent prompt injection
     const currentPrompt: string = body.currentPrompt ?? "";
 
     if (!topic && !headline) {
@@ -27,45 +27,75 @@ export async function POST(req: Request) {
 
     const systemPrompt = `You are a top-tier visual creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
 
-Your output is a single Recraft V3 prompt for a hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in the headline. Pull the most striking noun or verb and build a cinematic scene around it. The image should feel like a still frame of the hook text happening.
+Your output is THREE Recraft V3 prompts for a hook slide background image. Each must be a distinct creative direction — different concept, different mood, different visual metaphor. They should feel like three completely separate pitches, not variations of the same idea.
 
-Examples of hook-to-image translation:
-- "ADENOSINE IS DROWNING YOUR BRAIN" → dark water engulfing objects sinking into deep blue, air bubbles rising, cold undercurrent light
-- "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH" → single light switch on a dark wall, the moment it flips off, deep shadow with one cold highlight
-- "YOUR CORTISOL IS SPIKING" → sharp crystal or spire formation breaking through a dark surface, jagged edges catching light, tension
-- "YOU'RE WIRED BUT TIRED" → tangled copper wire in warm shallow-focus light, frayed at the end, quiet exhaustion
+The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in the headline.
+
+Direction types to use (pick three different ones):
+- MACRO/CLOSE-UP: extreme close-up of a physical object or texture that embodies the headline
+- ENVIRONMENTAL/WIDE: a full scene or landscape that captures the mood at scale
+- ABSTRACT/GRAPHIC: clean geometric or minimal composition, shape-driven, editorial
+- SYMBOLIC/SURREAL: unexpected juxtaposition or metaphor that makes you think
+- NATURAL/ORGANIC: nature, biology, organic textures that mirror the concept
 
 Rules (hard):
-- ILLUSTRATE THE HOOK TEXT, not the topic or ingredient
 - No people, no faces, no text, no logos
 - Ultra-sharp, editorial, premium brand aesthetic
-- Max 55 words
-- Output ONLY the prompt text — no quotes, no explanation, no JSON
-
-Structure: [literal visual metaphor from hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood]`;
+- Max 55 words per prompt
+- Output ONLY a JSON array with exactly 3 strings — no explanation, no labels, no markdown
+- Format: ["prompt one here","prompt two here","prompt three here"]`;
 
     const userMessage = [
       `Hook headline: "${headline}"`,
       subline ? `Hook subline: "${subline}"` : null,
       `Topic: "${topic}"`,
-      currentPrompt ? `\nCurrent prompt (improve on this):\n"${currentPrompt}"` : null,
-      guidelines ? `\nUser guidelines to follow:\n${guidelines}` : null,
-      `\nWrite a new Recraft V3 image prompt for this hook slide.`,
+      currentPrompt ? `\nCurrent prompt (use as reference — all 3 new ones should differ from this):\n"${currentPrompt}"` : null,
+      guidelines ? `\nUser guidelines to apply across all 3 prompts:\n${guidelines}` : null,
+      `\nWrite 3 distinct Recraft V3 image prompts for this hook slide, returned as a JSON array.`,
     ].filter(Boolean).join("\n");
 
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 200,
+      max_tokens: 600,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const prompt = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
-    if (!prompt) {
-      return Response.json({ error: "Failed to generate prompt" }, { status: 500 });
+    const raw = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
+    if (!raw) {
+      return Response.json({ error: "Failed to generate prompts" }, { status: 500 });
     }
 
-    return Response.json({ prompt });
+    // Parse the JSON array
+    let prompts: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length >= 1) {
+        prompts = parsed.map(String).filter(Boolean);
+      }
+    } catch {
+      // Fallback: try to extract JSON array from response
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (match) {
+        try {
+          prompts = JSON.parse(match[0]);
+        } catch {
+          // Last resort: treat as single prompt
+          prompts = [raw];
+        }
+      } else {
+        prompts = [raw];
+      }
+    }
+
+    if (prompts.length === 0) {
+      return Response.json({ error: "Failed to generate prompts" }, { status: 500 });
+    }
+
+    return Response.json({
+      prompt: prompts[0],           // primary — used by existing callers
+      alternatives: prompts.slice(1), // 2 extra options for the UI to display
+    });
   } catch (err) {
     console.error("[api/carousel/regenerate-image-prompt]", err);
     return Response.json({ error: "Failed to regenerate prompt" }, { status: 500 });
