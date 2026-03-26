@@ -78,9 +78,29 @@ export async function GET(req: Request) {
   try {
     const { start, end } = computeDateRange(days);
 
-    // Fetch campaign-level insights with daily breakdown
+    const graphBase = `https://graph.facebook.com/v21.0`;
+
+    // ── 1. Fetch campaign objectives from /campaigns endpoint ──────────────────
+    // campaign_objective is a Campaign field, not an Insights field — separate call required
+    const objectiveMap = new Map<string, string>();
+    try {
+      const campParams = new URLSearchParams({
+        fields: 'id,objective',
+        limit: '500',
+        access_token: META_ACCESS_TOKEN,
+      });
+      const campRes = await fetch(`${graphBase}/act_${META_AD_ACCOUNT_ID}/campaigns?${campParams}`);
+      if (campRes.ok) {
+        const campJson = await campRes.json() as { data: Array<{ id: string; objective?: string }> };
+        for (const c of campJson.data ?? []) {
+          if (c.objective) objectiveMap.set(c.id, c.objective);
+        }
+      }
+    } catch { /* non-fatal — objectives will be undefined */ }
+
+    // ── 2. Fetch insights ──────────────────────────────────────────────────────
     const params = new URLSearchParams({
-      fields: 'campaign_id,campaign_name,campaign_objective,spend,impressions,clicks,action_values,actions',
+      fields: 'campaign_id,campaign_name,spend,impressions,clicks,action_values,actions',
       level: 'campaign',
       time_range: JSON.stringify({ since: start, until: end }),
       time_increment: '1',
@@ -88,10 +108,10 @@ export async function GET(req: Request) {
       limit: '500',
     });
 
-    const baseUrl = `https://graph.facebook.com/v21.0/act_${META_AD_ACCOUNT_ID}/insights`;
+    const baseUrl = `${graphBase}/act_${META_AD_ACCOUNT_ID}/insights`;
 
     // Campaign-level aggregation maps
-    const campaignMap = new Map<string, { name: string; objective?: string; spend: number; revenue: number; impressions: number; clicks: number }>();
+    const campaignMap = new Map<string, { name: string; spend: number; revenue: number; impressions: number; clicks: number }>();
     const dayMap = new Map<string, { spend: number; revenue: number }>();
 
     let nextUrl: string | null = `${baseUrl}?${params}`;
@@ -118,7 +138,6 @@ export async function GET(req: Request) {
         data: Array<{
           campaign_id: string;
           campaign_name: string;
-          campaign_objective?: string;
           spend: string;
           impressions: string;
           clicks: string;
@@ -144,7 +163,7 @@ export async function GET(req: Request) {
           existing.impressions += impressions;
           existing.clicks += clicks;
         } else {
-          campaignMap.set(row.campaign_id, { name: row.campaign_name, objective: row.campaign_objective, spend, revenue, impressions, clicks });
+          campaignMap.set(row.campaign_id, { name: row.campaign_name, spend, revenue, impressions, clicks });
         }
 
         // Day aggregation
@@ -157,11 +176,11 @@ export async function GET(req: Request) {
       nextUrl = json.paging?.next ?? null;
     }
 
-    // Build response
+    // Build response — join objectives from the separate campaigns call
     const campaigns: MetaCampaign[] = Array.from(campaignMap.entries()).map(([id, c]) => ({
       campaignId: id,
       campaignName: c.name,
-      campaignObjective: c.objective,
+      campaignObjective: objectiveMap.get(id),
       spend: c.spend,
       revenue: c.revenue,
       roas: calcROAS(c.spend, c.revenue),
