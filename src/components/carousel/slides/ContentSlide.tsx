@@ -189,8 +189,29 @@ export default function ContentSlide({
   const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
   const arrowColor = darkBackground ? 'rgba(255,255,255,0.4)' : (brandStyle?.secondary ?? '#9ab0b8');
 
-  // Body font size: smaller when a graphic occupies the graphic zone
-  const bodyFontSize = hasInlineGraphic ? 27 : (hasLegacyGraphic ? 30 : 34);
+  // Dynamic font sizes — scale up when text is short, down when long
+  function bodySize(len: number, hasGraphic: boolean): number {
+    if (hasGraphic) {
+      if (len < 60)  return 36;
+      if (len < 120) return 30;
+      if (len < 180) return 26;
+      return 22;
+    } else {
+      if (len < 80)  return 46;
+      if (len < 140) return 38;
+      if (len < 220) return 30;
+      return 24;
+    }
+  }
+  function headlineSize(len: number): number {
+    if (len < 20) return 64;
+    if (len < 35) return 56;
+    if (len < 50) return 48;
+    return 40;
+  }
+
+  const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
+  const headlineFontSize = headlineSize(headline.length);
 
   const decoAccent = brandStyle?.accent ?? '#1e7a8a';
 
@@ -245,7 +266,7 @@ export default function ContentSlide({
         <div style={{
           fontFamily: 'Jost, Montserrat, sans-serif',
           fontWeight: 400,
-          fontSize: 52,
+          fontSize: headlineFontSize,
           color: headlineColor,
           textTransform: 'uppercase',
           letterSpacing: '0.14em',
