@@ -29,9 +29,9 @@ export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attac
 
 function buildTemplateSection(template: CarouselTemplate): string {
   const densityMap = {
-    minimal: "1-2 sentences MAX per slide. Headlines must carry the full idea. Body is a single punchy line or two at most. This OVERRIDES the default 3-5 sentence rule.",
-    medium: "2-3 sentences per slide. Concise and scannable. This OVERRIDES the default 3-5 sentence rule.",
-    dense: "4-5 sentences per slide, detailed and citation-heavy. Match the default 3-5 sentence rule.",
+    minimal: "1-2 sentences MAX per slide. Headlines must carry the full idea. Body is a single punchy line or two at most. This OVERRIDES all body copy rules.",
+    medium: "2-3 sentences per slide. Concise and scannable. This OVERRIDES all body copy rules.",
+    dense: "3-4 sentences per slide, detailed and citation-heavy. This OVERRIDES all body copy rules.",
   };
   return `=== TEMPLATE OVERRIDE: "${template.name}" ===
 ${template.description ? `Description: ${template.description}\n` : ""}${template.styleNotes ? `Style notes: ${template.styleNotes}\n` : ""}BODY COPY RULE (overrides all defaults): ${densityMap[template.contentDensity] ?? densityMap.medium}
@@ -88,7 +88,7 @@ Brand rules (follow exactly):
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
 - Hook headlines: uppercase, punchy, max 8 words
 - Hook sublines: italic-style sentence fragments, max 10 words, create mild tension or curiosity. No period at end.
-- Body copy: 3-5 sentences, specific and factual, references the cited research
+- Body copy: 2-3 sentences MAX. First sentence is a bold punchy statement (the core insight). Remaining 1-2 sentences add specific factual support. Total under 60 words. References the cited research.
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
@@ -143,7 +143,7 @@ Return ONLY valid JSON in this exact format, no other text:
 Brand rules (follow exactly):
 - No em dashes anywhere.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
-- Body copy: 3-5 sentences, specific and factual
+- Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
 - graphic: same GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only, "" if none`;
@@ -185,3 +185,18 @@ Return ONLY a valid compact single-line JSON object. Pick the component that bes
 {"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS from the slide (e.g. sleep cortisol rhythm)","label":"OPTIONAL SHORT LABEL"}}  — elegant SVG illustration; use when the slide is conceptual/emotional rather than data-driven, or when all data components have been used
 
 Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string. If data is limited, use 'callout' with a key insight from the body text.`;
+
+export const REGENERATE_VECTOR_PROMPT = (topic: string, headline: string, body: string) =>
+  `You are a visual designer for Lunia Life, a sleep supplement brand. Generate a vector illustration spec for this carousel slide.
+
+Topic: "${topic}"
+Headline: "${headline}"
+Body: "${body}"
+
+Output ONLY this exact JSON format, nothing else:
+{"component":"vector","data":{"keywords":"SPACE-SEPARATED KEYWORDS from the slide topic and headline (3-5 words, e.g. sleep cortisol rhythm brain)","label":"SHORT DESCRIPTIVE LABEL (2-4 words, lowercase)"}}
+
+Rules:
+- keywords: pick the most visually evocative, conceptual words from the slide. Think of what an editorial illustrator would draw.
+- label: a short lowercase caption that appears under the illustration (e.g. "sleep pressure", "cortisol peak", "neural recovery")
+- Output ONLY the JSON object — no code fence, no explanation.`;

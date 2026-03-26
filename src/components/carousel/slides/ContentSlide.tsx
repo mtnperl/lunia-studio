@@ -191,25 +191,30 @@ export default function ContentSlide({
   const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
   const arrowColor = darkBackground ? 'rgba(255,255,255,0.4)' : (brandStyle?.secondary ?? '#9ab0b8');
 
-  // Dynamic font sizes — scale up when text is short, down when long
+  // Split body into bold first sentence + remaining body
+  // Require uppercase after period to avoid splitting on decimals (7.5) or abbreviations (N.R.E.M.)
+  const firstPeriod = body.search(/[.!?]\s+[A-Z]/);
+  const boldSentence = firstPeriod >= 0 ? body.slice(0, firstPeriod + 1) : body;
+  const restBody = firstPeriod >= 0 ? body.slice(firstPeriod + 2).trim() : "";
+
+  // Dynamic font sizes — capped to match reference image text scheme
   function bodySize(len: number, hasGraphic: boolean): number {
     if (hasGraphic) {
-      if (len < 60)  return 40;
-      if (len < 120) return 34;
-      if (len < 180) return 29;
-      return 24;
+      if (len < 80)  return 32;
+      if (len < 160) return 28;
+      return 25;
     } else {
-      if (len < 80)  return 52;
-      if (len < 140) return 44;
-      if (len < 220) return 32;
-      return 26;
+      if (len < 80)  return 38;
+      if (len < 160) return 32;
+      if (len < 240) return 28;
+      return 25;
     }
   }
   function headlineSize(len: number): number {
-    if (len < 20) return 64;
-    if (len < 35) return 56;
-    if (len < 50) return 48;
-    return 40;
+    if (len < 20) return 60;
+    if (len < 35) return 52;
+    if (len < 50) return 44;
+    return 38;
   }
 
   const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
@@ -279,22 +284,22 @@ export default function ContentSlide({
         </div>
 
         {/* Body zone — grows to fill remaining space above graphic */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{
             fontFamily: 'Inter, system-ui, sans-serif',
-            fontWeight: 400,
             fontSize: bodyFontSize,
             color: bodyColor,
-            lineHeight: 1.6,
+            lineHeight: 1.55,
           }}>
-            {body}
+            <span style={{ fontWeight: 700 }}>{boldSentence}</span>
+            {restBody ? <span style={{ fontWeight: 400 }}>{' '}{restBody}</span> : null}
           </div>
 
           <div style={{
             fontFamily: 'Cormorant Garamond, Lora, serif',
             fontWeight: 400,
             fontStyle: 'italic',
-            fontSize: 21,
+            fontSize: 18,
             color: citationColor,
             lineHeight: 1.4,
           }}>
