@@ -88,8 +88,8 @@ export default function DashboardView() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [chartColors, setChartColors] = useState<ChartColors | null>(null);
 
-  // Campaign type filter — default to Sales campaigns only
-  const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set(['OUTCOME_SALES']));
+  // Campaign type filter — no default, user selects
+  const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const stored = localStorage.getItem("lunia:analytics:unlocked");
