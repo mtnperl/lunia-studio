@@ -44,7 +44,7 @@ import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
-const GRAPHIC_MIN_HEIGHT = 180;
+const GRAPHIC_MIN_HEIGHT = 80;
 
 // ─── Rendering priority:
 //   Path 1 — GraphicSpec JSON (new generation)  → curated React component
@@ -210,24 +210,24 @@ export default function ContentSlide({
   const boldSentence = firstPeriod >= 0 ? body.slice(0, firstPeriod + 1) : body;
   const restBody = firstPeriod >= 0 ? body.slice(firstPeriod + 2).trim() : "";
 
-  // Dynamic font sizes — larger caps after reducing GRAPHIC_MIN_HEIGHT to free up text space
+  // Dynamic font sizes — generous caps; graphic zone reduced to 80px to free space
   function bodySize(len: number, hasGraphic: boolean): number {
     if (hasGraphic) {
-      if (len < 80)  return 46;
-      if (len < 160) return 40;
-      return 34;
+      if (len < 80)  return 56;
+      if (len < 160) return 48;
+      return 40;
     } else {
-      if (len < 80)  return 58;
-      if (len < 160) return 50;
-      if (len < 240) return 42;
-      return 36;
+      if (len < 80)  return 72;
+      if (len < 160) return 62;
+      if (len < 240) return 52;
+      return 44;
     }
   }
   function headlineSize(len: number): number {
-    if (len < 20) return 72;
-    if (len < 35) return 62;
-    if (len < 50) return 54;
-    return 46;
+    if (len < 20) return 88;
+    if (len < 35) return 76;
+    if (len < 50) return 64;
+    return 56;
   }
 
   const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);

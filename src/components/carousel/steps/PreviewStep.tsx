@@ -45,6 +45,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [imageRegenError, setImageRegenError] = useState<string | null>(null);
   const [promptAlternatives, setPromptAlternatives] = useState<string[]>([]);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
 
   // Derive vector mode from actual graphic data rather than ephemeral UI state
   function isVectorSlide(slideIndex: number): boolean {
@@ -282,6 +284,35 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     } finally {
       setRegeneratingPrompt(false);
     }
+  }
+
+  async function fetchSuggestedPrompts() {
+    if (suggestedPrompts.length > 0 || fetchingSuggestions) return;
+    setFetchingSuggestions(true);
+    try {
+      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          headline: hook.headline,
+          subline: hook.subline,
+          // No currentPrompt — so Claude generates fresh divergent concepts
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.alternatives) && data.alternatives.length > 0) {
+        setSuggestedPrompts(data.alternatives);
+      }
+    } catch { /* non-blocking */ }
+    finally { setFetchingSuggestions(false); }
+  }
+
+  function openImageRefinePanel() {
+    setImageRefineOpen(v => {
+      if (!v) fetchSuggestedPrompts();
+      return !v;
+    });
   }
 
   async function handleVectorGraphic(slideIndex: number) {
@@ -591,7 +622,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 </button>
                 {i === 0 && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setImageRefineOpen(v => !v); }}
+                    onClick={(e) => { e.stopPropagation(); openImageRefinePanel(); }}
                     title="Refine hook image"
                     style={{
                       background: imageRefineOpen ? "var(--accent)" : "var(--surface)",
@@ -731,6 +762,44 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 marginBottom: 12,
               }}
             />
+            {/* Auto-suggested concepts — fetched when panel opens */}
+            {(fetchingSuggestions || suggestedPrompts.length > 0) && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  {fetchingSuggestions ? "Loading suggestions…" : "2 suggested concepts — click to use"}
+                </div>
+                {fetchingSuggestions ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>Generating fresh directions…</span>
+                  </div>
+                ) : suggestedPrompts.map((s, i) => (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setImagePromptDraft(s);
+                      onContentChange({ ...config, content: { ...config.content, imagePrompt: s } });
+                    }}
+                    style={{
+                      background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6,
+                      padding: "8px 10px", marginBottom: 6, fontSize: 12, color: "var(--text)",
+                      lineHeight: 1.5, cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8,
+                    }}
+                    title="Click to use this prompt"
+                  >
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "var(--accent)",
+                      background: "var(--accent-dim)", borderRadius: 4,
+                      padding: "2px 5px", flexShrink: 0, marginTop: 1, fontFamily: "var(--font-ui)",
+                    }}>
+                      {i === 0 ? "A" : "B"}
+                    </span>
+                    <span>{s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {imageRegenError && (
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
             )}

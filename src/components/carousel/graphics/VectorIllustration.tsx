@@ -4,11 +4,15 @@ import { BrandStyle } from "@/lib/types";
 type VectorTheme =
   | "sleep" | "brain" | "energy" | "heart" | "cycle" | "nature" | "time"
   | "science" | "balance" | "default"
-  // New themes
+  // Wellness themes
   | "stress" | "meditation" | "gut" | "immune" | "vitamin" | "inflammation"
   | "hydration" | "workout" | "breathing" | "mood" | "sunlight" | "cold"
   | "hormone" | "dopamine" | "tension" | "growth" | "prevention" | "weight"
-  | "aging" | "microbiome" | "nutrition" | "posture" | "recovery" | "focus2";
+  | "aging" | "microbiome" | "nutrition" | "posture" | "recovery" | "focus2"
+  // Abstract / conceptual themes
+  | "fire" | "water" | "mountain" | "network" | "arrow" | "spiral"
+  | "layers" | "spark" | "roots" | "transform" | "clarity" | "flow"
+  | "protection" | "infinity" | "connection";
 
 const PATHS: Record<VectorTheme, (color: string, accent: string, bg: string) => React.ReactNode> = {
   // ── Original 10 ──────────────────────────────────────────────────────────
@@ -493,6 +497,255 @@ const PATHS: Record<VectorTheme, (color: string, accent: string, bg: string) => 
       <line x1="408" y1="260" x2="435" y2="260" stroke={a} strokeWidth="2.5" strokeLinecap="round" opacity="0.5"/>
     </g>
   ),
+
+  // ── Abstract / Conceptual themes ─────────────────────────────────────────
+
+  fire: (c, a) => (
+    <g>
+      {/* Main flame */}
+      <path d="M300 420 C220 380 180 320 200 260 C210 230 230 250 240 230 C250 210 240 180 260 160 C270 150 275 170 280 180 C290 160 285 120 300 110 C315 120 310 160 320 180 C325 170 330 150 340 160 C360 180 350 210 360 230 C370 250 390 230 400 260 C420 320 380 380 300 420Z"
+        fill={a} opacity="0.85"/>
+      {/* Inner flame */}
+      <path d="M300 390 C260 360 245 310 260 275 C268 255 278 265 282 252 C288 238 285 215 295 205 C305 215 302 238 308 252 C312 265 322 255 330 275 C345 310 340 360 300 390Z"
+        fill="white" opacity="0.25"/>
+      {/* Heat shimmer lines */}
+      {[240, 270, 300, 330, 360].map((x, i) => (
+        <path key={i} d={`M${x} 430 Q${x + (i % 2 === 0 ? 8 : -8)} 400 ${x} 370`} fill="none" stroke={a} strokeWidth="1.5" opacity="0.3" strokeLinecap="round"/>
+      ))}
+    </g>
+  ),
+
+  water: (c, a) => (
+    <g>
+      {/* Water drop */}
+      <path d="M300 130 C300 130 210 250 210 310 A90 90 0 0 0 390 310 C390 250 300 130 300 130Z" fill={a} opacity="0.8"/>
+      {/* Inner highlight */}
+      <path d="M270 280 Q265 310 275 330" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.4"/>
+      {/* Ripple rings below */}
+      {[30, 60, 95].map((r, i) => (
+        <ellipse key={i} cx="300" cy="430" rx={r} ry={r * 0.35} fill="none" stroke={a} strokeWidth={2 - i * 0.4} opacity={0.5 - i * 0.12}/>
+      ))}
+    </g>
+  ),
+
+  mountain: (c, a) => (
+    <g>
+      {/* Background mountain */}
+      <polygon points="180,400 360,180 540,400" fill={a} opacity="0.2"/>
+      {/* Main mountain */}
+      <polygon points="80,420 300,120 520,420" fill={a} opacity="0.7"/>
+      {/* Snow cap */}
+      <polygon points="265,175 300,120 335,175 320,185 300,150 280,185" fill="white" opacity="0.6"/>
+      {/* Slope lines */}
+      <line x1="300" y1="120" x2="200" y2="300" stroke="white" strokeWidth="1.5" opacity="0.2"/>
+      <line x1="300" y1="120" x2="400" y2="300" stroke="white" strokeWidth="1.5" opacity="0.2"/>
+      {/* Ground line */}
+      <line x1="60" y1="420" x2="540" y2="420" stroke={a} strokeWidth="2" opacity="0.3" strokeLinecap="round"/>
+    </g>
+  ),
+
+  network: (c, a) => (
+    <g>
+      {/* Nodes */}
+      {[[300,200],[160,310],[440,310],[220,420],[380,420],[300,380]].map(([x,y],i) => (
+        <circle key={i} cx={x} cy={y} r={i===0?22:14} fill={i===0?a:c} opacity={i===0?0.9:0.6}/>
+      ))}
+      {/* Connections */}
+      {[[300,200,160,310],[300,200,440,310],[300,200,300,380],[160,310,220,420],[440,310,380,420],[160,310,300,380],[440,310,300,380]].map(([x1,y1,x2,y2],i) => (
+        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={a} strokeWidth="1.5" opacity="0.35"/>
+      ))}
+    </g>
+  ),
+
+  arrow: (c, a) => (
+    <g>
+      {/* Main upward arrow shaft */}
+      <rect x="278" y="230" width="44" height="180" rx="8" fill={a} opacity="0.85"/>
+      {/* Arrowhead */}
+      <polygon points="300,100 220,250 380,250" fill={a} opacity="0.95"/>
+      {/* Motion lines */}
+      {[[-60,0],[-40,20],[40,20],[60,0]].map(([dx, dy], i) => (
+        <line key={i} x1={300+dx} y1={380+dy} x2={300+dx} y2={340+dy} stroke={a} strokeWidth={i%2===0?2:1.5} opacity="0.25" strokeLinecap="round"/>
+      ))}
+    </g>
+  ),
+
+  spiral: (c, a) => (
+    <g>
+      {/* Fibonacci-style spiral approximation */}
+      <path d="M300 260 C300 260 340 240 360 200 C390 140 360 80 300 80 C200 80 140 160 160 260 C180 380 280 440 400 420 C520 400 560 280 520 180"
+        fill="none" stroke={a} strokeWidth="4" strokeLinecap="round" opacity="0.8"/>
+      <path d="M300 260 C300 260 330 250 342 230 C358 200 342 175 316 172"
+        fill="none" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.5"/>
+      <circle cx="300" cy="260" r="10" fill={a} opacity="0.9"/>
+      {/* Subtle guide squares */}
+      <rect x="220" y="180" width="80" height="80" fill="none" stroke={a} strokeWidth="1" opacity="0.12" rx="4"/>
+      <rect x="140" y="100" width="160" height="160" fill="none" stroke={a} strokeWidth="1" opacity="0.08" rx="4"/>
+    </g>
+  ),
+
+  layers: (c, a) => (
+    <g>
+      {/* Three stacked tilted layers — foundation metaphor */}
+      {[0, 1, 2].map(i => {
+        const y = 200 + i * 80;
+        const w = 320 - i * 40;
+        const x = 300 - w / 2;
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={w} height={55} rx="10"
+              fill={a} opacity={0.85 - i * 0.22}/>
+            <rect x={x} y={y} width={w} height={10} rx="5"
+              fill="white" opacity={0.12}/>
+          </g>
+        );
+      })}
+    </g>
+  ),
+
+  spark: (c, a) => (
+    <g>
+      {/* Central burst */}
+      <circle cx="300" cy="260" r="30" fill={a} opacity="0.9"/>
+      {/* Spark lines radiating outward */}
+      {Array.from({length: 12}, (_, i) => {
+        const angle = (i * 30) * Math.PI / 180;
+        const r1 = 48, r2 = 80 + (i % 3) * 20;
+        return <line key={i}
+          x1={300 + Math.cos(angle)*r1} y1={260 + Math.sin(angle)*r1}
+          x2={300 + Math.cos(angle)*r2} y2={260 + Math.sin(angle)*r2}
+          stroke={a} strokeWidth={i%3===0?3:1.5} strokeLinecap="round" opacity={0.7 - i*0.03}/>;
+      })}
+      {/* Particle dots */}
+      {[[160,150],[420,160],[180,380],[430,370],[300,130],[300,400]].map(([x,y],i) => (
+        <circle key={i} cx={x} cy={y} r={4+i%3*2} fill={a} opacity={0.4+i*0.07}/>
+      ))}
+    </g>
+  ),
+
+  roots: (c, a) => (
+    <g>
+      {/* Trunk */}
+      <rect x="288" y="120" width="24" height="200" rx="8" fill={a} opacity="0.7"/>
+      {/* Branches going up */}
+      <path d="M300 160 C260 120 200 110 180 90" fill="none" stroke={a} strokeWidth="5" strokeLinecap="round" opacity="0.6"/>
+      <path d="M300 180 C340 140 400 120 420 100" fill="none" stroke={a} strokeWidth="4" strokeLinecap="round" opacity="0.55"/>
+      <path d="M300 200 C270 170 240 160 220 150" fill="none" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.4"/>
+      {/* Roots below */}
+      <path d="M300 320 C260 360 200 370 170 400" fill="none" stroke={a} strokeWidth="5" strokeLinecap="round" opacity="0.6"/>
+      <path d="M300 330 C340 370 400 380 430 410" fill="none" stroke={a} strokeWidth="4" strokeLinecap="round" opacity="0.55"/>
+      <path d="M295 340 C280 380 270 400 265 430" fill="none" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.4"/>
+      <path d="M305 345 C320 385 330 408 335 435" fill="none" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.35"/>
+    </g>
+  ),
+
+  transform: (c, a) => (
+    <g>
+      {/* Left shape — rough circle */}
+      <circle cx="190" cy="260" r="70" fill={a} opacity="0.3" stroke={a} strokeWidth="2.5"/>
+      {/* Right shape — clean diamond */}
+      <polygon points="430,190 490,260 430,330 370,260" fill={a} opacity="0.8"/>
+      {/* Arrow between them */}
+      <path d="M270 260 L350 260" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.7"/>
+      <polygon points="365,252 380,260 365,268" fill={a} opacity="0.7"/>
+      {/* Transition particles */}
+      {[290, 305, 320, 335].map((x, i) => (
+        <circle key={i} cx={x} cy={260 + (i%2===0?-8:8)} r={3+i} fill={a} opacity={0.15+i*0.1}/>
+      ))}
+    </g>
+  ),
+
+  clarity: (c, a) => (
+    <g>
+      {/* Lens / magnifier circle */}
+      <circle cx="280" cy="250" r="130" fill="none" stroke={a} strokeWidth="5" opacity="0.8"/>
+      <circle cx="280" cy="250" r="118" fill={a} opacity="0.06"/>
+      {/* Prism light rays fanning right */}
+      {[-40,-20,0,20,40].map((dy, i) => (
+        <line key={i} x1="410" y1={250+dy*0.4} x2="510" y2={250+dy*2.2} stroke={a} strokeWidth={3-i*0.2} opacity={0.5-Math.abs(i)*0.08} strokeLinecap="round"/>
+      ))}
+      {/* Handle */}
+      <line x1="372" y1="342" x2="450" y2="420" stroke={a} strokeWidth="10" strokeLinecap="round" opacity="0.75"/>
+      {/* Cross-hair inside lens */}
+      <circle cx="280" cy="250" r="20" fill={a} opacity="0.5"/>
+      <line x1="280" y1="165" x2="280" y2="215" stroke={a} strokeWidth="2" opacity="0.3"/>
+      <line x1="280" y1="285" x2="280" y2="335" stroke={a} strokeWidth="2" opacity="0.3"/>
+      <line x1="195" y1="250" x2="245" y2="250" stroke={a} strokeWidth="2" opacity="0.3"/>
+      <line x1="315" y1="250" x2="365" y2="250" stroke={a} strokeWidth="2" opacity="0.3"/>
+    </g>
+  ),
+
+  flow: (c, a) => (
+    <g>
+      {/* Fluid S-curve flow lines */}
+      <path d="M100 180 C160 180 180 260 240 260 C300 260 320 180 380 180 C440 180 460 260 520 260"
+        fill="none" stroke={a} strokeWidth="5" strokeLinecap="round" opacity="0.85"/>
+      <path d="M100 280 C160 280 180 360 240 360 C300 360 320 280 380 280 C440 280 460 360 520 360"
+        fill="none" stroke={a} strokeWidth="3.5" strokeLinecap="round" opacity="0.5"/>
+      <path d="M100 380 C160 380 180 440 240 440 C300 440 320 380 380 380 C440 380 460 440 520 440"
+        fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.3"/>
+      {/* Flow dots */}
+      {[180, 300, 420].map((x, i) => (
+        <circle key={i} cx={x} cy={i%2===0?180:260} r="8" fill={a} opacity={0.7-i*0.1}/>
+      ))}
+    </g>
+  ),
+
+  protection: (c, a) => (
+    <g>
+      {/* Dome */}
+      <path d="M120 380 A180 180 0 0 1 480 380" fill={a} opacity="0.12" stroke={a} strokeWidth="3"/>
+      <path d="M120 380 A180 180 0 0 1 480 380" fill="none" stroke={a} strokeWidth="3" opacity="0.7"/>
+      {/* Inner dome line */}
+      <path d="M170 380 A130 130 0 0 1 430 380" fill="none" stroke={a} strokeWidth="2" opacity="0.35"/>
+      {/* Shield glow at center */}
+      <circle cx="300" cy="340" r="50" fill={a} opacity="0.15"/>
+      <circle cx="300" cy="340" r="22" fill={a} opacity="0.6"/>
+      {/* Floor line */}
+      <line x1="90" y1="380" x2="510" y2="380" stroke={a} strokeWidth="3" strokeLinecap="round" opacity="0.4"/>
+      {/* Shimmer lines inside dome */}
+      {[210, 260, 340, 390].map((x, i) => (
+        <line key={i} x1={x} y1="380" x2={x + (i%2===0?-10:10)} y2={260} stroke={a} strokeWidth="1" opacity="0.12"/>
+      ))}
+    </g>
+  ),
+
+  infinity: (c, a) => (
+    <g>
+      {/* Figure-8 / lemniscate */}
+      <path d="M300 260 C300 260 260 200 220 200 C160 200 130 230 130 260 C130 290 160 320 220 320 C260 320 300 260 300 260 C300 260 340 200 380 200 C440 200 470 230 470 260 C470 290 440 320 380 320 C340 320 300 260 300 260Z"
+        fill="none" stroke={a} strokeWidth="5" opacity="0.85"/>
+      {/* Filled inner shapes */}
+      <ellipse cx="215" cy="260" rx="55" ry="40" fill={a} opacity="0.15"/>
+      <ellipse cx="385" cy="260" rx="55" ry="40" fill={a} opacity="0.25"/>
+      {/* Center pivot dot */}
+      <circle cx="300" cy="260" r="12" fill={a} opacity="0.9"/>
+      {/* Motion arrows on path */}
+      <polygon points="295,210 310,218 297,226" fill={a} opacity="0.6"/>
+      <polygon points="305,310 290,302 303,294" fill={a} opacity="0.6"/>
+    </g>
+  ),
+
+  connection: (c, a) => (
+    <g>
+      {/* Three nodes in a triangle */}
+      <circle cx="300" cy="160" r="36" fill={a} opacity="0.85"/>
+      <circle cx="180" cy="360" r="36" fill={a} opacity="0.7"/>
+      <circle cx="420" cy="360" r="36" fill={a} opacity="0.7"/>
+      {/* Connecting lines */}
+      <line x1="300" y1="196" x2="200" y2="332" stroke={a} strokeWidth="3" opacity="0.45" strokeLinecap="round"/>
+      <line x1="300" y1="196" x2="400" y2="332" stroke={a} strokeWidth="3" opacity="0.45" strokeLinecap="round"/>
+      <line x1="216" y1="360" x2="384" y2="360" stroke={a} strokeWidth="3" opacity="0.45" strokeLinecap="round"/>
+      {/* Pulse dots on lines */}
+      <circle cx="250" cy="264" r="7" fill={a} opacity="0.5"/>
+      <circle cx="350" cy="264" r="7" fill={a} opacity="0.5"/>
+      <circle cx="300" cy="360" r="7" fill={a} opacity="0.5"/>
+      {/* Outer glow rings */}
+      <circle cx="300" cy="160" r="52" fill="none" stroke={a} strokeWidth="1.5" opacity="0.2"/>
+      <circle cx="180" cy="360" r="52" fill="none" stroke={a} strokeWidth="1.5" opacity="0.2"/>
+      <circle cx="420" cy="360" r="52" fill="none" stroke={a} strokeWidth="1.5" opacity="0.2"/>
+    </g>
+  ),
 };
 
 function themeFromKeywords(keywords: string): VectorTheme {
@@ -563,6 +816,22 @@ function themeFromKeywords(keywords: string): VectorTheme {
   if (/magnesium|mineral|molecule|compound|formula|chemical/.test(k)) return "science";
   // Balance / homeostasis
   if (/balance|equilibrium|homeostasis|ratio|proportion/.test(k)) return "balance";
+  // Abstract / conceptual
+  if (/fire|burn|heat|ignite|flame|passion|transform/.test(k)) return "fire";
+  if (/water|wave|fluid|flow state|adapt|flux/.test(k)) return "water";
+  if (/mountain|peak|summit|climb|achieve|challenge|altitude/.test(k)) return "mountain";
+  if (/network|system|node|connect|web|link|map/.test(k)) return "network";
+  if (/arrow|upward|direction|goal|aim|target|rise/.test(k)) return "arrow";
+  if (/spiral|deep|inward|center|vortex|focus in/.test(k)) return "spiral";
+  if (/layer|stack|foundation|level|build|depth/.test(k)) return "layers";
+  if (/spark|idea|creative|inspir|insight|lightbulb|innovate/.test(k)) return "spark";
+  if (/root|stable|ground|anchor|base|foundation/.test(k)) return "roots";
+  if (/change|adapt|evolve|shift|transit|morph|new you/.test(k)) return "transform";
+  if (/clear|clarity|lens|sharp|focus|precision|see/.test(k)) return "clarity";
+  if (/flow|fluid|move|momentum|current|ease/.test(k)) return "flow";
+  if (/protect|safe|dome|shelter|shield|nurture|secure/.test(k)) return "protection";
+  if (/infinity|infinite|endless|loop|forever|continu/.test(k)) return "infinity";
+  if (/connect|relation|togeth|support|bond|community|social/.test(k)) return "connection";
   return "default";
 }
 
