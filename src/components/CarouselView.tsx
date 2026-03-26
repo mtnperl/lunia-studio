@@ -5,7 +5,6 @@ import TopicStep from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
-import CarouselLibraryView from "@/components/CarouselLibraryView";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 
 type Step = 1 | 2 | 3 | 4;
@@ -28,78 +27,6 @@ const CAROUSEL_LOADER_MSGS = [
   "Finalizing...",
 ];
 
-// ─── Mock content for test mode ───────────────────────────────────────────────
-const MOCK_CONTENT: CarouselContent = {
-  hooks: [
-    {
-      headline: "Your body repairs itself while you sleep.",
-      subline: "But only if you give it the right conditions.",
-    },
-    {
-      headline: "Magnesium is your brain's off switch.",
-      subline: "Most adults are deficient — and don't know it.",
-    },
-    {
-      headline: "You're not bad at sleeping.",
-      subline: "You're missing one mineral.",
-    },
-  ],
-  slides: [
-    {
-      headline: "What happens at 11pm",
-      body: "Cortisol drops. Melatonin rises. Your brain starts clearing the metabolic waste that built up during the day.",
-      citation: "Sleep onset takes 7× longer when cortisol stays elevated",
-      graphic: JSON.stringify({
-        component: "timeline",
-        data: { events: [
-          { time: "10PM", label: "Cortisol starts to drop" },
-          { time: "11PM", label: "Melatonin surges" },
-          { time: "2AM", label: "Deep sleep peaks" },
-          { time: "6AM", label: "Cortisol rises again" },
-        ]},
-      }),
-    },
-    {
-      headline: "Why magnesium works",
-      body: "Magnesium glycinate activates GABA receptors — the same pathway targeted by sleep medications, but without the dependency.",
-      citation: "Participants fell asleep 17 minutes faster in clinical trials",
-      graphic: JSON.stringify({
-        component: "stat",
-        data: { stat: "17", unit: "min", label: "Faster sleep onset with magnesium glycinate" },
-      }),
-    },
-    {
-      headline: "The L-theanine effect",
-      body: "L-theanine increases alpha brain waves — the relaxed-but-alert state that makes winding down feel effortless.",
-      citation: "Alpha wave activity increases within 30–40 minutes",
-      graphic: JSON.stringify({
-        component: "checklist",
-        data: { items: [
-          "L-theanine taken 30-60 min before bed",
-          "Binds to GABA-A receptors",
-          "Alpha brain waves increase",
-          "Deep relaxation without sedation",
-        ]},
-      }),
-    },
-  ],
-  cta: {
-    headline: "Sleep better, starting tonight.",
-    followLine: "Follow @lunia_life for evidence-based sleep science.",
-  },
-  caption: "#sleep #magnesium #lunia #sleepscience #wellness",
-  imagePrompt: "Extreme macro of raw magnesium glycinate crystals dissolving in still dark water, single cold shaft of blue-white light striking crystal edges, deep navy background, ultra-sharp focus, shallow depth of field, editorial pharmaceutical photography, absolute stillness",
-};
-
-const MOCK_BRAND_STYLE: BrandStyle = {
-  background: "#f0ece6",
-  hookBackground: "#0d2137",
-  headline: "#1e7a8a",
-  hookHeadline: "#ffffff",
-  body: "#2c3e50",
-  secondary: "#9ab0b8",
-  accent: "#1e7a8a",
-};
 
 function CarouselLoader() {
   return (
@@ -119,7 +46,6 @@ function CarouselLoader() {
 }
 
 export default function CarouselView({ initialCarousel, onCarouselLoaded }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void }) {
-  const [view, setView] = useState<"builder" | "library">("builder");
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,12 +72,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setHookImageUrl(initialCarousel.hookImageUrl ?? null);
     setSlideImages(initialCarousel.slideImages ?? [null, null, null, null, null]);
     setStep(4);
-    setView("builder");
     onCarouselLoaded?.();
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Test mode & fal.ai status ────────────────────────────────────────────
-  const [testMode, setTestMode] = useState(false);
+  // ─── fal.ai status ────────────────────────────────────────────────────────
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -209,19 +133,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setConcise(conciseMode ?? false);
     setError(null);
     setWarning(null);
-
-    // ── Test mode: skip generation, inject mock content ──────────────────────
-    if (testMode) {
-      setVariants([MOCK_CONTENT]);
-      setSelectedVariant(0);
-      setSelectedHook(0);
-      setBrandStyle(MOCK_BRAND_STYLE);
-      setHookImageUrl(null);
-      setFalStatus("idle");
-      setFalCount(0);
-      setStep(3); // jump straight to Hook step
-      return;
-    }
 
     setLoading(true);
     if (subjectId) {
@@ -314,47 +225,19 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
           {/* fal.ai status badge */}
           {falBadge}
 
-          {/* Test mode toggle */}
           <button
-            onClick={() => setTestMode((v) => !v)}
-            title="Skip content generation and jump straight to design"
-            style={{
-              padding: "5px 12px", fontSize: 12, fontWeight: 700,
-              background: testMode ? "var(--accent-dim)" : "transparent",
-              color: testMode ? "var(--accent)" : "var(--muted)",
-              border: `1px solid ${testMode ? "var(--accent-mid)" : "var(--border)"}`,
-              borderRadius: 20, cursor: "pointer", fontFamily: "inherit",
-              letterSpacing: "0.02em",
-            }}
-          >
-            ⚡ Test mode
-          </button>
-
-          <button
-            onClick={() => { setView("builder"); handleRestart(); }}
+            onClick={handleRestart}
             style={{
               padding: "6px 14px", fontSize: 13, fontWeight: 600,
-              background: view === "builder" ? "var(--surface)" : "transparent",
-              color: view === "builder" ? "var(--text)" : "var(--muted)",
+              background: "var(--surface)",
+              color: "var(--text)",
               border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
             }}
           >New</button>
-          <button
-            onClick={() => setView("library")}
-            style={{
-              padding: "6px 14px", fontSize: 13, fontWeight: 600,
-              background: view === "library" ? "var(--surface)" : "transparent",
-              color: view === "library" ? "var(--text)" : "var(--muted)",
-              border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >Library</button>
         </div>
       </div>
 
-      {view === "library" && <CarouselLibraryView onOpen={() => setView("builder")} />}
-
-      {view === "builder" && (
-        <>
+      <>
           {/* Step indicator */}
           <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
             {([1, 2, 3, 4] as Step[]).map((s) => (
@@ -364,25 +247,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
                 color: step === s ? "var(--text)" : "var(--subtle)",
                 borderBottom: step === s ? "2px solid var(--text)" : "2px solid transparent",
                 marginBottom: -1,
-                opacity: testMode && s === 2 ? 0.2 : step < s ? 0.35 : 1,
-                textDecoration: testMode && s === 2 ? "line-through" : "none",
+                opacity: step < s ? 0.35 : 1,
               }}>
                 {s}. {STEP_LABELS[s]}
               </div>
             ))}
-            {testMode && (
-              <div style={{
-                marginLeft: "auto", marginBottom: -1,
-                padding: "4px 10px",
-                fontSize: 11, fontWeight: 700,
-                color: "var(--accent)",
-                background: "var(--accent-dim)",
-                border: "1px solid var(--accent-mid)",
-                borderRadius: 20,
-              }}>
-                ⚡ Test mode — content step skipped
-              </div>
-            )}
           </div>
 
           {warning && (
@@ -404,7 +273,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, subjectId, conciseMode) => handleTopicNext(t, tone, subjectId, conciseMode)} testMode={testMode} />
+            <TopicStep onNext={(t, tone, subjectId, conciseMode) => handleTopicNext(t, tone, subjectId, conciseMode)} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep
@@ -479,8 +348,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               }}
             />
           )}
-        </>
-      )}
+      </>
     </div>
   );
 }

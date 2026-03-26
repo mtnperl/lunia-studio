@@ -26,12 +26,11 @@ const CATEGORIES = [
 
 type Props = {
   onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean) => void;
-  testMode?: boolean;
 };
 
 type Mode = "list" | "custom";
 
-export default function TopicStep({ onNext, testMode = false }: Props) {
+export default function TopicStep({ onNext }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -295,7 +294,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
         disabled={!topic || topicTooLong}
         onClick={handleNext}
         style={{
-          background: topic && !topicTooLong ? (testMode ? "var(--accent)" : "var(--text)") : "var(--border)",
+          background: topic && !topicTooLong ? "var(--text)" : "var(--border)",
           color: topic && !topicTooLong ? "var(--bg)" : "var(--muted)",
           border: "none",
           borderRadius: 8,
@@ -307,7 +306,7 @@ export default function TopicStep({ onNext, testMode = false }: Props) {
           letterSpacing: "-0.01em",
         }}
       >
-        {testMode ? "⚡ Skip to design →" : "Generate carousel →"}
+        Generate carousel →
       </button>
     </div>
   );
