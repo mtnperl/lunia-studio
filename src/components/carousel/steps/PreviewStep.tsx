@@ -433,10 +433,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   boxShadow: isActive
                     ? "0 0 0 4px rgba(30,122,138,0.12), 0 4px 20px rgba(0,0,0,0.12)"
                     : "0 2px 12px rgba(0,0,0,0.08)",
-                  opacity: isRegeneratingGraphic ? 0.45 : 1,
+                  opacity: (isRegeneratingGraphic || (i === 0 && regeneratingImage)) ? 0.45 : 1,
                 }}>
                   {slide}
                 </div>
+                {/* Graphic regen loader (slides 1–3) */}
                 {isRegeneratingGraphic && (
                   <div style={{
                     position: "absolute", inset: 0, borderRadius: 8,
@@ -454,6 +455,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                       color: "var(--text)", textTransform: "uppercase",
                     }}>generating</span>
+                  </div>
+                )}
+                {/* Hook image regen loader (slide 0) */}
+                {i === 0 && regeneratingImage && (
+                  <div style={{
+                    position: "absolute", inset: 0, borderRadius: 8,
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", gap: 10,
+                    pointerEvents: "none",
+                    background: "rgba(0,0,0,0.18)",
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      border: "2.5px solid rgba(255,255,255,0.2)",
+                      borderTopColor: "#fff",
+                      animation: "spin 0.7s linear infinite",
+                    }} />
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+                      color: "#fff", textTransform: "uppercase",
+                      textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                    }}>generating image…</span>
                   </div>
                 )}
               </div>

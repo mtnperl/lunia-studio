@@ -471,6 +471,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
                 const next = [...variants];
                 next[selectedVariant] = c.content;
                 setVariants(next);
+                // Also sync slideImages and hookImageUrl — needed for image regen
+                if (c.slideImages) setSlideImages(c.slideImages as (string | null)[]);
+                if (c.hookImageUrl !== undefined) setHookImageUrl(c.hookImageUrl ?? null);
               }}
             />
           )}
