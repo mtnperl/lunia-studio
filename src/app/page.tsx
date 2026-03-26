@@ -6,14 +6,14 @@ import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
 import BatchView from "@/components/BatchView";
 import CalendarView from "@/components/CalendarView";
-import AssetsView from "@/components/AssetsView";
+import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
 import AdsView from "@/components/AdsView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "batch" | "assets" | "subjects" | "calendar" | "ads";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads";
 type Product = "home" | "script" | "carousel" | "ads";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -52,8 +52,8 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     items: [
       { key: "carousel",  product: "carousel", label: "Builder"  },
       { key: "batch",     product: "carousel", label: "Batch"    },
-      { key: "subjects",  product: "carousel", label: "Subjects" },
-      { key: "assets",    product: "carousel", label: "Assets"   },
+      { key: "subjects",          product: "carousel", label: "Subjects" },
+      { key: "carousel-library", product: "carousel", label: "Library"  },
     ],
   },
   {
@@ -70,6 +70,7 @@ export default function Page() {
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
+  const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -272,10 +273,17 @@ export default function Page() {
         {tab === "generate"  && <GenerateView onOpenEditor={openEditor} />}
         {tab === "editor"    && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
         {tab === "library"   && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
-        {tab === "carousel"  && <CarouselView />}
+        {tab === "carousel"  && <CarouselView initialCarousel={pendingCarousel} onCarouselLoaded={() => setPendingCarousel(null)} />}
         {tab === "batch"     && <BatchView />}
         {tab === "subjects"  && <SubjectsView />}
-        {tab === "assets"    && <AssetsView />}
+        {tab === "carousel-library" && (
+          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
+            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
+              <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Carousel Library</h1>
+            </div>
+            <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
+          </div>
+        )}
         {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
         {tab === "ads"       && <AdsView />}
       </main>

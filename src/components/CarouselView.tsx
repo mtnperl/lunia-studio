@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
@@ -118,7 +118,7 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView() {
+export default function CarouselView({ initialCarousel, onCarouselLoaded }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void }) {
   const [view, setView] = useState<"builder" | "library">("builder");
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -132,6 +132,22 @@ export default function CarouselView() {
   const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
   const [hookImageUrl, setHookImageUrl] = useState<string | null>(null);
   const [slideImages, setSlideImages] = useState<(string | null)[]>([null, null, null, null, null]);
+
+  // ─── Load saved carousel ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!initialCarousel) return;
+    setTopic(initialCarousel.topic);
+    setHookTone(initialCarousel.hookTone);
+    setVariants([initialCarousel.content]);
+    setSelectedVariant(0);
+    setSelectedHook(initialCarousel.selectedHook ?? 0);
+    setBrandStyle(initialCarousel.brandStyle ?? null);
+    setHookImageUrl(initialCarousel.hookImageUrl ?? null);
+    setSlideImages(initialCarousel.slideImages ?? [null, null, null, null, null]);
+    setStep(4);
+    setView("builder");
+    onCarouselLoaded?.();
+  }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Test mode & fal.ai status ────────────────────────────────────────────
   const [testMode, setTestMode] = useState(false);
