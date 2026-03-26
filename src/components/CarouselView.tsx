@@ -333,7 +333,7 @@ export default function CarouselView() {
         </div>
       </div>
 
-      {view === "library" && <CarouselLibraryView />}
+      {view === "library" && <CarouselLibraryView onOpen={() => setView("builder")} />}
 
       {view === "builder" && (
         <>

@@ -2,182 +2,306 @@
 import { useState, useEffect } from "react";
 import { SavedCarousel } from "@/lib/types";
 
-const CAPTION_PREVIEW_LENGTH = 120;
+// ── Tone label colors ──────────────────────────────────────────────────────────
+const TONE_COLORS: Record<string, string> = {
+  educational:     "#5F9E75",
+  clickbait:       "#B86040",
+  curiosity:       "#7A6AAA",
+  "myth-bust":     "#A04040",
+  "science-backed":"#4A82A0",
+  "personal-story":"#A07830",
+};
 
-export default function CarouselLibraryView() {
+// ── CopyButton ─────────────────────────────────────────────────────────────────
+function CopyButton({ text, onClick }: { text: string; onClick?: (e: React.MouseEvent) => void }) {
+  const [copied, setCopied] = useState(false);
+  function handle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (onClick) onClick(e);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+  return (
+    <button
+      onClick={handle}
+      style={{
+        flex: 1,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+        padding: "9px 0",
+        background: copied ? "var(--accent)" : "var(--surface-r)",
+        border: `1px solid ${copied ? "var(--accent)" : "var(--border)"}`,
+        borderRadius: 8,
+        fontSize: 12, fontWeight: 600,
+        color: copied ? "#fff" : "var(--text)",
+        cursor: "pointer",
+        fontFamily: "var(--font-ui)",
+        transition: "all 0.15s",
+        letterSpacing: "0.01em",
+      }}
+    >
+      {copied ? (
+        <>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <polyline points="1.5,6 4.5,9 10.5,3" stroke="currentColor" strokeWidth="1.9"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Copied!
+        </>
+      ) : (
+        <>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+            <path d="M4 3V2a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H9"
+              stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          Copy caption
+        </>
+      )}
+    </button>
+  );
+}
+
+// ── DownloadIconButton ─────────────────────────────────────────────────────────
+function DownloadIconButton({ href }: { href: string }) {
+  function handle(e: React.MouseEvent) {
+    e.stopPropagation();
+    window.open(href, "_blank");
+  }
+  return (
+    <button
+      onClick={handle}
+      title="Download"
+      style={{
+        width: 36, height: 36, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "var(--surface-r)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        cursor: "pointer",
+        color: "var(--muted)",
+        transition: "color 0.14s, border-color 0.14s, background 0.14s",
+      }}
+      onMouseEnter={e => {
+        const b = e.currentTarget as HTMLButtonElement;
+        b.style.color = "var(--text)";
+        b.style.borderColor = "var(--border-strong)";
+        b.style.background = "var(--surface-h)";
+      }}
+      onMouseLeave={e => {
+        const b = e.currentTarget as HTMLButtonElement;
+        b.style.color = "var(--muted)";
+        b.style.borderColor = "var(--border)";
+        b.style.background = "var(--surface-r)";
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1.5v7M4.5 6.5l2.5 2.5 2.5-2.5"
+          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 10.5v1A1.5 1.5 0 0 0 2.5 13h9a1.5 1.5 0 0 0 1.5-1.5v-1"
+          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
+
+// ── Skeleton card ──────────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div style={{
+      borderRadius: 14, overflow: "hidden",
+      background: "var(--surface)", border: "1px solid var(--border)",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{ width: "100%", aspectRatio: "4/5", background: "var(--surface-r)",
+        backgroundImage: "linear-gradient(90deg, var(--surface-r) 0%, var(--surface-h) 50%, var(--surface-r) 100%)",
+        backgroundSize: "200% 100%",
+        animation: "shimmer 1.4s ease-in-out infinite",
+      }} />
+      <div style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ height: 9, width: "45%", background: "var(--border)", borderRadius: 4 }} />
+        <div style={{ height: 12, width: "90%", background: "var(--border)", borderRadius: 4 }} />
+        <div style={{ height: 12, width: "70%", background: "var(--border)", borderRadius: 4 }} />
+        <div style={{ height: 34, background: "var(--border)", borderRadius: 8, marginTop: 2 }} />
+      </div>
+    </div>
+  );
+}
+
+// ── CarouselCard ───────────────────────────────────────────────────────────────
+function CarouselCard({ c, onClick }: { c: SavedCarousel; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  const hookImg = c.slideImages?.[0] ?? c.hookImageUrl ?? null;
+  const toneColor = TONE_COLORS[c.hookTone] ?? "var(--accent)";
+  const caption = c.content?.caption ?? "";
+  const slideCount = (c.content?.slides?.length ?? 0) + 2;
+  const shareHref = `${typeof window !== "undefined" ? window.location.origin : ""}/carousels/${c.id}`;
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: "var(--surface)",
+        border: `1px solid ${hovered ? "var(--accent)" : "var(--border)"}`,
+        borderRadius: 14,
+        overflow: "hidden",
+        cursor: "pointer",
+        transition: "border-color 0.18s, box-shadow 0.18s, transform 0.18s",
+        boxShadow: hovered
+          ? "0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.07)"
+          : "0 1px 4px rgba(0,0,0,0.05)",
+        transform: hovered ? "translateY(-2px)" : "translateY(0)",
+      }}
+    >
+      {/* ── Hook image ── */}
+      <div style={{
+        width: "100%", aspectRatio: "4/5",
+        background: "var(--surface-r)",
+        position: "relative", overflow: "hidden",
+      }}>
+        {hookImg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={hookImg} alt={c.topic}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          /* No image fallback — gradient + italic topic */
+          <div style={{
+            width: "100%", height: "100%",
+            background: "linear-gradient(155deg, var(--surface-h) 0%, var(--surface-r) 60%, var(--surface) 100%)",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "28px 20px", textAlign: "center", gap: 12,
+          }}>
+            <div style={{
+              fontFamily: "var(--font-serif)", fontSize: 17, fontWeight: 400,
+              fontStyle: "italic", color: "var(--muted)", lineHeight: 1.45,
+            }}>
+              {c.topic}
+            </div>
+            <div style={{ width: 28, height: 1, background: "var(--border-strong)" }} />
+            <div style={{
+              fontSize: 10, fontFamily: "var(--font-mono)",
+              color: "var(--subtle)", letterSpacing: "0.08em", textTransform: "uppercase",
+            }}>
+              {c.hookTone}
+            </div>
+          </div>
+        )}
+
+        {/* Slide count pill */}
+        <div style={{
+          position: "absolute", top: 10, right: 10,
+          background: "rgba(0,0,0,0.52)", backdropFilter: "blur(6px)",
+          borderRadius: 20, padding: "3px 9px",
+          fontSize: 10, fontWeight: 600,
+          color: "rgba(255,255,255,0.92)",
+          fontFamily: "var(--font-mono)", letterSpacing: "0.04em",
+        }}>
+          {slideCount} slides
+        </div>
+      </div>
+
+      {/* ── Card body ── */}
+      <div style={{ padding: "13px 13px 11px" }}>
+        {/* Meta */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 600,
+            color: toneColor,
+            textTransform: "uppercase", letterSpacing: "0.1em",
+            fontFamily: "var(--font-mono)",
+          }}>
+            {c.hookTone.replace("-", " ")}
+          </span>
+          <span style={{ fontSize: 10, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
+            {new Date(c.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </span>
+        </div>
+
+        {/* Topic */}
+        <p style={{
+          fontSize: 13, fontWeight: 500, color: "var(--text)",
+          lineHeight: 1.4, marginBottom: 11,
+          display: "-webkit-box", WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}>
+          {c.topic}
+        </p>
+
+        {/* Actions — stop propagation so card click doesn't fire */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ display: "flex", gap: 6, alignItems: "stretch" }}
+        >
+          <CopyButton text={caption} />
+          <DownloadIconButton href={shareHref} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+export default function CarouselLibraryView({ onOpen }: { onOpen?: (c: SavedCarousel) => void }) {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [captionCopied, setCaptionCopied] = useState<string | null>(null);
-  const [captionExpanded, setCaptionExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/api/carousel/library")
-      .then((r) => r.json())
-      .then((d) => { setCarousels(Array.isArray(d) ? d : []); setLoading(false); })
+      .then(r => r.json())
+      .then(d => { setCarousels(Array.isArray(d) ? d : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  async function handleDelete(id: string) {
-    await fetch(`/api/carousel/${id}`, { method: "DELETE" });
-    setCarousels((prev) => prev.filter((c) => c.id !== id));
-    setConfirmDeleteId(null);
-  }
-
-  if (loading) {
-    return <div style={{ fontSize: 14, color: "var(--muted)", padding: "40px 0" }}>Loading library...</div>;
-  }
-
-  if (carousels.length === 0) {
-    return (
-      <div style={{ textAlign: "center", padding: "60px 0", color: "var(--muted)" }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>No saved carousels</div>
-        <div style={{ fontSize: 13 }}>Generate one and hit "Save carousel" in the preview step.</div>
-      </div>
-    );
-  }
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  }
-
-  function copyShareLink(id: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/carousels/${id}`);
-  }
-
-  function copyCaption(id: string, caption: string) {
-    navigator.clipboard.writeText(caption);
-    setCaptionCopied(id);
-    setTimeout(() => setCaptionCopied(null), 1500);
-  }
-
-  function toggleCaption(id: string) {
-    setCaptionExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-
   return (
-    <div>
-      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>
-        {carousels.length} saved {carousels.length === 1 ? "carousel" : "carousels"}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-        {carousels.map((c) => (
-          <div
-            key={c.id}
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: 18,
-              background: "var(--surface)",
-            }}
-          >
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6, lineHeight: 1.4 }}>{c.topic}</div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "2px 7px",
-                borderRadius: 4,
-                background: "var(--bg)",
-                border: "1px solid var(--border)",
-                color: "var(--muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}>
-                {c.hookTone}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
-              Saved {formatDate(c.savedAt)}
-            </div>
-            <div style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", marginBottom: 14, lineHeight: 1.4, borderLeft: "2px solid var(--border)", paddingLeft: 10 }}>
-              "{c.content.hooks[c.selectedHook]?.headline}"
-            </div>
-            {c.content.caption && (() => {
-              const isExpanded = captionExpanded[c.id];
-              const isLong = c.content.caption.length > CAPTION_PREVIEW_LENGTH;
-              const displayText = isExpanded || !isLong
-                ? c.content.caption
-                : c.content.caption.slice(0, CAPTION_PREVIEW_LENGTH) + "…";
-              return (
-                <div style={{ marginBottom: 14, padding: "10px 12px", background: "var(--bg)", borderRadius: 7, border: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--subtle)" }}>Caption</span>
-                    <button
-                      onClick={() => copyCaption(c.id, c.content.caption!)}
-                      style={{ fontSize: 11, fontWeight: 600, color: captionCopied === c.id ? "#15803d" : "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0, flexShrink: 0 }}
-                    >
-                      {captionCopied === c.id ? "Copied!" : "Copy"}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{displayText}</div>
-                  {isLong && (
-                    <button
-                      onClick={() => toggleCaption(c.id)}
-                      style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                    >
-                      {isExpanded ? "Show less" : "Show more"}
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <a
-                href={`/carousels/${c.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--text)",
-                  textDecoration: "none",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                  padding: "6px 12px",
-                  background: "var(--bg)",
-                }}
-              >
-                ↓ Download ↗
-              </a>
-              <button
-                onClick={() => copyShareLink(c.id)}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--muted)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                  padding: "6px 12px",
-                  background: "var(--bg)",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Copy link
-              </button>
-              {confirmDeleteId === c.id ? (
-                <>
-                  <button
-                    onClick={() => handleDelete(c.id)}
-                    style={{ fontSize: 13, fontWeight: 700, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
-                  >Delete</button>
-                  <button
-                    onClick={() => setConfirmDeleteId(null)}
-                    style={{ fontSize: 13, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
-                  >Cancel</button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setConfirmDeleteId(c.id)}
-                  style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}
-                >Delete</button>
-              )}
-            </div>
+    <div style={{ padding: "32px 0 80px" }}>
+      {/* Count */}
+      <p style={{
+        fontSize: 12, color: "var(--subtle)",
+        fontFamily: "var(--font-mono)", letterSpacing: "0.04em",
+        marginBottom: 20,
+      }}>
+        {loading ? "Loading…" : `${carousels.length} carousel${carousels.length !== 1 ? "s" : ""}`}
+      </p>
+
+      {loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : carousels.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "80px 0" }}>
+          <div style={{
+            fontFamily: "var(--font-serif)", fontSize: 18,
+            fontStyle: "italic", color: "var(--subtle)", marginBottom: 8,
+          }}>
+            No carousels saved yet.
           </div>
-        ))}
-      </div>
+          <p style={{ fontSize: 13, color: "var(--muted)" }}>
+            Build one and hit Save in the preview step.
+          </p>
+        </div>
+      ) : (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: 14,
+        }}>
+          {carousels
+            .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())
+            .map(c => (
+              <CarouselCard
+                key={c.id}
+                c={c}
+                onClick={() => onOpen?.(c)}
+              />
+            ))}
+        </div>
+      )}
     </div>
   );
 }
