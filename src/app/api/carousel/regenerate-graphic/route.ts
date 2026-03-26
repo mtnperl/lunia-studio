@@ -36,9 +36,18 @@ export async function POST(req: Request) {
 
     const avoidComponents: string[] = body.avoidComponents ?? (currentComponent ? [currentComponent] : []);
     const forceVector: boolean = body.forceVector === true;
+    const attempt: number = typeof body.attempt === "number" ? body.attempt : 0;
+
+    // Known valid component keys — any Claude response with a key outside this set is invalid
+    const VALID_COMPONENTS = new Set([
+      "stat","bars","steps","dotchain","wave","iconGrid","donut","versus","timeline","split",
+      "checklist","callout","table","pyramid","radial","circleStats","spectrum","funnel",
+      "scorecard","bubbles","iconStat","matrix2x2","stackedBar","processFlow","heatGrid",
+      "vector","hubSpoke","iceberg","bridge","circularCycle","bento","conceptFlow",
+    ]);
 
     const prompt = forceVector
-      ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody)
+      ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody, attempt)
       : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents);
 
     const msg = await anthropic.messages.create({
@@ -53,7 +62,17 @@ export async function POST(req: Request) {
     // Strip accidental code fences if model adds them
     const graphic = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 
-    return Response.json({ graphic });
+    // Validate: if Claude returned a component key not in our registry, substitute callout
+    let finalGraphic = graphic;
+    try {
+      const parsed = JSON.parse(graphic);
+      if (parsed?.component && !VALID_COMPONENTS.has(parsed.component)) {
+        // Unknown component — fall back to callout so slide always renders something
+        finalGraphic = JSON.stringify({ component: "callout", data: { text: headline } });
+      }
+    } catch { /* non-JSON response — pass through, ContentSlide will handle */ }
+
+    return Response.json({ graphic: finalGraphic });
   } catch (err) {
     console.error("[api/carousel/regenerate-graphic]", err);
     return Response.json({ error: "Failed to regenerate graphic" }, { status: 500 });

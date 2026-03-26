@@ -221,18 +221,31 @@ TIER C — VECTOR:
 
 Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string. If data is limited, use 'callout'.`;
 
-export const REGENERATE_VECTOR_PROMPT = (topic: string, headline: string, body: string) =>
-  `You are a visual designer for Lunia Life, a sleep supplement brand. Generate a vector illustration spec for this carousel slide.
+export const REGENERATE_VECTOR_PROMPT = (topic: string, headline: string, body: string, attempt: number = 0) => {
+  // Cycle through different conceptual angles on each regeneration attempt
+  const angles = [
+    "Focus on the MECHANISM — what physically happens inside the body.",
+    "Focus on the METAPHOR — what abstract concept best represents the slide's emotional message.",
+    "Focus on the OUTCOME — what the person experiences or gains.",
+    "Focus on the CONTRAST — before vs after, problem vs solution.",
+    "Focus on the SYSTEM — how this fits into a bigger biological or lifestyle cycle.",
+  ];
+  const angle = angles[attempt % angles.length];
+  return `You are a visual designer for Lunia Life, a sleep supplement brand. Generate a FRESH vector illustration spec for this carousel slide.
 
 Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
 
+Creative direction for THIS regeneration: ${angle}
+Pick keywords that express this specific angle — do NOT default to the most obvious topic words.
+
 Output ONLY this exact JSON format, nothing else:
 {"component":"vector","data":{"keywords":"SPACE-SEPARATED KEYWORDS (3-5 evocative words, e.g. sleep cortisol rhythm brain)","label":"SHORT DESCRIPTIVE LABEL (2-4 words, lowercase)","mood":"calm|energetic|scientific|playful"}}
 
 Rules:
-- keywords: pick the most visually evocative, conceptual words from the slide. Think of what an editorial illustrator would draw.
+- keywords: pick DIFFERENT evocative words than the obvious topic. Think of what an editorial illustrator would draw for the given creative direction.
 - label: a short lowercase caption that appears under the illustration (e.g. "sleep pressure", "cortisol peak", "neural recovery")
 - mood: calm=relaxation/recovery/rest, energetic=activation/performance/boost, scientific=mechanisms/biology/research, playful=habits/lifestyle/routine
 - Output ONLY the JSON object — no code fence, no explanation.`;
+};

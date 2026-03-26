@@ -15,7 +15,7 @@ type Props = {
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
-const PREVIEW_SCALE = 0.38;
+const PREVIEW_SCALE = 0.48;
 
 export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
@@ -27,6 +27,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
   const [graphicHistory, setGraphicHistory] = useState<Record<number, string[]>>({});
+  const [vectorAttempts, setVectorAttempts] = useState<Record<number, number>>({});
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -169,8 +170,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       // Extract current component name for history tracking
       let currentComp = "";
       try { currentComp = JSON.parse(slide.graphic ?? "{}").component ?? ""; } catch {}
-      // Build avoid list from history + current component
-      const avoid = [...(graphicHistory[slideIndex] ?? []), currentComp].filter(Boolean);
+      // Build avoid list — cap at 2 entries to prevent Claude running out of options
+      const prevHistory = graphicHistory[slideIndex] ?? [];
+      const rawAvoid = [...prevHistory, currentComp].filter(Boolean);
+      const avoid = rawAvoid.length > 2 ? rawAvoid.slice(-2) : rawAvoid;
       const res = await fetch("/api/carousel/regenerate-graphic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -321,6 +324,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     try {
       const slide = content.slides[slideIndex];
       if (!slide) { setGraphicError("Slide not found"); setRegeneratingGraphic(null); return; }
+      const attempt = (vectorAttempts[slideIndex] ?? 0) + 1;
       const res = await fetch("/api/carousel/regenerate-graphic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -330,6 +334,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           body: slide.body,
           currentGraphic: slide.graphic ?? "",
           forceVector: true,
+          attempt,
         }),
       });
       const data = await res.json();
@@ -338,6 +343,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (!graphic || graphic.trim() === '""' || graphic.trim() === '') {
         setGraphicError("Could not generate vector — try again"); return;
       }
+      setVectorAttempts(prev => ({ ...prev, [slideIndex]: attempt }));
       const slides = [...content.slides];
       slides[slideIndex] = { ...slides[slideIndex], graphic };
       onContentChange({ ...config, content: { ...content, slides } });
