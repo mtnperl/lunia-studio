@@ -1,5 +1,5 @@
 import { anthropic } from "@/lib/anthropic";
-import { REGENERATE_GRAPHIC_PROMPT } from "@/lib/carousel-prompts";
+import { REGENERATE_GRAPHIC_PROMPT, REGENERATE_VECTOR_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 
 export async function POST(req: Request) {
@@ -33,12 +33,17 @@ export async function POST(req: Request) {
     } catch { /* ignore parse errors */ }
 
     const avoidComponents: string[] = body.avoidComponents ?? (currentComponent ? [currentComponent] : []);
+    const forceVector: boolean = body.forceVector === true;
+
+    const prompt = forceVector
+      ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody)
+      : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents);
 
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
       max_tokens: 512,
       messages: [
-        { role: "user", content: REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents) },
+        { role: "user", content: prompt },
       ],
     });
 

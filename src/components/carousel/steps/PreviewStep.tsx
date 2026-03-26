@@ -42,7 +42,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [imageGuidelines, setImageGuidelines] = useState("");
   const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
   const [regeneratingImage, setRegeneratingImage] = useState(false);
+  const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [imageRegenError, setImageRegenError] = useState<string | null>(null);
+
+  // Derive vector mode from actual graphic data rather than ephemeral UI state
+  function isVectorSlide(slideIndex: number): boolean {
+    try {
+      const g = content.slides[slideIndex]?.graphic;
+      return !!g && JSON.parse(g)?.component === "vector";
+    } catch { return false; }
+  }
 
   // Full-size hidden refs for accurate PNG export
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
@@ -240,6 +249,65 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate image");
     } finally {
       setRegeneratingImage(false);
+    }
+  }
+
+  async function handleRegeneratePromptOnly() {
+    if (regeneratingImage || regeneratingPrompt) return;
+    setRegeneratingPrompt(true);
+    setImageRegenError(null);
+    try {
+      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          headline: hook.headline,
+          subline: hook.subline,
+          currentPrompt: currentImagePrompt,
+          guidelines: imageGuidelines.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "Failed to regenerate prompt");
+      setImagePromptDraft(data.prompt);
+      onContentChange({ ...config, content: { ...config.content, imagePrompt: data.prompt } });
+    } catch (err) {
+      setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate prompt");
+    } finally {
+      setRegeneratingPrompt(false);
+    }
+  }
+
+  async function handleVectorGraphic(slideIndex: number) {
+    setRegeneratingGraphic(slideIndex);
+    setGraphicError(null);
+    try {
+      const slide = content.slides[slideIndex];
+      const res = await fetch("/api/carousel/regenerate-graphic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          headline: slide.headline,
+          body: slide.body,
+          currentGraphic: slide.graphic ?? "",
+          forceVector: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setGraphicError(data.error ?? "Failed to generate vector"); return; }
+      const { graphic } = data;
+      if (!graphic || graphic.trim() === '""' || graphic.trim() === '') {
+        setGraphicError("Could not generate vector — try again"); return;
+      }
+      const slides = [...content.slides];
+      slides[slideIndex] = { ...slides[slideIndex], graphic };
+      onContentChange({ ...config, content: { ...content, slides } });
+    } catch {
+      setGraphicError("Network error — please check your connection");
+    } finally {
+      setRegeneratingGraphic(null);
     }
   }
 
@@ -579,6 +647,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     >
                       {isRegeneratingGraphic ? "…" : "↺ graphic"}
                     </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleVectorGraphic(i - 1); }}
+                      disabled={isRegenerating || isRegeneratingGraphic}
+                      title="Switch to vector illustration"
+                      style={{
+                        background: isVectorSlide(i - 1) ? "var(--accent-dim)" : "var(--surface)",
+                        color: isVectorSlide(i - 1) ? "var(--accent)" : "var(--muted)",
+                        border: `1px solid ${isVectorSlide(i - 1) ? "var(--accent-mid)" : "var(--border)"}`,
+                        borderRadius: 6,
+                        padding: "7px 10px",
+                        fontSize: 11,
+                        fontFamily: "inherit",
+                        cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
+                        opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
+                        transition: "background 0.15s",
+                        letterSpacing: "0.01em",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {isRegeneratingGraphic ? "…" : "↺ vector"}
+                    </button>
                   </>
                 )}
               </div>
@@ -638,31 +728,47 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             {imageRegenError && (
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
             )}
-            <button
-              onClick={handleRegenerateHookImage}
-              disabled={regeneratingImage}
-              style={{
-                background: regeneratingImage ? "var(--border)" : "var(--accent)",
-                color: regeneratingImage ? "var(--muted)" : "var(--bg)",
-                border: "none", borderRadius: 6,
-                padding: "9px 20px", fontSize: 12, fontWeight: 700,
-                fontFamily: "inherit", cursor: regeneratingImage ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", gap: 8,
-              }}
-            >
-              {regeneratingImage ? (
-                <>
-                  <span style={{
-                    display: "inline-block", width: 12, height: 12,
-                    border: "2px solid var(--subtle)", borderTopColor: "var(--muted)",
-                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
-                  }} />
-                  Generating new image…
-                </>
-              ) : (
-                "↺ Generate new image"
-              )}
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleRegeneratePromptOnly}
+                disabled={regeneratingPrompt || regeneratingImage}
+                title="Regenerate the prompt only — does not generate a new image"
+                style={{
+                  background: "var(--surface)",
+                  color: (regeneratingPrompt || regeneratingImage) ? "var(--subtle)" : "var(--text)",
+                  border: "1px solid var(--border)", borderRadius: 6,
+                  padding: "9px 16px", fontSize: 12, fontWeight: 600,
+                  fontFamily: "inherit", cursor: (regeneratingPrompt || regeneratingImage) ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                }}
+              >
+                {regeneratingPrompt ? (
+                  <>
+                    <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                    Rewriting…
+                  </>
+                ) : "↺ Prompt only"}
+              </button>
+              <button
+                onClick={handleRegenerateHookImage}
+                disabled={regeneratingImage || regeneratingPrompt}
+                style={{
+                  background: (regeneratingImage || regeneratingPrompt) ? "var(--border)" : "var(--accent)",
+                  color: (regeneratingImage || regeneratingPrompt) ? "var(--muted)" : "var(--bg)",
+                  border: "none", borderRadius: 6,
+                  padding: "9px 20px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "inherit", cursor: (regeneratingImage || regeneratingPrompt) ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}
+              >
+                {regeneratingImage ? (
+                  <>
+                    <span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                    Generating…
+                  </>
+                ) : "↺ New image"}
+              </button>
+            </div>
           </div>
         </div>
       )}
