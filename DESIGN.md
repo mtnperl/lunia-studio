@@ -7,24 +7,23 @@
 - **Project type:** Web app / internal tool — used daily for Instagram content production
 
 ## Aesthetic Direction
-- **Direction:** Warm Atelier Dark
+- **Direction:** Warm Atelier — Light default, Dark toggle
 - **Decoration level:** Minimal — typography and structure do all the work
 - **Mood:** A single-person publishing studio that takes its craft seriously. Warm, quiet authority — the feeling of a well-made tool built for one specific person. Not a SaaS dashboard, not Canva. Think a designer's studio desk: composed, deliberate, built for daily craft.
 - **First 3-second reaction:** "This was made for me specifically."
 
 ## Typography
-- **Display/Hero:** Instrument Serif — editorial weight, italic variant for empty states and greetings. Used for dashboard greeting, section headers, empty states, large numerals in serif contexts.
-- **UI/Navigation/Labels:** Geist — clean, slightly mechanical, pairs with serif hero. Section labels in all-caps at 0.1em tracking. Nav items in 13px/500 weight.
-- **Data/Metrics:** Geist Mono — word counts, dates, batch numbers, carousel metadata. `font-variant-numeric: tabular-nums` always on.
-- **Loading strategy:** Google Fonts CDN — `https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap`
+- **Display/Hero:** Cormorant Garamond — high-contrast luxury serif, weight 300–400, italic in gold for greetings. Used for dashboard greeting, section headers, card titles, empty states. At 48px it rivals editorial magazine typography.
+- **UI/Navigation/Labels:** Inter — clean geometric sans with excellent readability at small sizes. Section labels in all-caps at 0.14em tracking. Nav items in 13px/400–500 weight.
+- **Data/Metrics:** Fira Code — monospace for numbers, dates, batch data, carousel metadata. `font-variant-numeric: tabular-nums` always on.
+- **Loading strategy:** Google Fonts CDN — `https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap`
 - **Scale:**
-  - xs: 10px / 11px
+  - xs: 9px / 10px / 11px
   - sm: 12px / 13px
   - base: 14px
-  - md: 16px / 18px
-  - lg: 20px / 22px / 24px
-  - xl: 28px / 32px
-  - 2xl: 42px (display/hero)
+  - md: 16px / 18px / 20px
+  - lg: 24px / 28px
+  - xl: 36px / 48px (display/hero — Cormorant, weight 300)
 
 ## Color
 - **Approach:** Restrained — gold accent is rare and meaningful. Color is earned, not decorative.

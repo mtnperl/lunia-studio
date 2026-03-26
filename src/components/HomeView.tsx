@@ -13,18 +13,19 @@ type Props = {
 function StatCard({ value, label }: { value: number | string; label: string }) {
   return (
     <div style={{
-      flex: 1, padding: "18px 20px",
+      flex: 1, padding: "20px 20px 18px",
       background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 8,
+      borderRadius: 10,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
     }}>
       <div style={{
         fontFamily: "var(--font-mono)",
-        fontSize: 28, fontWeight: 500,
+        fontSize: 32, fontWeight: 400,
         color: "var(--text)", lineHeight: 1,
-        marginBottom: 6,
+        marginBottom: 8,
         fontVariantNumeric: "tabular-nums",
       }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>
     </div>
   );
 }
@@ -129,57 +130,61 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "48px 48px 80px" }}>
 
       {/* ── Greeting ── */}
-      <div style={{ marginBottom: 40, paddingBottom: 32, borderBottom: "1px solid var(--border)" }}>
+      <div style={{ marginBottom: 44, paddingBottom: 36, borderBottom: "1px solid var(--border)" }}>
         <h1 style={{
           fontFamily: "var(--font-serif)",
-          fontSize: 36, fontWeight: 400,
-          color: "var(--text)", margin: 0, lineHeight: 1.2,
+          fontSize: 48, fontWeight: 300,
+          color: "var(--text)", margin: 0, lineHeight: 1.1,
+          letterSpacing: "-0.01em",
         }}>
           {greeting},{" "}
-          <em style={{ fontStyle: "italic", color: "var(--muted)" }}>Mathan.</em>
+          <em style={{ fontStyle: "italic", color: "var(--accent)", fontWeight: 400 }}>Mathan.</em>
         </h1>
         <p style={{
           fontFamily: "var(--font-mono)",
           fontSize: 11, color: "var(--subtle)",
-          marginTop: 8, letterSpacing: "0.04em",
+          marginTop: 10, letterSpacing: "0.08em",
         }}>
           {dateLabel.toUpperCase()}
         </p>
       </div>
 
       {/* ── Quick actions ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 36 }}>
-        <div
-          onClick={onNewScript}
-          style={{
-            padding: "22px 24px", borderRadius: 8, cursor: "pointer",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            transition: "border-color 0.15s, background 0.15s",
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLDivElement).style.background = "var(--surface-h)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
-        >
-          <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 8 }}>UGC Scripter</div>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--text)", marginBottom: 4 }}>New script</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, lineHeight: 1.5 }}>Generate hooks + full UGC script</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Generate →</div>
-        </div>
-
-        <div
-          onClick={onNewCarousel}
-          style={{
-            padding: "22px 24px", borderRadius: 8, cursor: "pointer",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            transition: "border-color 0.15s, background 0.15s",
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLDivElement).style.background = "var(--surface-h)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
-        >
-          <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 8 }}>Carousel Builder</div>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: 20, color: "var(--text)", marginBottom: 4 }}>New carousel</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16, lineHeight: 1.5 }}>Build an Instagram carousel post</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Build →</div>
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 40 }}>
+        {[
+          { label: "UGC Scripter", title: "New script", desc: "Generate hooks + full UGC script", cta: "Generate →", onClick: onNewScript },
+          { label: "Carousel Builder", title: "New carousel", desc: "Build an Instagram carousel post", cta: "Build →", onClick: onNewCarousel },
+        ].map(card => (
+          <div
+            key={card.label}
+            onClick={card.onClick}
+            style={{
+              padding: "26px 28px 24px", borderRadius: 12, cursor: "pointer",
+              background: "var(--surface)", border: "1px solid var(--border)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
+              transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s",
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = "var(--accent)";
+              el.style.background = "var(--surface-h)";
+              el.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.06)";
+              el.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = "var(--border)";
+              el.style.background = "var(--surface)";
+              el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)";
+              el.style.transform = "translateY(0)";
+            }}
+          >
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>{card.label}</div>
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: 24, fontWeight: 400, color: "var(--text)", marginBottom: 6, lineHeight: 1.2 }}>{card.title}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.55 }}>{card.desc}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", letterSpacing: "0.02em" }}>{card.cta}</div>
+          </div>
+        ))}
       </div>
 
       {/* ── Stats ── */}

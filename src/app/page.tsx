@@ -147,9 +147,9 @@ export default function Page() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
             <span style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 11, fontWeight: 700,
-              letterSpacing: "0.12em", textTransform: "uppercase",
+              fontFamily: "var(--font-serif)",
+              fontSize: 15, fontWeight: 500,
+              letterSpacing: "0.04em",
               color: "var(--text)",
             }}>Studio</span>
           </div>
@@ -170,9 +170,9 @@ export default function Page() {
             <div key={section} style={{ marginBottom: 24 }}>
               <div style={{
                 padding: "0 24px",
-                fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700,
-                letterSpacing: "0.14em", textTransform: "uppercase",
-                color: "var(--subtle)", marginBottom: 4,
+                fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 500,
+                letterSpacing: "0.16em", textTransform: "uppercase",
+                color: "var(--muted)", marginBottom: 2,
               }}>
                 {section}
               </div>
