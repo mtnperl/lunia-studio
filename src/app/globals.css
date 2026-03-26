@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -20,7 +20,7 @@
   --error:        #A04040;
 
   /* ── Typography ── */
-  --font-serif:  'Cormorant Garamond', Georgia, serif;
+  --font-serif:  'Fraunces', Georgia, serif;
   --font-ui:     'Inter', system-ui, sans-serif;
   --font-mono:   'Fira Code', 'Menlo', monospace;
 
