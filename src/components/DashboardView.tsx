@@ -7,7 +7,6 @@ import PerformanceChart from "./dashboard/PerformanceChart";
 import CampaignTable from "./dashboard/CampaignTable";
 import InsightsPanel from "./dashboard/InsightsPanel";
 import RefreshButton from "./dashboard/RefreshButton";
-import ProductBreakdown from "./dashboard/ProductBreakdown";
 import PasswordGate from "./dashboard/PasswordGate";
 
 type Days = 7 | 14 | 30;
@@ -306,15 +305,44 @@ export default function DashboardView() {
       {/* KPI row — Meta + ROAS */}
       <div style={{ marginBottom: 8 }}>
         <div style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--subtle)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 8,
           marginBottom: 8,
         }}>
-          Meta Ads {isFiltered && <span style={{ color: "var(--accent)", marginLeft: 4 }}>· filtered</span>}
+          <div style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--subtle)",
+          }}>
+            Meta Ads {isFiltered && <span style={{ color: "var(--accent)", marginLeft: 4 }}>· filtered</span>}
+          </div>
+          {allObjectives.length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {allObjectives.map(obj => (
+                <button
+                  key={obj}
+                  onClick={() => toggleObjective(obj)}
+                  style={pillStyle(selectedObjectives.has(obj))}
+                >
+                  {labelObjective(obj)}
+                </button>
+              ))}
+              {isFiltered && (
+                <button
+                  onClick={() => setSelectedObjectives(new Set())}
+                  style={{ ...pillStyle(false), color: "var(--error)", borderColor: "var(--error)" }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="kpi-grid" style={{
           display: "grid",
@@ -431,30 +459,7 @@ export default function DashboardView() {
           borderRadius: 8,
           padding: 20,
         }}>
-          <SectionHeader title="Campaigns">
-            {/* Campaign type filter pills */}
-            {allObjectives.length > 0 && (
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {allObjectives.map(obj => (
-                  <button
-                    key={obj}
-                    onClick={() => toggleObjective(obj)}
-                    style={pillStyle(selectedObjectives.has(obj))}
-                  >
-                    {labelObjective(obj)}
-                  </button>
-                ))}
-                {isFiltered && (
-                  <button
-                    onClick={() => setSelectedObjectives(new Set())}
-                    style={{ ...pillStyle(false), color: "var(--error)", borderColor: "var(--error)" }}
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
-          </SectionHeader>
+          <SectionHeader title="Campaigns" />
           {metaError ? (
             errorBanner(metaError)
           ) : (
@@ -481,20 +486,6 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* Product breakdown */}
-      <div style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        padding: 20,
-      }}>
-        <SectionHeader title="Product Breakdown" />
-        {shopifyError ? (
-          errorBanner(shopifyError)
-        ) : (
-          <ProductBreakdown products={shopifyData?.products ?? []} loading={shopifyLoading} />
-        )}
-      </div>
     </div>
   );
 }
