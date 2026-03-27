@@ -390,23 +390,16 @@ export default function DashboardView() {
         </div>
         <div className="kpi-grid" style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: 12,
           marginBottom: 16,
         }}>
           <KPICard
-            label="Sub Revenue"
-            value={shopifyData?.summary.subscriptionRevenue ?? 0}
+            label="Total Revenue"
+            value={shopifyData?.summary.revenue ?? 0}
             prefix="$"
             loading={shopifyLoading}
-            tooltip="Revenue from orders with an active selling plan (subscription)"
-          />
-          <KPICard
-            label="One-time Revenue"
-            value={shopifyData?.summary.onetimeRevenue ?? 0}
-            prefix="$"
-            loading={shopifyLoading}
-            tooltip="Revenue from standard one-time purchase orders"
+            tooltip="Total revenue from all paid Shopify orders in the selected period"
           />
           <KPICard
             label="Orders"
