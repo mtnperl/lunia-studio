@@ -71,7 +71,7 @@ export async function GET(req: Request) {
         },
         body: JSON.stringify({
           query: `mutation {
-            shopifyqlQuery(query: "FROM sessions SHOW sessions SINCE ${since} UNTIL ${until}") {
+            shopifyqlQuery(query: "FROM sessions SHOW sum(sessions) AS sessions SINCE ${since} UNTIL ${until}") {
               __typename
               ... on TableResponse {
                 tableData {
@@ -94,24 +94,36 @@ export async function GET(req: Request) {
           shopifyqlQuery?: {
             __typename: string;
             tableData?: { rowData: string[][]; columns: { name: string }[] };
-            parseErrors?: { code: string; message: string }[];
+            parseErrors?: { code: string; message: string; reason?: string }[];
           };
         };
         errors?: { message: string }[];
       };
 
+      console.log('[api/shopify-mtd] ShopifyQL raw response:', JSON.stringify(gql, null, 2));
+
       const result = gql.data?.shopifyqlQuery;
       if (result?.__typename === 'TableResponse' && result.tableData) {
+        console.log('[api/shopify-mtd] columns:', result.tableData.columns.map(c => c.name));
+        // Try 'sessions' first, fall back to first numeric column
         const sessionIdx = result.tableData.columns.findIndex(c => c.name === 'sessions');
-        if (sessionIdx !== -1) {
+        const colIdx = sessionIdx !== -1 ? sessionIdx : 0;
+        if (result.tableData.rowData.length > 0) {
           sessions = result.tableData.rowData.reduce((sum, row) => {
-            return sum + (parseInt(row[sessionIdx] ?? '0', 10) || 0);
+            return sum + (parseInt(row[colIdx] ?? '0', 10) || 0);
           }, 0);
           sessionsAvailable = true;
         }
+      } else if (result?.__typename === 'ParseErrorResponse') {
+        console.warn('[api/shopify-mtd] ShopifyQL parse errors:', result.parseErrors);
+      } else if (gql.errors) {
+        console.warn('[api/shopify-mtd] GraphQL errors:', gql.errors);
       }
+    } else {
+      console.warn('[api/shopify-mtd] ShopifyQL HTTP error:', gqlRes.status);
     }
-  } catch {
+  } catch (err) {
+    console.warn('[api/shopify-mtd] sessions fetch failed:', err);
     // sessions remain 0 / unavailable — non-fatal
   }
 

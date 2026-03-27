@@ -329,6 +329,60 @@ export default function DashboardView() {
         </div>
       </div>
 
+      {/* MTD row */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--subtle)",
+          marginBottom: 8,
+        }}>
+          Month to Date
+        </div>
+        {mtdError ? (
+          <div style={{
+            borderLeft: "3px solid var(--warning)",
+            background: "var(--surface-r)",
+            padding: "12px 16px",
+            borderRadius: "0 6px 6px 0",
+            fontSize: 13,
+            color: "var(--warning)",
+          }}>
+            {mtdError}
+          </div>
+        ) : (
+          <div className="kpi-grid" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 12,
+          }}>
+            <KPICard
+              label="Total Purchases"
+              value={mtdData?.orders ?? 0}
+              loading={mtdLoading}
+              tooltip="Paid Shopify orders since the 1st of this month"
+            />
+            <KPICard
+              label="Website Visits"
+              value={mtdData?.sessionsAvailable ? (mtdData?.sessions ?? 0) : 0}
+              loading={mtdLoading}
+              tooltip={mtdData?.sessionsAvailable === false ? "Shopify analytics scope not available — check token permissions" : "Online store sessions since the 1st of this month"}
+            />
+            <KPICard
+              label="CVR"
+              value={mtdData?.sessionsAvailable ? ((mtdData?.cvr ?? 0) * 100) : 0}
+              suffix="%"
+              decimals={2}
+              loading={mtdLoading}
+              tooltip="Conversion rate = Purchases ÷ Website Visits"
+            />
+          </div>
+        )}
+      </div>
+
       {/* KPI row — Meta + ROAS */}
       <div style={{ marginBottom: 8 }}>
         <div style={{
@@ -444,60 +498,6 @@ export default function DashboardView() {
           />
         </div>
 
-      </div>
-
-      {/* MTD row */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{
-          fontFamily: "var(--font-ui)",
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--subtle)",
-          marginBottom: 8,
-        }}>
-          Month to Date
-        </div>
-        {mtdError ? (
-          <div style={{
-            borderLeft: "3px solid var(--warning)",
-            background: "var(--surface-r)",
-            padding: "12px 16px",
-            borderRadius: "0 6px 6px 0",
-            fontSize: 13,
-            color: "var(--warning)",
-          }}>
-            {mtdError}
-          </div>
-        ) : (
-          <div className="kpi-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-          }}>
-            <KPICard
-              label="Total Purchases"
-              value={mtdData?.orders ?? 0}
-              loading={mtdLoading}
-              tooltip="Paid Shopify orders since the 1st of this month"
-            />
-            <KPICard
-              label="Website Visits"
-              value={mtdData?.sessionsAvailable ? (mtdData?.sessions ?? 0) : 0}
-              loading={mtdLoading}
-              tooltip={mtdData?.sessionsAvailable === false ? "Shopify analytics scope not available — check token permissions" : "Online store sessions since the 1st of this month"}
-            />
-            <KPICard
-              label="CVR"
-              value={mtdData?.sessionsAvailable ? ((mtdData?.cvr ?? 0) * 100) : 0}
-              suffix="%"
-              decimals={2}
-              loading={mtdLoading}
-              tooltip="Conversion rate = Purchases ÷ Website Visits"
-            />
-          </div>
-        )}
       </div>
 
       {/* Chart */}
