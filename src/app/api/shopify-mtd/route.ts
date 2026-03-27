@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   let pages = 0;
 
   while (nextUrl && pages < 10) {
-    const res = await fetch(nextUrl, {
+    const res: Response = await fetch(nextUrl, {
       headers: { 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN },
     });
     pages++;
