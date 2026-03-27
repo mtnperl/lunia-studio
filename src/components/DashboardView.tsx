@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { MetaData, ShopifyData, Insight, CombinedDayRow } from "@/lib/types";
+import type { MetaData, ShopifyData, ShopifyMtdData, Insight, CombinedDayRow } from "@/lib/types";
 import { joinDays } from "@/lib/analytics-utils";
 import KPICard from "./dashboard/KPICard";
 import PerformanceChart from "./dashboard/PerformanceChart";
@@ -86,6 +86,9 @@ export default function DashboardView() {
   const [days, setDays] = useState<Days>(30);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [chartColors, setChartColors] = useState<ChartColors | null>(null);
+  const [mtdData, setMtdData] = useState<ShopifyMtdData | null>(null);
+  const [mtdLoading, setMtdLoading] = useState(false);
+  const [mtdError, setMtdError] = useState<string | null>(null);
 
   // Campaign type filter — no default, user selects
   const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
@@ -99,6 +102,24 @@ export default function DashboardView() {
     if (!unlocked) return;
     setChartColors(resolveChartColors());
   }, [unlocked]);
+
+  const fetchMtd = useCallback(async (bust = false) => {
+    setMtdLoading(true);
+    setMtdError(null);
+    try {
+      const res = await fetch(`/api/shopify-mtd${bust ? '?bust=1' : ''}`);
+      const data = await res.json();
+      if (res.ok) {
+        setMtdData(data as ShopifyMtdData);
+      } else {
+        setMtdError(data.error ?? 'MTD data unavailable');
+      }
+    } catch {
+      setMtdError('Could not load month-to-date data');
+    } finally {
+      setMtdLoading(false);
+    }
+  }, []);
 
   const fetchAll = useCallback(async (d: Days, bust = false) => {
     setMetaLoading(true);
@@ -168,6 +189,11 @@ export default function DashboardView() {
     if (!unlocked) return;
     fetchAll(days);
   }, [days, unlocked, fetchAll]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    fetchMtd();
+  }, [unlocked, fetchMtd]);
 
   if (!unlocked) {
     return <PasswordGate onUnlock={() => setUnlocked(true)} />;
@@ -296,6 +322,7 @@ export default function DashboardView() {
             onClick={() => {
               setChartColors(resolveChartColors());
               fetchAll(days, true);
+              fetchMtd(true);
             }}
             lastRefreshed={lastRefreshed ?? undefined}
           />
@@ -417,6 +444,60 @@ export default function DashboardView() {
           />
         </div>
 
+      </div>
+
+      {/* MTD row */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--subtle)",
+          marginBottom: 8,
+        }}>
+          Month to Date
+        </div>
+        {mtdError ? (
+          <div style={{
+            borderLeft: "3px solid var(--warning)",
+            background: "var(--surface-r)",
+            padding: "12px 16px",
+            borderRadius: "0 6px 6px 0",
+            fontSize: 13,
+            color: "var(--warning)",
+          }}>
+            {mtdError}
+          </div>
+        ) : (
+          <div className="kpi-grid" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 12,
+          }}>
+            <KPICard
+              label="Total Purchases"
+              value={mtdData?.orders ?? 0}
+              loading={mtdLoading}
+              tooltip="Paid Shopify orders since the 1st of this month"
+            />
+            <KPICard
+              label="Website Visits"
+              value={mtdData?.sessionsAvailable ? (mtdData?.sessions ?? 0) : 0}
+              loading={mtdLoading}
+              tooltip={mtdData?.sessionsAvailable === false ? "Shopify analytics scope not available — check token permissions" : "Online store sessions since the 1st of this month"}
+            />
+            <KPICard
+              label="CVR"
+              value={mtdData?.sessionsAvailable ? ((mtdData?.cvr ?? 0) * 100) : 0}
+              suffix="%"
+              decimals={2}
+              loading={mtdLoading}
+              tooltip="Conversion rate = Purchases ÷ Website Visits"
+            />
+          </div>
+        )}
       </div>
 
       {/* Chart */}

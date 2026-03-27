@@ -396,6 +396,13 @@ export type ShopifyLTVData = {
   onetimeCustomerCount: number;
 };
 
+export type ShopifyMtdData = {
+  orders: number;    // paid orders so far this calendar month
+  sessions: number;  // website sessions so far this calendar month (null if unavailable)
+  cvr: number;       // orders / sessions, 0 if sessions === 0
+  sessionsAvailable: boolean; // false if Shopify analytics scope is missing
+};
+
 export type CombinedDayRow = {
   date: string;            // YYYY-MM-DD; sorts lexicographically
   spend: number;           // Meta spend
