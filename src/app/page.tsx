@@ -278,7 +278,7 @@ export default function Page() {
           />
         )}
         {tab === "generate"  && <GenerateView onOpenEditor={openEditor} />}
-        {tab === "editor"    && <EditorView script={activeScript} onUpdate={handleScriptUpdate} />}
+        {tab === "editor"    && <EditorView script={activeScript} onUpdate={handleScriptUpdate} onOpenEditor={openEditor} />}
         {tab === "library"   && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
         {tab === "carousel"  && <CarouselView initialCarousel={pendingCarousel} onCarouselLoaded={() => setPendingCarousel(null)} />}
         {tab === "batch"     && <BatchView />}
