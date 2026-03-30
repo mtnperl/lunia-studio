@@ -24,6 +24,7 @@ export type Script = {
   angle: string;
   format: string;
   savedAt: string;
+  reviewEmails?: string[];
 };
 
 // ─── Carousel types ───────────────────────────────────────────────────────────

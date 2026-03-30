@@ -1,14 +1,16 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Script } from "@/lib/types";
-import { saveScript } from "@/lib/storage";
+import { saveScript, generateId } from "@/lib/storage";
 
+// ─── StatusChip ───────────────────────────────────────────────────────────────
 function StatusChip({ status }: { status: Script["status"] }) {
   const cls = status === "review" ? "chip chip-review" : status === "locked" ? "chip chip-locked" : "chip chip-draft";
   const label = status === "review" ? "In Review" : status === "locked" ? "Locked" : "Draft";
   return <span className={cls}>{label}</span>;
 }
 
+// ─── LockModal ────────────────────────────────────────────────────────────────
 function LockModal({ onConfirm, onClose }: { onConfirm: (title: string) => void; onClose: () => void }) {
   const [title, setTitle] = useState("");
   return (
@@ -31,34 +33,102 @@ function LockModal({ onConfirm, onClose }: { onConfirm: (title: string) => void;
   );
 }
 
+// ─── ReviewModal ──────────────────────────────────────────────────────────────
+function ReviewModal({
+  scriptId,
+  scriptTitle,
+  onSuccess,
+  onClose,
+}: {
+  scriptId: string;
+  scriptTitle: string;
+  onSuccess: (emails: string[]) => void;
+  onClose: () => void;
+}) {
+  const [emailInput, setEmailInput] = useState("");
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    const emails = emailInput.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean);
+    if (emails.length === 0) { setError("Enter at least one email address."); return; }
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch(`/api/scripts/${scriptId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails, note: note.trim() || undefined }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
+      onSuccess(emails);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to send");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Send for review</p>
+        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.5 }}>
+          Reviewers get a link to <strong style={{ color: "var(--text)" }}>{scriptTitle}</strong>. Script status will change to In Review.
+        </p>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>
+            Reviewer emails
+          </label>
+          <input
+            type="text"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder="name@example.com, another@example.com"
+            autoFocus
+          />
+          <p style={{ fontSize: 11, color: "var(--subtle)", marginTop: 5 }}>Separate multiple emails with commas or spaces.</p>
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>
+            Note <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Please check the CTA and hook tone..."
+            rows={3}
+            style={{ resize: "none", fontSize: 13 }}
+          />
+        </div>
+        {error && (
+          <p style={{ fontSize: 13, color: "var(--error)", marginBottom: 14, padding: "8px 12px", background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.2)", borderRadius: 6 }}>
+            {error}
+          </p>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn" onClick={send} disabled={loading} style={{ minWidth: 120 }}>
+            {loading ? "Sending..." : "Send →"}
+          </button>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AddCommentForm ───────────────────────────────────────────────────────────
 function AddCommentForm({ onAdd }: { onAdd: (author: string, text: string) => void }) {
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <input
-        type="text"
-        value={author}
-        onChange={(e) => setAuthor(e.target.value)}
-        placeholder="Your name"
-        style={{ fontSize: 13 }}
-      />
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Add a comment..."
-        rows={2}
-        style={{ fontSize: 13, resize: "none" }}
-      />
+      <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" style={{ fontSize: 13 }} />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment..." rows={2} style={{ fontSize: 13, resize: "none" }} />
       <button
         className="btn"
         style={{ alignSelf: "flex-end", fontSize: 12, padding: "5px 14px" }}
-        onClick={() => {
-          if (author.trim() && text.trim()) {
-            onAdd(author.trim(), text.trim());
-            setText("");
-          }
-        }}
+        onClick={() => { if (author.trim() && text.trim()) { onAdd(author.trim(), text.trim()); setText(""); } }}
       >
         Add comment
       </button>
@@ -66,24 +136,194 @@ function AddCommentForm({ onAdd }: { onAdd: (author: string, text: string) => vo
   );
 }
 
-export default function EditorView({ script: initialScript, onUpdate }: {
+// ─── ShotSheet (Shot View right panel) ───────────────────────────────────────
+function ShotSheet({
+  script,
+  isLocked,
+  onUpdate,
+}: {
+  script: Script;
+  isLocked: boolean;
+  onUpdate: (changes: Partial<Script>) => void;
+}) {
+  const [loadingLine, setLoadingLine] = useState<number | null>(null);
+
+  async function suggestVisuals(lineIdx: number, lineText: string) {
+    setLoadingLine(lineIdx);
+    try {
+      const res = await fetch("/api/scripts/suggest-visuals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          line: lineText,
+          lineIndex: lineIdx,
+          scriptLines: script.lines,
+          hook: script.hook,
+        }),
+      });
+      if (!res.ok) return;
+      const { setting, energy, broll } = await res.json();
+      onUpdate({
+        filmingNotes: {
+          ...script.filmingNotes,
+          [lineIdx]: {
+            ...script.filmingNotes[lineIdx],
+            ...(setting ? { setting } : {}),
+            ...(energy ? { energy } : {}),
+            ...(broll ? { broll } : {}),
+          },
+        },
+      });
+    } finally {
+      setLoadingLine(null);
+    }
+  }
+
+  const contentLines = script.lines
+    .map((line, i) => ({ line, i }))
+    .filter(({ line }) => !/^\[(HOOK|BODY|CTA)\]$/.test(line));
+
+  return (
+    <div style={{ overflowY: "auto", background: "var(--surface)", display: "flex", flexDirection: "column", gap: 0 }}>
+      <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)" }}>
+        <p className="section-label">Shot sheet — visual instructions</p>
+      </div>
+      {contentLines.map(({ line, i }) => {
+        const notes = script.filmingNotes[i] ?? {};
+        return (
+          <div
+            key={i}
+            style={{
+              padding: "14px 16px",
+              borderBottom: "1px solid var(--border)",
+              transition: "background .12s",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--accent)", flexShrink: 0, fontWeight: 600 }}>
+                  L{i + 1}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {line.slice(0, 52)}{line.length > 52 ? "…" : ""}
+                </span>
+              </div>
+              {!isLocked && (
+                <button
+                  onClick={() => suggestVisuals(i, line)}
+                  disabled={loadingLine === i}
+                  title="AI: suggest visuals for this line"
+                  style={{
+                    fontSize: 11, padding: "3px 8px", flexShrink: 0,
+                    background: loadingLine === i ? "var(--surface-h)" : "var(--accent-dim)",
+                    border: "1px solid var(--accent-mid)", borderRadius: 4,
+                    color: "var(--accent)", cursor: "pointer", fontWeight: 600,
+                    opacity: loadingLine === i ? 0.6 : 1,
+                  }}
+                >
+                  {loadingLine === i ? "…" : "⚡ Suggest"}
+                </button>
+              )}
+            </div>
+
+            {/* Fields */}
+            {(["setting", "energy", "broll", "director"] as const).map((field) => (
+              <div key={field} style={{ marginBottom: 8 }}>
+                <label style={{
+                  display: "block", fontSize: 10, fontWeight: 700, color: "var(--subtle)",
+                  marginBottom: 3, textTransform: "uppercase", letterSpacing: ".07em",
+                }}>
+                  {field === "broll" ? "B-Roll" : field === "director" ? "Director" : field.charAt(0).toUpperCase() + field.slice(1)}
+                </label>
+                <input
+                  type="text"
+                  value={notes[field] ?? ""}
+                  readOnly={isLocked}
+                  placeholder={
+                    field === "setting" ? "e.g. Kitchen counter, morning light" :
+                    field === "energy" ? "e.g. Calm, direct, conversational" :
+                    field === "broll" ? "e.g. Close-up of pill in palm" :
+                    "e.g. Pause after line 3"
+                  }
+                  onChange={(e) => onUpdate({
+                    filmingNotes: {
+                      ...script.filmingNotes,
+                      [i]: { ...script.filmingNotes[i], [field]: e.target.value },
+                    },
+                  })}
+                  style={{ fontSize: 12, padding: "5px 8px", background: "var(--bg)" }}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getDuration(lines: string[]): string {
+  const words = lines
+    .filter((l) => !/^\[(HOOK|BODY|CTA)\]$/.test(l))
+    .join(" ").trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return "";
+  const secs = Math.round((words / 130) * 60);
+  return secs < 60 ? `~${secs}s` : `~${Math.round(secs / 6) * 6}s`;
+}
+
+function getSectionDuration(lines: string[], section: "HOOK" | "BODY" | "CTA"): string {
+  let inSection = false;
+  const sectionLines: string[] = [];
+  for (const line of lines) {
+    if (line === `[${section}]`) { inSection = true; continue; }
+    if (/^\[(HOOK|BODY|CTA)\]$/.test(line) && line !== `[${section}]`) { inSection = false; continue; }
+    if (inSection) sectionLines.push(line);
+  }
+  const words = sectionLines.join(" ").trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return "";
+  const secs = Math.round((words / 130) * 60);
+  return secs < 60 ? `~${secs}s` : `~${Math.round(secs / 6) * 6}s`;
+}
+
+// ─── EditorView ───────────────────────────────────────────────────────────────
+export default function EditorView({
+  script: initialScript,
+  onUpdate,
+  onOpenEditor,
+}: {
   script: Script | null;
   onUpdate: (s: Script) => void;
+  onOpenEditor?: (s: Script) => void;
 }) {
   const [script, setScript] = useState<Script | null>(initialScript);
   const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [lockModal, setLockModal] = useState(false);
+  const [reviewModal, setReviewModal] = useState(false);
+  const [reviewSent, setReviewSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [scriptCopied, setScriptCopied] = useState(false);
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"edit" | "shot">("edit");
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => { setScript(initialScript); setIsDirty(false); setSelectedLine(null); }, [initialScript]);
+  useEffect(() => {
+    setScript(initialScript);
+    setIsDirty(false);
+    setSelectedLine(null);
+    setViewMode("edit");
+    setReviewSent(false);
+  }, [initialScript]);
 
   useEffect(() => {
     autoSaveRef.current = setInterval(() => {
       if (isDirty && script) {
-        saveScript({ ...script, savedAt: new Date().toISOString() });
+        const updated = { ...script, savedAt: new Date().toISOString() };
+        saveScript(updated);
+        setLastSavedAt(new Date());
         setIsDirty(false);
       }
     }, 10000);
@@ -94,6 +334,49 @@ export default function EditorView({ script: initialScript, onUpdate }: {
     setScript((prev) => prev ? { ...prev, ...changes } : prev);
     setIsDirty(true);
   }, []);
+
+  function addLineAfter(index: number) {
+    if (!script) return;
+    const newLines = [...script.lines];
+    newLines.splice(index + 1, 0, "");
+    update({ lines: newLines });
+    // Focus the new line after render
+    setTimeout(() => {
+      const textareas = document.querySelectorAll<HTMLTextAreaElement>(".script-line-textarea");
+      if (textareas[index + 1]) textareas[index + 1].focus();
+    }, 50);
+  }
+
+  function addLineAtEnd() {
+    if (!script) return;
+    update({ lines: [...script.lines, ""] });
+    setTimeout(() => {
+      const textareas = document.querySelectorAll<HTMLTextAreaElement>(".script-line-textarea");
+      if (textareas.length > 0) textareas[textareas.length - 1].focus();
+    }, 50);
+  }
+
+  function deleteLineAt(index: number) {
+    if (!script || script.lines.length <= 1) return;
+    const newLines = [...script.lines];
+    newLines.splice(index, 1);
+    // Shift filmingNotes and comments keys
+    const newFilmingNotes: Script["filmingNotes"] = {};
+    const newComments: Script["comments"] = {};
+    Object.entries(script.filmingNotes).forEach(([k, v]) => {
+      const ki = Number(k);
+      if (ki < index) newFilmingNotes[ki] = v;
+      else if (ki > index) newFilmingNotes[ki - 1] = v;
+    });
+    Object.entries(script.comments).forEach(([k, v]) => {
+      const ki = Number(k);
+      if (ki < index) newComments[ki] = v;
+      else if (ki > index) newComments[ki - 1] = v;
+    });
+    update({ lines: newLines, filmingNotes: newFilmingNotes, comments: newComments });
+    if (selectedLine === index) setSelectedLine(null);
+    else if (selectedLine !== null && selectedLine > index) setSelectedLine(selectedLine - 1);
+  }
 
   function addComment(lineIdx: number, author: string, text: string) {
     if (!script) return;
@@ -114,17 +397,46 @@ export default function EditorView({ script: initialScript, onUpdate }: {
     onUpdate(locked);
     setIsDirty(false);
     setLockModal(false);
+    setLastSavedAt(new Date());
+  }
+
+  function handleReviewSuccess(emails: string[]) {
+    if (!script) return;
+    const updated = { ...script, status: "review" as const, reviewEmails: emails, savedAt: new Date().toISOString() };
+    setScript(updated);
+    onUpdate(updated);
+    setIsDirty(false);
+    setReviewModal(false);
+    setReviewSent(true);
+    setLastSavedAt(new Date());
+    setTimeout(() => setReviewSent(false), 3000);
+  }
+
+  function cycleStatus() {
+    if (!script || script.status === "locked") return;
+    update({ status: script.status === "draft" ? "review" : "draft" });
+  }
+
+  function duplicate() {
+    if (!script || !onOpenEditor) return;
+    onOpenEditor({
+      ...script,
+      id: generateId(),
+      title: `Copy of ${script.title}`,
+      status: "draft",
+      savedAt: new Date().toISOString(),
+      reviewEmails: undefined,
+    });
   }
 
   function share() {
     if (script) saveScript({ ...script, savedAt: new Date().toISOString() });
     const url = `${window.location.origin}/scripts/${script?.id}`;
-    const text = url;
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
+      navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); });
     } else {
       const el = document.createElement("textarea");
-      el.value = text; document.body.appendChild(el); el.select();
+      el.value = url; document.body.appendChild(el); el.select();
       document.execCommand("copy"); document.body.removeChild(el);
       setCopied(true); setTimeout(() => setCopied(false), 2500);
     }
@@ -162,15 +474,7 @@ export default function EditorView({ script: initialScript, onUpdate }: {
     }
   }
 
-  function getDuration(lines: string[]): string {
-    const words = lines
-      .filter((l) => !/^\[(HOOK|BODY|CTA)\]$/.test(l))
-      .join(" ").trim().split(/\s+/).filter(Boolean).length;
-    if (words === 0) return "";
-    const secs = Math.round((words / 130) * 60);
-    return secs < 60 ? `~${secs}s` : `~${Math.round(secs / 6) * 6}s`;
-  }
-
+  // ── Empty state ──────────────────────────────────────────────────────────────
   if (!script) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400, flexDirection: "column", gap: 8 }}>
@@ -184,55 +488,154 @@ export default function EditorView({ script: initialScript, onUpdate }: {
   const selectedComments = selectedLine !== null ? (script.comments[selectedLine] ?? []) : [];
   const selectedFilmingNotes = selectedLine !== null ? (script.filmingNotes[selectedLine] ?? {}) : {};
 
+  // Autosave label
+  const saveLabel = isDirty
+    ? "Unsaved changes"
+    : lastSavedAt
+    ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : null;
+
   return (
     <div style={{ paddingBottom: 80 }}>
-      {/* Topbar */}
-      <div style={{ borderBottom: "1px solid var(--border)", padding: "10px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+      {/* ── Topbar ── */}
+      <div style={{ borderBottom: "1px solid var(--border)", padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <input
           type="text"
           value={script.title}
           onChange={(e) => update({ title: e.target.value })}
           readOnly={isLocked}
-          style={{ flex: 1, fontWeight: 500, fontSize: 14, border: "none", background: "transparent", padding: 0, outline: "none" }}
+          style={{ flex: 1, minWidth: 140, fontWeight: 500, fontSize: 14, border: "none", background: "transparent", padding: 0, outline: "none" }}
         />
-        <StatusChip status={script.status} />
-        {!isLocked && (
-          <button className="btn-ghost" onClick={() => setLockModal(true)} style={{ fontSize: 13, padding: "6px 12px" }}>
-            Lock & save
-          </button>
+
+        {/* Autosave indicator */}
+        {saveLabel && (
+          <span style={{ fontSize: 11, color: isDirty ? "var(--warning)" : "var(--subtle)", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
+            {saveLabel}
+          </span>
         )}
+
+        {/* Clickable status chip — cycles draft ↔ review */}
+        <button
+          onClick={cycleStatus}
+          disabled={isLocked}
+          title={isLocked ? "Locked" : "Click to toggle status"}
+          style={{ background: "none", border: "none", padding: 0, cursor: isLocked ? "default" : "pointer" }}
+        >
+          <StatusChip status={script.status} />
+        </button>
+
+        {/* View mode toggle */}
+        <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+          {(["edit", "shot"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              style={{
+                fontSize: 12, fontWeight: 600, padding: "5px 12px",
+                background: viewMode === mode ? "var(--accent-dim)" : "transparent",
+                color: viewMode === mode ? "var(--accent)" : "var(--muted)",
+                border: "none", cursor: "pointer",
+                borderRight: mode === "edit" ? "1px solid var(--border)" : "none",
+              }}
+            >
+              {mode === "edit" ? "Edit" : "Shot"}
+            </button>
+          ))}
+        </div>
+
         {getDuration(script.lines) && (
-          <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
             {getDuration(script.lines)}
           </span>
         )}
-        <button className="btn-ghost" onClick={copyScriptText} style={{ fontSize: 13, padding: "6px 12px" }}>
-          {scriptCopied ? "Copied!" : "Copy script"}
+
+        {!isLocked && (
+          <button className="btn-ghost" onClick={() => setReviewModal(true)} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
+            {reviewSent ? "✓ Sent" : "Send for review"}
+          </button>
+        )}
+        {!isLocked && (
+          <button className="btn-ghost" onClick={() => setLockModal(true)} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
+            Lock & save
+          </button>
+        )}
+        <button className="btn-ghost" onClick={copyScriptText} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
+          {scriptCopied ? "Copied!" : "Copy"}
         </button>
-        <button className="btn-ghost" onClick={share} style={{ fontSize: 13, padding: "6px 12px" }}>
+        <button className="btn-ghost" onClick={share} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
           {copied ? "Link copied!" : "Share"}
         </button>
+        {onOpenEditor && (
+          <button className="btn-ghost" onClick={duplicate} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
+            Duplicate
+          </button>
+        )}
       </div>
 
+      {/* ── Main panes ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", minHeight: "calc(100vh - 100px)" }}>
 
-        {/* ── Script pane ── */}
+        {/* ── Script pane (both modes) ── */}
         <div style={{ borderRight: "1px solid var(--border)", padding: "20px 16px", overflowY: "auto" }}>
-          <p className="section-label" style={{ marginBottom: 12, paddingLeft: 36 }}>Script — click a line to view notes</p>
+          <p className="section-label" style={{ marginBottom: 12, paddingLeft: 36 }}>
+            {viewMode === "edit" ? "Script — click a line to view notes" : "Script — read-only in shot view"}
+          </p>
+
+          {/* Hook block */}
+          <div style={{
+            marginBottom: 20, marginLeft: 36,
+            borderLeft: "3px solid var(--accent)",
+            background: "var(--accent-dim)",
+            borderRadius: "0 6px 6px 0",
+            padding: "10px 14px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" as const, color: "var(--accent)" }}>Hook</span>
+            </div>
+            <textarea
+              value={script.hook}
+              readOnly={isLocked || viewMode === "shot"}
+              onChange={(e) => update({ hook: e.target.value })}
+              rows={2}
+              placeholder="Your hook line..."
+              style={{
+                width: "100%", fontSize: 14, fontWeight: 500, resize: "none", overflow: "hidden",
+                background: "transparent", border: "none", outline: "none",
+                padding: 0, lineHeight: 1.6, color: "var(--text)",
+                cursor: isLocked || viewMode === "shot" ? "default" : "text",
+              }}
+              onInput={(e) => {
+                const t = e.target as HTMLTextAreaElement;
+                t.style.height = "auto";
+                t.style.height = t.scrollHeight + "px";
+              }}
+            />
+          </div>
+
+          {/* Script lines */}
           {script.lines.map((line, i) => {
             const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
             const hasComments = (script.comments[i]?.length ?? 0) > 0;
             const hasFilmingNotes = Object.values(script.filmingNotes[i] ?? {}).some(Boolean);
             const isSelected = selectedLine === i;
+            const isHovered = hoveredLine === i;
 
             if (isSection) {
+              const sectionName = line.replace(/[[\]]/g, "") as "HOOK" | "BODY" | "CTA";
+              const dur = getSectionDuration(script.lines, sectionName);
               return (
-                <div key={i} style={{ margin: "18px 0 8px", paddingLeft: 36 }}>
+                <div key={i} style={{ margin: "18px 0 8px", paddingLeft: 36, display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: ".08em",
                     textTransform: "uppercase" as const, color: "var(--muted)",
                     background: "var(--surface)", padding: "2px 8px", borderRadius: 4,
                   }}>{line}</span>
+                  {dur && (
+                    <span style={{
+                      fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--subtle)",
+                      background: "var(--surface)", padding: "2px 6px", borderRadius: 3,
+                    }}>{dur}</span>
+                  )}
                 </div>
               );
             }
@@ -240,13 +643,16 @@ export default function EditorView({ script: initialScript, onUpdate }: {
             return (
               <div
                 key={i}
-                onClick={() => setSelectedLine(isSelected ? null : i)}
+                onClick={() => viewMode === "edit" && setSelectedLine(isSelected ? null : i)}
+                onMouseEnter={() => setHoveredLine(i)}
+                onMouseLeave={() => setHoveredLine(null)}
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 8,
-                  marginBottom: 2, cursor: "pointer", borderRadius: 6,
+                  marginBottom: 2, cursor: viewMode === "edit" ? "pointer" : "default", borderRadius: 6,
                   background: isSelected ? "var(--accent-dim)" : "transparent",
                   border: `1px solid ${isSelected ? "var(--accent-mid)" : "transparent"}`,
                   transition: "background .1s, border-color .1s",
+                  position: "relative",
                 }}
               >
                 {/* Line number */}
@@ -259,35 +665,45 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                   {i + 1}
                 </span>
 
-                {/* Editable line */}
-                <textarea
-                  value={line}
-                  readOnly={isLocked}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => {
-                    const newLines = [...script.lines];
-                    newLines[i] = e.target.value;
-                    update({ lines: newLines });
-                    e.target.style.height = "auto";
-                    e.target.style.height = e.target.scrollHeight + "px";
-                  }}
-                  onFocus={() => setSelectedLine(i)}
-                  rows={1}
-                  style={{
-                    flex: 1, fontSize: 14, resize: "none", overflow: "hidden",
-                    background: "transparent", border: "none", outline: "none",
-                    padding: "6px 8px", lineHeight: 1.6, minHeight: 34,
-                    cursor: isLocked ? "default" : "text",
-                  }}
-                  onInput={(e) => {
-                    const t = e.target as HTMLTextAreaElement;
-                    t.style.height = "auto";
-                    t.style.height = t.scrollHeight + "px";
-                  }}
-                />
+                {/* Editable / read-only line */}
+                {viewMode === "shot" ? (
+                  <p style={{
+                    flex: 1, fontSize: 14, padding: "6px 8px", lineHeight: 1.6,
+                    margin: 0, color: "var(--text)", userSelect: "none",
+                  }}>
+                    {line || <span style={{ color: "var(--subtle)" }}>Empty line</span>}
+                  </p>
+                ) : (
+                  <textarea
+                    value={line}
+                    readOnly={isLocked}
+                    className="script-line-textarea"
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      const newLines = [...script.lines];
+                      newLines[i] = e.target.value;
+                      update({ lines: newLines });
+                      e.target.style.height = "auto";
+                      e.target.style.height = e.target.scrollHeight + "px";
+                    }}
+                    onFocus={() => setSelectedLine(i)}
+                    rows={1}
+                    style={{
+                      flex: 1, fontSize: 14, resize: "none", overflow: "hidden",
+                      background: "transparent", border: "none", outline: "none",
+                      padding: "6px 8px", lineHeight: 1.6, minHeight: 34,
+                      cursor: isLocked ? "default" : "text",
+                    }}
+                    onInput={(e) => {
+                      const t = e.target as HTMLTextAreaElement;
+                      t.style.height = "auto";
+                      t.style.height = t.scrollHeight + "px";
+                    }}
+                  />
+                )}
 
-                {/* Indicators */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0, marginTop: 12, marginRight: 6 }}>
+                {/* Indicators + inline actions */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, marginTop: 10, marginRight: 4, minWidth: 20 }}>
                   {hasComments && (
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }}
                       title={`${script.comments[i].length} comment${script.comments[i].length !== 1 ? "s" : ""}`} />
@@ -296,115 +712,168 @@ export default function EditorView({ script: initialScript, onUpdate }: {
                     <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)" }}
                       title="Has filming notes" />
                   )}
+                  {/* + and × buttons on hover (edit mode only) */}
+                  {!isLocked && viewMode === "edit" && isHovered && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addLineAfter(i); }}
+                        title="Add line below"
+                        style={{
+                          width: 16, height: 16, borderRadius: 3, fontSize: 13, lineHeight: 1,
+                          background: "var(--surface-h)", border: "1px solid var(--border-strong)",
+                          color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: 0, fontWeight: 700,
+                        }}
+                      >+</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteLineAt(i); }}
+                        title="Delete line"
+                        style={{
+                          width: 16, height: 16, borderRadius: 3, fontSize: 11, lineHeight: 1,
+                          background: "var(--surface-h)", border: "1px solid var(--border-strong)",
+                          color: "var(--subtle)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: 0,
+                        }}
+                      >×</button>
+                    </>
+                  )}
                 </div>
               </div>
             );
           })}
-        </div>
 
-        {/* ── Detail panel ── */}
-        <div style={{ overflowY: "auto", background: "var(--surface)", display: "flex", flexDirection: "column" }}>
-
-          {selectedLine !== null ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              {/* Selected line preview */}
-              <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--border)" }}>
-                <p className="section-label" style={{ marginBottom: 6 }}>Line {selectedLine + 1}</p>
-                <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px" }}>
-                  {script.lines[selectedLine] || <span style={{ color: "var(--subtle)" }}>Empty line</span>}
-                </p>
-              </div>
-
-              {/* Comments for this line */}
-              <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
-                <p className="section-label" style={{ marginBottom: 10 }}>
-                  Comments {selectedComments.length > 0 && <span style={{ fontWeight: 400, color: "var(--subtle)" }}>({selectedComments.length})</span>}
-                </p>
-
-                {selectedComments.length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>No comments on this line yet.</p>
-                ) : (
-                  <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                    {selectedComments.map((c, ci) => (
-                      <div key={ci} style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderLeft: "3px solid var(--accent)", borderRadius: 6, padding: "10px 12px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.author}</span>
-                          <span style={{ fontSize: 11, color: "var(--muted)" }}>{c.time}</span>
-                        </div>
-                        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "var(--text)" }}>{c.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {!isLocked && (
-                  <AddCommentForm onAdd={(a, t) => addComment(selectedLine, a, t)} />
-                )}
-              </div>
-
-              {/* Filming notes — per line */}
-              <div style={{ padding: "14px 16px", flex: 1 }}>
-                <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
-                {(["setting", "energy", "broll", "director"] as const).map((field) => (
-                  <div key={field} style={{ marginBottom: 12 }}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
-                      {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
-                    </label>
-                    <textarea
-                      value={selectedFilmingNotes[field] ?? ""}
-                      readOnly={isLocked}
-                      onChange={(e) => update({
-                        filmingNotes: {
-                          ...script.filmingNotes,
-                          [selectedLine!]: { ...script.filmingNotes[selectedLine!], [field]: e.target.value },
-                        },
-                      })}
-                      rows={2}
-                      style={{ fontSize: 13, resize: "vertical", background: "var(--bg)" }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          ) : (
-            /* No line selected */
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "20px 16px 14px", borderBottom: "1px solid var(--border)" }}>
-                <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
-                  Click any line to add comments and filming notes for that specific line.
-                </p>
-                <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} /> Comments
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)", display: "inline-block" }} /> Filming notes
-                  </span>
-                </div>
-              </div>
-
-              {/* Meta */}
-              <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
-                <p className="section-label" style={{ marginBottom: 4 }}>Script info</p>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
-                  <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Status</label>
-                  <select value={script.status} disabled={isLocked} onChange={(e) => update({ status: e.target.value as Script["status"] })} style={{ fontSize: 13, background: "var(--bg)" }}>
-                    <option value="draft">Draft</option>
-                    <option value="review">In Review</option>
-                  </select>
-                </div>
-              </div>
+          {/* Global add line button */}
+          {!isLocked && viewMode === "edit" && (
+            <div style={{ paddingLeft: 36, marginTop: 12 }}>
+              <button
+                onClick={addLineAtEnd}
+                style={{
+                  fontSize: 12, fontWeight: 600, color: "var(--muted)",
+                  background: "transparent", border: "1px dashed var(--border-strong)",
+                  borderRadius: 6, padding: "7px 16px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  transition: "color .15s, border-color .15s",
+                }}
+                onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.color = "var(--accent)"; (e.target as HTMLButtonElement).style.borderColor = "var(--accent-mid)"; }}
+                onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.color = "var(--muted)"; (e.target as HTMLButtonElement).style.borderColor = "var(--border-strong)"; }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1 }}>+</span> Add line
+              </button>
             </div>
           )}
         </div>
+
+        {/* ── Right panel ── */}
+        {viewMode === "shot" ? (
+          <ShotSheet script={script} isLocked={isLocked} onUpdate={update} />
+        ) : (
+          <div style={{ overflowY: "auto", background: "var(--surface)", display: "flex", flexDirection: "column" }}>
+            {selectedLine !== null ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                {/* Selected line preview */}
+                <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--border)" }}>
+                  <p className="section-label" style={{ marginBottom: 6 }}>Line {selectedLine + 1}</p>
+                  <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px" }}>
+                    {script.lines[selectedLine] || <span style={{ color: "var(--subtle)" }}>Empty line</span>}
+                  </p>
+                </div>
+
+                {/* Comments */}
+                <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+                  <p className="section-label" style={{ marginBottom: 10 }}>
+                    Comments {selectedComments.length > 0 && <span style={{ fontWeight: 400, color: "var(--subtle)" }}>({selectedComments.length})</span>}
+                  </p>
+                  {selectedComments.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>No comments on this line yet.</p>
+                  ) : (
+                    <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                      {selectedComments.map((c, ci) => (
+                        <div key={ci} style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderLeft: "3px solid var(--accent)", borderRadius: 6, padding: "10px 12px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.author}</span>
+                            <span style={{ fontSize: 11, color: "var(--muted)" }}>{c.time}</span>
+                          </div>
+                          <p style={{ fontSize: 13, margin: 0, lineHeight: 1.5, color: "var(--text)" }}>{c.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!isLocked && <AddCommentForm onAdd={(a, t) => addComment(selectedLine, a, t)} />}
+                </div>
+
+                {/* Filming notes */}
+                <div style={{ padding: "14px 16px", flex: 1 }}>
+                  <p className="section-label" style={{ marginBottom: 12 }}>Filming notes</p>
+                  {(["setting", "energy", "broll", "director"] as const).map((field) => (
+                    <div key={field} style={{ marginBottom: 12 }}>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>
+                        {field === "broll" ? "B-Roll" : field === "director" ? "Director notes" : field.charAt(0).toUpperCase() + field.slice(1)}
+                      </label>
+                      <textarea
+                        value={selectedFilmingNotes[field] ?? ""}
+                        readOnly={isLocked}
+                        onChange={(e) => update({
+                          filmingNotes: {
+                            ...script.filmingNotes,
+                            [selectedLine!]: { ...script.filmingNotes[selectedLine!], [field]: e.target.value },
+                          },
+                        })}
+                        rows={2}
+                        style={{ fontSize: 13, resize: "vertical", background: "var(--bg)" }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* No line selected — meta panel */
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "20px 16px 14px", borderBottom: "1px solid var(--border)" }}>
+                  <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
+                    Click any line to add comments and filming notes.
+                  </p>
+                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} /> Comments
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)", display: "inline-block" }} /> Filming notes
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <p className="section-label" style={{ marginBottom: 4 }}>Script info</p>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
+                    <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Persona / Format / Angle</label>
+                    <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{[script.persona, script.format, script.angle].filter(Boolean).join(" · ")}</p>
+                  </div>
+                  {script.reviewEmails && script.reviewEmails.length > 0 && (
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Sent for review to</label>
+                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{script.reviewEmails.join(", ")}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {lockModal && <LockModal onConfirm={handleLock} onClose={() => setLockModal(false)} />}
+      {reviewModal && (
+        <ReviewModal
+          scriptId={script.id}
+          scriptTitle={script.title}
+          onSuccess={handleReviewSuccess}
+          onClose={() => setReviewModal(false)}
+        />
+      )}
     </div>
   );
 }
