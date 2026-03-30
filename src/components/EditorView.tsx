@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { Script } from "@/lib/types";
 import { saveScript, generateId } from "@/lib/storage";
 
@@ -329,6 +329,14 @@ export default function EditorView({
     }, 10000);
     return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
   }, [isDirty, script]);
+
+  // Auto-resize all script textareas on initial load and whenever lines change
+  useLayoutEffect(() => {
+    document.querySelectorAll<HTMLTextAreaElement>(".script-line-textarea").forEach((t) => {
+      t.style.height = "auto";
+      t.style.height = t.scrollHeight + "px";
+    });
+  }, [script?.lines]);
 
   const update = useCallback((changes: Partial<Script>) => {
     setScript((prev) => prev ? { ...prev, ...changes } : prev);
