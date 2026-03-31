@@ -67,6 +67,8 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
   const [angle, setAngle] = useState(ANGLES[0]);
   const [context, setContext] = useState("");
   const [creator, setCreator] = useState("");
+  const [subjectNotes, setSubjectNotes] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [done, setDone] = useState(false);
@@ -78,7 +80,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
     try {
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, persona, format, angle, context, creator }),
+        body: JSON.stringify({ topic, persona, format, angle, context, creator, subjectNotes, instructions }),
       });
       if (res.status === 429) throw new Error("Too many requests — try again in an hour.");
       if (!res.ok || !res.body) throw new Error("Generation failed — please try again.");
@@ -108,7 +110,10 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
       id: generateId(), title: `${persona} · ${format} · ${angle}`,
       hook: hook?.text ?? "", lines: parsed.scriptLines, comments: {},
       filmingNotes: {},
-      creator, status: "draft", persona, angle, format, savedAt: new Date().toISOString(),
+      creator, status: "draft", persona, angle, format,
+      subjectNotes: subjectNotes.trim() || undefined,
+      instructions: instructions.trim() || undefined,
+      savedAt: new Date().toISOString(),
     });
   }
 
@@ -155,13 +160,41 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Creator name</label>
           <input type="text" value={creator} onChange={(e) => setCreator(e.target.value)} placeholder="@handle or name" />
         </div>
+
+        {/* Subject notes */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
+            Subject notes <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+          </label>
+          <textarea
+            value={subjectNotes}
+            onChange={(e) => setSubjectNotes(e.target.value)}
+            placeholder="Key facts, studies, product differentiators, claims to include…"
+            rows={3} style={{ resize: "vertical" }}
+          />
+        </div>
+
+        {/* Specific instructions */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
+            Instructions <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+          </label>
+          <textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder="e.g. Must mention the 4.9-star rating. Avoid mentioning price. Target 45s. End with a question."
+            rows={3} style={{ resize: "vertical" }}
+          />
+        </div>
+
+        {/* Additional context */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
             Additional context <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
           </label>
           <textarea value={context} onChange={(e) => setContext(e.target.value)}
             placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30–40F..."
-            rows={3} style={{ resize: "vertical" }} />
+            rows={2} style={{ resize: "vertical" }} />
         </div>
         <button className="btn" onClick={generate} disabled={loading || !canGenerate} style={{ width: "100%", justifyContent: "center" }}>
           {loading ? "Generating..." : "Generate →"}
