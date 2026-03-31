@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Script } from "@/lib/types";
 import { saveScript, generateId } from "@/lib/storage";
 
@@ -330,13 +330,14 @@ export default function EditorView({
     return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
   }, [isDirty, script]);
 
-  // Auto-resize all script textareas on initial load and whenever lines change
-  useLayoutEffect(() => {
-    document.querySelectorAll<HTMLTextAreaElement>(".script-line-textarea").forEach((t) => {
-      t.style.height = "auto";
-      t.style.height = t.scrollHeight + "px";
-    });
-  }, [script?.lines]);
+  // Callback ref: resizes a textarea to fit its content on every React commit.
+  // Using a callback ref (not useLayoutEffect) guarantees it fires on every
+  // render — including initial mount — so lines always show their full text.
+  const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
 
   const update = useCallback((changes: Partial<Script>) => {
     setScript((prev) => prev ? { ...prev, ...changes } : prev);
@@ -601,6 +602,7 @@ export default function EditorView({
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" as const, color: "var(--accent)" }}>Hook</span>
             </div>
             <textarea
+              ref={autoResize}
               value={script.hook}
               readOnly={isLocked || viewMode === "shot"}
               onChange={(e) => update({ hook: e.target.value })}
@@ -683,6 +685,7 @@ export default function EditorView({
                   </p>
                 ) : (
                   <textarea
+                    ref={autoResize}
                     value={line}
                     readOnly={isLocked}
                     className="script-line-textarea"
