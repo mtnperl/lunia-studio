@@ -24,6 +24,8 @@ export type Script = {
   angle: string;
   format: string;
   savedAt: string;
+  subjectNotes?: string;   // background info on the subject
+  instructions?: string;   // specific creative directives
   reviewEmails?: string[];
 };
 

@@ -33,90 +33,6 @@ function LockModal({ onConfirm, onClose }: { onConfirm: (title: string) => void;
   );
 }
 
-// ─── ReviewModal ──────────────────────────────────────────────────────────────
-function ReviewModal({
-  scriptId,
-  scriptTitle,
-  onSuccess,
-  onClose,
-}: {
-  scriptId: string;
-  scriptTitle: string;
-  onSuccess: (emails: string[]) => void;
-  onClose: () => void;
-}) {
-  const [emailInput, setEmailInput] = useState("");
-  const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function send() {
-    const emails = emailInput.split(/[\s,;]+/).map((e) => e.trim()).filter(Boolean);
-    if (emails.length === 0) { setError("Enter at least one email address."); return; }
-    setLoading(true); setError(null);
-    try {
-      const res = await fetch(`/api/scripts/${scriptId}/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emails, note: note.trim() || undefined }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
-      onSuccess(emails);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to send");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
-        <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Send for review</p>
-        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.5 }}>
-          Reviewers get a link to <strong style={{ color: "var(--text)" }}>{scriptTitle}</strong>. Script status will change to In Review.
-        </p>
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>
-            Reviewer emails
-          </label>
-          <input
-            type="text"
-            value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
-            placeholder="name@example.com, another@example.com"
-            autoFocus
-          />
-          <p style={{ fontSize: 11, color: "var(--subtle)", marginTop: 5 }}>Separate multiple emails with commas or spaces.</p>
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>
-            Note <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Please check the CTA and hook tone..."
-            rows={3}
-            style={{ resize: "none", fontSize: 13 }}
-          />
-        </div>
-        {error && (
-          <p style={{ fontSize: 13, color: "var(--error)", marginBottom: 14, padding: "8px 12px", background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.2)", borderRadius: 6 }}>
-            {error}
-          </p>
-        )}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn" onClick={send} disabled={loading} style={{ minWidth: 120 }}>
-            {loading ? "Sending..." : "Send →"}
-          </button>
-          <button className="btn-ghost" onClick={onClose}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── AddCommentForm ───────────────────────────────────────────────────────────
 function AddCommentForm({ onAdd }: { onAdd: (author: string, text: string) => void }) {
   const [author, setAuthor] = useState("");
@@ -302,8 +218,7 @@ export default function EditorView({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [lockModal, setLockModal] = useState(false);
-  const [reviewModal, setReviewModal] = useState(false);
-  const [reviewSent, setReviewSent] = useState(false);
+  const [expanding, setExpanding] = useState(false);
   const [copied, setCopied] = useState(false);
   const [scriptCopied, setScriptCopied] = useState(false);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -315,7 +230,6 @@ export default function EditorView({
     setIsDirty(false);
     setSelectedLine(null);
     setViewMode("edit");
-    setReviewSent(false);
   }, [initialScript]);
 
   useEffect(() => {
@@ -409,16 +323,35 @@ export default function EditorView({
     setLastSavedAt(new Date());
   }
 
-  function handleReviewSuccess(emails: string[]) {
-    if (!script) return;
-    const updated = { ...script, status: "review" as const, reviewEmails: emails, savedAt: new Date().toISOString() };
-    setScript(updated);
-    onUpdate(updated);
-    setIsDirty(false);
-    setReviewModal(false);
-    setReviewSent(true);
-    setLastSavedAt(new Date());
-    setTimeout(() => setReviewSent(false), 3000);
+  async function expandScript() {
+    if (!script || expanding) return;
+    setExpanding(true);
+    try {
+      const res = await fetch("/api/scripts/expand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hook: script.hook,
+          lines: script.lines,
+          persona: script.persona,
+          angle: script.angle,
+          format: script.format,
+          subjectNotes: script.subjectNotes,
+          instructions: script.instructions,
+        }),
+      });
+      if (!res.ok) return;
+      const { newLines } = await res.json() as { newLines: string[] };
+      if (!newLines?.length) return;
+      // Insert new lines before [CTA] if it exists, otherwise append
+      const ctaIdx = script.lines.findIndex((l) => l === "[CTA]");
+      const insertAt = ctaIdx >= 0 ? ctaIdx : script.lines.length;
+      const updated = [...script.lines];
+      updated.splice(insertAt, 0, ...newLines);
+      update({ lines: updated });
+    } finally {
+      setExpanding(false);
+    }
   }
 
   function cycleStatus() {
@@ -553,16 +486,17 @@ export default function EditorView({
         </div>
 
         {getDuration(script.lines) && (
-          <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
-            {getDuration(script.lines)}
+          <span style={{
+            fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700,
+            color: "var(--accent)", background: "var(--accent-dim)",
+            border: "1px solid var(--accent-mid)", borderRadius: 5,
+            padding: "3px 9px", whiteSpace: "nowrap", letterSpacing: ".03em",
+            display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 12 }}>⏱</span> {getDuration(script.lines)} video
           </span>
         )}
 
-        {!isLocked && (
-          <button className="btn-ghost" onClick={() => setReviewModal(true)} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
-            {reviewSent ? "✓ Sent" : "Send for review"}
-          </button>
-        )}
         {!isLocked && (
           <button className="btn-ghost" onClick={() => setLockModal(true)} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
             Lock & save
@@ -753,9 +687,9 @@ export default function EditorView({
             );
           })}
 
-          {/* Global add line button */}
+          {/* Global add line + AI expand buttons */}
           {!isLocked && viewMode === "edit" && (
-            <div style={{ paddingLeft: 36, marginTop: 12 }}>
+            <div style={{ paddingLeft: 36, marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 onClick={addLineAtEnd}
                 style={{
@@ -765,10 +699,26 @@ export default function EditorView({
                   display: "flex", alignItems: "center", gap: 6,
                   transition: "color .15s, border-color .15s",
                 }}
-                onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.color = "var(--accent)"; (e.target as HTMLButtonElement).style.borderColor = "var(--accent-mid)"; }}
-                onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.color = "var(--muted)"; (e.target as HTMLButtonElement).style.borderColor = "var(--border-strong)"; }}
+                onMouseEnter={(e) => { (e.currentTarget).style.color = "var(--accent)"; (e.currentTarget).style.borderColor = "var(--accent-mid)"; }}
+                onMouseLeave={(e) => { (e.currentTarget).style.color = "var(--muted)"; (e.currentTarget).style.borderColor = "var(--border-strong)"; }}
               >
                 <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1 }}>+</span> Add line
+              </button>
+              <button
+                onClick={expandScript}
+                disabled={expanding}
+                style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: expanding ? "var(--muted)" : "var(--accent)",
+                  background: expanding ? "var(--surface-h)" : "var(--accent-dim)",
+                  border: `1px solid ${expanding ? "var(--border-strong)" : "var(--accent-mid)"}`,
+                  borderRadius: 6, padding: "7px 16px", cursor: expanding ? "default" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  transition: "all .15s", opacity: expanding ? 0.7 : 1,
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>{expanding ? "⟳" : "✦"}</span>
+                {expanding ? "Expanding…" : "Expand script"}
               </button>
             </div>
           )}
@@ -853,22 +803,44 @@ export default function EditorView({
                   </div>
                 </div>
 
-                <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <p className="section-label" style={{ marginBottom: 4 }}>Script info</p>
+                <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
-                    <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Persona / Format / Angle</label>
-                    <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{[script.persona, script.format, script.angle].filter(Boolean).join(" · ")}</p>
-                  </div>
-                  {script.reviewEmails && script.reviewEmails.length > 0 && (
-                    <div>
-                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Sent for review to</label>
-                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{script.reviewEmails.join(", ")}</p>
+                    <p className="section-label" style={{ marginBottom: 10 }}>Brief</p>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Subject notes</label>
+                      <textarea
+                        value={script.subjectNotes ?? ""}
+                        readOnly={isLocked}
+                        onChange={(e) => update({ subjectNotes: e.target.value })}
+                        placeholder="Background on the topic, key facts, research to reference…"
+                        rows={3}
+                        style={{ fontSize: 12, resize: "vertical", background: "var(--bg)", lineHeight: 1.5 }}
+                      />
                     </div>
-                  )}
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Instructions</label>
+                      <textarea
+                        value={script.instructions ?? ""}
+                        readOnly={isLocked}
+                        onChange={(e) => update({ instructions: e.target.value })}
+                        placeholder="Specific directives — e.g. must mention X, avoid Y, target 45s…"
+                        rows={3}
+                        style={{ fontSize: 12, resize: "vertical", background: "var(--bg)", lineHeight: 1.5 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="section-label" style={{ marginBottom: 10 }}>Script info</p>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Creator</label>
+                      <input type="text" value={script.creator} readOnly={isLocked} onChange={(e) => update({ creator: e.target.value })} style={{ fontSize: 13, background: "var(--bg)" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: ".05em" }}>Persona / Format / Angle</label>
+                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{[script.persona, script.format, script.angle].filter(Boolean).join(" · ")}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -877,14 +849,6 @@ export default function EditorView({
       </div>
 
       {lockModal && <LockModal onConfirm={handleLock} onClose={() => setLockModal(false)} />}
-      {reviewModal && (
-        <ReviewModal
-          scriptId={script.id}
-          scriptTitle={script.title}
-          onSuccess={handleReviewSuccess}
-          onClose={() => setReviewModal(false)}
-        />
-      )}
     </div>
   );
 }
