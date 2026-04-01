@@ -16,7 +16,7 @@ const STYLE_TOKEN =
   'editorial photography, dark blue-midnight colour palette, ' +
   'soft directional natural light, ultra-sharp detail, ' +
   'premium wellness brand aesthetic, minimalist composition, ' +
-  'no text, no people, no faces, no logos, no watermarks';
+  'no text, no logos, no watermarks';
 
 // ─── Prompt builder ────────────────────────────────────────────────────────────
 // slideIndex: 0 = hook, 4 = CTA (content slides 1-3 no longer use fal.ai)

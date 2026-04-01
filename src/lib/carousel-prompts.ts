@@ -92,7 +92,7 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
-- Caption: Instagram caption for this post. 6-9 sentences that tease the carousel content, share a key insight or stat from the slides, and build curiosity to read the full carousel. No hashtags. No em dashes. Tone matches the hookTone. Always end with exactly: "For more Sleep-Science content follow @lunia_life"
+- Caption: Instagram caption for this post. Write in 3 paragraphs separated by \n\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.
 - graphic: compact single-line JSON. MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types. Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
@@ -147,7 +147,7 @@ Brand rules (follow exactly):
   • "YOUR CORTISOL IS SPIKING" → sharp crystal formation breaking through dark water surface, jagged edges catching light, tension and rupture
   • "YOU'RE WIRED BUT TIRED" → tangled copper electrical wire in warm shallow-focus light, frayed at the end, quiet exhaustion
   Structure: [literal visual from the hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood].
-  Hard rules: no people, no faces, no text, no logos • ultra-sharp, editorial, premium brand aesthetic • max 55 words • DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
+  Hard rules: if the hook concept involves a human experience (fatigue, stress, a journey, a habit, waking up) you MAY include a single person or human detail — hands, a silhouette, or an editorial close-crop of a face — always partial framing, never a full portrait. No text, no logos. Ultra-sharp, editorial, premium brand aesthetic. Max 55 words. DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
   Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"`;
 };
 
