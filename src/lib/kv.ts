@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -268,6 +268,60 @@ export async function deleteAdKv(id: string): Promise<void> {
   const all = await getAds();
   const filtered = all.filter((a) => a.id !== id);
   await redis.set(ADS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
+// ─── Video Ads ────────────────────────────────────────────────────────────────
+const VIDEO_ADS_KEY = "lunia:video-ads";
+
+export async function getVideoAds(): Promise<SavedVideoAd[]> {
+  try {
+    return (await redis.get<SavedVideoAd[]>(VIDEO_ADS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveVideoAd(ad: SavedVideoAd): Promise<void> {
+  const all = await getVideoAds();
+  const idx = all.findIndex((a) => a.id === ad.id);
+  if (idx >= 0) {
+    all[idx] = ad;
+  } else {
+    all.unshift(ad);
+  }
+  await redis.set(VIDEO_ADS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+}
+
+export async function getVideoAdById(id: string): Promise<SavedVideoAd | null> {
+  const all = await getVideoAds();
+  return all.find((a) => a.id === id) ?? null;
+}
+
+export async function deleteVideoAd(id: string): Promise<void> {
+  const all = await getVideoAds();
+  await redis.set(VIDEO_ADS_KEY, all.filter((a) => a.id !== id), { ex: TTL_SECONDS });
+}
+
+// ─── Video Assets ─────────────────────────────────────────────────────────────
+const VIDEO_ASSETS_KEY = "lunia:video-assets";
+
+export async function getVideoAssets(): Promise<VideoAssetMetadata[]> {
+  try {
+    return (await redis.get<VideoAssetMetadata[]>(VIDEO_ASSETS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveVideoAsset(asset: VideoAssetMetadata): Promise<void> {
+  const all = await getVideoAssets();
+  all.unshift(asset);
+  await redis.set(VIDEO_ASSETS_KEY, all, { ex: TTL_SECONDS });
+}
+
+export async function deleteVideoAsset(id: string): Promise<void> {
+  const all = await getVideoAssets();
+  await redis.set(VIDEO_ASSETS_KEY, all.filter((a) => a.id !== id), { ex: TTL_SECONDS });
 }
 
 // Re-export the internal redis wrapper so analytics routes can import { kv }

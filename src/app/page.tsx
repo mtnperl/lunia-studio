@@ -11,10 +11,12 @@ import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
 import AdsView from "@/components/AdsView";
 import DashboardView from "@/components/DashboardView";
+import VideoView from "@/components/VideoView";
+import VideoAssetsView from "@/components/VideoAssetsView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "video" | "video-assets" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -60,8 +62,10 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Ads",
     items: [
-      { key: "ads",      product: "ads",  label: "Generate"  },
-      { key: "calendar", product: "home", label: "Calendar"  },
+      { key: "ads",          product: "ads",  label: "Generate"      },
+      { key: "calendar",     product: "home", label: "Calendar"      },
+      { key: "video",        product: "ads",  label: "Video"         },
+      { key: "video-assets", product: "ads",  label: "Video Assets"  },
     ],
   },
   {
@@ -293,6 +297,8 @@ export default function Page() {
         )}
         {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
         {tab === "ads"       && <AdsView />}
+        {tab === "video"       && <VideoView />}
+        {tab === "video-assets" && <VideoAssetsView />}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

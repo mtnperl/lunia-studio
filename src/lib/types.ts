@@ -418,3 +418,43 @@ export type Insight = {
   body: string;
   type: 'positive' | 'warning' | 'neutral';
 };
+
+// ─── Video Ad types ───────────────────────────────────────────────────────────
+
+export type VideoAdSceneType = "hook" | "science" | "product" | "proof" | "cta";
+
+export type VideoAdScene = {
+  type: VideoAdSceneType;
+  durationFrames: number;   // at 30fps; hook=90, science=150, product=150, proof=150, cta=210
+  headline: string;
+  subline?: string;
+  stat?: string;            // science + proof scenes only
+  caption?: string;         // science scene: journal attribution
+};
+
+export type VideoAdData = {
+  topic: string;
+  scenes: VideoAdScene[];   // exactly 5, one per type in order
+  productImageUrl: string | null;
+  fps: 30;
+  durationFrames: number;   // sum of scene durationFrames
+};
+
+export type SavedVideoAd = {
+  id: string;
+  topic: string;
+  data: VideoAdData;
+  renderUrl?: string;       // populated after Lambda render
+  savedAt: string;
+};
+
+export type VideoAssetType = "product-image-vertical" | "lifestyle-image" | "product-video";
+
+export type VideoAssetMetadata = {
+  id: string;
+  url: string;
+  name: string;
+  type: string;             // MIME type
+  assetType: VideoAssetType;
+  uploadedAt: string;
+};
