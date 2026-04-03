@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { VideoAssetMetadata, VideoAdSceneType, VideoAdScene, SceneImageConfig, SceneImageFit } from "@/lib/types";
+import { MiniRetroLoader } from "@/components/carousel/shared/RetroLoader";
 
 const SCENE_LABELS: Record<VideoAdSceneType, string> = {
   hook: "Hook",
@@ -503,8 +504,15 @@ export default function VideoAssetsStep({
                           </button>
                         </div>
 
+                        {/* Generating loader */}
+                        {gen.imageLoading && (
+                          <div style={{ marginTop: 4 }}>
+                            <MiniRetroLoader label={`${SCENE_LABELS[type].toUpperCase()} SCENE`} />
+                          </div>
+                        )}
+
                         {/* Generated image preview */}
-                        {gen.generatedUrl && (
+                        {gen.generatedUrl && !gen.imageLoading && (
                           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                             <div style={{ width: 48, height: 86, borderRadius: 4, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0 }}>
                               <img src={gen.generatedUrl} alt="Generated" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
