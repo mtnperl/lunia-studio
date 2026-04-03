@@ -29,20 +29,25 @@ export default function VideoView() {
 
   // Step 3
   const [sceneImages, setSceneImages] = useState<Partial<Record<VideoAdSceneType, SceneImageConfig>>>({});
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
+
+  // Step 4
+  const [fontScale, setFontScale] = useState(1.0);
 
   const videoAdData: VideoAdData = useMemo(() => ({
     topic,
     scenes,
     sceneImages,
+    logoUrl,
+    fontScale,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, sceneImages]);
+  }), [topic, scenes, sceneImages, logoUrl, fontScale]);
 
-  async function handleTopicNext(newTopic: string, subjectId?: string) {
+  async function handleTopicNext(newTopic: string, subjectId?: string, hookTone?: string) {
     setLoading(true);
     setError(null);
     try {
-      // Mark subject as used if from library
       if (subjectId) {
         fetch(`/api/subjects/${subjectId}`, {
           method: "PATCH",
@@ -54,7 +59,7 @@ export default function VideoView() {
       const res = await fetch("/api/video/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: newTopic, subjectId }),
+        body: JSON.stringify({ topic: newTopic, subjectId, hookTone }),
       });
 
       if (!res.ok) {
@@ -109,7 +114,7 @@ export default function VideoView() {
             />
             <span
               style={{
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
                 fontSize: 11,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
@@ -130,7 +135,7 @@ export default function VideoView() {
             borderRadius: 6,
             padding: "10px 16px",
             marginBottom: 24,
-            fontFamily: "Inter, sans-serif",
+            fontFamily: "Helvetica Neue, sans-serif",
             fontSize: 13,
             color: "var(--error)",
           }}
@@ -140,10 +145,7 @@ export default function VideoView() {
       )}
 
       {step === 1 && (
-        <VideoTopicStep
-          onNext={handleTopicNext}
-          loading={loading}
-        />
+        <VideoTopicStep onNext={handleTopicNext} loading={loading} />
       )}
 
       {step === 2 && (
@@ -159,8 +161,12 @@ export default function VideoView() {
 
       {step === 3 && (
         <VideoAssetsStep
+          scenes={scenes}
+          topic={topic}
           sceneImages={sceneImages}
+          logoUrl={logoUrl}
           onUpdate={setSceneImages}
+          onLogoUpdate={setLogoUrl}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
         />
@@ -170,6 +176,7 @@ export default function VideoView() {
         <VideoPreviewStep
           videoAdData={videoAdData}
           onUpdateScenes={setScenes}
+          onFontScaleChange={setFontScale}
           onBack={() => setStep(3)}
         />
       )}

@@ -9,18 +9,18 @@ import { ProofScene } from "./scenes/ProofScene";
 import { CTAScene } from "./scenes/CTAScene";
 
 export function VideoAd(props: VideoAdData) {
-  const { scenes, sceneImages } = props;
+  const { scenes, sceneImages, logoUrl, fontScale = 1 } = props;
 
   function renderScene(type: VideoAdSceneType, idx: number) {
     const scene = scenes.find((s) => s.type === type) ?? scenes[idx];
     if (!scene) return null;
     const image = sceneImages?.[type];
     switch (type) {
-      case "hook":    return <HookScene scene={scene} image={image} />;
-      case "science": return <ScienceScene scene={scene} image={image} />;
-      case "product": return <ProductScene scene={scene} image={image} />;
-      case "proof":   return <ProofScene scene={scene} image={image} />;
-      case "cta":     return <CTAScene scene={scene} image={image} />;
+      case "hook":    return <HookScene scene={scene} image={image} fontScale={fontScale} />;
+      case "science": return <ScienceScene scene={scene} image={image} fontScale={fontScale} />;
+      case "product": return <ProductScene scene={scene} image={image} fontScale={fontScale} />;
+      case "proof":   return <ProofScene scene={scene} image={image} fontScale={fontScale} />;
+      case "cta":     return <CTAScene scene={scene} image={image} logoUrl={logoUrl} fontScale={fontScale} />;
     }
   }
 

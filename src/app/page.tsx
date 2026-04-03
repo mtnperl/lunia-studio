@@ -13,26 +13,27 @@ import AdsView from "@/components/AdsView";
 import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
+import VideoLibraryView from "@/components/VideoLibraryView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "video" | "video-assets" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "video" | "video-assets" | "video-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
-  "--bg": "#F5F0E8", "--surface": "#EDE8DF", "--surface-r": "#E5DFD0",
-  "--surface-h": "#DDD7C8", "--text": "#1C1916", "--muted": "#6B6359",
-  "--subtle": "#9B9389", "--accent": "#A07830",
-  "--accent-dim": "rgba(160,120,48,0.10)", "--accent-mid": "rgba(160,120,48,0.28)",
-  "--border": "#D8D1C0", "--border-strong": "#C8C0B0",
+  "--bg": "#F7F4EF", "--surface": "#EDE9E2", "--surface-r": "#E3DDD4",
+  "--surface-h": "#D8D1C6", "--text": "#102635", "--muted": "#4d6878",
+  "--subtle": "#8faabb", "--accent": "#102635",
+  "--accent-dim": "rgba(16,38,53,0.10)", "--accent-mid": "rgba(16,38,53,0.28)",
+  "--border": "#D5CEBB", "--border-strong": "#C5BDAA",
   "--success": "#3D7A52", "--warning": "#B86040", "--error": "#A04040",
 };
 const DARK_VARS: Record<string, string> = {
-  "--bg": "#0D0C0A", "--surface": "#171512", "--surface-r": "#201E1B",
-  "--surface-h": "#252219", "--text": "#EDE8DF", "--muted": "#7A7268",
-  "--subtle": "#4A4640", "--accent": "#C8A96E",
-  "--accent-dim": "rgba(200,169,110,0.12)", "--accent-mid": "rgba(200,169,110,0.30)",
-  "--border": "#2A2723", "--border-strong": "#332F2B",
+  "--bg": "#102635", "--surface": "#2c3f51", "--surface-r": "#1a3147",
+  "--surface-h": "#233d52", "--text": "#F7F4EF", "--muted": "#8faabb",
+  "--subtle": "#4d6878", "--accent": "#ffd800",
+  "--accent-dim": "rgba(255,216,0,0.10)", "--accent-mid": "rgba(255,216,0,0.28)",
+  "--border": "#1e3548", "--border-strong": "#2a4560",
   "--success": "#5F9E75", "--warning": "#C47A5A", "--error": "#B85C5C",
 };
 function applyThemeVars(t: "dark" | "light") {
@@ -62,10 +63,16 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Ads",
     items: [
-      { key: "ads",          product: "ads",  label: "Generate"      },
-      { key: "calendar",     product: "home", label: "Calendar"      },
-      { key: "video",        product: "ads",  label: "Video"         },
-      { key: "video-assets", product: "ads",  label: "Video Assets"  },
+      { key: "ads",      product: "ads",  label: "Generate" },
+      { key: "calendar", product: "home", label: "Calendar" },
+    ],
+  },
+  {
+    section: "Video",
+    items: [
+      { key: "video",         product: "ads", label: "Builder"       },
+      { key: "video-library", product: "ads", label: "Library"       },
+      { key: "video-assets",  product: "ads", label: "Assets"        },
     ],
   },
   {
@@ -297,8 +304,9 @@ export default function Page() {
         )}
         {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
         {tab === "ads"       && <AdsView />}
-        {tab === "video"       && <VideoView />}
-        {tab === "video-assets" && <VideoAssetsView />}
+        {tab === "video"         && <VideoView />}
+        {tab === "video-library" && <VideoLibraryView />}
+        {tab === "video-assets"  && <VideoAssetsView />}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

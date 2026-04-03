@@ -16,8 +16,29 @@ const CATEGORIES = [
   "Lifestyle & Productivity",
 ];
 
+const HOOK_TONES = [
+  {
+    id: "pattern-interrupt",
+    label: "Pattern Interrupt",
+    example: '"Stop telling yourself you\'re a bad sleeper."',
+    description: "Challenges a false belief the viewer holds about themselves.",
+  },
+  {
+    id: "stat-shock",
+    label: "Stat Shock",
+    example: '"72% of adults wake up exhausted every morning."',
+    description: "Leads with a counterintuitive statistic that forces a reframe.",
+  },
+  {
+    id: "question-hook",
+    label: "Question Hook",
+    example: '"Why do you fall asleep fine but wake up at 3am?"',
+    description: "A conversational question that mirrors the viewer's exact experience.",
+  },
+];
+
 type Props = {
-  onNext: (topic: string, subjectId?: string) => void;
+  onNext: (topic: string, subjectId?: string, hookTone?: string) => void;
   loading: boolean;
 };
 
@@ -31,6 +52,7 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
   const [category, setCategory] = useState("All");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
+  const [hookTone, setHookTone] = useState<string>("pattern-interrupt");
 
   useEffect(() => {
     fetch("/api/subjects")
@@ -51,28 +73,62 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
   function handleNext() {
     if (!topic || loading) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, subjectId);
+    onNext(topic, subjectId, hookTone);
   }
 
   const S = {
-    label: { fontFamily: "Inter, sans-serif", fontSize: 11, color: "var(--muted)", letterSpacing: "0.08em", textTransform: "uppercase" as const, display: "block", marginBottom: 8 } as React.CSSProperties,
-    input: { width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "10px 12px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text)", outline: "none", boxSizing: "border-box" as const } as React.CSSProperties,
+    label: {
+      fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+      fontSize: 11,
+      color: "var(--muted)",
+      letterSpacing: "0.08em",
+      textTransform: "uppercase" as const,
+      display: "block",
+      marginBottom: 8,
+    } as React.CSSProperties,
+    input: {
+      width: "100%",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 4,
+      padding: "10px 12px",
+      fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+      fontSize: 13,
+      color: "var(--text)",
+      outline: "none",
+      boxSizing: "border-box" as const,
+    } as React.CSSProperties,
   };
 
   function modeBtn(active: boolean): React.CSSProperties {
     return {
-      padding: "7px 18px", borderRadius: 4, border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-      background: active ? "var(--accent-dim)" : "transparent", color: active ? "var(--accent)" : "var(--muted)",
-      fontFamily: "Inter, sans-serif", fontSize: 12, cursor: "pointer", letterSpacing: "0.04em",
+      padding: "7px 18px",
+      borderRadius: 4,
+      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+      background: active ? "var(--accent-dim)" : "transparent",
+      color: active ? "var(--accent)" : "var(--muted)",
+      fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+      fontSize: 12,
+      cursor: "pointer",
+      letterSpacing: "0.04em",
     };
   }
 
   return (
     <div>
-      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 300, color: "var(--text)", marginBottom: 6 }}>
+      <h2
+        style={{
+          fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+          fontSize: 28,
+          fontWeight: 700,
+          color: "var(--text)",
+          marginBottom: 6,
+          letterSpacing: "-0.02em",
+        }}
+      >
         Choose a topic
       </h2>
-      <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--muted)", marginBottom: 28 }}>
+      <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 13, color: "var(--muted)", marginBottom: 28 }}>
         Pick from your subject library or enter a custom topic. Claude will write a 5-scene video script.
       </p>
 
@@ -84,7 +140,6 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
 
       {mode === "list" ? (
         <div>
-          {/* Search + category */}
           <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
             <input
               style={{ ...S.input, flex: 1 }}
@@ -102,11 +157,15 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
           </div>
 
           {loadingSubjects ? (
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--muted)", padding: "24px 0" }}>Loading subjects...</div>
+            <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 13, color: "var(--muted)", padding: "24px 0" }}>
+              Loading subjects...
+            </div>
           ) : (
-            <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
+            <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
               {filteredSubjects.length === 0 ? (
-                <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--subtle)", padding: "16px 0" }}>No subjects match your search.</div>
+                <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 13, color: "var(--subtle)", padding: "16px 0" }}>
+                  No subjects match your search.
+                </div>
               ) : filteredSubjects.map((s) => (
                 <button
                   key={s.id}
@@ -118,7 +177,7 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
                     border: `1px solid ${selectedSubject?.id === s.id ? "var(--accent)" : "var(--border)"}`,
                     background: selectedSubject?.id === s.id ? "var(--accent-dim)" : "var(--surface)",
                     color: "var(--text)",
-                    fontFamily: "Inter, sans-serif",
+                    fontFamily: "Helvetica Neue, sans-serif",
                     fontSize: 13,
                     cursor: "pointer",
                   }}
@@ -138,10 +197,84 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
             onChange={(e) => setCustom(e.target.value)}
             placeholder="e.g. Why magnesium helps you fall asleep faster"
             rows={3}
-            style={{ ...S.input, resize: "vertical", fontFamily: "Inter, sans-serif" }}
+            style={{ ...S.input, resize: "vertical" }}
           />
         </div>
       )}
+
+      {/* Hook tone selector */}
+      <div style={{ marginTop: 28, marginBottom: 4 }}>
+        <label style={S.label}>Hook style</label>
+        <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: "var(--subtle)", marginBottom: 12 }}>
+          Choose a scroll-stopping hook type for the opening scene.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {HOOK_TONES.map((tone) => {
+            const active = hookTone === tone.id;
+            return (
+              <button
+                key={tone.id}
+                onClick={() => setHookTone(tone.id)}
+                style={{
+                  textAlign: "left",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  background: active ? "var(--accent-dim)" : "var(--surface)",
+                  cursor: "pointer",
+                  transition: "border-color 0.12s, background 0.12s",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: active ? "var(--accent)" : "var(--border)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "Helvetica Neue, sans-serif",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: active ? "var(--accent)" : "var(--text)",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {tone.label}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Helvetica Neue, sans-serif",
+                    fontSize: 12,
+                    color: active ? "var(--text)" : "var(--muted)",
+                    fontStyle: "italic",
+                    marginBottom: 2,
+                    paddingLeft: 16,
+                  }}
+                >
+                  {tone.example}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Helvetica Neue, sans-serif",
+                    fontSize: 11,
+                    color: "var(--subtle)",
+                    paddingLeft: 16,
+                  }}
+                >
+                  {tone.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <button
         onClick={handleNext}
@@ -153,9 +286,9 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
           border: "none",
           borderRadius: 4,
           padding: "12px 32px",
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "Helvetica Neue, sans-serif",
           fontSize: 13,
-          fontWeight: 500,
+          fontWeight: 600,
           cursor: topic && !loading ? "pointer" : "not-allowed",
           letterSpacing: "0.04em",
         }}

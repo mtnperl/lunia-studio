@@ -449,6 +449,8 @@ export type VideoAdData = {
   sceneImages: Partial<Record<VideoAdSceneType, SceneImageConfig>>;
   fps: 30;
   durationFrames: number;   // sum of scene durationFrames
+  logoUrl?: string;         // Lunia Life logo shown in CTA scene
+  fontScale?: number;       // multiplier for all font sizes (default 1.0)
 };
 
 export type SavedVideoAd = {
@@ -459,7 +461,7 @@ export type SavedVideoAd = {
   savedAt: string;
 };
 
-export type VideoAssetType = "product-image-vertical" | "lifestyle-image" | "product-video";
+export type VideoAssetType = "product-image-vertical" | "lifestyle-image" | "product-video" | "logo";
 
 export type VideoAssetMetadata = {
   id: string;

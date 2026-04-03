@@ -1,16 +1,26 @@
 "use client";
 
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
+import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
+export function CTAScene({
+  scene,
+  image,
+  logoUrl,
+  fontScale = 1,
+}: {
+  scene: VideoAdScene;
+  image?: SceneImageConfig;
+  logoUrl?: string;
+  fontScale?: number;
+}) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const bgProgress = spring({ frame, fps, config: { damping: 20, stiffness: 60 } });
-  const overlayOpacity = interpolate(bgProgress, [0, 1], [0, 0.95]);
+  const overlayOpacity = interpolate(bgProgress, [0, 1], [0, 0.85]);
 
   const headlineY = interpolate(
     spring({ frame: Math.max(0, frame - 8), fps, config: { damping: 16, stiffness: 100 } }),
@@ -30,12 +40,12 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
     <AbsoluteFill style={{ background: BRAND.bg }}>
       {image && <SceneImageBackground image={image} overlayOpacity={0.6} />}
 
-      {/* Gold gradient overlay */}
+      {/* Cyan radial overlay */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: `radial-gradient(ellipse at center, ${BRAND.accentDim} 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse at center, rgba(191,251,248,0.12) 0%, transparent 70%)`,
           opacity: overlayOpacity,
         }}
       />
@@ -60,11 +70,11 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
         >
           <div
             style={{
-              fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-              fontSize: BRAND.fontHero,
-              fontWeight: 300,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontHero * fontScale,
+              fontWeight: 700,
               color: BRAND.text,
-              lineHeight: 1.1,
+              lineHeight: 1.05,
               letterSpacing: "-0.02em",
             }}
           >
@@ -77,8 +87,8 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
           <div style={{ opacity: sublineOpacity, textAlign: "center" }}>
             <div
               style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: BRAND.fontSubline,
+                fontFamily: BRAND.fontFamily,
+                fontSize: BRAND.fontSubline * fontScale,
                 fontWeight: 300,
                 color: BRAND.muted,
                 lineHeight: 1.5,
@@ -101,11 +111,11 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
             style={{
               background: BRAND.accent,
               color: BRAND.bg,
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 28,
-              fontWeight: 500,
-              letterSpacing: "0.08em",
-              padding: "20px 56px",
+              fontFamily: BRAND.fontFamily,
+              fontSize: 30 * fontScale,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              padding: "22px 60px",
               borderRadius: 4,
             }}
           >
@@ -113,7 +123,7 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
           </div>
         </div>
 
-        {/* Logo wordmark */}
+        {/* Logo */}
         <div
           style={{
             position: "absolute",
@@ -122,18 +132,32 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
             textAlign: "center",
           }}
         >
-          <div
-            style={{
-              fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-              fontSize: 36,
-              fontWeight: 300,
-              color: BRAND.accent,
-              letterSpacing: "0.3em",
-              textTransform: "uppercase",
-            }}
-          >
-            Lunia Life
-          </div>
+          {logoUrl ? (
+            <Img
+              src={logoUrl}
+              style={{
+                height: 64 * fontScale,
+                width: "auto",
+                maxWidth: 320,
+                objectFit: "contain",
+                // Screen blend: removes dark backgrounds, keeps light logo content visible
+                mixBlendMode: "screen",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                fontFamily: BRAND.fontFamily,
+                fontSize: 40 * fontScale,
+                fontWeight: 700,
+                color: BRAND.accent,
+                letterSpacing: "0.25em",
+                textTransform: "uppercase",
+              }}
+            >
+              LUNIA LIFE
+            </div>
+          )}
         </div>
       </AbsoluteFill>
 
@@ -144,9 +168,9 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
           top: 0,
           left: 0,
           right: 0,
-          height: 3,
+          height: 4,
           background: BRAND.accent,
-          opacity: 0.6,
+          opacity: 0.7,
         }}
       />
       <div
@@ -155,9 +179,9 @@ export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneI
           bottom: 0,
           left: 0,
           right: 0,
-          height: 3,
+          height: 4,
           background: BRAND.accent,
-          opacity: 0.6,
+          opacity: 0.7,
         }}
       />
     </AbsoluteFill>

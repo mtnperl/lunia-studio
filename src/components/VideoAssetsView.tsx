@@ -7,6 +7,7 @@ const ASSET_TYPE_LABELS: Record<VideoAssetType, string> = {
   "product-image-vertical": "Product",
   "lifestyle-image": "Lifestyle",
   "product-video": "Video Clip",
+  "logo": "Logo",
 };
 
 export default function VideoAssetsView() {
@@ -131,6 +132,7 @@ export default function VideoAssetsView() {
             <option value="product-image-vertical">Product Image (Vertical)</option>
             <option value="lifestyle-image">Lifestyle Image</option>
             <option value="product-video">Video Clip</option>
+            <option value="logo">Logo (PNG with transparency)</option>
           </select>
         </div>
 
@@ -138,7 +140,7 @@ export default function VideoAssetsView() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/svg+xml"
             multiple
             style={{ display: "none" }}
             onChange={handleUpload}
