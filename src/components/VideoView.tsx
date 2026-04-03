@@ -9,6 +9,32 @@ import VideoPreviewStep from "./video/steps/VideoPreviewStep";
 
 type Step = 1 | 2 | 3 | 4;
 
+const SCRIPT_GEN_MSGS = [
+  "Reading topic...",
+  "Selecting hook tone...",
+  "Writing 5-scene structure...",
+  "Applying brand rules...",
+  "Checking claims...",
+  "Finalizing script...",
+];
+
+function VideoScriptLoader() {
+  return (
+    <div className="loader-wrap" style={{ marginTop: 20 }}>
+      <div className="hp-label">GENERATING VIDEO SCRIPT</div>
+      <div className="hp-track"><div className="hp-fill" /></div>
+      <div className="loader-log">
+        {SCRIPT_GEN_MSGS.slice(0, 4).map((msg, i, arr) => (
+          <div key={i} className={i === arr.length - 1 ? "active" : ""}>
+            {i === arr.length - 1 ? `> ${msg}` : `  ${msg} OK`}
+            {i === arr.length - 1 && <span className="blink">_</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const STEP_LABELS: Record<Step, string> = {
   1: "Topic",
   2: "Script",
@@ -144,11 +170,13 @@ export default function VideoView() {
         </div>
       )}
 
-      {step === 1 && (
+      {loading && <VideoScriptLoader />}
+
+      {!loading && step === 1 && (
         <VideoTopicStep onNext={handleTopicNext} loading={loading} />
       )}
 
-      {step === 2 && (
+      {!loading && step === 2 && (
         <VideoScriptStep
           scenes={scenes}
           topic={topic}
@@ -159,7 +187,7 @@ export default function VideoView() {
         />
       )}
 
-      {step === 3 && (
+      {!loading && step === 3 && (
         <VideoAssetsStep
           scenes={scenes}
           topic={topic}
@@ -172,7 +200,7 @@ export default function VideoView() {
         />
       )}
 
-      {step === 4 && scenes.length > 0 && (
+      {!loading && step === 4 && scenes.length > 0 && (
         <VideoPreviewStep
           videoAdData={videoAdData}
           onUpdateScenes={setScenes}
