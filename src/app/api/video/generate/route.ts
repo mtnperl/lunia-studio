@@ -5,6 +5,7 @@ import { VideoAdScene } from "@/lib/types";
 export const maxDuration = 60;
 
 const SYSTEM_PROMPT = `You are writing a short video ad script for Lunia Life, a premium sleep supplement brand.
+Brand: Lunia Life — website www.lunialife.com. All video ads are for the Lunia Life audience: health-conscious adults (25-55) who struggle with sleep and want natural solutions. Always reference the brand as "Lunia Life" or "Lunia Restore". The CTA subline should always drive to www.lunialife.com.
 Lunia Restore contains magnesium bisglycinate, L-theanine, and apigenin. Melatonin-free. Under $1/serving. 78,000+ customers.
 Brand voice: warm, confident, evidence-informed, minimal.
 

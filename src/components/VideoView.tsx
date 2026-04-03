@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig } from "@/lib/types";
+import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle } from "@/lib/types";
 import VideoTopicStep from "./video/steps/VideoTopicStep";
 import VideoScriptStep from "./video/steps/VideoScriptStep";
 import VideoAssetsStep from "./video/steps/VideoAssetsStep";
@@ -59,6 +59,7 @@ export default function VideoView() {
 
   // Step 4
   const [fontScale, setFontScale] = useState(1.0);
+  const [videoStyle, setVideoStyle] = useState<VideoStyle>("cinematic");
 
   const videoAdData: VideoAdData = useMemo(() => ({
     topic,
@@ -66,9 +67,10 @@ export default function VideoView() {
     sceneImages,
     logoUrl,
     fontScale,
+    videoStyle,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, sceneImages, logoUrl, fontScale]);
+  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle]);
 
   async function handleTopicNext(newTopic: string, subjectId?: string, hookTone?: string) {
     setLoading(true);
@@ -116,7 +118,7 @@ export default function VideoView() {
   }
 
   return (
-    <div style={{ padding: "32px 40px", maxWidth: 760, margin: "0 auto" }}>
+    <div style={{ padding: "32px 40px", maxWidth: step === 3 ? 1120 : 760, margin: "0 auto" }}>
       {/* Step indicator */}
       <div style={{ display: "flex", gap: 0, marginBottom: 40 }}>
         {([1, 2, 3, 4] as Step[]).map((s) => (
@@ -173,7 +175,7 @@ export default function VideoView() {
       {loading && <VideoScriptLoader />}
 
       {!loading && step === 1 && (
-        <VideoTopicStep onNext={handleTopicNext} loading={loading} />
+        <VideoTopicStep onNext={handleTopicNext} loading={loading} videoStyle={videoStyle} onStyleChange={(s) => setVideoStyle(s as VideoStyle)} />
       )}
 
       {!loading && step === 2 && (
