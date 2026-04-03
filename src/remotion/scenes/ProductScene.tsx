@@ -8,9 +8,11 @@ import { SceneImageBackground } from "../lib/SceneImageBackground";
 export function ProductScene({
   scene,
   image,
+  fontScale = 1,
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
+  fontScale?: number;
 }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -43,7 +45,7 @@ export function ProductScene({
               width: 280,
               height: 360,
               background: BRAND.accentDim,
-              border: `1px solid ${BRAND.border}`,
+              border: `2px solid ${BRAND.border}`,
               borderRadius: 16,
               display: "flex",
               alignItems: "center",
@@ -52,16 +54,17 @@ export function ProductScene({
           >
             <div
               style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: 28,
+                fontFamily: BRAND.fontFamily,
+                fontSize: 36 * fontScale,
                 color: BRAND.accent,
                 textAlign: "center",
-                fontWeight: 300,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
               }}
             >
-              Lunia
+              LUNIA
               <br />
-              Restore
+              RESTORE
             </div>
           </div>
         </div>
@@ -75,18 +78,18 @@ export function ProductScene({
           left: 0,
           right: 0,
           padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
-          background: "linear-gradient(to top, rgba(13,12,10,0.92) 0%, rgba(13,12,10,0.6) 60%, transparent 100%)",
+          background: `linear-gradient(to top, rgba(16,38,53,0.95) 0%, rgba(16,38,53,0.65) 60%, transparent 100%)`,
           transform: `translateY(${textY}px)`,
           opacity: textOpacity,
         }}
       >
         <div
           style={{
-            fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-            fontSize: BRAND.fontHeadline,
-            fontWeight: 300,
+            fontFamily: BRAND.fontFamily,
+            fontSize: BRAND.fontHeadline * fontScale,
+            fontWeight: 700,
             color: BRAND.text,
-            lineHeight: 1.15,
+            lineHeight: 1.1,
             marginBottom: 16,
           }}
         >
@@ -95,8 +98,8 @@ export function ProductScene({
         {scene.subline && (
           <div
             style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: BRAND.fontSubline,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontSubline * fontScale,
               fontWeight: 300,
               color: BRAND.muted,
               lineHeight: 1.5,

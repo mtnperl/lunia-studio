@@ -5,7 +5,15 @@ import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function HookScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
+export function HookScene({
+  scene,
+  image,
+  fontScale = 1,
+}: {
+  scene: VideoAdScene;
+  image?: SceneImageConfig;
+  fontScale?: number;
+}) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -23,11 +31,13 @@ export function HookScene({ scene, image }: { scene: VideoAdScene; image?: Scene
   );
   const sublineOpacity = interpolate(frame, [10, 22], [0, 1], { extrapolateRight: "clamp" });
 
+  const accentOpacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
+
   return (
     <AbsoluteFill style={{ background: BRAND.bg, justifyContent: "center", padding: `0 ${BRAND.paddingX}px` }}>
       {image && <SceneImageBackground image={image} overlayOpacity={0.5} />}
 
-      {/* Subtle gold accent line */}
+      {/* Top accent line */}
       <div
         style={{
           position: "absolute",
@@ -36,18 +46,18 @@ export function HookScene({ scene, image }: { scene: VideoAdScene; image?: Scene
           right: 0,
           height: 4,
           background: BRAND.accent,
-          opacity: interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" }),
+          opacity: accentOpacity,
         }}
       />
 
       <div style={{ transform: `translateY(${headlineY}px)`, opacity: headlineOpacity }}>
         <div
           style={{
-            fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-            fontSize: BRAND.fontHero,
-            fontWeight: 300,
+            fontFamily: BRAND.fontFamily,
+            fontSize: BRAND.fontHero * fontScale,
+            fontWeight: 700,
             color: BRAND.text,
-            lineHeight: 1.1,
+            lineHeight: 1.05,
             letterSpacing: "-0.02em",
           }}
         >
@@ -65,8 +75,8 @@ export function HookScene({ scene, image }: { scene: VideoAdScene; image?: Scene
         >
           <div
             style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: BRAND.fontSubline,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontSubline * fontScale,
               fontWeight: 300,
               color: BRAND.muted,
               lineHeight: 1.5,
@@ -77,16 +87,16 @@ export function HookScene({ scene, image }: { scene: VideoAdScene; image?: Scene
         </div>
       )}
 
-      {/* Bottom accent */}
+      {/* Bottom accent bar */}
       <div
         style={{
           position: "absolute",
           bottom: BRAND.paddingY,
           left: BRAND.paddingX,
-          width: 40,
-          height: 2,
+          width: 48,
+          height: 3,
           background: BRAND.accent,
-          opacity: interpolate(frame, [20, 30], [0, 0.6], { extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [20, 30], [0, 0.8], { extrapolateRight: "clamp" }),
         }}
       />
     </AbsoluteFill>

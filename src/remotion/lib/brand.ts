@@ -1,22 +1,26 @@
 "use client";
 
 export const BRAND = {
-  // Colors
-  bg: "#0D0C0A",
-  surface: "#171512",
-  text: "#EDE8DF",
-  muted: "#7A7268",
-  accent: "#C8A96E",       // warm gold
-  accentDim: "rgba(200,169,110,0.15)",
-  border: "#2A2723",
+  // Brand colors
+  bg: "#102635",
+  surface: "#2c3f51",
+  text: "#F7F4EF",
+  muted: "#8faabb",
+  accent: "#ffd800",        // yellow
+  accentDim: "rgba(255,216,0,0.15)",
+  secondary: "#bffbf8",     // cyan — stat numbers, highlights
+  border: "#1e3548",
 
-  // Typography sizes (px at 1080w)
+  // Typography sizes (px at 1080w) — scale with fontScale prop
   fontDisplay: 96,
-  fontHero: 72,
-  fontHeadline: 56,
-  fontSubline: 32,
-  fontStat: 120,
-  fontCaption: 22,
+  fontHero: 80,
+  fontHeadline: 60,
+  fontSubline: 34,
+  fontStat: 128,
+  fontCaption: 24,
+
+  // Font family — Helvetica; falls back to Arial for Lambda renders
+  fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
 
   // Spacing
   paddingX: 64,

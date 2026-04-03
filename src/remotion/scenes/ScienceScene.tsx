@@ -5,7 +5,15 @@ import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
+export function ScienceScene({
+  scene,
+  image,
+  fontScale = 1,
+}: {
+  scene: VideoAdScene;
+  image?: SceneImageConfig;
+  fontScale?: number;
+}) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -28,6 +36,7 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
       }}
     >
       {image && <SceneImageBackground image={image} overlayOpacity={0.55} />}
+
       {/* Stat */}
       {scene.stat && (
         <div
@@ -39,12 +48,12 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
         >
           <div
             style={{
-              fontFamily: "'Fira Code', 'Courier New', monospace",
-              fontSize: BRAND.fontStat,
-              fontWeight: 400,
-              color: BRAND.accent,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontStat * fontScale,
+              fontWeight: 700,
+              color: BRAND.secondary,
               lineHeight: 1,
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.04em",
             }}
           >
             {scene.stat}
@@ -56,9 +65,9 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
       <div style={{ transform: `translateY(${contentY}px)`, opacity: contentOpacity }}>
         <div
           style={{
-            fontFamily: "'Cormorant Garamond', 'Georgia', serif",
-            fontSize: BRAND.fontHeadline,
-            fontWeight: 300,
+            fontFamily: BRAND.fontFamily,
+            fontSize: BRAND.fontHeadline * fontScale,
+            fontWeight: 600,
             color: BRAND.text,
             lineHeight: 1.15,
             marginBottom: 20,
@@ -70,8 +79,8 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
         {scene.subline && (
           <div
             style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: BRAND.fontSubline,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontSubline * fontScale,
               fontWeight: 300,
               color: BRAND.muted,
               lineHeight: 1.5,
@@ -85,10 +94,11 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
         {scene.caption && (
           <div
             style={{
-              fontFamily: "'Fira Code', 'Courier New', monospace",
-              fontSize: BRAND.fontCaption,
+              fontFamily: BRAND.fontFamily,
+              fontSize: BRAND.fontCaption * fontScale,
+              fontWeight: 400,
               color: BRAND.muted,
-              opacity: 0.6,
+              opacity: 0.7,
               letterSpacing: "0.04em",
             }}
           >
@@ -97,16 +107,16 @@ export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: Sc
         )}
       </div>
 
-      {/* Left gold bar */}
+      {/* Left accent bar */}
       <div
         style={{
           position: "absolute",
           left: 0,
           top: "20%",
           bottom: "20%",
-          width: 3,
+          width: 4,
           background: BRAND.accent,
-          opacity: interpolate(frame, [5, 20], [0, 0.5], { extrapolateRight: "clamp" }),
+          opacity: interpolate(frame, [5, 20], [0, 0.7], { extrapolateRight: "clamp" }),
         }}
       />
     </AbsoluteFill>

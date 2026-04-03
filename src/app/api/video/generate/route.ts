@@ -66,12 +66,22 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const topic: string = (body.topic ?? "").trim();
+    const hookTone: string = (body.hookTone ?? "pattern-interrupt").trim();
 
     if (!topic) {
       return Response.json({ error: "topic is required" }, { status: 400 });
     }
 
-    const userMessage = `Generate a 5-scene video ad script for the following topic: ${topic}`;
+    const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
+      "pattern-interrupt": "HOOK STYLE: Pattern Interrupt. The hook headline must challenge a false belief or habit the viewer holds about themselves (e.g. 'Stop telling yourself you're a bad sleeper.'). Bold, direct, slightly provocative.",
+      "stat-shock": "HOOK STYLE: Stat Shock. The hook headline must lead with a surprising statistic or counterintuitive fact that forces a reframe (e.g. '72% of adults wake up exhausted every morning.'). The stat should feel real and alarming.",
+      "question-hook": "HOOK STYLE: Question Hook. The hook headline must be a conversational question that mirrors the viewer's exact lived experience (e.g. 'Why do you fall asleep fine but wake up at 3am?'). Highly specific, not generic.",
+    };
+    const hookInstruction = HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["pattern-interrupt"];
+
+    const userMessage = `Generate a 5-scene video ad script for the following topic: ${topic}
+
+${hookInstruction}`;
 
     let scenes: VideoAdScene[] | null = null;
 
