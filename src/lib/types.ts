@@ -421,6 +421,8 @@ export type Insight = {
 
 // ─── Video Ad types ───────────────────────────────────────────────────────────
 
+export type VideoStyle = "cinematic" | "serene" | "bold";
+
 export type VideoAdSceneType = "hook" | "science" | "product" | "proof" | "cta";
 
 export type VideoAdScene = {
@@ -451,6 +453,7 @@ export type VideoAdData = {
   durationFrames: number;   // sum of scene durationFrames
   logoUrl?: string;         // Lunia Life logo shown in CTA scene
   fontScale?: number;       // multiplier for all font sizes (default 1.0)
+  videoStyle?: VideoStyle;
 };
 
 export type SavedVideoAd = {

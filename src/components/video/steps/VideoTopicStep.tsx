@@ -16,6 +16,27 @@ const CATEGORIES = [
   "Lifestyle & Productivity",
 ];
 
+const VIDEO_STYLES = [
+  {
+    id: "cinematic",
+    label: "Dark Cinematic",
+    example: "Deep navy, dramatic gold accent",
+    description: "Bold headline text, warm gold accents, dramatic scene overlays.",
+  },
+  {
+    id: "serene",
+    label: "Soft & Serene",
+    example: "Lighter tones, cyan highlights",
+    description: "Reduced overlay intensity, breathing room, cool cyan accents.",
+  },
+  {
+    id: "bold",
+    label: "Bold Impact",
+    example: "Maximum contrast, heavy type",
+    description: "Pure-black depth, white text at full opacity, high-energy feel.",
+  },
+];
+
 const HOOK_TONES = [
   {
     id: "pattern-interrupt",
@@ -40,11 +61,13 @@ const HOOK_TONES = [
 type Props = {
   onNext: (topic: string, subjectId?: string, hookTone?: string) => void;
   loading: boolean;
+  videoStyle: string;
+  onStyleChange: (style: string) => void;
 };
 
 type Mode = "list" | "custom";
 
-export default function VideoTopicStep({ onNext, loading }: Props) {
+export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -201,6 +224,80 @@ export default function VideoTopicStep({ onNext, loading }: Props) {
           />
         </div>
       )}
+
+      {/* Visual Style selector */}
+      <div style={{ marginTop: 28, marginBottom: 4 }}>
+        <label style={S.label}>Visual Style</label>
+        <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: "var(--subtle)", marginBottom: 12 }}>
+          Choose the look and feel of your video ad.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {VIDEO_STYLES.map((style) => {
+            const active = videoStyle === style.id;
+            return (
+              <button
+                key={style.id}
+                onClick={() => onStyleChange(style.id)}
+                style={{
+                  textAlign: "left",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  background: active ? "var(--accent-dim)" : "var(--surface)",
+                  cursor: "pointer",
+                  transition: "border-color 0.12s, background 0.12s",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: active ? "var(--accent)" : "var(--border)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "Helvetica Neue, sans-serif",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: active ? "var(--accent)" : "var(--text)",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {style.label}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Helvetica Neue, sans-serif",
+                    fontSize: 12,
+                    color: active ? "var(--text)" : "var(--muted)",
+                    fontStyle: "italic",
+                    marginBottom: 2,
+                    paddingLeft: 16,
+                  }}
+                >
+                  {style.example}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Helvetica Neue, sans-serif",
+                    fontSize: 11,
+                    color: "var(--subtle)",
+                    paddingLeft: 16,
+                  }}
+                >
+                  {style.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Hook tone selector */}
       <div style={{ marginTop: 28, marginBottom: 4 }}>

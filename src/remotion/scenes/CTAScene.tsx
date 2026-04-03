@@ -89,7 +89,7 @@ export function CTAScene({
               style={{
                 fontFamily: BRAND.fontFamily,
                 fontSize: BRAND.fontSubline * fontScale,
-                fontWeight: 300,
+                fontWeight: 500,
                 color: BRAND.muted,
                 lineHeight: 1.5,
               }}
