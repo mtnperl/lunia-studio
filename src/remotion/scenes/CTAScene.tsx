@@ -1,10 +1,11 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
+import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function CTAScene({ scene }: { scene: VideoAdScene }) {
+export function CTAScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -27,6 +28,8 @@ export function CTAScene({ scene }: { scene: VideoAdScene }) {
 
   return (
     <AbsoluteFill style={{ background: BRAND.bg }}>
+      {image && <SceneImageBackground image={image} overlayOpacity={0.6} />}
+
       {/* Gold gradient overlay */}
       <div
         style={{

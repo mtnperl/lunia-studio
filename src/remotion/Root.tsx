@@ -8,7 +8,7 @@ const DEFAULT_PROPS: VideoAdData = {
   topic: "Better sleep with magnesium",
   fps: 30,
   durationFrames: 750,
-  productImageUrl: null,
+  sceneImages: {},
   scenes: [
     { type: "hook",    durationFrames: 90,  headline: "You're not broken. Your sleep is.", subline: "Most people never fix the root cause." },
     { type: "science", durationFrames: 150, headline: "Magnesium helps promote deep sleep.", subline: "Low magnesium is linked to poor sleep quality.", stat: "68%", caption: "Journal of Sleep Research, 2022" },

@@ -12,7 +12,7 @@ const ASSET_TYPE_LABELS: Record<VideoAssetType, string> = {
 export default function VideoAssetsView() {
   const [assets, setAssets] = useState<VideoAssetMetadata[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<VideoAssetType>("product-image-vertical");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,26 +31,29 @@ export default function VideoAssetsView() {
   useEffect(() => { fetchAssets(); }, []);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
     setError(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("assetType", selectedType);
-      const res = await fetch("/api/video-assets/upload", { method: "POST", body: fd });
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg);
+    setUploadingCount(files.length);
+    let failed = 0;
+    for (const file of files) {
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("assetType", selectedType);
+        const res = await fetch("/api/video-assets/upload", { method: "POST", body: fd });
+        if (!res.ok) {
+          const { error: msg } = await res.json();
+          throw new Error(msg);
+        }
+      } catch {
+        failed++;
       }
-      await fetchAssets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setUploadingCount((n) => n - 1);
     }
+    if (failed > 0) setError(`${failed} file(s) failed to upload.`);
+    await fetchAssets();
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   async function handleDelete(id: string) {
@@ -136,26 +139,27 @@ export default function VideoAssetsView() {
             ref={fileRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            multiple
             style={{ display: "none" }}
             onChange={handleUpload}
           />
           <button
             onClick={() => fileRef.current?.click()}
-            disabled={uploading}
+            disabled={uploadingCount > 0}
             style={{
-              background: uploading ? "var(--surface-r)" : "var(--accent)",
-              color: uploading ? "var(--muted)" : "var(--bg)",
+              background: uploadingCount > 0 ? "var(--surface-r)" : "var(--accent)",
+              color: uploadingCount > 0 ? "var(--muted)" : "var(--bg)",
               border: "none",
               borderRadius: 4,
               padding: "10px 24px",
               fontFamily: "Inter, sans-serif",
               fontSize: 13,
               fontWeight: 500,
-              cursor: uploading ? "not-allowed" : "pointer",
+              cursor: uploadingCount > 0 ? "not-allowed" : "pointer",
               letterSpacing: "0.04em",
             }}
           >
-            {uploading ? "Uploading..." : "Upload File"}
+            {uploadingCount > 0 ? `Uploading ${uploadingCount}...` : "Upload Files"}
           </button>
         </div>
       </div>

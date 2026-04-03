@@ -1,10 +1,11 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
+import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function ProofScene({ scene }: { scene: VideoAdScene }) {
+export function ProofScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -29,6 +30,7 @@ export function ProofScene({ scene }: { scene: VideoAdScene }) {
         alignItems: "flex-start",
       }}
     >
+      {image && <SceneImageBackground image={image} overlayOpacity={0.55} />}
       {/* Large stat number */}
       {scene.stat && (
         <div
