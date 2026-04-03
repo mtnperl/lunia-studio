@@ -1,10 +1,11 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
+import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function HookScene({ scene }: { scene: VideoAdScene }) {
+export function HookScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -24,6 +25,8 @@ export function HookScene({ scene }: { scene: VideoAdScene }) {
 
   return (
     <AbsoluteFill style={{ background: BRAND.bg, justifyContent: "center", padding: `0 ${BRAND.paddingX}px` }}>
+      {image && <SceneImageBackground image={image} overlayOpacity={0.5} />}
+
       {/* Subtle gold accent line */}
       <div
         style={{

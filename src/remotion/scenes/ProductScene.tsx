@@ -1,25 +1,19 @@
 "use client";
 
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring, Img } from "remotion";
-import { VideoAdScene } from "@/lib/types";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
+import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
+import { SceneImageBackground } from "../lib/SceneImageBackground";
 
 export function ProductScene({
   scene,
-  productImageUrl,
+  image,
 }: {
   scene: VideoAdScene;
-  productImageUrl: string | null;
+  image?: SceneImageConfig;
 }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const imageScale = interpolate(
-    spring({ frame, fps, config: { damping: 20, stiffness: 80 } }),
-    [0, 1],
-    [0.88, 1]
-  );
-  const imageOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: "clamp" });
 
   const textY = interpolate(
     spring({ frame: Math.max(0, frame - 18), fps, config: { damping: 18, stiffness: 100 } }),
@@ -30,33 +24,20 @@ export function ProductScene({
 
   return (
     <AbsoluteFill style={{ background: BRAND.bg }}>
-      {/* Product image takes top 60% */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "60%",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: BRAND.surface,
-        }}
-      >
-        {productImageUrl ? (
-          <Img
-            src={productImageUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transform: `scale(${imageScale})`,
-              opacity: imageOpacity,
-            }}
-          />
-        ) : (
+      {image && <SceneImageBackground image={image} overlayOpacity={0.4} />}
+
+      {/* Placeholder when no image */}
+      {!image && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: BRAND.surface,
+          }}
+        >
           <div
             style={{
               width: 280,
@@ -67,8 +48,6 @@ export function ProductScene({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transform: `scale(${imageScale})`,
-              opacity: imageOpacity,
             }}
           >
             <div
@@ -85,21 +64,18 @@ export function ProductScene({
               Restore
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Text block bottom 40% */}
+      {/* Text block pinned to bottom */}
       <div
         style={{
           position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          height: "42%",
-          padding: `40px ${BRAND.paddingX}px`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
+          padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
+          background: "linear-gradient(to top, rgba(13,12,10,0.92) 0%, rgba(13,12,10,0.6) 60%, transparent 100%)",
           transform: `translateY(${textY}px)`,
           opacity: textOpacity,
         }}
@@ -130,19 +106,6 @@ export function ProductScene({
           </div>
         )}
       </div>
-
-      {/* Gold divider */}
-      <div
-        style={{
-          position: "absolute",
-          top: "60%",
-          left: BRAND.paddingX,
-          right: BRAND.paddingX,
-          height: 1,
-          background: BRAND.accent,
-          opacity: 0.3,
-        }}
-      />
     </AbsoluteFill>
   );
 }

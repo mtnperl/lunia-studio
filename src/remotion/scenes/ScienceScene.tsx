@@ -1,10 +1,11 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig } from "@/lib/types";
 import { BRAND } from "../lib/brand";
+import { SceneImageBackground } from "../lib/SceneImageBackground";
 
-export function ScienceScene({ scene }: { scene: VideoAdScene }) {
+export function ScienceScene({ scene, image }: { scene: VideoAdScene; image?: SceneImageConfig }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -26,6 +27,7 @@ export function ScienceScene({ scene }: { scene: VideoAdScene }) {
         padding: `0 ${BRAND.paddingX}px`,
       }}
     >
+      {image && <SceneImageBackground image={image} overlayOpacity={0.55} />}
       {/* Stat */}
       {scene.stat && (
         <div

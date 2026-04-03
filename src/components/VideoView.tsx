@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { VideoAdScene, VideoAdData, VideoAdSceneType } from "@/lib/types";
+import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig } from "@/lib/types";
 import VideoTopicStep from "./video/steps/VideoTopicStep";
 import VideoScriptStep from "./video/steps/VideoScriptStep";
 import VideoAssetsStep from "./video/steps/VideoAssetsStep";
@@ -28,15 +28,15 @@ export default function VideoView() {
   const [scenes, setScenes] = useState<VideoAdScene[]>([]);
 
   // Step 3
-  const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
+  const [sceneImages, setSceneImages] = useState<Partial<Record<VideoAdSceneType, SceneImageConfig>>>({});
 
   const videoAdData: VideoAdData = useMemo(() => ({
     topic,
     scenes,
-    productImageUrl,
+    sceneImages,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, productImageUrl]);
+  }), [topic, scenes, sceneImages]);
 
   async function handleTopicNext(newTopic: string, subjectId?: string) {
     setLoading(true);
@@ -159,8 +159,8 @@ export default function VideoView() {
 
       {step === 3 && (
         <VideoAssetsStep
-          selectedUrl={productImageUrl}
-          onSelect={setProductImageUrl}
+          sceneImages={sceneImages}
+          onUpdate={setSceneImages}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
         />

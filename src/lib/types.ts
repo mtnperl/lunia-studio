@@ -432,10 +432,21 @@ export type VideoAdScene = {
   caption?: string;         // science scene: journal attribution
 };
 
+// How an image is fitted into the 9:16 frame
+export type SceneImageFit = "cover" | "contain";
+
+export type SceneImageConfig = {
+  url: string;
+  fit: SceneImageFit;
+  // objectPosition for "cover" mode, e.g. "50% 30%". Defaults to "50% 50%"
+  position?: string;
+};
+
 export type VideoAdData = {
   topic: string;
   scenes: VideoAdScene[];   // exactly 5, one per type in order
-  productImageUrl: string | null;
+  // Per-scene image assignment — any scene can have a background image
+  sceneImages: Partial<Record<VideoAdSceneType, SceneImageConfig>>;
   fps: 30;
   durationFrames: number;   // sum of scene durationFrames
 };
