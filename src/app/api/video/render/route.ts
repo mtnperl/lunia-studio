@@ -9,6 +9,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = body.data;
+    const outputFormat: "mp4" | "gif" = body.format === "gif" ? "gif" : "mp4";
     const compositionId: string =
       body.compositionId ?? (data?.videoFormat === "captions" ? "VideoAdCaptions" : "VideoAd");
 
@@ -49,29 +50,34 @@ export async function POST(req: Request) {
         (composition as { durationInFrames: number }).durationInFrames = totalFrames;
       }
 
-      const outputPath = path.join(os.tmpdir(), `lunia-${Date.now()}.mp4`);
+      const ext = outputFormat === "gif" ? "gif" : "mp4";
+      const outputPath = path.join(os.tmpdir(), `lunia-${Date.now()}.${ext}`);
 
       await renderMedia({
         composition,
         serveUrl,
-        codec: "h264",
+        codec: outputFormat === "gif" ? "gif" : "h264",
         outputLocation: outputPath,
         inputProps: data,
         puppeteerInstance: browser,
         imageFormat: "jpeg",
-        jpegQuality: 85,
-        concurrency: 2,
+        jpegQuality: outputFormat === "gif" ? 70 : 85,
+        // For GIF, limit FPS and use fewer frames to keep file size manageable
+        ...(outputFormat === "gif" ? { everyNthFrame: 3 } : { concurrency: 2 }),
       });
 
       const buffer = await readFile(outputPath);
-      const blob = await put(`videos/lunia-${Date.now()}.mp4`, buffer, {
+      const blobName = `videos/lunia-${Date.now()}.${ext}`;
+      const contentType = outputFormat === "gif" ? "image/gif" : "video/mp4";
+
+      const blob = await put(blobName, buffer, {
         access: "public",
-        contentType: "video/mp4",
+        contentType,
       });
 
       await unlink(outputPath).catch(() => {});
 
-      return Response.json({ url: blob.url });
+      return Response.json({ url: blob.url, format: outputFormat });
     } finally {
       await browser.close({ silent: true });
     }
