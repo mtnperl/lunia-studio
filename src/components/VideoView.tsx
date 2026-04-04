@@ -8,6 +8,7 @@ import VideoAssetsStep from "./video/steps/VideoAssetsStep";
 import VideoPreviewStep from "./video/steps/VideoPreviewStep";
 
 type Step = 1 | 2 | 3 | 4;
+type AutoImageStatus = "loading" | "done" | "error";
 
 const SCRIPT_GEN_MSGS = [
   "Reading topic...",
@@ -127,6 +128,7 @@ export default function VideoView() {
   // Step 3
   const [sceneImages, setSceneImages] = useState<Partial<Record<VideoAdSceneType, SceneImageConfig>>>({});
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
+  const [autoImageStatus, setAutoImageStatus] = useState<Partial<Record<VideoAdSceneType, AutoImageStatus>>>({});
 
   // Step 4
   const [fontScale, setFontScale] = useState(1.0);
@@ -154,6 +156,45 @@ export default function VideoView() {
     fps: 30,
     durationFrames: captions.length * 75,
   }), [topic, captions, sceneImages, logoUrl, fontScale, videoStyle]);
+
+  async function generateSceneImage(scene: VideoAdScene, currentTopic: string) {
+    const sceneType = scene.type;
+    setAutoImageStatus((prev) => ({ ...prev, [sceneType]: "loading" }));
+    try {
+      const promptRes = await fetch("/api/video/generate-image-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sceneType, topic: currentTopic, headline: scene.headline }),
+      });
+      if (!promptRes.ok) throw new Error("Prompt failed");
+      const { prompt } = await promptRes.json();
+
+      const imageRes = await fetch("/api/video/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!imageRes.ok) throw new Error("Image failed");
+      const { url, error: imgErr } = await imageRes.json();
+      if (imgErr) throw new Error(imgErr);
+
+      setSceneImages((prev) => ({ ...prev, [sceneType]: { url, fit: "cover" } }));
+      setAutoImageStatus((prev) => ({ ...prev, [sceneType]: "done" }));
+    } catch {
+      setAutoImageStatus((prev) => ({ ...prev, [sceneType]: "error" }));
+    }
+  }
+
+  function triggerAutoImageGeneration(generatedScenes: VideoAdScene[], currentTopic: string) {
+    // Fire in parallel — don't await
+    Promise.all(generatedScenes.map((scene) => generateSceneImage(scene, currentTopic))).catch(() => {});
+  }
+
+  async function handleRetryImage(sceneType: VideoAdSceneType) {
+    const scene = scenes.find((s) => s.type === sceneType);
+    if (!scene) return;
+    await generateSceneImage(scene, topic);
+  }
 
   async function handleTopicNext(newTopic: string, subjectId?: string, hookTone?: string) {
     setLoading(true);
@@ -198,7 +239,12 @@ export default function VideoView() {
       const { scenes: generated } = await res.json();
       setTopic(newTopic);
       setScenes(generated);
+      // Reset images from any prior generation
+      setSceneImages({});
+      setAutoImageStatus({});
       setStep(2);
+      // Fire image generation in background — don't block step advance
+      triggerAutoImageGeneration(generated, newTopic);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed. Please try again.");
     } finally {
@@ -317,6 +363,8 @@ export default function VideoView() {
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
           captionsMode={videoFormat === "captions"}
+          autoImageStatus={autoImageStatus}
+          onRetryImage={handleRetryImage}
         />
       )}
 

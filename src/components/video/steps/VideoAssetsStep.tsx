@@ -22,6 +22,8 @@ const SCENE_DESCRIPTIONS: Record<VideoAdSceneType, string> = {
 
 const SCENE_ORDER: VideoAdSceneType[] = ["hook", "science", "product", "proof", "cta"];
 
+type AutoImageStatus = "loading" | "done" | "error";
+
 type Props = {
   scenes: VideoAdScene[];
   topic: string;
@@ -32,6 +34,8 @@ type Props = {
   onNext: () => void;
   onBack: () => void;
   captionsMode?: boolean;
+  autoImageStatus?: Partial<Record<VideoAdSceneType, AutoImageStatus>>;
+  onRetryImage?: (type: VideoAdSceneType) => void;
 };
 
 type GenState = {
@@ -202,6 +206,8 @@ export default function VideoAssetsStep({
   onNext,
   onBack,
   captionsMode = false,
+  autoImageStatus = {},
+  onRetryImage,
 }: Props) {
   const [assets, setAssets] = useState<VideoAssetMetadata[]>([]);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -395,16 +401,76 @@ export default function VideoAssetsStep({
 
   const isUploading = uploadingCount > 0;
 
+  // Auto-image state summary
+  const autoStatuses = Object.values(autoImageStatus) as AutoImageStatus[];
+  const autoIsRunning = autoStatuses.some((s) => s === "loading");
+  const autoHasAny = autoStatuses.length > 0;
+  const autoDoneCount = autoStatuses.filter((s) => s === "done").length;
+  const autoAllDone = autoHasAny && autoStatuses.every((s) => s === "done");
+
   return (
     <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
       {/* Left column */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <h2 style={{ fontFamily: FF, fontSize: 28, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.02em" }}>
-          Scene images
+          {autoHasAny ? "Images — Optional Refinement" : "Scene images"}
         </h2>
-        <p style={{ fontFamily: FF, fontSize: 13, color: "var(--muted)", marginBottom: 28 }}>
-          Assign a background image to each scene. Upload your own or generate with AI. All optional.
+        <p style={{ fontFamily: FF, fontSize: 13, color: "var(--muted)", marginBottom: autoHasAny ? 16 : 28 }}>
+          {autoHasAny
+            ? "AI generated images for your scenes. Preview and export now, or swap any image below."
+            : "Assign a background image to each scene. Upload your own or generate with AI. All optional."}
         </p>
+
+        {/* Fast-forward banner — shown while auto-gen is running or complete */}
+        {autoHasAny && (
+          <div style={{
+            background: autoAllDone ? "rgba(61,122,92,0.12)" : "rgba(255,216,0,0.06)",
+            border: `1px solid ${autoAllDone ? "var(--success, #3d7a5c)" : "var(--accent)"}`,
+            borderRadius: 8,
+            padding: "14px 18px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {autoIsRunning ? (
+                <span style={{ fontSize: 14 }}>⟳</span>
+              ) : autoAllDone ? (
+                <span style={{ fontSize: 14, color: "var(--success, #3d7a5c)" }}>✓</span>
+              ) : (
+                <span style={{ fontSize: 14 }}>◎</span>
+              )}
+              <span style={{ fontFamily: FF, fontSize: 13, color: "var(--text)" }}>
+                {autoIsRunning
+                  ? `Generating images... ${autoDoneCount} of ${autoStatuses.length} ready`
+                  : autoAllDone
+                  ? "All 5 scene images ready"
+                  : `${autoDoneCount} of ${autoStatuses.length} images ready`}
+              </span>
+            </div>
+            <button
+              onClick={onNext}
+              style={{
+                background: "var(--accent)",
+                border: "none",
+                borderRadius: 4,
+                padding: "9px 20px",
+                fontFamily: FF,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--bg)",
+                cursor: "pointer",
+                letterSpacing: "0.04em",
+                flexShrink: 0,
+              }}
+            >
+              Looks good → Preview
+            </button>
+          </div>
+        )}
 
         {error && (
           <div style={{ background: "rgba(184,92,92,0.12)", border: "1px solid var(--error)", borderRadius: 6, padding: "10px 16px", marginBottom: 16, fontFamily: FF, fontSize: 13, color: "var(--error)" }}>
@@ -419,6 +485,7 @@ export default function VideoAssetsStep({
             const isOpen = picker === type;
             const gen = getGen(type);
             const posY = parseFloat((cfg?.position ?? "50% 50%").split(" ")[1] ?? "50");
+            const aiStatus = autoImageStatus[type];
 
             return (
               <div
@@ -462,6 +529,10 @@ export default function VideoAssetsStep({
                           objectPosition: cfg.position ?? "50% 50%",
                         }}
                       />
+                    ) : aiStatus === "loading" ? (
+                      <div className="skeleton-shimmer" style={{ width: "100%", height: "100%" }} />
+                    ) : aiStatus === "error" ? (
+                      <span style={{ fontSize: 13, opacity: 0.6 }}>⚠</span>
                     ) : (
                       <span style={{ fontSize: 16, opacity: 0.3 }}>—</span>
                     )}
@@ -469,7 +540,7 @@ export default function VideoAssetsStep({
 
                   {/* Labels */}
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
                       <span style={{ fontFamily: FF, fontSize: 12, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                         {SCENE_LABELS[type]}
                       </span>
@@ -478,7 +549,20 @@ export default function VideoAssetsStep({
                           ✓ set
                         </span>
                       )}
-                      {gen.generatedUrl && !cfg && (
+                      {!cfg && aiStatus === "loading" && (
+                        <span style={{ fontFamily: FF, fontSize: 10, color: "var(--accent)", letterSpacing: "0.04em" }}>
+                          ⟳ generating...
+                        </span>
+                      )}
+                      {!cfg && aiStatus === "error" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onRetryImage?.(type); }}
+                          style={{ fontFamily: FF, fontSize: 10, color: "var(--error, #b85c5c)", background: "transparent", border: "none", cursor: "pointer", padding: 0, letterSpacing: "0.04em" }}
+                        >
+                          ⚠ Failed — Retry
+                        </button>
+                      )}
+                      {!cfg && !aiStatus && gen.generatedUrl && (
                         <span style={{ fontFamily: FF, fontSize: 10, color: "var(--muted)" }}>AI generated</span>
                       )}
                     </div>
