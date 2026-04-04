@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/bundle-remotion.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,8 +14,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@fal-ai/client": "^1.9.4",
+    "@remotion/bundler": "^4.0.443",
     "@remotion/lambda": "^4.0.443",
     "@remotion/player": "^4.0.443",
+    "@remotion/renderer": "^4.0.443",
     "@sparticuz/chromium": "^143.0.4",
     "@vercel/blob": "^2.3.1",
     "html-to-image": "^1.11.13",

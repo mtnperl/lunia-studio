@@ -454,6 +454,7 @@ export type VideoAdData = {
   logoUrl?: string;         // Lunia Life logo shown in CTA scene
   fontScale?: number;       // multiplier for all font sizes (default 1.0)
   videoStyle?: VideoStyle;
+  videoFormat?: VideoFormat;
 };
 
 export type SavedVideoAd = {
@@ -465,6 +466,20 @@ export type SavedVideoAd = {
 };
 
 export type VideoAssetType = "product-image-vertical" | "lifestyle-image" | "product-video" | "logo";
+
+export type VideoFormat = "brand-story" | "captions";
+
+// ─── TikTok-style Captions composition ───────────────────────────────────────
+export type VideoCaptionsData = {
+  topic: string;
+  captions: string[];          // 5-7 short sentences, shown word-by-word
+  backgroundImageUrl?: string; // optional full-bleed background image
+  logoUrl?: string;
+  fontScale?: number;
+  videoStyle?: VideoStyle;
+  fps: 30;
+  durationFrames: number;      // captions.length * 75
+};
 
 export type VideoAssetMetadata = {
   id: string;

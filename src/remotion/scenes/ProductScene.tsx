@@ -2,18 +2,22 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { VideoAdScene, SceneImageConfig } from "@/lib/types";
-import { BRAND } from "../lib/brand";
+import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
+import type { VideoStyle } from "@/lib/types";
 
 export function ProductScene({
   scene,
   image,
   fontScale = 1,
+  videoStyle = "cinematic",
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
+  videoStyle?: VideoStyle;
 }) {
+  const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -25,8 +29,8 @@ export function ProductScene({
   const textOpacity = interpolate(frame, [18, 32], [0, 1], { extrapolateRight: "clamp" });
 
   return (
-    <AbsoluteFill style={{ background: BRAND.bg }}>
-      {image && <SceneImageBackground image={image} overlayOpacity={0.4} />}
+    <AbsoluteFill style={{ background: S.bg }}>
+      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
 
       {/* Placeholder when no image */}
       {!image && (
@@ -37,7 +41,7 @@ export function ProductScene({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: BRAND.surface,
+            background: S.surface,
           }}
         >
           <div
@@ -56,7 +60,7 @@ export function ProductScene({
               style={{
                 fontFamily: BRAND.fontFamily,
                 fontSize: 36 * fontScale,
-                color: BRAND.accent,
+                color: S.accentColor,
                 textAlign: "center",
                 fontWeight: 700,
                 letterSpacing: "0.1em",
@@ -78,7 +82,7 @@ export function ProductScene({
           left: 0,
           right: 0,
           padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
-          background: `linear-gradient(to top, rgba(16,38,53,0.95) 0%, rgba(16,38,53,0.65) 60%, transparent 100%)`,
+          background: `linear-gradient(to top, ${S.bg}f5 0%, ${S.bg}a0 60%, transparent 100%)`,
           transform: `translateY(${textY}px)`,
           opacity: textOpacity,
         }}
@@ -86,9 +90,9 @@ export function ProductScene({
         <div
           style={{
             fontFamily: BRAND.fontFamily,
-            fontSize: BRAND.fontHeadline * fontScale,
+            fontSize: S.fontHeadline * fontScale,
             fontWeight: 700,
-            color: BRAND.text,
+            color: S.headlineColor,
             lineHeight: 1.1,
             marginBottom: 16,
           }}
@@ -99,9 +103,9 @@ export function ProductScene({
           <div
             style={{
               fontFamily: BRAND.fontFamily,
-              fontSize: BRAND.fontSubline * fontScale,
+              fontSize: S.fontSubline * fontScale,
               fontWeight: 500,
-              color: BRAND.muted,
+              color: S.sublineColor,
               lineHeight: 1.5,
             }}
           >

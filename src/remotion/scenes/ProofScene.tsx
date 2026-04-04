@@ -2,18 +2,22 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { VideoAdScene, SceneImageConfig } from "@/lib/types";
-import { BRAND } from "../lib/brand";
+import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
+import type { VideoStyle } from "@/lib/types";
 
 export function ProofScene({
   scene,
   image,
   fontScale = 1,
+  videoStyle = "cinematic",
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
+  videoStyle?: VideoStyle;
 }) {
+  const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -32,13 +36,13 @@ export function ProofScene({
   return (
     <AbsoluteFill
       style={{
-        background: BRAND.surface,
+        background: S.surface,
         justifyContent: "center",
         padding: `0 ${BRAND.paddingX}px`,
         alignItems: "flex-start",
       }}
     >
-      {image && <SceneImageBackground image={image} overlayOpacity={0.55} />}
+      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
 
       {/* Large stat number */}
       {scene.stat && (
@@ -54,7 +58,7 @@ export function ProofScene({
               fontFamily: BRAND.fontFamily,
               fontSize: BRAND.fontStat * fontScale,
               fontWeight: 700,
-              color: BRAND.accent,
+              color: S.statColor,
               lineHeight: 1,
               letterSpacing: "-0.04em",
             }}
@@ -72,7 +76,7 @@ export function ProofScene({
               fontFamily: BRAND.fontFamily,
               fontSize: BRAND.fontCaption * fontScale,
               fontWeight: 500,
-              color: BRAND.muted,
+              color: S.captionColor,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
             }}
@@ -87,9 +91,9 @@ export function ProofScene({
         <div
           style={{
             fontFamily: BRAND.fontFamily,
-            fontSize: BRAND.fontHeadline * fontScale,
+            fontSize: S.fontHeadline * fontScale,
             fontWeight: 600,
-            color: BRAND.text,
+            color: S.headlineColor,
             lineHeight: 1.15,
           }}
         >
@@ -114,7 +118,7 @@ export function ProofScene({
             style={{
               width: 28,
               height: 28,
-              background: BRAND.accent,
+              background: S.accentColor,
               clipPath:
                 "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)",
             }}

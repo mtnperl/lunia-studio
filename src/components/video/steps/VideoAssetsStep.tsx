@@ -31,6 +31,7 @@ type Props = {
   onLogoUpdate: (url: string | undefined) => void;
   onNext: () => void;
   onBack: () => void;
+  captionsMode?: boolean;
 };
 
 type GenState = {
@@ -200,6 +201,7 @@ export default function VideoAssetsStep({
   onLogoUpdate,
   onNext,
   onBack,
+  captionsMode = false,
 }: Props) {
   const [assets, setAssets] = useState<VideoAssetMetadata[]>([]);
   const [assetsLoaded, setAssetsLoaded] = useState(false);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle } from "@/lib/types";
+import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle, VideoFormat, VideoCaptionsData } from "@/lib/types";
 import VideoTopicStep from "./video/steps/VideoTopicStep";
 import VideoScriptStep from "./video/steps/VideoScriptStep";
 import VideoAssetsStep from "./video/steps/VideoAssetsStep";
@@ -35,6 +35,74 @@ function VideoScriptLoader() {
   );
 }
 
+const FF = "Helvetica Neue, Helvetica, Arial, sans-serif";
+
+function CaptionsScriptStep({
+  captions,
+  topic,
+  onUpdate,
+  onNext,
+  onBack,
+}: {
+  captions: string[];
+  topic: string;
+  onUpdate: (c: string[]) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div>
+      <h2 style={{ fontFamily: FF, fontSize: 28, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.02em" }}>
+        Caption Script
+      </h2>
+      <p style={{ fontFamily: FF, fontSize: 13, color: "var(--muted)", marginBottom: 24 }}>
+        {topic} — edit any caption before continuing.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+        {captions.map((caption, i) => (
+          <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ fontFamily: "monospace", fontSize: 11, color: "var(--accent)", paddingTop: 11, flexShrink: 0, width: 20, textAlign: "right" }}>
+              {i + 1}
+            </div>
+            <textarea
+              value={caption}
+              rows={2}
+              onChange={(e) => {
+                const next = [...captions];
+                next[i] = e.target.value;
+                onUpdate(next);
+              }}
+              style={{
+                flex: 1,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 4,
+                padding: "10px 12px",
+                fontFamily: FF,
+                fontSize: 13,
+                color: "var(--text)",
+                resize: "vertical",
+                outline: "none",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          onClick={onNext}
+          style={{ background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 4, padding: "12px 32px", fontFamily: FF, fontSize: 13, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}
+        >
+          Next: Assets
+        </button>
+        <button onClick={onBack} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, padding: "12px 20px", fontFamily: FF, fontSize: 13, color: "var(--muted)", cursor: "pointer" }}>
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const STEP_LABELS: Record<Step, string> = {
   1: "Topic",
   2: "Script",
@@ -49,9 +117,12 @@ export default function VideoView() {
 
   // Step 1
   const [topic, setTopic] = useState("");
+  const [videoFormat, setVideoFormat] = useState<VideoFormat>("brand-story");
 
-  // Step 2
+  // Step 2 — brand-story format
   const [scenes, setScenes] = useState<VideoAdScene[]>([]);
+  // Step 2 — captions format
+  const [captions, setCaptions] = useState<string[]>([]);
 
   // Step 3
   const [sceneImages, setSceneImages] = useState<Partial<Record<VideoAdSceneType, SceneImageConfig>>>({});
@@ -68,9 +139,21 @@ export default function VideoView() {
     logoUrl,
     fontScale,
     videoStyle,
+    videoFormat,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle]);
+  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle, videoFormat]);
+
+  const videoCaptionsData: VideoCaptionsData = useMemo(() => ({
+    topic,
+    captions,
+    backgroundImageUrl: Object.values(sceneImages)[0]?.url,
+    logoUrl,
+    fontScale,
+    videoStyle,
+    fps: 30,
+    durationFrames: captions.length * 75,
+  }), [topic, captions, sceneImages, logoUrl, fontScale, videoStyle]);
 
   async function handleTopicNext(newTopic: string, subjectId?: string, hookTone?: string) {
     setLoading(true);
@@ -82,6 +165,23 @@ export default function VideoView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "markUsed" }),
         }).catch(() => {});
+      }
+
+      if (videoFormat === "captions") {
+        const res = await fetch("/api/video/generate-captions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic: newTopic, subjectId, hookTone }),
+        });
+        if (!res.ok) {
+          const { error: msg } = await res.json();
+          throw new Error(msg ?? "Generation failed");
+        }
+        const { captions: generated } = await res.json();
+        setTopic(newTopic);
+        setCaptions(generated);
+        setStep(2);
+        return;
       }
 
       const res = await fetch("/api/video/generate", {
@@ -175,10 +275,17 @@ export default function VideoView() {
       {loading && <VideoScriptLoader />}
 
       {!loading && step === 1 && (
-        <VideoTopicStep onNext={handleTopicNext} loading={loading} videoStyle={videoStyle} onStyleChange={(s) => setVideoStyle(s as VideoStyle)} />
+        <VideoTopicStep
+          onNext={handleTopicNext}
+          loading={loading}
+          videoStyle={videoStyle}
+          onStyleChange={(s) => setVideoStyle(s as VideoStyle)}
+          videoFormat={videoFormat}
+          onFormatChange={(f) => setVideoFormat(f as VideoFormat)}
+        />
       )}
 
-      {!loading && step === 2 && (
+      {!loading && step === 2 && videoFormat === "brand-story" && (
         <VideoScriptStep
           scenes={scenes}
           topic={topic}
@@ -189,9 +296,19 @@ export default function VideoView() {
         />
       )}
 
+      {!loading && step === 2 && videoFormat === "captions" && (
+        <CaptionsScriptStep
+          captions={captions}
+          topic={topic}
+          onUpdate={setCaptions}
+          onNext={() => setStep(3)}
+          onBack={() => setStep(1)}
+        />
+      )}
+
       {!loading && step === 3 && (
         <VideoAssetsStep
-          scenes={scenes}
+          scenes={videoFormat === "captions" ? [] : scenes}
           topic={topic}
           sceneImages={sceneImages}
           logoUrl={logoUrl}
@@ -199,12 +316,15 @@ export default function VideoView() {
           onLogoUpdate={setLogoUrl}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
+          captionsMode={videoFormat === "captions"}
         />
       )}
 
-      {!loading && step === 4 && scenes.length > 0 && (
+      {!loading && step === 4 && (
         <VideoPreviewStep
           videoAdData={videoAdData}
+          videoCaptionsData={videoCaptionsData}
+          videoFormat={videoFormat}
           onUpdateScenes={setScenes}
           onFontScaleChange={setFontScale}
           onBack={() => setStep(3)}

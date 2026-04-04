@@ -2,7 +2,8 @@
 
 import { Composition } from "remotion";
 import { VideoAd } from "./VideoAd";
-import { VideoAdData } from "@/lib/types";
+import { VideoAdCaptions } from "./VideoAdCaptions";
+import { VideoAdData, VideoCaptionsData } from "@/lib/types";
 
 const DEFAULT_PROPS: VideoAdData = {
   topic: "Better sleep with magnesium",
@@ -19,16 +20,40 @@ const DEFAULT_PROPS: VideoAdData = {
   ],
 };
 
+const DEFAULT_CAPTIONS_PROPS: VideoCaptionsData = {
+  topic: "Better sleep with magnesium",
+  fps: 30,
+  durationFrames: 375, // 5 captions * 75 frames
+  captions: [
+    "Stop telling yourself you're a bad sleeper.",
+    "72% of adults wake up exhausted every morning.",
+    "Magnesium may be the missing piece in your routine.",
+    "Lunia Restore — magnesium, L-theanine, and apigenin.",
+    "Try it at lunialife.com. Under $1 per serving.",
+  ],
+};
+
 export function RemotionRoot() {
   return (
-    <Composition
-      id="VideoAd"
-      component={VideoAd}
-      durationInFrames={DEFAULT_PROPS.durationFrames}
-      fps={DEFAULT_PROPS.fps}
-      width={1080}
-      height={1920}
-      defaultProps={DEFAULT_PROPS}
-    />
+    <>
+      <Composition
+        id="VideoAd"
+        component={VideoAd}
+        durationInFrames={DEFAULT_PROPS.durationFrames}
+        fps={DEFAULT_PROPS.fps}
+        width={1080}
+        height={1920}
+        defaultProps={DEFAULT_PROPS}
+      />
+      <Composition
+        id="VideoAdCaptions"
+        component={VideoAdCaptions}
+        durationInFrames={DEFAULT_CAPTIONS_PROPS.durationFrames}
+        fps={DEFAULT_CAPTIONS_PROPS.fps}
+        width={1080}
+        height={1920}
+        defaultProps={DEFAULT_CAPTIONS_PROPS}
+      />
+    </>
   );
 }

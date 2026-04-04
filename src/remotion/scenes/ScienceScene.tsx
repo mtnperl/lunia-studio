@@ -2,18 +2,22 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { VideoAdScene, SceneImageConfig } from "@/lib/types";
-import { BRAND } from "../lib/brand";
+import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
+import type { VideoStyle } from "@/lib/types";
 
 export function ScienceScene({
   scene,
   image,
   fontScale = 1,
+  videoStyle = "cinematic",
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
+  videoStyle?: VideoStyle;
 }) {
+  const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -30,12 +34,12 @@ export function ScienceScene({
   return (
     <AbsoluteFill
       style={{
-        background: BRAND.surface,
+        background: S.surface,
         justifyContent: "center",
         padding: `0 ${BRAND.paddingX}px`,
       }}
     >
-      {image && <SceneImageBackground image={image} overlayOpacity={0.55} />}
+      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
 
       {/* Stat */}
       {scene.stat && (
@@ -51,7 +55,7 @@ export function ScienceScene({
               fontFamily: BRAND.fontFamily,
               fontSize: BRAND.fontStat * fontScale,
               fontWeight: 700,
-              color: BRAND.secondary,
+              color: S.statColor,
               lineHeight: 1,
               letterSpacing: "-0.04em",
             }}
@@ -66,9 +70,9 @@ export function ScienceScene({
         <div
           style={{
             fontFamily: BRAND.fontFamily,
-            fontSize: BRAND.fontHeadline * fontScale,
+            fontSize: S.fontHeadline * fontScale,
             fontWeight: 600,
-            color: BRAND.text,
+            color: S.headlineColor,
             lineHeight: 1.15,
             marginBottom: 20,
           }}
@@ -80,9 +84,9 @@ export function ScienceScene({
           <div
             style={{
               fontFamily: BRAND.fontFamily,
-              fontSize: BRAND.fontSubline * fontScale,
+              fontSize: S.fontSubline * fontScale,
               fontWeight: 500,
-              color: BRAND.muted,
+              color: S.sublineColor,
               lineHeight: 1.5,
               marginBottom: 24,
             }}
@@ -97,7 +101,7 @@ export function ScienceScene({
               fontFamily: BRAND.fontFamily,
               fontSize: BRAND.fontCaption * fontScale,
               fontWeight: 400,
-              color: BRAND.muted,
+              color: S.captionColor,
               opacity: 0.7,
               letterSpacing: "0.04em",
             }}
@@ -115,7 +119,7 @@ export function ScienceScene({
           top: "20%",
           bottom: "20%",
           width: 4,
-          background: BRAND.accent,
+          background: S.accentColor,
           opacity: interpolate(frame, [5, 20], [0, 0.7], { extrapolateRight: "clamp" }),
         }}
       />
