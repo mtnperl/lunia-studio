@@ -2,18 +2,22 @@
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import { VideoAdScene, SceneImageConfig } from "@/lib/types";
-import { BRAND } from "../lib/brand";
+import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
+import type { VideoStyle } from "@/lib/types";
 
 export function HookScene({
   scene,
   image,
   fontScale = 1,
+  videoStyle = "cinematic",
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
+  videoStyle?: VideoStyle;
 }) {
+  const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -34,8 +38,8 @@ export function HookScene({
   const accentOpacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
 
   return (
-    <AbsoluteFill style={{ background: BRAND.bg, justifyContent: "center", padding: `0 ${BRAND.paddingX}px` }}>
-      {image && <SceneImageBackground image={image} overlayOpacity={0.5} />}
+    <AbsoluteFill style={{ background: S.bg, justifyContent: "center", padding: `0 ${BRAND.paddingX}px` }}>
+      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
 
       {/* Top accent line */}
       <div
@@ -45,7 +49,7 @@ export function HookScene({
           left: 0,
           right: 0,
           height: 4,
-          background: BRAND.accent,
+          background: S.accentColor,
           opacity: accentOpacity,
         }}
       />
@@ -54,9 +58,9 @@ export function HookScene({
         <div
           style={{
             fontFamily: BRAND.fontFamily,
-            fontSize: BRAND.fontHero * fontScale,
+            fontSize: S.fontHero * fontScale,
             fontWeight: 700,
-            color: BRAND.text,
+            color: S.headlineColor,
             lineHeight: 1.05,
             letterSpacing: "-0.02em",
           }}
@@ -76,9 +80,9 @@ export function HookScene({
           <div
             style={{
               fontFamily: BRAND.fontFamily,
-              fontSize: BRAND.fontSubline * fontScale,
+              fontSize: S.fontSubline * fontScale,
               fontWeight: 500,
-              color: BRAND.muted,
+              color: S.sublineColor,
               lineHeight: 1.5,
             }}
           >
@@ -95,7 +99,7 @@ export function HookScene({
           left: BRAND.paddingX,
           width: 48,
           height: 3,
-          background: BRAND.accent,
+          background: S.accentColor,
           opacity: interpolate(frame, [20, 30], [0, 0.8], { extrapolateRight: "clamp" }),
         }}
       />

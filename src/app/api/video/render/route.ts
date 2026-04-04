@@ -1,46 +1,83 @@
-// Remotion Lambda render endpoint.
-// When REMOTION_LAMBDA_FUNCTION_NAME is not configured, returns a 503 with a clear message.
-// To enable: deploy a Remotion Lambda function and set the env vars below.
-//
-// Required env vars (when enabling Lambda):
-//   REMOTION_LAMBDA_FUNCTION_NAME  — deployed function name
-//   REMOTION_LAMBDA_REGION         — AWS region (default: us-east-1)
-//   AWS_ACCESS_KEY_ID              — IAM key with lambda:InvokeFunction
-//   AWS_SECRET_ACCESS_KEY
+import { put } from "@vercel/blob";
+import { readFile, unlink } from "fs/promises";
+import os from "os";
+import path from "path";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const functionName = process.env.REMOTION_LAMBDA_FUNCTION_NAME;
-
-  if (!functionName) {
-    return Response.json(
-      {
-        error: "Lambda render not configured",
-        message: "Set REMOTION_LAMBDA_FUNCTION_NAME, REMOTION_LAMBDA_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY to enable video rendering.",
-      },
-      { status: 503 }
-    );
-  }
-
   try {
     const body = await req.json();
-    const lambdaClient = await import("@remotion/lambda/client");
-    const renderMedia = lambdaClient.renderMediaOnLambda;
+    const data = body.data;
+    const compositionId: string =
+      body.compositionId ?? (data?.videoFormat === "captions" ? "VideoAdCaptions" : "VideoAd");
 
-    const region = (process.env.REMOTION_LAMBDA_REGION ?? "us-east-1") as Parameters<typeof renderMedia>[0]["region"];
+    const appUrl =
+      process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const serveUrl = `${appUrl}/remotion/`;
 
-    const { renderId, bucketName } = await renderMedia({
-      region,
-      functionName,
-      serveUrl: process.env.REMOTION_SERVE_URL ?? "",
-      composition: "VideoAd",
-      inputProps: body.data,
-      codec: "h264",
-      imageFormat: "jpeg",
+    const chromiumModule = await import("@sparticuz/chromium");
+    const chromium = chromiumModule.default;
+    const { renderMedia, selectComposition, openBrowser } = await import("@remotion/renderer");
+
+    const browserExecutable = await chromium.executablePath();
+
+    const browser = await openBrowser("chrome", {
+      browserExecutable,
+      chromiumOptions: { headless: true },
+      shouldDumpIo: false,
     });
 
-    return Response.json({ renderId, bucketName });
+    try {
+      const composition = await selectComposition({
+        serveUrl,
+        id: compositionId,
+        inputProps: data,
+        puppeteerInstance: browser,
+      });
+
+      // Honor the actual data duration
+      const totalFrames: number =
+        data?.durationFrames ??
+        (data?.scenes ?? []).reduce(
+          (acc: number, s: { durationFrames: number }) => acc + (s.durationFrames ?? 0),
+          0
+        );
+      if (totalFrames > 0) {
+        (composition as { durationInFrames: number }).durationInFrames = totalFrames;
+      }
+
+      const outputPath = path.join(os.tmpdir(), `lunia-${Date.now()}.mp4`);
+
+      await renderMedia({
+        composition,
+        serveUrl,
+        codec: "h264",
+        outputLocation: outputPath,
+        inputProps: data,
+        puppeteerInstance: browser,
+        imageFormat: "jpeg",
+        jpegQuality: 85,
+        concurrency: 2,
+      });
+
+      const buffer = await readFile(outputPath);
+      const blob = await put(`videos/lunia-${Date.now()}.mp4`, buffer, {
+        access: "public",
+        contentType: "video/mp4",
+      });
+
+      await unlink(outputPath).catch(() => {});
+
+      return Response.json({ url: blob.url });
+    } finally {
+      await browser.close({ silent: true });
+    }
   } catch (err) {
     console.error("[api/video/render]", err);
-    return Response.json({ error: "Render failed" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Render failed";
+    return Response.json({ error: message }, { status: 500 });
   }
 }

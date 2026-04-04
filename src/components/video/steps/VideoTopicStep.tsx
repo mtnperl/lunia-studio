@@ -58,16 +58,33 @@ const HOOK_TONES = [
   },
 ];
 
+const VIDEO_FORMATS = [
+  {
+    id: "brand-story",
+    label: "Brand Story",
+    description: "5-scene cinematic structure: hook, science, product, social proof, CTA.",
+    tag: "Recommended",
+  },
+  {
+    id: "captions",
+    label: "TikTok Captions",
+    description: "Word-by-word animated captions over a full-screen background. Raw, scroll-stopping.",
+    tag: "New",
+  },
+];
+
 type Props = {
   onNext: (topic: string, subjectId?: string, hookTone?: string) => void;
   loading: boolean;
   videoStyle: string;
   onStyleChange: (style: string) => void;
+  videoFormat?: string;
+  onFormatChange?: (format: string) => void;
 };
 
 type Mode = "list" | "custom";
 
-export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange }: Props) {
+export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange, videoFormat = "brand-story", onFormatChange }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -224,6 +241,47 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
           />
         </div>
       )}
+
+      {/* Video Format selector */}
+      <div style={{ marginTop: 28, marginBottom: 4 }}>
+        <label style={S.label}>Video Format</label>
+        <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: "var(--subtle)", marginBottom: 12 }}>
+          Choose the structure of your video.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {VIDEO_FORMATS.map((fmt) => {
+            const active = videoFormat === fmt.id;
+            return (
+              <button
+                key={fmt.id}
+                onClick={() => onFormatChange?.(fmt.id)}
+                style={{
+                  textAlign: "left",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  background: active ? "var(--accent-dim)" : "var(--surface)",
+                  cursor: "pointer",
+                  transition: "border-color 0.12s, background 0.12s",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: active ? "var(--accent)" : "var(--border)", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {fmt.label}
+                  </span>
+                  <span style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 10, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 3, padding: "1px 6px", letterSpacing: "0.06em" }}>
+                    {fmt.tag}
+                  </span>
+                </div>
+                <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: active ? "var(--muted)" : "var(--subtle)", paddingLeft: 16 }}>
+                  {fmt.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Visual Style selector */}
       <div style={{ marginTop: 28, marginBottom: 4 }}>

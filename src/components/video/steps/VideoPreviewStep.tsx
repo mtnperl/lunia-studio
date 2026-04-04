@@ -3,23 +3,32 @@
 import { useState } from "react";
 import { Player } from "@remotion/player";
 import { VideoAd } from "@/remotion/VideoAd";
-import { VideoAdData } from "@/lib/types";
+import { VideoAdCaptions } from "@/remotion/VideoAdCaptions";
+import { VideoAdData, VideoCaptionsData, VideoFormat } from "@/lib/types";
 
 type Props = {
   videoAdData: VideoAdData;
+  videoCaptionsData?: VideoCaptionsData;
+  videoFormat?: VideoFormat;
   onUpdateScenes: (scenes: VideoAdData["scenes"]) => void;
   onFontScaleChange: (scale: number) => void;
   onBack: () => void;
 };
 
-export default function VideoPreviewStep({ videoAdData, onFontScaleChange, onBack }: Props) {
+export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onFontScaleChange, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [renderStatus, setRenderStatus] = useState<"idle" | "rendering" | "done" | "failed" | "unavailable">("idle");
+  const [renderStatus, setRenderStatus] = useState<"idle" | "rendering" | "done" | "failed">("idle");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const totalFrames = videoAdData.scenes.reduce((acc, s) => acc + s.durationFrames, 0);
+  const isCaptions = videoFormat === "captions";
+  const activeData = isCaptions ? videoCaptionsData : videoAdData;
+  const totalFrames = isCaptions
+    ? (videoCaptionsData?.durationFrames ?? 0)
+    : videoAdData.scenes.reduce((acc, s) => acc + s.durationFrames, 0);
   const fontScale = videoAdData.fontScale ?? 1;
+  const compositionId = isCaptions ? "VideoAdCaptions" : "VideoAd";
 
   async function handleSave() {
     setSaving(true);
@@ -42,22 +51,32 @@ export default function VideoPreviewStep({ videoAdData, onFontScaleChange, onBac
 
   async function handleRender() {
     setRenderStatus("rendering");
+    setDownloadUrl(null);
     setError(null);
     try {
+      const renderData = isCaptions ? videoCaptionsData : videoAdData;
       const res = await fetch("/api/video/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: videoAdData }),
+        body: JSON.stringify({ data: renderData, compositionId }),
       });
-      if (res.status === 503) {
-        setRenderStatus("unavailable");
-        return;
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({}));
+        throw new Error(msg || "Render failed");
       }
-      if (!res.ok) throw new Error("Render failed");
+      const { url } = await res.json();
+      setDownloadUrl(url);
       setRenderStatus("done");
-    } catch {
+      // Auto-trigger download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lunia-video-${Date.now()}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
       setRenderStatus("failed");
-      setError("Render failed. Check Lambda configuration.");
+      setError(err instanceof Error ? err.message : "Render failed. Please try again.");
     }
   }
 
@@ -76,9 +95,11 @@ export default function VideoPreviewStep({ videoAdData, onFontScaleChange, onBac
         {/* Player */}
         <div style={{ flexShrink: 0 }}>
           <Player
-            component={VideoAd}
-            inputProps={videoAdData}
-            durationInFrames={totalFrames}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            component={(isCaptions ? VideoAdCaptions : VideoAd) as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            inputProps={(activeData ?? videoAdData) as any}
+            durationInFrames={Math.max(totalFrames, 1)}
             compositionWidth={1080}
             compositionHeight={1920}
             fps={30}
@@ -165,26 +186,31 @@ export default function VideoPreviewStep({ videoAdData, onFontScaleChange, onBac
             </button>
 
             <button
-              onClick={handleRender}
+              onClick={renderStatus === "done" && downloadUrl ? () => {
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = `lunia-video.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } : handleRender}
               disabled={renderStatus === "rendering"}
-              title={renderStatus === "unavailable" ? "Set REMOTION_LAMBDA_FUNCTION_NAME to enable video rendering" : "Export as MP4 via Remotion Lambda"}
               style={{
-                background: "transparent",
-                border: "1px solid var(--border)",
+                background: renderStatus === "done" ? "var(--success, #3d7a5c)" : "transparent",
+                border: `1px solid ${renderStatus === "done" ? "var(--success, #3d7a5c)" : renderStatus === "failed" ? "var(--error, #b85c5c)" : "var(--border)"}`,
                 borderRadius: 4,
                 padding: "11px 24px",
                 fontFamily: FF,
                 fontSize: 13,
-                color: renderStatus === "unavailable" ? "var(--subtle)" : "var(--muted)",
+                color: renderStatus === "done" ? "#fff" : renderStatus === "failed" ? "var(--error, #b85c5c)" : "var(--muted)",
                 cursor: renderStatus === "rendering" ? "not-allowed" : "pointer",
                 letterSpacing: "0.04em",
               }}
             >
               {renderStatus === "idle" && "Export MP4"}
-              {renderStatus === "rendering" && "Rendering..."}
-              {renderStatus === "done" && "Render complete"}
-              {renderStatus === "failed" && "Render failed"}
-              {renderStatus === "unavailable" && "Export MP4 (Lambda not configured)"}
+              {renderStatus === "rendering" && "Rendering… (1-3 min)"}
+              {renderStatus === "done" && "Download MP4"}
+              {renderStatus === "failed" && "Retry Export"}
             </button>
           </div>
 
