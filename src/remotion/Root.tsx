@@ -1,6 +1,4 @@
-"use client";
-
-import { Composition } from "remotion";
+import { Composition, registerRoot } from "remotion";
 import { VideoAd } from "./VideoAd";
 import { VideoAdCaptions } from "./VideoAdCaptions";
 import { VideoAdData, VideoCaptionsData } from "@/lib/types";
@@ -33,7 +31,7 @@ const DEFAULT_CAPTIONS_PROPS: VideoCaptionsData = {
   ],
 };
 
-export function RemotionRoot() {
+function RemotionRoot() {
   return (
     <>
       <Composition
@@ -57,3 +55,5 @@ export function RemotionRoot() {
     </>
   );
 }
+
+registerRoot(RemotionRoot);
