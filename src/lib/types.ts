@@ -425,6 +425,8 @@ export type VideoStyle = "cinematic" | "serene" | "bold";
 
 export type VideoAdSceneType = "hook" | "science" | "product" | "proof" | "cta";
 
+export type TextPosition = "top" | "center" | "bottom";
+
 export type VideoAdScene = {
   type: VideoAdSceneType;
   durationFrames: number;   // at 30fps; hook=90, science=150, product=150, proof=150, cta=210
@@ -432,6 +434,7 @@ export type VideoAdScene = {
   subline?: string;
   stat?: string;            // science + proof scenes only
   caption?: string;         // science scene: journal attribution
+  textPosition?: TextPosition;
 };
 
 // How an image is fitted into the 9:16 frame

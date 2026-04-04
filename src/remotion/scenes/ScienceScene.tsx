@@ -1,7 +1,7 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene, SceneImageConfig } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig, TextPosition } from "@/lib/types";
 import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 import type { VideoStyle } from "@/lib/types";
@@ -20,6 +20,7 @@ export function ScienceScene({
   const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const textPos: TextPosition = scene.textPosition ?? "center";
 
   const statScale = spring({ frame, fps, config: { damping: 14, stiffness: 100 } });
   const statOpacity = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
@@ -35,8 +36,11 @@ export function ScienceScene({
     <AbsoluteFill
       style={{
         background: S.surface,
-        justifyContent: "center",
-        padding: `0 ${BRAND.paddingX}px`,
+        paddingLeft: BRAND.paddingX,
+        paddingRight: BRAND.paddingX,
+        paddingTop: textPos === "top" ? BRAND.paddingY : 0,
+        paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
+        justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center",
       }}
     >
       {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
