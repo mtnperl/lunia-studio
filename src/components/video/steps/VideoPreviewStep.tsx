@@ -15,11 +15,15 @@ type Props = {
   onBack: () => void;
 };
 
+type RenderStatus = "idle" | "rendering" | "done" | "failed";
+
 export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onFontScaleChange, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [renderStatus, setRenderStatus] = useState<"idle" | "rendering" | "done" | "failed">("idle");
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [mp4Status, setMp4Status] = useState<RenderStatus>("idle");
+  const [gifStatus, setGifStatus] = useState<RenderStatus>("idle");
+  const [mp4Url, setMp4Url] = useState<string | null>(null);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isCaptions = videoFormat === "captions";
@@ -49,38 +53,93 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
     }
   }
 
-  async function handleRender() {
-    setRenderStatus("rendering");
-    setDownloadUrl(null);
+  // Cross-origin download: fetch as blob first so the browser allows the download attribute
+  async function triggerDownload(url: string, filename: string) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Fallback: open in new tab
+      window.open(url, "_blank");
+    }
+  }
+
+  async function handleRender(format: "mp4" | "gif") {
+    const setStatus = format === "mp4" ? setMp4Status : setGifStatus;
+    const setUrl = format === "mp4" ? setMp4Url : setGifUrl;
+
+    setStatus("rendering");
+    setUrl(null);
     setError(null);
+
     try {
       const renderData = isCaptions ? videoCaptionsData : videoAdData;
       const res = await fetch("/api/video/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: renderData, compositionId }),
+        body: JSON.stringify({ data: renderData, compositionId, format }),
       });
       if (!res.ok) {
         const { error: msg } = await res.json().catch(() => ({}));
         throw new Error(msg || "Render failed");
       }
       const { url } = await res.json();
-      setDownloadUrl(url);
-      setRenderStatus("done");
+      setUrl(url);
+      setStatus("done");
       // Auto-trigger download
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lunia-video-${Date.now()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const ext = format === "gif" ? "gif" : "mp4";
+      await triggerDownload(url, `lunia-video-${Date.now()}.${ext}`);
     } catch (err) {
-      setRenderStatus("failed");
+      setStatus("failed");
       setError(err instanceof Error ? err.message : "Render failed. Please try again.");
     }
   }
 
   const FF = "Helvetica Neue, Helvetica, Arial, sans-serif";
+
+  function ExportButton({ format }: { format: "mp4" | "gif" }) {
+    const status = format === "mp4" ? mp4Status : gifStatus;
+    const url = format === "mp4" ? mp4Url : gifUrl;
+    const ext = format.toUpperCase();
+
+    const isRendering = status === "rendering";
+    const isDone = status === "done" && url;
+
+    return (
+      <button
+        onClick={isDone ? () => triggerDownload(url, `lunia-video.${format}`) : () => handleRender(format)}
+        disabled={isRendering}
+        style={{
+          background: isDone ? "var(--success, #3d7a5c)" : "transparent",
+          border: `1px solid ${isDone ? "var(--success, #3d7a5c)" : status === "failed" ? "var(--error, #b85c5c)" : "var(--border)"}`,
+          borderRadius: 4,
+          padding: "11px 24px",
+          fontFamily: FF,
+          fontSize: 13,
+          color: isDone ? "#fff" : status === "failed" ? "var(--error, #b85c5c)" : "var(--muted)",
+          cursor: isRendering ? "not-allowed" : "pointer",
+          letterSpacing: "0.04em",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          justifyContent: "center",
+        }}
+      >
+        {status === "idle" && `Export ${ext}`}
+        {status === "rendering" && `Rendering ${ext}… (1-3 min)`}
+        {isDone && `↓ Download ${ext}`}
+        {status === "failed" && `Retry ${ext}`}
+      </button>
+    );
+  }
 
   return (
     <div>
@@ -182,36 +241,17 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
                 letterSpacing: "0.04em",
               }}
             >
-              {saving ? "Saving..." : savedId ? "Saved" : "Save to Library"}
+              {saving ? "Saving..." : savedId ? "Saved ✓" : "Save to Library"}
             </button>
 
-            <button
-              onClick={renderStatus === "done" && downloadUrl ? () => {
-                const a = document.createElement("a");
-                a.href = downloadUrl;
-                a.download = `lunia-video.mp4`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              } : handleRender}
-              disabled={renderStatus === "rendering"}
-              style={{
-                background: renderStatus === "done" ? "var(--success, #3d7a5c)" : "transparent",
-                border: `1px solid ${renderStatus === "done" ? "var(--success, #3d7a5c)" : renderStatus === "failed" ? "var(--error, #b85c5c)" : "var(--border)"}`,
-                borderRadius: 4,
-                padding: "11px 24px",
-                fontFamily: FF,
-                fontSize: 13,
-                color: renderStatus === "done" ? "#fff" : renderStatus === "failed" ? "var(--error, #b85c5c)" : "var(--muted)",
-                cursor: renderStatus === "rendering" ? "not-allowed" : "pointer",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {renderStatus === "idle" && "Export MP4"}
-              {renderStatus === "rendering" && "Rendering… (1-3 min)"}
-              {renderStatus === "done" && "Download MP4"}
-              {renderStatus === "failed" && "Retry Export"}
-            </button>
+            <ExportButton format="mp4" />
+            <ExportButton format="gif" />
+          </div>
+
+          {/* Export note */}
+          <div style={{ fontFamily: FF, fontSize: 11, color: "var(--subtle)", marginBottom: 20, lineHeight: 1.5 }}>
+            MP4 — best quality for posting<br />
+            GIF — shareable preview loop
           </div>
 
           {/* Scene summary */}
