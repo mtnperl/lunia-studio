@@ -7,12 +7,21 @@ const nextConfig: NextConfig = {
     "@remotion/renderer",
     "@remotion/bundler",
     "@sparticuz/chromium",
+    // Platform-specific compositor binaries loaded dynamically by @remotion/renderer
+    "@remotion/compositor-linux-x64-gnu",
+    "@remotion/compositor-linux-x64-musl",
+    "@remotion/compositor-linux-arm64-gnu",
+    "@remotion/compositor-linux-arm64-musl",
+    "@remotion/compositor-darwin-x64",
+    "@remotion/compositor-darwin-arm64",
+    "@remotion/compositor-win32-x64-msvc",
   ],
-  // Chromium brotli binaries are not JS — file tracing won't detect them automatically.
+  // Native binaries are not JS — file tracing won't detect them automatically.
   // Explicitly include them so Vercel deploys them alongside the render function.
   outputFileTracingIncludes: {
     "/api/video/render": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
+      "./node_modules/@remotion/compositor-*/**/*",
     ],
   },
   turbopack: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene, SceneImageConfig } from "@/lib/types";
+import { VideoAdScene, SceneImageConfig, TextPosition } from "@/lib/types";
 import { BRAND, getSceneStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 import type { VideoStyle } from "@/lib/types";
@@ -20,6 +20,7 @@ export function ProductScene({
   const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const textPos: TextPosition = scene.textPosition ?? "bottom";
 
   const textY = interpolate(
     spring({ frame: Math.max(0, frame - 18), fps, config: { damping: 18, stiffness: 100 } }),
@@ -27,6 +28,31 @@ export function ProductScene({
     [40, 0]
   );
   const textOpacity = interpolate(frame, [18, 32], [0, 1], { extrapolateRight: "clamp" });
+
+  const textBlockStyle: React.CSSProperties = textPos === "top" ? {
+    position: "absolute",
+    top: 0, left: 0, right: 0,
+    padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to bottom, ${S.bg}f0 0%, ${S.bg}80 60%, transparent 100%)`,
+    transform: `translateY(${textY}px)`,
+    opacity: textOpacity,
+  } : textPos === "center" ? {
+    position: "absolute",
+    top: "50%",
+    left: 0, right: 0,
+    transform: `translateY(calc(-50% + ${textY}px))`,
+    padding: `32px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to bottom, transparent 0%, ${S.bg}c0 20%, ${S.bg}c0 80%, transparent 100%)`,
+    opacity: textOpacity,
+  } : {
+    // bottom (default)
+    position: "absolute",
+    bottom: 0, left: 0, right: 0,
+    padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to top, ${S.bg}f5 0%, ${S.bg}a0 60%, transparent 100%)`,
+    transform: `translateY(${textY}px)`,
+    opacity: textOpacity,
+  };
 
   return (
     <AbsoluteFill style={{ background: S.bg }}>
@@ -74,19 +100,8 @@ export function ProductScene({
         </div>
       )}
 
-      {/* Text block pinned to bottom */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
-          background: `linear-gradient(to top, ${S.bg}f5 0%, ${S.bg}a0 60%, transparent 100%)`,
-          transform: `translateY(${textY}px)`,
-          opacity: textOpacity,
-        }}
-      >
+      {/* Text block */}
+      <div style={textBlockStyle}>
         <div
           style={{
             fontFamily: BRAND.fontFamily,

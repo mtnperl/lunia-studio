@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { VideoAdScene, VideoAdSceneType } from "@/lib/types";
+import { VideoAdScene, VideoAdSceneType, TextPosition } from "@/lib/types";
 
 const SCENE_META: Record<VideoAdSceneType, { label: string; color: string; fields: string[] }> = {
   hook:    { label: "Hook",    color: "#C8A96E", fields: ["headline", "subline"] },
@@ -23,7 +23,7 @@ type Props = {
 export default function VideoScriptStep({ scenes, topic, onUpdate, onRegenerate, onNext, onBack }: Props) {
   const [regenerating, setRegenerating] = useState<VideoAdSceneType | null>(null);
 
-  function updateField(idx: number, field: keyof VideoAdScene, value: string | number) {
+  function updateField(idx: number, field: keyof VideoAdScene, value: string | number | TextPosition) {
     const next = scenes.map((s, i) => i === idx ? { ...s, [field]: value } : s);
     onUpdate(next);
   }
@@ -36,6 +36,45 @@ export default function VideoScriptStep({ scenes, topic, onUpdate, onRegenerate,
       setRegenerating(null);
     }
   }
+
+  const TextPositionPicker = ({ value, onChange }: { value: TextPosition; onChange: (v: TextPosition) => void }) => {
+    const options: { value: TextPosition; label: string; icon: string }[] = [
+      { value: "top", label: "Top", icon: "▲" },
+      { value: "center", label: "Mid", icon: "◈" },
+      { value: "bottom", label: "Bottom", icon: "▼" },
+    ];
+    return (
+      <div>
+        <label style={S.label}>Text Position</label>
+        <div style={{ display: "flex", gap: 6 }}>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onChange(opt.value)}
+              style={{
+                flex: 1,
+                padding: "6px 0",
+                background: value === opt.value ? "var(--accent)" : "var(--bg)",
+                color: value === opt.value ? "var(--bg)" : "var(--muted)",
+                border: `1px solid ${value === opt.value ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 4,
+                fontFamily: "Inter, sans-serif",
+                fontSize: 11,
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column" as const,
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <span style={{ fontSize: 10 }}>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const FIELD_LABELS: Partial<Record<keyof VideoAdScene, string>> = {
     headline: "Headline",
@@ -178,6 +217,12 @@ export default function VideoScriptStep({ scenes, topic, onUpdate, onRegenerate,
                     style={{ width: "100%", accentColor: "var(--accent)" }}
                   />
                 </div>
+
+                {/* Text position picker */}
+                <TextPositionPicker
+                  value={scene.textPosition ?? "center"}
+                  onChange={(v) => updateField(idx, "textPosition", v)}
+                />
               </div>
             </div>
           );
