@@ -5,6 +5,14 @@ import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import { BrandStyle, CarouselConfig, HookTone } from "@/lib/types";
+import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
+
+const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
+  { value: "realistic", label: "Realistic" },
+  { value: "cartoon", label: "Illustration" },
+  { value: "anime", label: "Anime" },
+  { value: "vector", label: "Vector" },
+];
 
 type Props = {
   config: CarouselConfig;
@@ -40,6 +48,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
+  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [imageGuidelines, setImageGuidelines] = useState("");
   const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
   const [regeneratingImage, setRegeneratingImage] = useState(false);
@@ -242,7 +251,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const imgRes = await fetch("/api/carousel/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt }),
+        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt, imageStyle }),
       });
       const imgData = await imgRes.json();
       if (!imgRes.ok || imgData.error) throw new Error(imgData.error ?? "Image generation failed");
@@ -357,7 +366,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // fal.ai images: hook (imgs[0]) only.
   // Content + CTA slides stay clean — brand colors + infographics.
   const slideNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
@@ -369,7 +378,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
   const exportNodes = [
-    <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
+    <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
@@ -738,6 +747,33 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             </p>
           </div>
           <div style={{ padding: "12px 14px" }}>
+            {/* Image style chips */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Style:</span>
+              {IMAGE_STYLE_CHIPS.map((chip) => {
+                const active = imageStyle === chip.value;
+                return (
+                  <button
+                    key={chip.value}
+                    onClick={() => setImageStyle(chip.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
               Current prompt
             </label>

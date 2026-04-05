@@ -138,7 +138,23 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
               Slide {i + 2} — Content
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button
+                onClick={() => setIconPickerOpen(iconPickerOpen === i ? null : i)}
+                style={{
+                  background: iconPickerOpen === i ? "var(--accent-dim)" : "transparent",
+                  border: `1px solid ${iconPickerOpen === i ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  color: iconPickerOpen === i ? "var(--accent)" : "var(--muted)",
+                  fontFamily: "inherit",
+                }}
+              >
+                🔷 Icon
+              </button>
               <button
                 onClick={() => handleRegenerate(i)}
                 disabled={regenerating === i}
@@ -202,6 +218,90 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
               )}
             </div>
           </div>
+
+          {/* Icon picker panel — expands inline when 🔷 Icon button is active */}
+          {iconPickerOpen === i && (
+            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Choose icon graphic
+                </span>
+                <button
+                  onClick={() => setIconPickerOpen(null)}
+                  style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}
+                >
+                  ✕
+                </button>
+              </div>
+              {/* Category tabs */}
+              <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
+                {(["sleep", "health", "lifestyle", "fitness"] as IconCategory[]).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setIconPickerCategory(cat)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 4px",
+                      border: "none",
+                      borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
+                      background: "transparent",
+                      fontSize: 11,
+                      fontWeight: iconPickerCategory === cat ? 700 : 500,
+                      color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
+                      cursor: "pointer",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              {/* Icon grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2, padding: 8, background: "var(--bg)", maxHeight: 240, overflowY: "auto" }}>
+                {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
+                  const currentGraphic = slide.graphic ?? "";
+                  const isSelected = currentGraphic.includes(`"id":"${ic.id}"`);
+                  return (
+                    <button
+                      key={ic.id}
+                      onClick={() => setSlideIcon(i, ic.id)}
+                      title={ic.label}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 3,
+                        padding: "8px 4px",
+                        border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
+                        borderRadius: 6,
+                        background: isSelected ? "var(--accent-dim)" : "transparent",
+                        cursor: "pointer",
+                        transition: "background 0.1s",
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={isSelected ? "var(--accent)" : "var(--muted)"}
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ width: 24, height: 24 }}
+                        dangerouslySetInnerHTML={{ __html: ic.svg }}
+                      />
+                      <span style={{ fontSize: 9, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {ic.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <label style={labelStyle}>Headline</label>
           <input style={{ ...inputStyle, marginBottom: 8 }} value={slide.headline} onChange={(e) => updateSlide(i, "headline", e.target.value)} />
           <label style={labelStyle}>Body</label>
@@ -236,110 +336,6 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
               >
                 ↗
               </a>
-            )}
-          </div>
-          {/* Icon picker */}
-          <div style={{ marginTop: 12 }}>
-            {iconPickerOpen === i ? (
-              <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Choose icon graphic
-                  </span>
-                  <button
-                    onClick={() => setIconPickerOpen(null)}
-                    style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                {/* Category tabs */}
-                <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
-                  {(["sleep", "health", "lifestyle", "fitness"] as IconCategory[]).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setIconPickerCategory(cat)}
-                      style={{
-                        flex: 1,
-                        padding: "8px 4px",
-                        border: "none",
-                        borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
-                        background: "transparent",
-                        fontSize: 11,
-                        fontWeight: iconPickerCategory === cat ? 700 : 500,
-                        color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
-                        cursor: "pointer",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-                {/* Icon grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2, padding: 8, background: "var(--bg)", maxHeight: 240, overflowY: "auto" }}>
-                  {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
-                    const currentGraphic = slide.graphic ?? "";
-                    const isSelected = currentGraphic.includes(`"id":"${ic.id}"`);
-                    return (
-                      <button
-                        key={ic.id}
-                        onClick={() => setSlideIcon(i, ic.id)}
-                        title={ic.label}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 3,
-                          padding: "8px 4px",
-                          border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
-                          borderRadius: 6,
-                          background: isSelected ? "var(--accent-dim)" : "transparent",
-                          cursor: "pointer",
-                          transition: "background 0.1s",
-                        }}
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke={isSelected ? "var(--accent)" : "var(--muted)"}
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ width: 24, height: 24 }}
-                          dangerouslySetInnerHTML={{ __html: ic.svg }}
-                        />
-                        <span style={{ fontSize: 9, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                          {ic.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIconPickerOpen(i)}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "var(--muted)",
-                  fontFamily: "inherit",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <span style={{ fontSize: 14 }}>⊕</span> Add icon graphic
-              </button>
             )}
           </div>
         </div>
