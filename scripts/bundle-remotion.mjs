@@ -2,13 +2,20 @@
  * Pre-bundles the Remotion composition to public/remotion/ so the render
  * API can use it as a serve URL without needing webpack at render time.
  *
- * Run automatically via `prebuild` in package.json before every `npm run build`.
- * The bundle is excluded from git via .gitignore.
+ * The bundle is committed to git so Vercel deployments always have it.
+ * On Vercel (VERCEL=1) or when --skip-on-vercel is passed, this is a no-op.
+ * To rebuild locally: npm run bundle-remotion
  */
 import { bundle } from "@remotion/bundler";
 import path from "path";
 import { fileURLToPath } from "url";
 import { rm, mkdir } from "fs/promises";
+
+// Skip on Vercel — bundle is committed to git, no need to rebuild
+if (process.env.VERCEL === "1" || process.argv.includes("--skip-on-vercel")) {
+  console.log("Skipping Remotion bundle (running on Vercel — using committed bundle).");
+  process.exit(0);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const entryPoint = path.join(__dirname, "../src/remotion/Root.tsx");
