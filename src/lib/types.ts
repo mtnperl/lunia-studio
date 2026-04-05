@@ -474,7 +474,6 @@ export type VideoAdData = {
   videoStyle?: VideoStyle;
   videoFormat?: VideoFormat;
   textStyle?: VideoTextStyle;
-  imageStyle?: VideoImageStyle;
 };
 
 export type SavedVideoAd = {

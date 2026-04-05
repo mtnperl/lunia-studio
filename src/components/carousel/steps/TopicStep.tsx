@@ -2,6 +2,15 @@
 import { useState, useEffect } from "react";
 import { HookTone, Subject } from "@/lib/types";
 
+export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
+
+const IMAGE_STYLE_OPTIONS: { value: CarouselImageStyle; label: string; description: string }[] = [
+  { value: "realistic", label: "Realistic Photo", description: "Editorial photography — Lunia's default cinematic look" },
+  { value: "cartoon", label: "Digital Illustration", description: "Bold colorful illustration, expressive and modern" },
+  { value: "anime", label: "Anime / Cel-Shaded", description: "Dreamlike anime scenes — great for sleep & night themes" },
+  { value: "vector", label: "Vector / Flat", description: "Clean flat graphic for a modern minimal look" },
+];
+
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
   { value: "science-backed", label: "Science-backed", description: "Lead with research findings and data" },
@@ -25,7 +34,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle) => void;
 };
 
 type Mode = "list" | "custom";
@@ -40,6 +49,7 @@ export default function TopicStep({ onNext }: Props) {
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [concise, setConcise] = useState(false);
+  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
 
   useEffect(() => {
     fetch("/api/subjects")
@@ -69,7 +79,7 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, subjectId, concise);
+    onNext(topic, hookTone, subjectId, concise, imageStyle);
   }
 
   return (
@@ -246,6 +256,34 @@ export default function TopicStep({ onNext }: Props) {
               <div
                 key={opt.value}
                 onClick={() => setHookTone(opt.value)}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Hook image style */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook image style</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {IMAGE_STYLE_OPTIONS.map((opt) => {
+            const sel = imageStyle === opt.value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setImageStyle(opt.value)}
                 style={{
                   border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
                   borderRadius: 8,
