@@ -1,8 +1,8 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene, SceneImageConfig, TextPosition } from "@/lib/types";
-import { BRAND, getSceneStyle } from "../lib/brand";
+import { VideoAdScene, SceneImageConfig, TextPosition, VideoTextStyle } from "@/lib/types";
+import { BRAND, getSceneStyle, formatHeadline, getBackdropStyle, getTextStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 import type { VideoStyle } from "@/lib/types";
 
@@ -11,16 +11,21 @@ export function HookScene({
   image,
   fontScale = 1,
   videoStyle = "cinematic",
+  textStyle,
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
   videoStyle?: VideoStyle;
+  textStyle?: VideoTextStyle;
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const textPos: TextPosition = scene.textPosition ?? "center";
+  const effectiveOverlay = textStyle?.overlayOpacity ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : undefined;
 
   const headlineY = interpolate(
     spring({ frame, fps, config: { damping: 18, stiffness: 120 } }),
@@ -28,13 +33,6 @@ export function HookScene({
     [60, 0]
   );
   const headlineOpacity = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
-
-  const sublineY = interpolate(
-    spring({ frame: Math.max(0, frame - 10), fps, config: { damping: 18, stiffness: 100 } }),
-    [0, 1],
-    [40, 0]
-  );
-  const sublineOpacity = interpolate(frame, [10, 22], [0, 1], { extrapolateRight: "clamp" });
 
   const accentOpacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
 
@@ -47,7 +45,7 @@ export function HookScene({
       paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
       justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center",
     }}>
-      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
+      {image && <SceneImageBackground image={image} overlayOpacity={effectiveOverlay} />}
 
       {/* Top accent line */}
       <div
@@ -62,44 +60,40 @@ export function HookScene({
         }}
       />
 
-      <div style={{ transform: `translateY(${headlineY}px)`, opacity: headlineOpacity }}>
+      <div style={{ transform: `translateY(${headlineY}px)`, opacity: headlineOpacity, ...getBackdropStyle(textStyle) }}>
         <div
           style={{
             fontFamily: BRAND.fontFamily,
             fontSize: S.fontHero * fontScale,
-            fontWeight: 700,
             color: S.headlineColor,
             lineHeight: 1.05,
             letterSpacing: "-0.02em",
             textShadow: BRAND.textShadow,
+            ...getTextStyle(textStyle),
           }}
         >
-          {scene.headline}
+          {headline}
         </div>
-      </div>
 
-      {scene.subline && (
-        <div
-          style={{
-            transform: `translateY(${sublineY}px)`,
-            opacity: sublineOpacity,
-            marginTop: 32,
-          }}
-        >
+        {subline && (
           <div
             style={{
+              marginTop: textStyle?.textBackdrop ? 16 : 32,
               fontFamily: BRAND.fontFamily,
               fontSize: S.fontSubline * fontScale,
-              fontWeight: 500,
+              fontWeight: textStyle?.fontWeight ?? 500,
               color: S.sublineColor,
               lineHeight: 1.5,
               textShadow: BRAND.textShadow,
+              ...(textStyle?.textStroke ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {}),
+              ...(textStyle?.allCaps ? { textTransform: "uppercase" as const } : {}),
+              ...(textStyle?.lineBreakChars ? { whiteSpace: "pre-line" as const } : {}),
             }}
           >
-            {scene.subline}
+            {subline}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Bottom accent bar */}
       <div

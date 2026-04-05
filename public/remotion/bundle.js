@@ -13,6 +13,44 @@ var esm = __webpack_require__(3947);
 ;// ./src/remotion/lib/brand.ts
 
 "use client";
+function formatHeadline(text, textStyle) {
+  const max = textStyle == null ? void 0 : textStyle.lineBreakChars;
+  if (!max || max <= 0) return text;
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    if (!line) {
+      line = word;
+      continue;
+    }
+    if ((line + " " + word).length <= max) {
+      line += " " + word;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.join("\n");
+}
+function getBackdropStyle(textStyle) {
+  if (!(textStyle == null ? void 0 : textStyle.textBackdrop)) return {};
+  return {
+    background: "rgba(0,0,0,0.58)",
+    borderRadius: 10,
+    padding: "20px 28px",
+    alignSelf: "flex-start"
+  };
+}
+function getTextStyle(textStyle) {
+  return {
+    fontWeight: (textStyle == null ? void 0 : textStyle.fontWeight) ?? 700,
+    ...(textStyle == null ? void 0 : textStyle.allCaps) ? { textTransform: "uppercase" } : {},
+    ...(textStyle == null ? void 0 : textStyle.textStroke) ? { WebkitTextStroke: "1.5px rgba(0,0,0,0.65)" } : {},
+    whiteSpace: (textStyle == null ? void 0 : textStyle.lineBreakChars) ? "pre-line" : void 0
+  };
+}
 const BRAND = {
   // Brand colors
   bg: "#102635",
@@ -158,24 +196,22 @@ function HookScene({
   scene,
   image,
   fontScale = 1,
-  videoStyle = "cinematic"
+  videoStyle = "cinematic",
+  textStyle
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
   const textPos = scene.textPosition ?? "center";
+  const effectiveOverlay = (textStyle == null ? void 0 : textStyle.overlayOpacity) ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : void 0;
   const headlineY = (0,esm.interpolate)(
     (0,esm.spring)({ frame, fps, config: { damping: 18, stiffness: 120 } }),
     [0, 1],
     [60, 0]
   );
   const headlineOpacity = (0,esm.interpolate)(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
-  const sublineY = (0,esm.interpolate)(
-    (0,esm.spring)({ frame: Math.max(0, frame - 10), fps, config: { damping: 18, stiffness: 100 } }),
-    [0, 1],
-    [40, 0]
-  );
-  const sublineOpacity = (0,esm.interpolate)(frame, [10, 22], [0, 1], { extrapolateRight: "clamp" });
   const accentOpacity = (0,esm.interpolate)(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: {
     background: S.bg,
@@ -185,7 +221,7 @@ function HookScene({
     paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
     justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center"
   }, children: [
-    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
+    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: effectiveOverlay }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)(
       "div",
       {
@@ -200,45 +236,41 @@ function HookScene({
         }
       }
     ),
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { transform: `translateY(${headlineY}px)`, opacity: headlineOpacity }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
-      "div",
-      {
-        style: {
-          fontFamily: BRAND.fontFamily,
-          fontSize: S.fontHero * fontScale,
-          fontWeight: 700,
-          color: S.headlineColor,
-          lineHeight: 1.05,
-          letterSpacing: "-0.02em",
-          textShadow: BRAND.textShadow
-        },
-        children: scene.headline
-      }
-    ) }),
-    scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
-      "div",
-      {
-        style: {
-          transform: `translateY(${sublineY}px)`,
-          opacity: sublineOpacity,
-          marginTop: 32
-        },
-        children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
-          "div",
-          {
-            style: {
-              fontFamily: BRAND.fontFamily,
-              fontSize: S.fontSubline * fontScale,
-              fontWeight: 500,
-              color: S.sublineColor,
-              lineHeight: 1.5,
-              textShadow: BRAND.textShadow
-            },
-            children: scene.subline
-          }
-        )
-      }
-    ),
+    /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { transform: `translateY(${headlineY}px)`, opacity: headlineOpacity, ...getBackdropStyle(textStyle) }, children: [
+      /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            fontFamily: BRAND.fontFamily,
+            fontSize: S.fontHero * fontScale,
+            color: S.headlineColor,
+            lineHeight: 1.05,
+            letterSpacing: "-0.02em",
+            textShadow: BRAND.textShadow,
+            ...getTextStyle(textStyle)
+          },
+          children: headline
+        }
+      ),
+      subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            marginTop: (textStyle == null ? void 0 : textStyle.textBackdrop) ? 16 : 32,
+            fontFamily: BRAND.fontFamily,
+            fontSize: S.fontSubline * fontScale,
+            fontWeight: (textStyle == null ? void 0 : textStyle.fontWeight) ?? 500,
+            color: S.sublineColor,
+            lineHeight: 1.5,
+            textShadow: BRAND.textShadow,
+            ...(textStyle == null ? void 0 : textStyle.textStroke) ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {},
+            ...(textStyle == null ? void 0 : textStyle.allCaps) ? { textTransform: "uppercase" } : {},
+            ...(textStyle == null ? void 0 : textStyle.lineBreakChars) ? { whiteSpace: "pre-line" } : {}
+          },
+          children: subline
+        }
+      )
+    ] }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)(
       "div",
       {
@@ -267,12 +299,16 @@ function ScienceScene({
   scene,
   image,
   fontScale = 1,
-  videoStyle = "cinematic"
+  videoStyle = "cinematic",
+  textStyle
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
   const textPos = scene.textPosition ?? "center";
+  const effectiveOverlay = (textStyle == null ? void 0 : textStyle.overlayOpacity) ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : void 0;
   const statScale = (0,esm.spring)({ frame, fps, config: { damping: 14, stiffness: 100 } });
   const statOpacity = (0,esm.interpolate)(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
   const contentY = (0,esm.interpolate)(
@@ -293,7 +329,7 @@ function ScienceScene({
         justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center"
       },
       children: [
-        image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
+        image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: effectiveOverlay }),
         scene.stat && /* @__PURE__ */ (0,jsx_runtime.jsx)(
           "div",
           {
@@ -318,35 +354,38 @@ function ScienceScene({
             )
           }
         ),
-        /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { transform: `translateY(${contentY}px)`, opacity: contentOpacity }, children: [
+        /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { transform: `translateY(${contentY}px)`, opacity: contentOpacity, ...getBackdropStyle(textStyle) }, children: [
           /* @__PURE__ */ (0,jsx_runtime.jsx)(
             "div",
             {
               style: {
                 fontFamily: BRAND.fontFamily,
                 fontSize: S.fontHeadline * fontScale,
-                fontWeight: 600,
                 color: S.headlineColor,
                 lineHeight: 1.15,
                 marginBottom: 20,
-                textShadow: BRAND.textShadow
+                textShadow: BRAND.textShadow,
+                ...getTextStyle(textStyle)
               },
-              children: scene.headline
+              children: headline
             }
           ),
-          scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+          subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
             "div",
             {
               style: {
                 fontFamily: BRAND.fontFamily,
                 fontSize: S.fontSubline * fontScale,
-                fontWeight: 500,
+                fontWeight: (textStyle == null ? void 0 : textStyle.fontWeight) ?? 500,
                 color: S.sublineColor,
                 lineHeight: 1.5,
                 marginBottom: 24,
-                textShadow: BRAND.textShadow
+                textShadow: BRAND.textShadow,
+                ...(textStyle == null ? void 0 : textStyle.textStroke) ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {},
+                ...(textStyle == null ? void 0 : textStyle.allCaps) ? { textTransform: "uppercase" } : {},
+                ...(textStyle == null ? void 0 : textStyle.lineBreakChars) ? { whiteSpace: "pre-line" } : {}
               },
-              children: scene.subline
+              children: subline
             }
           ),
           scene.caption && /* @__PURE__ */ (0,jsx_runtime.jsx)(
@@ -394,12 +433,16 @@ function ProductScene({
   scene,
   image,
   fontScale = 1,
-  videoStyle = "cinematic"
+  videoStyle = "cinematic",
+  textStyle
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
   const textPos = scene.textPosition ?? "bottom";
+  const effectiveOverlay = (textStyle == null ? void 0 : textStyle.overlayOpacity) ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : void 0;
   const textY = (0,esm.interpolate)(
     (0,esm.spring)({ frame: Math.max(0, frame - 18), fps, config: { damping: 18, stiffness: 100 } }),
     [0, 1],
@@ -436,7 +479,7 @@ function ProductScene({
     opacity: textOpacity
   };
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: { background: S.bg }, children: [
-    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
+    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: effectiveOverlay }),
     !image && /* @__PURE__ */ (0,jsx_runtime.jsx)(
       "div",
       {
@@ -490,27 +533,30 @@ function ProductScene({
           style: {
             fontFamily: BRAND.fontFamily,
             fontSize: S.fontHeadline * fontScale,
-            fontWeight: 700,
             color: S.headlineColor,
             lineHeight: 1.1,
             marginBottom: 16,
-            textShadow: BRAND.textShadow
+            textShadow: BRAND.textShadow,
+            ...getTextStyle(textStyle)
           },
-          children: scene.headline
+          children: headline
         }
       ),
-      scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+      subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
         "div",
         {
           style: {
             fontFamily: BRAND.fontFamily,
             fontSize: S.fontSubline * fontScale,
-            fontWeight: 500,
+            fontWeight: (textStyle == null ? void 0 : textStyle.fontWeight) ?? 500,
             color: S.sublineColor,
             lineHeight: 1.5,
-            textShadow: BRAND.textShadow
+            textShadow: BRAND.textShadow,
+            ...(textStyle == null ? void 0 : textStyle.textStroke) ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {},
+            ...(textStyle == null ? void 0 : textStyle.allCaps) ? { textTransform: "uppercase" } : {},
+            ...(textStyle == null ? void 0 : textStyle.lineBreakChars) ? { whiteSpace: "pre-line" } : {}
           },
-          children: scene.subline
+          children: subline
         }
       )
     ] })
@@ -528,12 +574,15 @@ function ProofScene({
   scene,
   image,
   fontScale = 1,
-  videoStyle = "cinematic"
+  videoStyle = "cinematic",
+  textStyle
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
   const textPos = scene.textPosition ?? "center";
+  const effectiveOverlay = (textStyle == null ? void 0 : textStyle.overlayOpacity) ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
   const statProgress = (0,esm.spring)({ frame, fps, config: { damping: 12, stiffness: 80 } });
   const statOpacity = (0,esm.interpolate)(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
   const textY = (0,esm.interpolate)(
@@ -556,7 +605,7 @@ function ProofScene({
         alignItems: "flex-start"
       },
       children: [
-        image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
+        image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: effectiveOverlay }),
         scene.stat && /* @__PURE__ */ (0,jsx_runtime.jsx)(
           "div",
           {
@@ -595,18 +644,18 @@ function ProofScene({
             children: scene.caption
           }
         ) }),
-        /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { transform: `translateY(${textY}px)`, opacity: textOpacity }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { transform: `translateY(${textY}px)`, opacity: textOpacity, ...getBackdropStyle(textStyle) }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
           "div",
           {
             style: {
               fontFamily: BRAND.fontFamily,
               fontSize: S.fontHeadline * fontScale,
-              fontWeight: 600,
               color: S.headlineColor,
               lineHeight: 1.15,
-              textShadow: BRAND.textShadow
+              textShadow: BRAND.textShadow,
+              ...getTextStyle(textStyle)
             },
-            children: scene.headline
+            children: headline
           }
         ) }),
         /* @__PURE__ */ (0,jsx_runtime.jsx)(
@@ -651,12 +700,16 @@ function CTAScene({
   image,
   logoUrl,
   fontScale = 1,
-  videoStyle = "cinematic"
+  videoStyle = "cinematic",
+  textStyle
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
   const textPos = scene.textPosition ?? "center";
+  const effectiveOverlay = (textStyle == null ? void 0 : textStyle.overlayOpacity) ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : void 0;
   const bgProgress = (0,esm.spring)({ frame, fps, config: { damping: 20, stiffness: 60 } });
   const overlayOpacity = (0,esm.interpolate)(bgProgress, [0, 1], [0, 0.85]);
   const headlineY = (0,esm.interpolate)(
@@ -670,7 +723,7 @@ function CTAScene({
   const buttonOpacity = (0,esm.interpolate)(frame, [40, 55], [0, 1], { extrapolateRight: "clamp" });
   const logoOpacity = (0,esm.interpolate)(frame, [55, 70], [0, 1], { extrapolateRight: "clamp" });
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: { background: S.bg }, children: [
-    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
+    image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: effectiveOverlay }),
     videoStyle !== "bold" && /* @__PURE__ */ (0,jsx_runtime.jsx)(
       "div",
       {
@@ -696,45 +749,53 @@ function CTAScene({
           gap: 24
         },
         children: [
-          /* @__PURE__ */ (0,jsx_runtime.jsx)(
+          /* @__PURE__ */ (0,jsx_runtime.jsxs)(
             "div",
             {
               style: {
                 transform: `translateY(${headlineY}px)`,
                 opacity: headlineOpacity,
-                textAlign: "center"
+                textAlign: "center",
+                ...getBackdropStyle(textStyle)
               },
-              children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
-                "div",
-                {
-                  style: {
-                    fontFamily: BRAND.fontFamily,
-                    fontSize: S.fontHero * fontScale,
-                    fontWeight: 700,
-                    color: S.headlineColor,
-                    lineHeight: 1.05,
-                    letterSpacing: "-0.02em",
-                    textShadow: BRAND.textShadow
-                  },
-                  children: scene.headline
-                }
-              )
+              children: [
+                /* @__PURE__ */ (0,jsx_runtime.jsx)(
+                  "div",
+                  {
+                    style: {
+                      fontFamily: BRAND.fontFamily,
+                      fontSize: S.fontHero * fontScale,
+                      color: S.headlineColor,
+                      lineHeight: 1.05,
+                      letterSpacing: "-0.02em",
+                      textShadow: BRAND.textShadow,
+                      ...getTextStyle(textStyle)
+                    },
+                    children: headline
+                  }
+                ),
+                subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+                  "div",
+                  {
+                    style: {
+                      marginTop: (textStyle == null ? void 0 : textStyle.textBackdrop) ? 12 : 0,
+                      opacity: sublineOpacity,
+                      fontFamily: BRAND.fontFamily,
+                      fontSize: S.fontSubline * fontScale,
+                      fontWeight: (textStyle == null ? void 0 : textStyle.fontWeight) ?? 500,
+                      color: S.sublineColor,
+                      lineHeight: 1.5,
+                      textShadow: BRAND.textShadow,
+                      ...(textStyle == null ? void 0 : textStyle.textStroke) ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {},
+                      ...(textStyle == null ? void 0 : textStyle.allCaps) ? { textTransform: "uppercase" } : {},
+                      ...(textStyle == null ? void 0 : textStyle.lineBreakChars) ? { whiteSpace: "pre-line" } : {}
+                    },
+                    children: subline
+                  }
+                )
+              ]
             }
           ),
-          scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { opacity: sublineOpacity, textAlign: "center" }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
-            "div",
-            {
-              style: {
-                fontFamily: BRAND.fontFamily,
-                fontSize: S.fontSubline * fontScale,
-                fontWeight: 500,
-                color: S.sublineColor,
-                lineHeight: 1.5,
-                textShadow: BRAND.textShadow
-              },
-              children: scene.subline
-            }
-          ) }),
           /* @__PURE__ */ (0,jsx_runtime.jsx)(
             "div",
             {
@@ -843,22 +904,22 @@ function CTAScene({
 
 
 function VideoAd(props) {
-  const { scenes, sceneImages, logoUrl, fontScale = 1, videoStyle = "cinematic" } = props;
+  const { scenes, sceneImages, logoUrl, fontScale = 1, videoStyle = "cinematic", textStyle } = props;
   function renderScene(type, idx) {
     const scene = scenes.find((s) => s.type === type) ?? scenes[idx];
     if (!scene) return null;
     const image = sceneImages == null ? void 0 : sceneImages[type];
     switch (type) {
       case "hook":
-        return /* @__PURE__ */ (0,jsx_runtime.jsx)(HookScene, { scene, image, fontScale, videoStyle });
+        return /* @__PURE__ */ (0,jsx_runtime.jsx)(HookScene, { scene, image, fontScale, videoStyle, textStyle });
       case "science":
-        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ScienceScene, { scene, image, fontScale, videoStyle });
+        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ScienceScene, { scene, image, fontScale, videoStyle, textStyle });
       case "product":
-        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ProductScene, { scene, image, fontScale, videoStyle });
+        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ProductScene, { scene, image, fontScale, videoStyle, textStyle });
       case "proof":
-        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ProofScene, { scene, image, fontScale, videoStyle });
+        return /* @__PURE__ */ (0,jsx_runtime.jsx)(ProofScene, { scene, image, fontScale, videoStyle, textStyle });
       case "cta":
-        return /* @__PURE__ */ (0,jsx_runtime.jsx)(CTAScene, { scene, image, logoUrl, fontScale, videoStyle });
+        return /* @__PURE__ */ (0,jsx_runtime.jsx)(CTAScene, { scene, image, logoUrl, fontScale, videoStyle, textStyle });
     }
   }
   const ORDER = ["hook", "science", "product", "proof", "cta"];

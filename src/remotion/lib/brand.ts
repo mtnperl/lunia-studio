@@ -1,6 +1,47 @@
 "use client";
 
-import type { VideoStyle } from "@/lib/types";
+import type { VideoStyle, VideoTextStyle } from "@/lib/types";
+
+// ── Text style helpers ────────────────────────────────────────────────────────
+
+/** Break a headline at word boundaries so no line exceeds maxChars. */
+export function formatHeadline(text: string, textStyle?: VideoTextStyle): string {
+  const max = textStyle?.lineBreakChars;
+  if (!max || max <= 0) return text;
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    if (!line) { line = word; continue; }
+    if ((line + " " + word).length <= max) { line += " " + word; }
+    else { lines.push(line); line = word; }
+  }
+  if (line) lines.push(line);
+  return lines.join("\n");
+}
+
+/** Styles applied to the text wrapper div when textBackdrop is on. */
+export function getBackdropStyle(textStyle?: VideoTextStyle): React.CSSProperties {
+  if (!textStyle?.textBackdrop) return {};
+  return {
+    background: "rgba(0,0,0,0.58)",
+    borderRadius: 10,
+    padding: "20px 28px",
+    alignSelf: "flex-start",
+  };
+}
+
+/** Styles merged into every headline/subline text div. */
+export function getTextStyle(textStyle?: VideoTextStyle): React.CSSProperties {
+  return {
+    fontWeight: textStyle?.fontWeight ?? 700,
+    ...(textStyle?.allCaps ? { textTransform: "uppercase" as const } : {}),
+    ...(textStyle?.textStroke
+      ? { WebkitTextStroke: "1.5px rgba(0,0,0,0.65)" }
+      : {}),
+    whiteSpace: textStyle?.lineBreakChars ? ("pre-line" as const) : undefined,
+  };
+}
 
 export const BRAND = {
   // Brand colors

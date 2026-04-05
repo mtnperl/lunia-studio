@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle, VideoFormat, VideoCaptionsData } from "@/lib/types";
+import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle, VideoFormat, VideoCaptionsData, VideoTextStyle } from "@/lib/types";
 import VideoTopicStep from "./video/steps/VideoTopicStep";
 import VideoScriptStep from "./video/steps/VideoScriptStep";
 import VideoAssetsStep from "./video/steps/VideoAssetsStep";
@@ -133,6 +133,7 @@ export default function VideoView() {
   // Step 4
   const [fontScale, setFontScale] = useState(1.0);
   const [videoStyle, setVideoStyle] = useState<VideoStyle>("cinematic");
+  const [textStyle, setTextStyle] = useState<VideoTextStyle>({});
 
   const videoAdData: VideoAdData = useMemo(() => ({
     topic,
@@ -142,9 +143,10 @@ export default function VideoView() {
     fontScale,
     videoStyle,
     videoFormat,
+    textStyle,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle, videoFormat]);
+  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle, videoFormat, textStyle]);
 
   const videoCaptionsData: VideoCaptionsData = useMemo(() => ({
     topic,
@@ -375,6 +377,7 @@ export default function VideoView() {
           videoFormat={videoFormat}
           onUpdateScenes={setScenes}
           onFontScaleChange={setFontScale}
+          onTextStyleChange={setTextStyle}
           onBack={() => setStep(3)}
         />
       )}

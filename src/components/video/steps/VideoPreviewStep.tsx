@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Player } from "@remotion/player";
 import { VideoAd } from "@/remotion/VideoAd";
 import { VideoAdCaptions } from "@/remotion/VideoAdCaptions";
-import { VideoAdData, VideoCaptionsData, VideoFormat, TextPosition } from "@/lib/types";
+import { VideoAdData, VideoCaptionsData, VideoFormat, TextPosition, VideoTextStyle } from "@/lib/types";
 
 type Props = {
   videoAdData: VideoAdData;
@@ -12,6 +12,7 @@ type Props = {
   videoFormat?: VideoFormat;
   onUpdateScenes: (scenes: VideoAdData["scenes"]) => void;
   onFontScaleChange: (scale: number) => void;
+  onTextStyleChange: (style: VideoTextStyle) => void;
   onBack: () => void;
 };
 
@@ -23,7 +24,7 @@ const TEXT_POSITIONS: { value: TextPosition; label: string }[] = [
   { value: "bottom", label: "▼" },
 ];
 
-export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onUpdateScenes, onFontScaleChange, onBack }: Props) {
+export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onUpdateScenes, onFontScaleChange, onTextStyleChange, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [mp4Status, setMp4Status] = useState<RenderStatus>("idle");
@@ -38,7 +39,12 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
     ? (videoCaptionsData?.durationFrames ?? 0)
     : videoAdData.scenes.reduce((acc, s) => acc + s.durationFrames, 0);
   const fontScale = videoAdData.fontScale ?? 1;
+  const ts = videoAdData.textStyle ?? {};
   const compositionId = isCaptions ? "VideoAdCaptions" : "VideoAd";
+
+  function patchTextStyle(patch: Partial<VideoTextStyle>) {
+    onTextStyleChange({ ...ts, ...patch });
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -226,6 +232,121 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
             />
             <div style={{ display: "flex", justifyContent: "space-between", fontFamily: FF, fontSize: 10, color: "var(--subtle)", marginTop: 4 }}>
               <span>Small</span><span>Default</span><span>Large</span>
+            </div>
+          </div>
+
+          {/* Text style controls */}
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              padding: "14px 16px",
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontFamily: FF, fontSize: 11, color: "var(--muted)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
+              Text Style
+            </div>
+
+            {/* Row 1: toggles */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              {([
+                { key: "textBackdrop", label: "Backdrop" },
+                { key: "textStroke",   label: "Outline" },
+                { key: "allCaps",      label: "ALL CAPS" },
+              ] as { key: keyof VideoTextStyle; label: string }[]).map(({ key, label }) => {
+                const active = !!ts[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => patchTextStyle({ [key]: !active })}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 4,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim, rgba(255,216,0,0.12))" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontFamily: FF,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+
+              {/* Font weight toggle */}
+              <button
+                onClick={() => patchTextStyle({ fontWeight: ts.fontWeight === 900 ? 700 : 900 })}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 4,
+                  border: `1px solid ${ts.fontWeight === 900 ? "var(--accent)" : "var(--border)"}`,
+                  background: ts.fontWeight === 900 ? "var(--accent-dim, rgba(255,216,0,0.12))" : "transparent",
+                  color: ts.fontWeight === 900 ? "var(--accent)" : "var(--muted)",
+                  fontFamily: FF,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  letterSpacing: "0.04em",
+                  fontWeight: ts.fontWeight === 900 ? 700 : 400,
+                }}
+              >
+                Heavy (900)
+              </button>
+            </div>
+
+            {/* Row 2: Overlay intensity slider */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontFamily: FF, fontSize: 11, color: "var(--muted)" }}>Image overlay</span>
+                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--accent)" }}>
+                  {ts.overlayOpacity !== undefined ? `${Math.round(ts.overlayOpacity * 100)}%` : "default"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={ts.overlayOpacity !== undefined ? Math.round(ts.overlayOpacity * 100) : 55}
+                  onChange={(e) => patchTextStyle({ overlayOpacity: Number(e.target.value) / 100 })}
+                  style={{ flex: 1, accentColor: "var(--accent)" }}
+                />
+                {ts.overlayOpacity !== undefined && (
+                  <button
+                    onClick={() => patchTextStyle({ overlayOpacity: undefined })}
+                    style={{ fontFamily: FF, fontSize: 10, color: "var(--subtle)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                  >
+                    reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Line width slider */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontFamily: FF, fontSize: 11, color: "var(--muted)" }}>Line width</span>
+                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--accent)" }}>
+                  {ts.lineBreakChars ? `${ts.lineBreakChars} chars` : "off"}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={30}
+                step={1}
+                value={ts.lineBreakChars ?? 0}
+                onChange={(e) => patchTextStyle({ lineBreakChars: Number(e.target.value) || undefined })}
+                style={{ width: "100%", accentColor: "var(--accent)" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontFamily: FF, fontSize: 10, color: "var(--subtle)", marginTop: 4 }}>
+                <span>Off</span><span>Narrow</span><span>Wide</span>
+              </div>
             </div>
           </div>
 
