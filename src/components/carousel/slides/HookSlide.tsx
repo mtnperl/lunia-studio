@@ -104,26 +104,23 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
         }}>
           {subline}
         </div>
-      </div>
 
-      {/* Trust liner — "Based on X research" */}
-      {sourceNote && (
-        <div style={{
-          position: 'absolute',
-          bottom: SLIDE_PADDING.y + 72,  // sits just above the logo
-          left: SLIDE_PADDING.x,
-          right: SLIDE_PADDING.x,
-          fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 400,
-          fontSize: 20,
-          color: sublineColor,
-          opacity: 0.65,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-        }}>
-          {sourceNote}
-        </div>
-      )}
+        {/* Trust liner — sits directly beneath the subline */}
+        {sourceNote && (
+          <div style={{
+            fontFamily: 'Jost, Montserrat, sans-serif',
+            fontWeight: 400,
+            fontSize: 20,
+            color: sublineColor,
+            opacity: 0.65,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            marginTop: -8,
+          }}>
+            {sourceNote}
+          </div>
+        )}
+      </div>
 
       <LuniaLogo sizeScale={logoScale} />
     </SlideWrapper>
