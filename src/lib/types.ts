@@ -46,6 +46,7 @@ export type Topic = {
 export type Hook = {
   headline: string;
   subline: string;
+  sourceNote?: string;
 };
 
 export type CarouselContentSlide = {
@@ -219,6 +220,10 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
       nodes: z.array(z.object({ label: z.string(), sublabel: z.string().optional() })).min(3).max(5),
       title: z.string().optional(),
     }),
+  }),
+  z.object({
+    component: z.literal('icon'),
+    data: z.object({ id: z.string(), label: z.string().optional() }),
   }),
 ]);
 
@@ -422,6 +427,7 @@ export type Insight = {
 // ─── Video Ad types ───────────────────────────────────────────────────────────
 
 export type VideoStyle = "cinematic" | "serene" | "bold";
+export type VideoImageStyle = "realistic" | "cartoon" | "anime" | "vector";
 
 export type VideoAdSceneType = "hook" | "science" | "product" | "proof" | "cta";
 
@@ -468,6 +474,7 @@ export type VideoAdData = {
   videoStyle?: VideoStyle;
   videoFormat?: VideoFormat;
   textStyle?: VideoTextStyle;
+  imageStyle?: VideoImageStyle;
 };
 
 export type SavedVideoAd = {

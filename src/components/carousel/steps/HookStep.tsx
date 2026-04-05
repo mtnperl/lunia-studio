@@ -83,7 +83,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
               }}
             >
-              <HookSlide headline={h.headline} subline={h.subline} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} showDecoration={false} />
+              <HookSlide headline={h.headline} subline={h.subline} sourceNote={h.sourceNote} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} showDecoration={false} />
 
               {isSelected && (
                 <div style={{

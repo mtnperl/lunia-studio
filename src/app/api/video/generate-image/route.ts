@@ -3,6 +3,13 @@ import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
 
+const FAL_STYLE_MAP: Record<string, string> = {
+  realistic: "realistic_image",
+  cartoon: "digital_illustration",
+  anime: "digital_illustration/anime",
+  vector: "vector_illustration",
+};
+
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -15,12 +22,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const prompt: string = body.prompt ?? "";
     if (!prompt.trim()) return Response.json({ error: "Prompt required" }, { status: 400 });
+    const imageStyle: string = body.imageStyle ?? "realistic";
+    const falStyle = FAL_STYLE_MAP[imageStyle] ?? "realistic_image";
 
     const result = await fal.subscribe("fal-ai/recraft-v3", {
       input: {
         prompt,
         image_size: { width: 1080, height: 1920 },
-        style: "realistic_image",
+        style: falStyle,
         num_images: 1,
       },
       logs: false,

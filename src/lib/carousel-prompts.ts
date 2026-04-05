@@ -65,9 +65,9 @@ ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
-    { "headline": "string", "subline": "string" },
-    { "headline": "string", "subline": "string" },
-    { "headline": "string", "subline": "string" }
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" }
   ],
   "slides": [
     { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
@@ -88,6 +88,7 @@ Brand rules (follow exactly):
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
 - Hook headlines: uppercase, punchy, max 8 words
 - Hook sublines: italic-style sentence fragments, max 10 words, create mild tension or curiosity. No period at end.
+- Hook sourceNote: short trust liner shown at the bottom of the hook slide. Format: "Based on [real journal/institution] research, [year]". Must reference the most relevant real published research supporting the hook's claim. Max 8 words after "Based on". Never fabricate — only cite real sources.
 - Body copy: 2-3 sentences MAX. First sentence is a bold punchy statement (the core insight). Remaining 1-2 sentences add specific factual support. Total under 60 words. References the cited research.
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
