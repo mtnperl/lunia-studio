@@ -37,6 +37,7 @@ import { BridgeGraphic } from '@/components/carousel/graphics/BridgeGraphic';
 import { CircularCycleGraphic } from '@/components/carousel/graphics/CircularCycleGraphic';
 import { BentoTiles } from '@/components/carousel/graphics/BentoTiles';
 import { ConceptFlowGraphic } from '@/components/carousel/graphics/ConceptFlowGraphic';
+import { IconGraphic } from '@/components/carousel/graphics/IconGraphic';
 import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
@@ -110,6 +111,7 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   circularCycle: CircularCycleGraphic as React.FC<any>,
   bento: BentoTiles as React.FC<any>,
   conceptFlow: ConceptFlowGraphic as React.FC<any>,
+  icon: IconGraphic as React.FC<any>,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {

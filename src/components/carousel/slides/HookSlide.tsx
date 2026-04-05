@@ -13,6 +13,7 @@ const SECTION_GAP = 32;
 type Props = {
   headline: string;
   subline: string;
+  sourceNote?: string;
   topic?: string;        // used to pick the matching decoration
   scale?: number;
   id?: string;
@@ -25,7 +26,7 @@ type Props = {
   arrowScale?: number;
 };
 
-export default function HookSlide({ headline, subline, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1 }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1 }: Props) {
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
@@ -104,6 +105,25 @@ export default function HookSlide({ headline, subline, topic, scale = 1, id, bra
           {subline}
         </div>
       </div>
+
+      {/* Trust liner — "Based on X research" */}
+      {sourceNote && (
+        <div style={{
+          position: 'absolute',
+          bottom: SLIDE_PADDING.y + 72,  // sits just above the logo
+          left: SLIDE_PADDING.x,
+          right: SLIDE_PADDING.x,
+          fontFamily: 'Jost, Montserrat, sans-serif',
+          fontWeight: 400,
+          fontSize: 20,
+          color: sublineColor,
+          opacity: 0.65,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+        }}>
+          {sourceNote}
+        </div>
+      )}
 
       <LuniaLogo sizeScale={logoScale} />
     </SlideWrapper>

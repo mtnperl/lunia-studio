@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle, VideoFormat, VideoCaptionsData, VideoTextStyle } from "@/lib/types";
+import { VideoAdScene, VideoAdData, VideoAdSceneType, SceneImageConfig, VideoStyle, VideoFormat, VideoCaptionsData, VideoTextStyle, VideoImageStyle } from "@/lib/types";
 import VideoTopicStep from "./video/steps/VideoTopicStep";
 import VideoScriptStep from "./video/steps/VideoScriptStep";
 import VideoAssetsStep from "./video/steps/VideoAssetsStep";
@@ -133,6 +133,7 @@ export default function VideoView() {
   // Step 4
   const [fontScale, setFontScale] = useState(1.0);
   const [videoStyle, setVideoStyle] = useState<VideoStyle>("cinematic");
+  const [imageStyle, setImageStyle] = useState<VideoImageStyle>("realistic");
   const [textStyle, setTextStyle] = useState<VideoTextStyle>({});
 
   const videoAdData: VideoAdData = useMemo(() => ({
@@ -144,9 +145,10 @@ export default function VideoView() {
     videoStyle,
     videoFormat,
     textStyle,
+    imageStyle,
     fps: 30,
     durationFrames: scenes.reduce((acc, s) => acc + s.durationFrames, 0),
-  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle, videoFormat, textStyle]);
+  }), [topic, scenes, sceneImages, logoUrl, fontScale, videoStyle, videoFormat, textStyle, imageStyle]);
 
   const videoCaptionsData: VideoCaptionsData = useMemo(() => ({
     topic,
@@ -159,14 +161,14 @@ export default function VideoView() {
     durationFrames: captions.length * 75,
   }), [topic, captions, sceneImages, logoUrl, fontScale, videoStyle]);
 
-  async function generateSceneImage(scene: VideoAdScene, currentTopic: string) {
+  async function generateSceneImage(scene: VideoAdScene, currentTopic: string, currentImageStyle: VideoImageStyle = "realistic") {
     const sceneType = scene.type;
     setAutoImageStatus((prev) => ({ ...prev, [sceneType]: "loading" }));
     try {
       const promptRes = await fetch("/api/video/generate-image-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sceneType, topic: currentTopic, headline: scene.headline }),
+        body: JSON.stringify({ sceneType, topic: currentTopic, headline: scene.headline, imageStyle: currentImageStyle }),
       });
       if (!promptRes.ok) throw new Error("Prompt failed");
       const { prompt } = await promptRes.json();
@@ -174,7 +176,7 @@ export default function VideoView() {
       const imageRes = await fetch("/api/video/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, imageStyle: currentImageStyle }),
       });
       if (!imageRes.ok) throw new Error("Image failed");
       const { url, error: imgErr } = await imageRes.json();
@@ -187,15 +189,15 @@ export default function VideoView() {
     }
   }
 
-  function triggerAutoImageGeneration(generatedScenes: VideoAdScene[], currentTopic: string) {
+  function triggerAutoImageGeneration(generatedScenes: VideoAdScene[], currentTopic: string, currentImageStyle: VideoImageStyle) {
     // Fire in parallel — don't await
-    Promise.all(generatedScenes.map((scene) => generateSceneImage(scene, currentTopic))).catch(() => {});
+    Promise.all(generatedScenes.map((scene) => generateSceneImage(scene, currentTopic, currentImageStyle))).catch(() => {});
   }
 
   async function handleRetryImage(sceneType: VideoAdSceneType) {
     const scene = scenes.find((s) => s.type === sceneType);
     if (!scene) return;
-    await generateSceneImage(scene, topic);
+    await generateSceneImage(scene, topic, imageStyle);
   }
 
   async function handleTopicNext(newTopic: string, subjectId?: string, hookTone?: string) {
@@ -246,7 +248,7 @@ export default function VideoView() {
       setAutoImageStatus({});
       setStep(2);
       // Fire image generation in background — don't block step advance
-      triggerAutoImageGeneration(generated, newTopic);
+      triggerAutoImageGeneration(generated, newTopic, imageStyle);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed. Please try again.");
     } finally {
@@ -330,6 +332,8 @@ export default function VideoView() {
           onStyleChange={(s) => setVideoStyle(s as VideoStyle)}
           videoFormat={videoFormat}
           onFormatChange={(f) => setVideoFormat(f as VideoFormat)}
+          imageStyle={imageStyle}
+          onImageStyleChange={(s) => setImageStyle(s as VideoImageStyle)}
         />
       )}
 

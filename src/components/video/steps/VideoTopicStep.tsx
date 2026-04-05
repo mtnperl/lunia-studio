@@ -58,6 +58,33 @@ const HOOK_TONES = [
   },
 ];
 
+const IMAGE_STYLES = [
+  {
+    id: "realistic",
+    label: "Realistic Photo",
+    example: "Editorial photography style",
+    description: "Ultra-sharp, premium lifestyle photography. Default for Lunia's cinematic brand.",
+  },
+  {
+    id: "cartoon",
+    label: "Digital Illustration",
+    example: "Colorful illustrated artwork",
+    description: "Bold digital illustration with an expressive, modern feel.",
+  },
+  {
+    id: "anime",
+    label: "Anime / Cel-Shaded",
+    example: "Japanese animation aesthetic",
+    description: "Dreamlike anime-inspired scenes. Great for sleep and night themes.",
+  },
+  {
+    id: "vector",
+    label: "Vector / Flat",
+    example: "Clean minimal graphic",
+    description: "Flat vector-style illustration for a modern, graphic look.",
+  },
+];
+
 const VIDEO_FORMATS = [
   {
     id: "brand-story",
@@ -80,11 +107,13 @@ type Props = {
   onStyleChange: (style: string) => void;
   videoFormat?: string;
   onFormatChange?: (format: string) => void;
+  imageStyle?: string;
+  onImageStyleChange?: (style: string) => void;
 };
 
 type Mode = "list" | "custom";
 
-export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange, videoFormat = "brand-story", onFormatChange }: Props) {
+export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange, videoFormat = "brand-story", onFormatChange, imageStyle = "realistic", onImageStyleChange }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -430,6 +459,49 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
           })}
         </div>
       </div>
+
+      {/* Image Style selector — only shown for brand-story format */}
+      {videoFormat === "brand-story" && (
+        <div style={{ marginTop: 28, marginBottom: 4 }}>
+          <label style={S.label}>Scene Image Style</label>
+          <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: "var(--subtle)", marginBottom: 12 }}>
+            Choose the visual style for AI-generated scene backgrounds.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {IMAGE_STYLES.map((style) => {
+              const active = imageStyle === style.id;
+              return (
+                <button
+                  key={style.id}
+                  onClick={() => onImageStyleChange?.(style.id)}
+                  style={{
+                    textAlign: "left",
+                    padding: "12px 16px",
+                    borderRadius: 6,
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    background: active ? "var(--accent-dim)" : "var(--surface)",
+                    cursor: "pointer",
+                    transition: "border-color 0.12s, background 0.12s",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: active ? "var(--accent)" : "var(--border)", flexShrink: 0 }} />
+                    <span style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                      {style.label}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 12, color: active ? "var(--text)" : "var(--muted)", fontStyle: "italic", marginBottom: 2, paddingLeft: 16 }}>
+                    {style.example}
+                  </div>
+                  <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 11, color: "var(--subtle)", paddingLeft: 16 }}>
+                    {style.description}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={handleNext}

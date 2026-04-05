@@ -17,3 +17,4 @@ export { BridgeGraphic } from './BridgeGraphic';
 export { CircularCycleGraphic } from './CircularCycleGraphic';
 export { BentoTiles } from './BentoTiles';
 export { ConceptFlowGraphic } from './ConceptFlowGraphic';
+export { IconGraphic } from './IconGraphic';
