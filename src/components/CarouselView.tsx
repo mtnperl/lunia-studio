@@ -320,6 +320,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               brandStyle={brandStyle}
               backgroundImageUrl={hookImageUrl}
               topic={topic}
+              imageStyle={imageStyle}
+              onImageStyleChange={setImageStyle}
             />
           )}
           {!loading && !error && step === 4 && falStatus === "loading" && (
