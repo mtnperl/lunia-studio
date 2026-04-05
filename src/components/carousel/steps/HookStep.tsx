@@ -2,6 +2,14 @@
 import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import { BrandStyle, CarouselContent } from "@/lib/types";
+import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
+
+const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
+  { value: "realistic", label: "Realistic" },
+  { value: "cartoon", label: "Illustration" },
+  { value: "anime", label: "Anime" },
+  { value: "vector", label: "Vector" },
+];
 
 type Props = {
   content: CarouselContent;
@@ -12,9 +20,11 @@ type Props = {
   brandStyle?: BrandStyle | null;
   backgroundImageUrl?: string | null;
   topic?: string;
+  imageStyle?: CarouselImageStyle;
+  onImageStyleChange?: (style: CarouselImageStyle) => void;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange }: Props) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [guidelines, setGuidelines] = useState("");
   const [regenerating, setRegenerating] = useState(false);
@@ -137,6 +147,33 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
 
         {promptOpen && (
           <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+            {/* Image style chips */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Style:</span>
+              {IMAGE_STYLE_CHIPS.map((chip) => {
+                const active = imageStyle === chip.value;
+                return (
+                  <button
+                    key={chip.value}
+                    onClick={() => onImageStyleChange?.(chip.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
             <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
               Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.
             </p>
