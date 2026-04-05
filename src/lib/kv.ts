@@ -80,6 +80,21 @@ const RATE_LIMITS: Record<string, number> = {
   images: 100,    // fal.ai image generation
 };
 
+export async function clearRateLimits(): Promise<number> {
+  const client = getRedis();
+  let cursor = "0";
+  let deleted = 0;
+  do {
+    const [next, keys] = await client.scan(cursor, "MATCH", "lunia:rl:*", "COUNT", 100);
+    cursor = next;
+    if (keys.length > 0) {
+      await client.del(...keys);
+      deleted += keys.length;
+    }
+  } while (cursor !== "0");
+  return deleted;
+}
+
 export async function checkRateLimit(ip: string, bucket = "generate"): Promise<boolean> {
   try {
     const key = `lunia:rl:${bucket}:${ip}`;
