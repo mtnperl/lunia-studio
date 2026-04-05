@@ -99,6 +99,7 @@ export function ProofScene({
             fontWeight: 600,
             color: S.headlineColor,
             lineHeight: 1.15,
+            textShadow: BRAND.textShadow,
           }}
         >
           {scene.headline}

@@ -86,6 +86,7 @@ export function CTAScene({
               color: S.headlineColor,
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
+              textShadow: BRAND.textShadow,
             }}
           >
             {scene.headline}
@@ -102,6 +103,7 @@ export function CTAScene({
                 fontWeight: 500,
                 color: S.sublineColor,
                 lineHeight: 1.5,
+                textShadow: BRAND.textShadow,
               }}
             >
               {scene.subline}

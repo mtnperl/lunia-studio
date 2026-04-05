@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Player } from "@remotion/player";
 import { VideoAd } from "@/remotion/VideoAd";
 import { VideoAdCaptions } from "@/remotion/VideoAdCaptions";
-import { VideoAdData, VideoCaptionsData, VideoFormat } from "@/lib/types";
+import { VideoAdData, VideoCaptionsData, VideoFormat, TextPosition } from "@/lib/types";
 
 type Props = {
   videoAdData: VideoAdData;
@@ -17,7 +17,13 @@ type Props = {
 
 type RenderStatus = "idle" | "rendering" | "done" | "failed";
 
-export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onFontScaleChange, onBack }: Props) {
+const TEXT_POSITIONS: { value: TextPosition; label: string }[] = [
+  { value: "top", label: "▲" },
+  { value: "center", label: "◈" },
+  { value: "bottom", label: "▼" },
+];
+
+export default function VideoPreviewStep({ videoAdData, videoCaptionsData, videoFormat = "brand-story", onUpdateScenes, onFontScaleChange, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [mp4Status, setMp4Status] = useState<RenderStatus>("idle");
@@ -254,10 +260,15 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
             GIF — shareable preview loop
           </div>
 
-          {/* Scene summary */}
+          {/* Scene summary + text position control */}
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-            <div style={{ fontFamily: FF, fontSize: 11, color: "var(--muted)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>
-              Scenes
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontFamily: FF, fontSize: 11, color: "var(--muted)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Scenes
+              </span>
+              <span style={{ fontFamily: FF, fontSize: 10, color: "var(--subtle)" }}>
+                Text position
+              </span>
             </div>
             {videoAdData.scenes.map((scene) => (
               <div
@@ -265,23 +276,54 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  padding: "8px 0",
+                  alignItems: "center",
+                  padding: "10px 0",
                   borderBottom: "1px solid var(--border)",
                   gap: 8,
                 }}
               >
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FF, fontSize: 11, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>
-                    {scene.type}
+                    {scene.type} · <span style={{ color: "var(--muted)", fontWeight: 400 }}>{Math.round(scene.durationFrames / 30)}s</span>
                   </div>
-                  <div style={{ fontFamily: FF, fontSize: 12, color: "var(--text)", lineHeight: 1.4 }}>
+                  <div style={{ fontFamily: FF, fontSize: 12, color: "var(--text)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {scene.headline}
                   </div>
                 </div>
-                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
-                  {Math.round(scene.durationFrames / 30)}s
-                </span>
+                {/* Text position toggle */}
+                <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                  {TEXT_POSITIONS.map(({ value, label }) => {
+                    const isActive = (scene.textPosition ?? "center") === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => {
+                          const updated = videoAdData.scenes.map((s) =>
+                            s.type === scene.type ? { ...s, textPosition: value } : s
+                          );
+                          onUpdateScenes(updated);
+                        }}
+                        title={`Text ${value}`}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 4,
+                          border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                          background: isActive ? "var(--accent-dim, rgba(255,216,0,0.12))" : "transparent",
+                          color: isActive ? "var(--accent)" : "var(--subtle)",
+                          fontFamily: FF,
+                          fontSize: 11,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
