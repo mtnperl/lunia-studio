@@ -228,7 +228,7 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Recent Carousels</span>
-            <button onClick={onOpenCarousel} style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: "8px 0", letterSpacing: "0.01em" }}>
+            <button onClick={() => onOpenCarousel()} style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: "8px 0", letterSpacing: "0.01em" }}>
               View all →
             </button>
           </div>
