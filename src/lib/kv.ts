@@ -74,10 +74,10 @@ export async function deleteScriptKv(id: string): Promise<void> {
 
 // Rate limiting: fixed window per IP per bucket
 const RATE_LIMITS: Record<string, number> = {
-  generate: 10,   // script generation
-  carousel: 20,   // carousel generation + slide regen
-  graphic: 50,    // infographic regen (cheap Claude calls, used frequently)
-  images: 10,     // fal.ai image generation (expensive)
+  generate: 20,   // script generation
+  carousel: 50,   // carousel generation + slide regen
+  graphic: 100,   // infographic regen (cheap Claude calls, used frequently)
+  images: 100,    // fal.ai image generation
 };
 
 export async function checkRateLimit(ip: string, bucket = "generate"): Promise<boolean> {
