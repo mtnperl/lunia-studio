@@ -3,11 +3,13 @@ import { useState, useEffect } from "react";
 import { Script, SavedCarousel } from "@/lib/types";
 import { getLibrary } from "@/lib/storage";
 
+const DRAFT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 type Props = {
   onNewScript: () => void;
   onNewCarousel: () => void;
   onOpenScript: (s: Script) => void;
-  onOpenCarousel: () => void;
+  onOpenCarousel: (c?: SavedCarousel & { _unsaved?: boolean }) => void;
 };
 
 function StatCard({ value, label }: { value: number | string; label: string }) {
@@ -53,6 +55,9 @@ function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }
 
 function CarouselCard({ carousel, onClick }: { carousel: SavedCarousel & { _unsaved?: boolean }; onClick: () => void }) {
   const isUnsaved = (carousel as { _unsaved?: boolean })._unsaved;
+  const minsLeft = isUnsaved
+    ? Math.max(0, Math.round((DRAFT_TTL_MS - (Date.now() - new Date(carousel.savedAt).getTime())) / 60_000))
+    : null;
   return (
     <div onClick={onClick} className="card" style={{ padding: "14px 16px", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -69,7 +74,7 @@ function CarouselCard({ carousel, onClick }: { carousel: SavedCarousel & { _unsa
               background: "rgba(196, 122, 90, 0.1)",
               border: "1px solid rgba(196, 122, 90, 0.25)",
               borderRadius: 3, padding: "1px 5px",
-            }}>unsaved</span>
+            }}>unsaved · {minsLeft}m left</span>
           )}
         </div>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>
@@ -99,15 +104,20 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
       setScripts(Array.isArray(s) ? s : []);
       const saved: SavedCarousel[] = Array.isArray(c) ? c : [];
       try {
-        const raw = localStorage.getItem("lunia:lastCarousel");
-        if (raw) {
-          const last = JSON.parse(raw) as SavedCarousel & { _unsaved?: boolean };
-          const alreadySaved = saved.some(
-            sc => sc.topic === last.topic &&
-              Math.abs(new Date(sc.savedAt).getTime() - new Date(last.savedAt).getTime()) < 5000
-          );
-          if (!alreadySaved) saved.unshift(last);
-        }
+        const now = Date.now();
+        const rawDrafts = localStorage.getItem("lunia:drafts");
+        const drafts: Array<SavedCarousel & { _unsaved?: boolean }> = rawDrafts ? JSON.parse(rawDrafts) : [];
+        // Filter to only drafts within the 30-min TTL and not already saved
+        const freshDrafts = drafts.filter((d) => {
+          const age = now - new Date(d.savedAt).getTime();
+          if (age > DRAFT_TTL_MS) return false;
+          // Drop if already saved (same topic + close timestamp)
+          return !saved.some(sc => sc.topic === d.topic && Math.abs(new Date(sc.savedAt).getTime() - new Date(d.savedAt).getTime()) < 10_000);
+        });
+        saved.unshift(...freshDrafts);
+        // Prune expired drafts from storage
+        const stillFresh = drafts.filter((d) => now - new Date(d.savedAt).getTime() <= DRAFT_TTL_MS);
+        localStorage.setItem("lunia:drafts", JSON.stringify(stillFresh));
       } catch {}
       setCarousels(saved);
       setLoading(false);
@@ -228,7 +238,7 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
             <div style={{ padding: "28px 0", fontFamily: "var(--font-serif)", fontSize: 16, fontStyle: "italic", color: "var(--subtle)" }}>No carousels yet.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {recentCarousels.map(c => <CarouselCard key={c.id} carousel={c} onClick={onOpenCarousel} />)}
+              {recentCarousels.map(c => <CarouselCard key={c.id} carousel={c} onClick={() => onOpenCarousel(c as SavedCarousel & { _unsaved?: boolean })} />)}
             </div>
           )}
         </div>
