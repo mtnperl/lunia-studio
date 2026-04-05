@@ -110,6 +110,7 @@ export function ProductScene({
             color: S.headlineColor,
             lineHeight: 1.1,
             marginBottom: 16,
+            textShadow: BRAND.textShadow,
           }}
         >
           {scene.headline}
@@ -122,6 +123,7 @@ export function ProductScene({
               fontWeight: 500,
               color: S.sublineColor,
               lineHeight: 1.5,
+              textShadow: BRAND.textShadow,
             }}
           >
             {scene.subline}

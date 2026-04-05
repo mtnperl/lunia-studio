@@ -79,6 +79,7 @@ export function ScienceScene({
             color: S.headlineColor,
             lineHeight: 1.15,
             marginBottom: 20,
+            textShadow: BRAND.textShadow,
           }}
         >
           {scene.headline}
@@ -93,6 +94,7 @@ export function ScienceScene({
               color: S.sublineColor,
               lineHeight: 1.5,
               marginBottom: 24,
+              textShadow: BRAND.textShadow,
             }}
           >
             {scene.subline}

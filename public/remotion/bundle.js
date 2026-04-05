@@ -26,12 +26,14 @@ const BRAND = {
   // cyan — stat numbers, highlights
   border: "#1e3548",
   // Typography sizes (px at 1080w) — scale with fontScale prop
-  fontDisplay: 96,
-  fontHero: 80,
-  fontHeadline: 60,
-  fontSubline: 34,
-  fontStat: 128,
-  fontCaption: 24,
+  fontDisplay: 108,
+  fontHero: 96,
+  fontHeadline: 72,
+  fontSubline: 42,
+  fontStat: 140,
+  fontCaption: 28,
+  // Text shadow — applied to all headlines/sublines for legibility over images
+  textShadow: "0 2px 24px rgba(0,0,0,0.95), 0 1px 6px rgba(0,0,0,0.7)",
   // Font family — Helvetica; falls back to Arial for Lambda renders
   fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
   // Spacing
@@ -44,8 +46,8 @@ function getSceneStyle(videoStyle = "cinematic") {
       return {
         bg: "#1a3a4a",
         surface: "#243d4f",
-        overlayOpacity: 0.18,
-        // near-transparent → image shows through fully
+        overlayOpacity: 0.42,
+        // raised from 0.18 — text legibility over light images
         accentColor: BRAND.secondary,
         // cyan accent
         headlineColor: BRAND.text,
@@ -60,8 +62,8 @@ function getSceneStyle(videoStyle = "cinematic") {
       return {
         bg: "#000000",
         surface: "#0d0d0d",
-        overlayOpacity: 0,
-        // pure image, no overlay needed for bold
+        overlayOpacity: 0.25,
+        // subtle overlay so white text stays readable
         accentColor: "#ffffff",
         headlineColor: "#ffffff",
         sublineColor: "rgba(255,255,255,0.72)",
@@ -76,7 +78,8 @@ function getSceneStyle(videoStyle = "cinematic") {
       return {
         bg: BRAND.bg,
         surface: BRAND.surface,
-        overlayOpacity: 0.52,
+        overlayOpacity: 0.58,
+        // raised from 0.52 — more contrast for text
         accentColor: BRAND.accent,
         headlineColor: BRAND.text,
         sublineColor: BRAND.muted,
@@ -160,6 +163,7 @@ function HookScene({
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
+  const textPos = scene.textPosition ?? "center";
   const headlineY = (0,esm.interpolate)(
     (0,esm.spring)({ frame, fps, config: { damping: 18, stiffness: 120 } }),
     [0, 1],
@@ -173,7 +177,14 @@ function HookScene({
   );
   const sublineOpacity = (0,esm.interpolate)(frame, [10, 22], [0, 1], { extrapolateRight: "clamp" });
   const accentOpacity = (0,esm.interpolate)(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
-  return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: { background: S.bg, justifyContent: "center", padding: `0 ${BRAND.paddingX}px` }, children: [
+  return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: {
+    background: S.bg,
+    paddingLeft: BRAND.paddingX,
+    paddingRight: BRAND.paddingX,
+    paddingTop: textPos === "top" ? BRAND.paddingY : 0,
+    paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
+    justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center"
+  }, children: [
     image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)(
       "div",
@@ -198,7 +209,8 @@ function HookScene({
           fontWeight: 700,
           color: S.headlineColor,
           lineHeight: 1.05,
-          letterSpacing: "-0.02em"
+          letterSpacing: "-0.02em",
+          textShadow: BRAND.textShadow
         },
         children: scene.headline
       }
@@ -219,7 +231,8 @@ function HookScene({
               fontSize: S.fontSubline * fontScale,
               fontWeight: 500,
               color: S.sublineColor,
-              lineHeight: 1.5
+              lineHeight: 1.5,
+              textShadow: BRAND.textShadow
             },
             children: scene.subline
           }
@@ -259,6 +272,7 @@ function ScienceScene({
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
+  const textPos = scene.textPosition ?? "center";
   const statScale = (0,esm.spring)({ frame, fps, config: { damping: 14, stiffness: 100 } });
   const statOpacity = (0,esm.interpolate)(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
   const contentY = (0,esm.interpolate)(
@@ -272,8 +286,11 @@ function ScienceScene({
     {
       style: {
         background: S.surface,
-        justifyContent: "center",
-        padding: `0 ${BRAND.paddingX}px`
+        paddingLeft: BRAND.paddingX,
+        paddingRight: BRAND.paddingX,
+        paddingTop: textPos === "top" ? BRAND.paddingY : 0,
+        paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
+        justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center"
       },
       children: [
         image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
@@ -311,7 +328,8 @@ function ScienceScene({
                 fontWeight: 600,
                 color: S.headlineColor,
                 lineHeight: 1.15,
-                marginBottom: 20
+                marginBottom: 20,
+                textShadow: BRAND.textShadow
               },
               children: scene.headline
             }
@@ -325,7 +343,8 @@ function ScienceScene({
                 fontWeight: 500,
                 color: S.sublineColor,
                 lineHeight: 1.5,
-                marginBottom: 24
+                marginBottom: 24,
+                textShadow: BRAND.textShadow
               },
               children: scene.subline
             }
@@ -380,12 +399,42 @@ function ProductScene({
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
+  const textPos = scene.textPosition ?? "bottom";
   const textY = (0,esm.interpolate)(
     (0,esm.spring)({ frame: Math.max(0, frame - 18), fps, config: { damping: 18, stiffness: 100 } }),
     [0, 1],
     [40, 0]
   );
   const textOpacity = (0,esm.interpolate)(frame, [18, 32], [0, 1], { extrapolateRight: "clamp" });
+  const textBlockStyle = textPos === "top" ? {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to bottom, ${S.bg}f0 0%, ${S.bg}80 60%, transparent 100%)`,
+    transform: `translateY(${textY}px)`,
+    opacity: textOpacity
+  } : textPos === "center" ? {
+    position: "absolute",
+    top: "50%",
+    left: 0,
+    right: 0,
+    transform: `translateY(calc(-50% + ${textY}px))`,
+    padding: `32px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to bottom, transparent 0%, ${S.bg}c0 20%, ${S.bg}c0 80%, transparent 100%)`,
+    opacity: textOpacity
+  } : {
+    // bottom (default)
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
+    background: `linear-gradient(to top, ${S.bg}f5 0%, ${S.bg}a0 60%, transparent 100%)`,
+    transform: `translateY(${textY}px)`,
+    opacity: textOpacity
+  };
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)(esm.AbsoluteFill, { style: { background: S.bg }, children: [
     image && /* @__PURE__ */ (0,jsx_runtime.jsx)(SceneImageBackground, { image, overlayOpacity: S.overlayOpacity }),
     !image && /* @__PURE__ */ (0,jsx_runtime.jsx)(
@@ -434,50 +483,37 @@ function ProductScene({
         )
       }
     ),
-    /* @__PURE__ */ (0,jsx_runtime.jsxs)(
-      "div",
-      {
-        style: {
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: `${BRAND.paddingY}px ${BRAND.paddingX}px`,
-          background: `linear-gradient(to top, ${S.bg}f5 0%, ${S.bg}a0 60%, transparent 100%)`,
-          transform: `translateY(${textY}px)`,
-          opacity: textOpacity
-        },
-        children: [
-          /* @__PURE__ */ (0,jsx_runtime.jsx)(
-            "div",
-            {
-              style: {
-                fontFamily: BRAND.fontFamily,
-                fontSize: S.fontHeadline * fontScale,
-                fontWeight: 700,
-                color: S.headlineColor,
-                lineHeight: 1.1,
-                marginBottom: 16
-              },
-              children: scene.headline
-            }
-          ),
-          scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
-            "div",
-            {
-              style: {
-                fontFamily: BRAND.fontFamily,
-                fontSize: S.fontSubline * fontScale,
-                fontWeight: 500,
-                color: S.sublineColor,
-                lineHeight: 1.5
-              },
-              children: scene.subline
-            }
-          )
-        ]
-      }
-    )
+    /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: textBlockStyle, children: [
+      /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            fontFamily: BRAND.fontFamily,
+            fontSize: S.fontHeadline * fontScale,
+            fontWeight: 700,
+            color: S.headlineColor,
+            lineHeight: 1.1,
+            marginBottom: 16,
+            textShadow: BRAND.textShadow
+          },
+          children: scene.headline
+        }
+      ),
+      scene.subline && /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        "div",
+        {
+          style: {
+            fontFamily: BRAND.fontFamily,
+            fontSize: S.fontSubline * fontScale,
+            fontWeight: 500,
+            color: S.sublineColor,
+            lineHeight: 1.5,
+            textShadow: BRAND.textShadow
+          },
+          children: scene.subline
+        }
+      )
+    ] })
   ] });
 }
 
@@ -497,6 +533,7 @@ function ProofScene({
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
+  const textPos = scene.textPosition ?? "center";
   const statProgress = (0,esm.spring)({ frame, fps, config: { damping: 12, stiffness: 80 } });
   const statOpacity = (0,esm.interpolate)(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
   const textY = (0,esm.interpolate)(
@@ -511,8 +548,11 @@ function ProofScene({
     {
       style: {
         background: S.surface,
-        justifyContent: "center",
-        padding: `0 ${BRAND.paddingX}px`,
+        paddingLeft: BRAND.paddingX,
+        paddingRight: BRAND.paddingX,
+        paddingTop: textPos === "top" ? BRAND.paddingY : 0,
+        paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
+        justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center",
         alignItems: "flex-start"
       },
       children: [
@@ -563,7 +603,8 @@ function ProofScene({
               fontSize: S.fontHeadline * fontScale,
               fontWeight: 600,
               color: S.headlineColor,
-              lineHeight: 1.15
+              lineHeight: 1.15,
+              textShadow: BRAND.textShadow
             },
             children: scene.headline
           }
@@ -615,6 +656,7 @@ function CTAScene({
   const S = getSceneStyle(videoStyle);
   const frame = (0,esm.useCurrentFrame)();
   const { fps } = (0,esm.useVideoConfig)();
+  const textPos = scene.textPosition ?? "center";
   const bgProgress = (0,esm.spring)({ frame, fps, config: { damping: 20, stiffness: 60 } });
   const overlayOpacity = (0,esm.interpolate)(bgProgress, [0, 1], [0, 0.85]);
   const headlineY = (0,esm.interpolate)(
@@ -644,9 +686,12 @@ function CTAScene({
       esm.AbsoluteFill,
       {
         style: {
-          justifyContent: "center",
+          justifyContent: textPos === "top" ? "flex-start" : textPos === "bottom" ? "flex-end" : "center",
           alignItems: "center",
-          padding: `0 ${BRAND.paddingX}px`,
+          paddingLeft: BRAND.paddingX,
+          paddingRight: BRAND.paddingX,
+          paddingTop: textPos === "top" ? BRAND.paddingY : 0,
+          paddingBottom: textPos === "bottom" ? BRAND.paddingY : 0,
           flexDirection: "column",
           gap: 24
         },
@@ -668,7 +713,8 @@ function CTAScene({
                     fontWeight: 700,
                     color: S.headlineColor,
                     lineHeight: 1.05,
-                    letterSpacing: "-0.02em"
+                    letterSpacing: "-0.02em",
+                    textShadow: BRAND.textShadow
                   },
                   children: scene.headline
                 }
@@ -683,7 +729,8 @@ function CTAScene({
                 fontSize: S.fontSubline * fontScale,
                 fontWeight: 500,
                 color: S.sublineColor,
-                lineHeight: 1.5
+                lineHeight: 1.5,
+                textShadow: BRAND.textShadow
               },
               children: scene.subline
             }

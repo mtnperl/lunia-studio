@@ -14,12 +14,15 @@ export const BRAND = {
   border: "#1e3548",
 
   // Typography sizes (px at 1080w) — scale with fontScale prop
-  fontDisplay: 96,
-  fontHero: 80,
-  fontHeadline: 60,
-  fontSubline: 34,
-  fontStat: 128,
-  fontCaption: 24,
+  fontDisplay: 108,
+  fontHero: 96,
+  fontHeadline: 72,
+  fontSubline: 42,
+  fontStat: 140,
+  fontCaption: 28,
+
+  // Text shadow — applied to all headlines/sublines for legibility over images
+  textShadow: "0 2px 24px rgba(0,0,0,0.95), 0 1px 6px rgba(0,0,0,0.7)",
 
   // Font family — Helvetica; falls back to Arial for Lambda renders
   fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
@@ -51,7 +54,7 @@ export function getSceneStyle(videoStyle: VideoStyle = "cinematic"): SceneStyleT
       return {
         bg: "#1a3a4a",
         surface: "#243d4f",
-        overlayOpacity: 0.18,          // near-transparent → image shows through fully
+        overlayOpacity: 0.42,          // raised from 0.18 — text legibility over light images
         accentColor: BRAND.secondary,  // cyan accent
         headlineColor: BRAND.text,
         sublineColor: "rgba(191,251,248,0.85)",
@@ -65,7 +68,7 @@ export function getSceneStyle(videoStyle: VideoStyle = "cinematic"): SceneStyleT
       return {
         bg: "#000000",
         surface: "#0d0d0d",
-        overlayOpacity: 0.0,           // pure image, no overlay needed for bold
+        overlayOpacity: 0.25,          // subtle overlay so white text stays readable
         accentColor: "#ffffff",
         headlineColor: "#ffffff",
         sublineColor: "rgba(255,255,255,0.72)",
@@ -79,7 +82,7 @@ export function getSceneStyle(videoStyle: VideoStyle = "cinematic"): SceneStyleT
       return {
         bg: BRAND.bg,
         surface: BRAND.surface,
-        overlayOpacity: 0.52,
+        overlayOpacity: 0.58,          // raised from 0.52 — more contrast for text
         accentColor: BRAND.accent,
         headlineColor: BRAND.text,
         sublineColor: BRAND.muted,
