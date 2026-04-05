@@ -20,8 +20,8 @@
 # production
 /build
 
-# remotion bundle (generated at build time via prebuild script)
-/public/remotion
+# remotion bundle — committed to git; rebuild locally with: npm run bundle-remotion
+# /public/remotion  ← intentionally NOT ignored
 
 # misc
 .DS_Store

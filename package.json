@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/bundle-remotion.mjs",
+    "prebuild": "node scripts/bundle-remotion.mjs --skip-on-vercel",
     "build": "next build",
+    "bundle-remotion": "node scripts/bundle-remotion.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
