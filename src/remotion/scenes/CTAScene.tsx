@@ -1,8 +1,8 @@
 "use client";
 
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene, SceneImageConfig, TextPosition } from "@/lib/types";
-import { BRAND, getSceneStyle } from "../lib/brand";
+import { VideoAdScene, SceneImageConfig, TextPosition, VideoTextStyle } from "@/lib/types";
+import { BRAND, getSceneStyle, formatHeadline, getBackdropStyle, getTextStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 import type { VideoStyle } from "@/lib/types";
 
@@ -12,17 +12,22 @@ export function CTAScene({
   logoUrl,
   fontScale = 1,
   videoStyle = "cinematic",
+  textStyle,
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   logoUrl?: string;
   fontScale?: number;
   videoStyle?: VideoStyle;
+  textStyle?: VideoTextStyle;
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const textPos: TextPosition = scene.textPosition ?? "center";
+  const effectiveOverlay = textStyle?.overlayOpacity ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : undefined;
 
   const bgProgress = spring({ frame, fps, config: { damping: 20, stiffness: 60 } });
   const overlayOpacity = interpolate(bgProgress, [0, 1], [0, 0.85]);
@@ -43,7 +48,7 @@ export function CTAScene({
 
   return (
     <AbsoluteFill style={{ background: S.bg }}>
-      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
+      {image && <SceneImageBackground image={image} overlayOpacity={effectiveOverlay} />}
 
       {/* Radial glow overlay (cinematic/serene only) */}
       {videoStyle !== "bold" && (
@@ -70,46 +75,49 @@ export function CTAScene({
           gap: 24,
         }}
       >
-        {/* Headline */}
+        {/* Headline + subline in one backdrop block */}
         <div
           style={{
             transform: `translateY(${headlineY}px)`,
             opacity: headlineOpacity,
             textAlign: "center",
+            ...getBackdropStyle(textStyle),
           }}
         >
           <div
             style={{
               fontFamily: BRAND.fontFamily,
               fontSize: S.fontHero * fontScale,
-              fontWeight: 700,
               color: S.headlineColor,
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
               textShadow: BRAND.textShadow,
+              ...getTextStyle(textStyle),
             }}
           >
-            {scene.headline}
+            {headline}
           </div>
-        </div>
 
-        {/* Subline */}
-        {scene.subline && (
-          <div style={{ opacity: sublineOpacity, textAlign: "center" }}>
+          {subline && (
             <div
               style={{
+                marginTop: textStyle?.textBackdrop ? 12 : 0,
+                opacity: sublineOpacity,
                 fontFamily: BRAND.fontFamily,
                 fontSize: S.fontSubline * fontScale,
-                fontWeight: 500,
+                fontWeight: textStyle?.fontWeight ?? 500,
                 color: S.sublineColor,
                 lineHeight: 1.5,
                 textShadow: BRAND.textShadow,
+                ...(textStyle?.textStroke ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {}),
+                ...(textStyle?.allCaps ? { textTransform: "uppercase" as const } : {}),
+                ...(textStyle?.lineBreakChars ? { whiteSpace: "pre-line" as const } : {}),
               }}
             >
-              {scene.subline}
+              {subline}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* CTA button */}
         <div

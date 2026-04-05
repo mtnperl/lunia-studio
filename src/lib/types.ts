@@ -447,6 +447,15 @@ export type SceneImageConfig = {
   position?: string;
 };
 
+export type VideoTextStyle = {
+  textBackdrop?: boolean;     // semi-transparent dark box behind text blocks
+  textStroke?: boolean;       // dark outline around text for legibility
+  fontWeight?: 700 | 900;     // 700 = bold, 900 = black/heavy
+  allCaps?: boolean;          // UPPERCASE all headlines
+  overlayOpacity?: number;    // 0–1; overrides the style-default image overlay
+  lineBreakChars?: number;    // 0 = off; break headline at word boundary when line > N chars
+};
+
 export type VideoAdData = {
   topic: string;
   scenes: VideoAdScene[];   // exactly 5, one per type in order
@@ -458,6 +467,7 @@ export type VideoAdData = {
   fontScale?: number;       // multiplier for all font sizes (default 1.0)
   videoStyle?: VideoStyle;
   videoFormat?: VideoFormat;
+  textStyle?: VideoTextStyle;
 };
 
 export type SavedVideoAd = {

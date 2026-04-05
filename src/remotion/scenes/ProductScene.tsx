@@ -1,8 +1,8 @@
 "use client";
 
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { VideoAdScene, SceneImageConfig, TextPosition } from "@/lib/types";
-import { BRAND, getSceneStyle } from "../lib/brand";
+import { VideoAdScene, SceneImageConfig, TextPosition, VideoTextStyle } from "@/lib/types";
+import { BRAND, getSceneStyle, formatHeadline, getTextStyle } from "../lib/brand";
 import { SceneImageBackground } from "../lib/SceneImageBackground";
 import type { VideoStyle } from "@/lib/types";
 
@@ -11,16 +11,21 @@ export function ProductScene({
   image,
   fontScale = 1,
   videoStyle = "cinematic",
+  textStyle,
 }: {
   scene: VideoAdScene;
   image?: SceneImageConfig;
   fontScale?: number;
   videoStyle?: VideoStyle;
+  textStyle?: VideoTextStyle;
 }) {
   const S = getSceneStyle(videoStyle);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const textPos: TextPosition = scene.textPosition ?? "bottom";
+  const effectiveOverlay = textStyle?.overlayOpacity ?? S.overlayOpacity;
+  const headline = formatHeadline(scene.headline, textStyle);
+  const subline = scene.subline ? formatHeadline(scene.subline, textStyle) : undefined;
 
   const textY = interpolate(
     spring({ frame: Math.max(0, frame - 18), fps, config: { damping: 18, stiffness: 100 } }),
@@ -56,7 +61,7 @@ export function ProductScene({
 
   return (
     <AbsoluteFill style={{ background: S.bg }}>
-      {image && <SceneImageBackground image={image} overlayOpacity={S.overlayOpacity} />}
+      {image && <SceneImageBackground image={image} overlayOpacity={effectiveOverlay} />}
 
       {/* Placeholder when no image */}
       {!image && (
@@ -106,27 +111,30 @@ export function ProductScene({
           style={{
             fontFamily: BRAND.fontFamily,
             fontSize: S.fontHeadline * fontScale,
-            fontWeight: 700,
             color: S.headlineColor,
             lineHeight: 1.1,
             marginBottom: 16,
             textShadow: BRAND.textShadow,
+            ...getTextStyle(textStyle),
           }}
         >
-          {scene.headline}
+          {headline}
         </div>
-        {scene.subline && (
+        {subline && (
           <div
             style={{
               fontFamily: BRAND.fontFamily,
               fontSize: S.fontSubline * fontScale,
-              fontWeight: 500,
+              fontWeight: textStyle?.fontWeight ?? 500,
               color: S.sublineColor,
               lineHeight: 1.5,
               textShadow: BRAND.textShadow,
+              ...(textStyle?.textStroke ? { WebkitTextStroke: "1px rgba(0,0,0,0.5)" } : {}),
+              ...(textStyle?.allCaps ? { textTransform: "uppercase" as const } : {}),
+              ...(textStyle?.lineBreakChars ? { whiteSpace: "pre-line" as const } : {}),
             }}
           >
-            {scene.subline}
+            {subline}
           </div>
         )}
       </div>

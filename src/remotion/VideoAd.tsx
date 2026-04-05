@@ -9,18 +9,18 @@ import { ProofScene } from "./scenes/ProofScene";
 import { CTAScene } from "./scenes/CTAScene";
 
 export function VideoAd(props: VideoAdData) {
-  const { scenes, sceneImages, logoUrl, fontScale = 1, videoStyle = "cinematic" } = props;
+  const { scenes, sceneImages, logoUrl, fontScale = 1, videoStyle = "cinematic", textStyle } = props;
 
   function renderScene(type: VideoAdSceneType, idx: number) {
     const scene = scenes.find((s) => s.type === type) ?? scenes[idx];
     if (!scene) return null;
     const image = sceneImages?.[type];
     switch (type) {
-      case "hook":    return <HookScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} />;
-      case "science": return <ScienceScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} />;
-      case "product": return <ProductScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} />;
-      case "proof":   return <ProofScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} />;
-      case "cta":     return <CTAScene scene={scene} image={image} logoUrl={logoUrl} fontScale={fontScale} videoStyle={videoStyle} />;
+      case "hook":    return <HookScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} textStyle={textStyle} />;
+      case "science": return <ScienceScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} textStyle={textStyle} />;
+      case "product": return <ProductScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} textStyle={textStyle} />;
+      case "proof":   return <ProofScene scene={scene} image={image} fontScale={fontScale} videoStyle={videoStyle} textStyle={textStyle} />;
+      case "cta":     return <CTAScene scene={scene} image={image} logoUrl={logoUrl} fontScale={fontScale} videoStyle={videoStyle} textStyle={textStyle} />;
     }
   }
 
