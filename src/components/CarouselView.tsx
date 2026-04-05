@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
@@ -74,6 +74,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setStep(4);
     onCarouselLoaded?.();
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Draft persistence ────────────────────────────────────────────────────
+  const draftIdRef = useRef<string>("");
 
   // ─── fal.ai status ────────────────────────────────────────────────────────
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
@@ -299,17 +302,14 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               onNext={() => {
                 setStep(4);
                 generateSlideImages(topic, content, selectedHook, imageStyle);
-                // Persist last-generated so HomeView shows it even if unsaved
+                // Persist draft so HomeView can reopen it (30-min window)
                 try {
-                  localStorage.setItem("lunia:lastCarousel", JSON.stringify({
-                    id: "__last__",
-                    topic,
-                    hookTone,
-                    content,
-                    selectedHook,
-                    savedAt: new Date().toISOString(),
-                    _unsaved: true,
-                  }));
+                  const draftId = draftIdRef.current || `draft_${Date.now()}`;
+                  draftIdRef.current = draftId;
+                  const existing = JSON.parse(localStorage.getItem("lunia:drafts") ?? "[]") as Array<Record<string, unknown>>;
+                  const others = existing.filter((d) => d.id !== draftId);
+                  others.unshift({ id: draftId, topic, hookTone, content, selectedHook, savedAt: new Date().toISOString(), _unsaved: true });
+                  localStorage.setItem("lunia:drafts", JSON.stringify(others.slice(0, 20)));
                 } catch {}
               }}
               onImagePromptChange={(prompt) => {

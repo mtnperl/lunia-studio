@@ -285,7 +285,7 @@ export default function Page() {
             onNewScript={() => navigate("generate")}
             onNewCarousel={() => navigate("carousel")}
             onOpenScript={openEditor}
-            onOpenCarousel={() => navigate("carousel")}
+            onOpenCarousel={(c) => { if (c) setPendingCarousel(c); navigate("carousel"); }}
           />
         )}
         {tab === "generate"  && <GenerateView onOpenEditor={openEditor} />}
