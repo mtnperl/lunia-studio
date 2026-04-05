@@ -2,6 +2,13 @@ import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 
+const FAL_STYLE_MAP: Record<string, string> = {
+  realistic: 'realistic_image',
+  cartoon: 'digital_illustration',
+  anime: 'digital_illustration/anime',
+  vector: 'vector_illustration',
+};
+
 export const maxDuration = 60; // seconds — recraft-v3 can take ~20-30s
 
 export async function POST(req: Request) {
@@ -24,6 +31,8 @@ export async function POST(req: Request) {
     const topic: string = body.topic ?? '';
     const hook: Hook | undefined = body.hook;
     const imagePrompt: string | undefined = body.imagePrompt; // Claude-written prompt takes priority
+    const imageStyle: string = body.imageStyle ?? 'realistic';
+    const falStyle = FAL_STYLE_MAP[imageStyle] ?? 'realistic_image';
 
     if (!topic.trim()) {
       return Response.json({ error: 'Topic required' }, { status: 400 });
@@ -40,7 +49,7 @@ export async function POST(req: Request) {
       input: {
         prompt,
         image_size: { width: 1024, height: 1280 }, // portrait 4:5 (multiples of 32 ✓)
-        style: 'realistic_image',
+        style: falStyle,
         num_images: 1,
       },
       logs: false,

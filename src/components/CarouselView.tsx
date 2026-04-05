@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
-import TopicStep from "@/components/carousel/steps/TopicStep";
+import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
@@ -76,6 +76,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── fal.ai status ────────────────────────────────────────────────────────
+  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -90,7 +91,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   const FAL_SLIDE_INDICES = [0] as const;
   const FAL_TOTAL = FAL_SLIDE_INDICES.length;
 
-  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number) {
+  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number, currentImageStyle: CarouselImageStyle = "realistic") {
     setSlideImages([null, null, null, null, null]);
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
@@ -102,7 +103,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
       fetch('/api/carousel/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt }),
+        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt, imageStyle: currentImageStyle }),
       })
         .then((r) => r.json())
         .then(({ url, error: apiErr }) => {
@@ -127,10 +128,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     });
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle) {
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
+    setImageStyle(style ?? "realistic");
     setError(null);
     setWarning(null);
 
@@ -177,6 +179,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setStep(1);
     setTopic("");
     setHookTone("educational");
+    setImageStyle("realistic");
     setVariants([]);
     setSelectedVariant(0);
     setSelectedHook(0);
@@ -295,7 +298,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               onSelectHook={setSelectedHook}
               onNext={() => {
                 setStep(4);
-                generateSlideImages(topic, content, selectedHook);
+                generateSlideImages(topic, content, selectedHook, imageStyle);
                 // Persist last-generated so HomeView shows it even if unsaved
                 try {
                   localStorage.setItem("lunia:lastCarousel", JSON.stringify({
@@ -329,7 +332,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
               ]}
-              onRetry={() => content && generateSlideImages(topic, content, selectedHook)}
+              onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle)}
             />
           )}
           {!loading && !error && step === 4 && (falStatus === "done" || falStatus === "idle") && config && (
