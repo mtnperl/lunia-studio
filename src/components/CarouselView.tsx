@@ -276,7 +276,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={(t, tone, subjectId, conciseMode) => handleTopicNext(t, tone, subjectId, conciseMode)} />
+            <TopicStep onNext={handleTopicNext} />
           )}
           {!loading && !error && step === 2 && content && (
             <ContentStep
