@@ -62,6 +62,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = body.data;
     const outputFormat: "mp4" | "gif" = body.format === "gif" ? "gif" : "mp4";
+
+    // TEMP DEBUG: return immediately to verify route handler is reached
+    if (body._debug === "probe") {
+      return Response.json({ reached: true, format: outputFormat, totalFrames: data?.durationFrames });
+    }
     const compositionId: string =
       body.compositionId ?? (data?.videoFormat === "captions" ? "VideoAdCaptions" : "VideoAd");
 
