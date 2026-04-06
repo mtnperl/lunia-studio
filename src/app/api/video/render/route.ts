@@ -97,12 +97,27 @@ export async function POST(req: Request) {
           0
         );
 
-      // GIF: cap at 150 frames (5s) to stay within Vercel Hobby's 60-second function timeout.
-      // Total render time = Chromium init (~20s) + rendering + upload. At everyNthFrame:5,
-      // 150 frames → 30 rendered frames → ~15s rendering → ~40s total. Well under 60s.
-      // 5s looping GIF is the standard short-form ad format anyway.
+      // For GIF: build a truncated inputProps where scenes sum to exactly GIF_FRAME_CAP.
+      // This keeps Remotion's internal Series validation consistent with composition.durationInFrames.
+      // Passing the original 750-frame data to a 150-frame composition causes validation
+      // errors inside Remotion's Series component, crashing the render mid-way.
       const GIF_FRAME_CAP = 150;
-      const renderFrames = outputFormat === "gif" ? Math.min(totalFrames, GIF_FRAME_CAP) : totalFrames;
+
+      let renderData = data;
+      let renderFrames = totalFrames;
+
+      if (outputFormat === "gif" && totalFrames > GIF_FRAME_CAP) {
+        renderFrames = GIF_FRAME_CAP;
+        // Truncate scenes: keep whole scenes that fit, clip the last partial scene
+        let remaining = GIF_FRAME_CAP;
+        const gifScenes: Array<{ durationFrames: number; [key: string]: unknown }> = [];
+        for (const scene of (data.scenes ?? []) as Array<{ durationFrames: number; [key: string]: unknown }>) {
+          if (remaining <= 0) break;
+          gifScenes.push({ ...scene, durationFrames: Math.min(scene.durationFrames, remaining) });
+          remaining -= scene.durationFrames;
+        }
+        renderData = { ...data, durationFrames: GIF_FRAME_CAP, scenes: gifScenes };
+      }
 
       if (renderFrames > 0) {
         (composition as { durationInFrames: number }).durationInFrames = renderFrames;
@@ -116,7 +131,7 @@ export async function POST(req: Request) {
         serveUrl,
         codec: outputFormat === "gif" ? "gif" : "h264",
         outputLocation: outputPath,
-        inputProps: data,
+        inputProps: renderData,
         puppeteerInstance: browser,
         imageFormat: "jpeg",
         jpegQuality: outputFormat === "gif" ? 65 : 85,
