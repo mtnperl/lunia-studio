@@ -2,10 +2,11 @@ import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 
+// Valid recraft-v3 style values: https://fal.ai/models/fal-ai/recraft-v3
 const FAL_STYLE_MAP: Record<string, string> = {
   realistic: 'realistic_image',
   cartoon: 'digital_illustration',
-  anime: 'digital_illustration/anime',
+  anime: 'digital_illustration/2d_art_poster',
   vector: 'vector_illustration',
 };
 
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
 
     // Use Claude-generated prompt if available, otherwise fall back to keyword-based builder
     const prompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
-    console.log(`[generate-image] slide=${slideIndex} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
+    console.log(`[generate-image] slide=${slideIndex} style=${falStyle} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
 
     const result = await fal.subscribe('fal-ai/recraft-v3', {
       input: {
