@@ -126,13 +126,13 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
-          bottom: 58,
+          bottom: 24,
           left: 0,
           right: 0,
           textAlign: 'center',
           fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 700,
-          fontSize: 36,
+          fontWeight: 300,
+          fontSize: 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: '#ffffff',
