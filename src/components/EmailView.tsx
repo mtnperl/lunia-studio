@@ -268,7 +268,7 @@ export default function EmailView({ onConvertToCarousel }: Props) {
           <textarea
             value={competitorText}
             onChange={(e) => setCompetitorText(e.target.value)}
-            placeholder="Paste the full email here — subject line, body, and P.S. if there is one. Plain text or forwarded email both work."
+            placeholder="Paste the full email here — subject line, body, and P.S. if there is one. Plain text or forwarded email both work. Or Cmd+V a screenshot anywhere on this page."
             style={{
               width: "100%", minHeight: 280, padding: 16, borderRadius: 10,
               background: "var(--surface-r)", border: "1px solid var(--border)",
@@ -279,6 +279,7 @@ export default function EmailView({ onConvertToCarousel }: Props) {
             onFocus={e => (e.target.style.borderColor = "var(--accent)")}
             onBlur={e => (e.target.style.borderColor = "var(--border)")}
           />
+
           {/* Pasted image thumbnails */}
           {pastedImages.length > 0 && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
