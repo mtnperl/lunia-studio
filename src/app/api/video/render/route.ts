@@ -82,14 +82,12 @@ export async function POST(req: Request) {
     });
 
     try {
-      const composition = await selectComposition({
-        serveUrl,
-        id: compositionId,
-        inputProps: data,
-        puppeteerInstance: browser,
-      });
+      // For GIF: cap to 5 seconds (150 frames) so the Remotion composition, selectComposition,
+      // and renderMedia all see internally-consistent data. We build a trimmed inputProps where
+      // scenes sum to ≤ GIF_FRAME_CAP — this prevents Remotion's Series from validating
+      // sequence totals against a mismatched composition durationInFrames.
+      const GIF_FRAME_CAP = 150;
 
-      // Honor the actual data duration
       const totalFrames: number =
         data?.durationFrames ??
         (data?.scenes ?? []).reduce(
@@ -97,18 +95,8 @@ export async function POST(req: Request) {
           0
         );
 
-      // For GIF: build a truncated inputProps where scenes sum to exactly GIF_FRAME_CAP.
-      // This keeps Remotion's internal Series validation consistent with composition.durationInFrames.
-      // Passing the original 750-frame data to a 150-frame composition causes validation
-      // errors inside Remotion's Series component, crashing the render mid-way.
-      const GIF_FRAME_CAP = 150;
-
       let renderData = data;
-      let renderFrames = totalFrames;
-
       if (outputFormat === "gif" && totalFrames > GIF_FRAME_CAP) {
-        renderFrames = GIF_FRAME_CAP;
-        // Truncate scenes: keep whole scenes that fit, clip the last partial scene
         let remaining = GIF_FRAME_CAP;
         const gifScenes: Array<{ durationFrames: number; [key: string]: unknown }> = [];
         for (const scene of (data.scenes ?? []) as Array<{ durationFrames: number; [key: string]: unknown }>) {
@@ -118,6 +106,19 @@ export async function POST(req: Request) {
         }
         renderData = { ...data, durationFrames: GIF_FRAME_CAP, scenes: gifScenes };
       }
+
+      // selectComposition uses trimmed renderData so it sees the same scene totals
+      const composition = await selectComposition({
+        serveUrl,
+        id: compositionId,
+        inputProps: renderData,
+        puppeteerInstance: browser,
+      });
+
+      // Override composition duration to match our trimmed frame count
+      const renderFrames = outputFormat === "gif"
+        ? Math.min(totalFrames, GIF_FRAME_CAP)
+        : totalFrames;
 
       if (renderFrames > 0) {
         (composition as { durationInFrames: number }).durationInFrames = renderFrames;
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
         imageFormat: "jpeg",
         jpegQuality: outputFormat === "gif" ? 65 : 85,
         ...(outputFormat === "gif"
-          ? { everyNthFrame: 5, scale: 0.5 }   // 300→60 rendered frames at 540×960 — fits in 1GB
+          ? { everyNthFrame: 5, scale: 0.5 }   // 150→30 rendered frames at 540×960
           : { concurrency: 2 }),
       });
 
