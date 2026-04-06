@@ -45,6 +45,7 @@ export default function VideoLibraryView() {
         throw new Error(`Server error (${res.status}) — check Vercel logs`);
       }
       if (!res.ok || json.error) throw new Error(json.error ?? `Render failed (${res.status})`);
+      if (!json.url) throw new Error("Render succeeded but no URL returned");
 
       // Trigger download
       const a = document.createElement("a");
