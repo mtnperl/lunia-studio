@@ -96,8 +96,15 @@ export async function POST(req: Request) {
           (acc: number, s: { durationFrames: number }) => acc + (s.durationFrames ?? 0),
           0
         );
-      if (totalFrames > 0) {
-        (composition as { durationInFrames: number }).durationInFrames = totalFrames;
+
+      // GIF: cap at 300 frames (10s) — GIF encoder holds all frames in RAM for palette
+      // quantization; >300 frames at 540×960 exceeds Vercel's 1GB function memory ceiling.
+      // 10s is the standard looping ad GIF length anyway.
+      const GIF_FRAME_CAP = 300;
+      const renderFrames = outputFormat === "gif" ? Math.min(totalFrames, GIF_FRAME_CAP) : totalFrames;
+
+      if (renderFrames > 0) {
+        (composition as { durationInFrames: number }).durationInFrames = renderFrames;
       }
 
       const ext = outputFormat === "gif" ? "gif" : "mp4";
@@ -113,7 +120,7 @@ export async function POST(req: Request) {
         imageFormat: "jpeg",
         jpegQuality: outputFormat === "gif" ? 65 : 85,
         ...(outputFormat === "gif"
-          ? { everyNthFrame: 6, scale: 0.5 }   // 750→125 frames, half-res → drastically less RAM
+          ? { everyNthFrame: 5, scale: 0.5 }   // 300→60 rendered frames at 540×960 — fits in 1GB
           : { concurrency: 2 }),
       });
 
