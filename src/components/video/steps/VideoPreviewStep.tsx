@@ -99,11 +99,13 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: renderData, compositionId, format }),
       });
-      if (!res.ok) {
-        const { error: msg } = await res.json().catch(() => ({}));
-        throw new Error(msg || "Render failed");
+      const text = await res.text();
+      let json: { url?: string; error?: string } = {};
+      try { json = JSON.parse(text); } catch {
+        throw new Error(`Server error (${res.status}) — check Vercel logs`);
       }
-      const { url } = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error ?? `Render failed (${res.status})`);
+      const { url } = json;
       setUrl(url);
       setStatus("done");
       // Auto-trigger download
