@@ -97,10 +97,11 @@ export async function POST(req: Request) {
           0
         );
 
-      // GIF: cap at 300 frames (10s) — GIF encoder holds all frames in RAM for palette
-      // quantization; >300 frames at 540×960 exceeds Vercel's 1GB function memory ceiling.
-      // 10s is the standard looping ad GIF length anyway.
-      const GIF_FRAME_CAP = 300;
+      // GIF: cap at 150 frames (5s) to stay within Vercel Hobby's 60-second function timeout.
+      // Total render time = Chromium init (~20s) + rendering + upload. At everyNthFrame:5,
+      // 150 frames → 30 rendered frames → ~15s rendering → ~40s total. Well under 60s.
+      // 5s looping GIF is the standard short-form ad format anyway.
+      const GIF_FRAME_CAP = 150;
       const renderFrames = outputFormat === "gif" ? Math.min(totalFrames, GIF_FRAME_CAP) : totalFrames;
 
       if (renderFrames > 0) {
