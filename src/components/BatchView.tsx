@@ -439,25 +439,6 @@ export default function BatchView() {
     setGenerating(false);
   }
 
-  async function handleSave(item: QueueItem) {
-    if (!item.content) return;
-    try {
-      const res = await fetch("/api/carousel/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: item.topic, hookTone,
-          content: item.content, selectedHook: item.selectedHook,
-          graphicStyles: [null, null, null, null, null],
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        updateItem(item.id, { savedId: data?.id ?? "saved" });
-      }
-    } catch { /* fail silently */ }
-  }
-
   async function handleRetry(item: QueueItem) {
     updateItem(item.id, { status: "pending", error: undefined, content: undefined, imageUrl: undefined, savedId: undefined });
     await generateContent({ ...item, status: "pending", error: undefined, content: undefined, imageUrl: undefined });
