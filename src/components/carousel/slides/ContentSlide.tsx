@@ -171,6 +171,7 @@ type Props = {
   logoScale?: number;
   arrowScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
+  showLuniaLifeWatermark?: boolean;
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -188,6 +189,7 @@ export default function ContentSlide({
   logoScale = 1,
   arrowScale = 1,
   darkBackground = false,
+  showLuniaLifeWatermark = false,
 }: Props) {
   // Determine rendering path
   const graphicSpec = parseGraphicSpec(graphic);
@@ -269,6 +271,26 @@ export default function ContentSlide({
       ) : null}
 
       <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
+      {showLuniaLifeWatermark && (
+        <div style={{
+          position: 'absolute',
+          bottom: 58,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontFamily: 'Jost, Montserrat, sans-serif',
+          fontWeight: 700,
+          fontSize: 36,
+          letterSpacing: '0.35em',
+          textTransform: 'uppercase',
+          color: darkBackground ? '#ffffff' : '#0d2137',
+          opacity: 0.13,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
+          LUNIA LIFE
+        </div>
+      )}
       <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
 
       {/* Flex column layout — headline / body+citation / graphic */}

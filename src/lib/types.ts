@@ -279,6 +279,7 @@ export type SavedCarousel = {
   logoScale?: number;
   arrowScale?: number;
   darkBackground?: boolean;
+  showLuniaLifeWatermark?: boolean;
   savedAt: string;
 };
 

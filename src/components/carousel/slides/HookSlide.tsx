@@ -24,9 +24,10 @@ type Props = {
   showDecoration?: boolean;
   logoScale?: number;
   arrowScale?: number;
+  showLuniaLifeWatermark?: boolean;
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1 }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false }: Props) {
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
@@ -122,6 +123,26 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
         )}
       </div>
 
+      {showLuniaLifeWatermark && (
+        <div style={{
+          position: 'absolute',
+          bottom: 58,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontFamily: 'Jost, Montserrat, sans-serif',
+          fontWeight: 700,
+          fontSize: 36,
+          letterSpacing: '0.35em',
+          textTransform: 'uppercase',
+          color: '#ffffff',
+          opacity: 0.13,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
+          LUNIA LIFE
+        </div>
+      )}
       <LuniaLogo sizeScale={logoScale} />
     </SlideWrapper>
   );
