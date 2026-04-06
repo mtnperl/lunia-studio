@@ -39,8 +39,12 @@ export default function VideoLibraryView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: video.data, format }),
       });
-      const json = await res.json();
-      if (!res.ok || json.error) throw new Error(json.error ?? "Render failed");
+      const text = await res.text();
+      let json: { url?: string; error?: string } = {};
+      try { json = JSON.parse(text); } catch {
+        throw new Error(`Server error (${res.status}) — check Vercel logs`);
+      }
+      if (!res.ok || json.error) throw new Error(json.error ?? `Render failed (${res.status})`);
 
       // Trigger download
       const a = document.createElement("a");
