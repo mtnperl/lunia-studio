@@ -111,8 +111,10 @@ export async function POST(req: Request) {
         inputProps: data,
         puppeteerInstance: browser,
         imageFormat: "jpeg",
-        jpegQuality: outputFormat === "gif" ? 70 : 85,
-        ...(outputFormat === "gif" ? { everyNthFrame: 3 } : { concurrency: 2 }),
+        jpegQuality: outputFormat === "gif" ? 65 : 85,
+        ...(outputFormat === "gif"
+          ? { everyNthFrame: 6, scale: 0.5 }   // 750→125 frames, half-res → drastically less RAM
+          : { concurrency: 2 }),
       });
 
       const buffer = await readFile(outputPath);

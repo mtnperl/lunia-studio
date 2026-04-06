@@ -106,7 +106,7 @@ export default function VideoPreviewStep({ videoAdData, videoCaptionsData, video
       }
       if (!res.ok || json.error) throw new Error(json.error ?? `Render failed (${res.status})`);
       const { url } = json;
-      setUrl(url);
+      setUrl(url ?? null);
       setStatus("done");
       // Auto-trigger download
       const ext = format === "gif" ? "gif" : "mp4";
