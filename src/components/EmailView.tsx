@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { EmailAnatomy, EmailSection, SavedEmail, StylePreset } from "@/lib/types";
 
 type GenerateResult = {
@@ -90,6 +90,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function EmailView({ onConvertToCarousel }: Props) {
   const [competitorText, setCompetitorText] = useState("");
+  const [pastedImages, setPastedImages] = useState<string[]>([]);
   const [stylePreset, setStylePreset] = useState<StylePreset>("minimal-modern");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,10 +103,30 @@ export default function EmailView({ onConvertToCarousel }: Props) {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [activeSubject, setActiveSubject] = useState(0);
   const [sideBy, setSideBy] = useState(false);
+  const pasteZoneRef = useRef<HTMLDivElement>(null);
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith("image/"));
+    if (imageItems.length === 0) return;
+    imageItems.forEach(item => {
+      const file = item.getAsFile();
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        setPastedImages(prev => [...prev, dataUrl]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const hasImages = pastedImages.length > 0;
+  const canGenerate = hasImages || competitorText.trim().length >= 100;
 
   async function handleGenerate() {
-    if (competitorText.trim().length < 100) {
-      setError("Paste at least 100 characters of email text to analyze.");
+    if (!canGenerate) {
+      setError("Paste at least 100 characters of email text, or paste a screenshot (Cmd+V on a screenshot).");
       return;
     }
     setLoading(true);
@@ -119,7 +140,7 @@ export default function EmailView({ onConvertToCarousel }: Props) {
       const res = await fetch("/api/email/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ competitorText, stylePreset }),
+        body: JSON.stringify({ competitorText, stylePreset, imageData: pastedImages }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -198,7 +219,12 @@ export default function EmailView({ onConvertToCarousel }: Props) {
   const charCount = competitorText.length;
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 40px 80px" }}>
+    <div
+      ref={pasteZoneRef}
+      onPaste={handlePaste}
+      tabIndex={-1}
+      style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 40px 80px", outline: "none" }}
+    >
       {/* Header */}
       <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
         <h1 style={{
@@ -253,22 +279,53 @@ export default function EmailView({ onConvertToCarousel }: Props) {
             onFocus={e => (e.target.style.borderColor = "var(--accent)")}
             onBlur={e => (e.target.style.borderColor = "var(--border)")}
           />
+          {/* Pasted image thumbnails */}
+          {pastedImages.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              {pastedImages.map((src, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={`Screenshot ${i + 1}`}
+                    style={{ height: 64, width: "auto", borderRadius: 6, border: "1px solid var(--border)", display: "block" }}
+                  />
+                  <button
+                    onClick={() => setPastedImages(prev => prev.filter((_, j) => j !== i))}
+                    style={{
+                      position: "absolute", top: -6, right: -6,
+                      width: 18, height: 18, borderRadius: "50%",
+                      background: "var(--error)", border: "none", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontFamily: "var(--font-mono)", fontSize: 10, color: "#fff", lineHeight: 1,
+                    }}
+                    aria-label="Remove screenshot"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>
-              {charCount} chars{charCount > 8000 ? " — will be trimmed to 8000" : ""}
+              {hasImages
+                ? `${pastedImages.length} screenshot${pastedImages.length > 1 ? "s" : ""} ready · Cmd+V to add more`
+                : `${charCount} chars${charCount > 8000 ? " — will be trimmed to 8000" : ""} · or Cmd+V a screenshot`}
             </span>
             <button
               onClick={handleGenerate}
-              disabled={loading || charCount < 100}
+              disabled={loading || !canGenerate}
               style={{
-                padding: "10px 24px", borderRadius: 8, cursor: loading || charCount < 100 ? "not-allowed" : "pointer",
-                background: loading || charCount < 100 ? "var(--surface-h)" : "var(--accent)",
+                padding: "10px 24px", borderRadius: 8, cursor: loading || !canGenerate ? "not-allowed" : "pointer",
+                background: loading || !canGenerate ? "var(--surface-h)" : "var(--accent)",
                 border: "none", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
-                color: loading || charCount < 100 ? "var(--muted)" : "var(--bg)",
+                color: loading || !canGenerate ? "var(--muted)" : "var(--bg)",
                 transition: "all 0.15s",
               }}
             >
-              {loading ? "Analyzing..." : "Analyze + Remix →"}
+              {loading ? "Analyzing..." : hasImages && !competitorText.trim() ? "Analyze Screenshot →" : "Analyze + Remix →"}
             </button>
           </div>
           {error && (

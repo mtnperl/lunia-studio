@@ -50,33 +50,40 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const competitorText: string = body.competitorText ?? "";
+    const imageData: string[] = Array.isArray(body.imageData) ? body.imageData : [];
     const stylePreset: StylePreset = body.stylePreset ?? "minimal-modern";
 
-    if (!competitorText || competitorText.trim().length < 100) {
-      return Response.json({ error: "Email too short to analyze (minimum 100 characters)" }, { status: 400 });
+    const hasImages = imageData.length > 0;
+    const hasText = competitorText.trim().length >= 100;
+
+    if (!hasImages && !hasText) {
+      return Response.json({ error: "Paste at least 100 characters of email text, or include a screenshot." }, { status: 400 });
     }
 
     if (!["minimal-modern", "story-driven", "bold-product-first"].includes(stylePreset)) {
       return Response.json({ error: "Invalid stylePreset" }, { status: 400 });
     }
 
-    // Preprocess and truncate
-    const cleaned = preprocessEmailText(competitorText).slice(0, 8000);
+    // Preprocess and truncate text (may be empty if image-only)
+    const cleaned = hasText ? preprocessEmailText(competitorText).slice(0, 8000) : "";
 
-    const prompt = `${LUNIA_VOICE_SPEC}
+    const analysisPrompt = `${LUNIA_VOICE_SPEC}
 
 ${SCORING_RUBRIC}
 
 Style for your Lunia remix: ${STYLE_CONTEXT[stylePreset]}
 
-Analyze the competitor email below, then produce a complete Lunia remix. Return ONLY valid JSON matching this exact schema — no markdown, no explanation:
+${hasImages ? "Analyze the competitor email screenshot(s) provided. Examine the visual layout, image-to-text ratio, design hierarchy, copy, subject/preheader if visible, and any CTAs." : ""}
+${hasText ? `Also analyze the email text below:\n\n<competitor_email>\n${cleaned}\n</competitor_email>` : ""}
+
+Produce a complete Lunia remix. Return ONLY valid JSON matching this exact schema — no markdown, no explanation:
 
 {
   "anatomy": {
     "subjectFormula": "string — describe the subject line formula (e.g. 'Question + benefit promise')",
     "preheaderStrategy": "string — what the preheader does (e.g. 'Extends subject curiosity')",
     "visualStructure": "string — describe visual/text layout (e.g. 'Hero image → 3-column grid → single CTA')",
-    "inferredImageRatio": "string — one of: heavy image | balanced | text-first (heuristic from email type/content)",
+    "inferredImageRatio": "string — one of: heavy image | balanced | text-first",
     "copyFramework": "string — copywriting framework used (e.g. 'PAS', 'AIDA', 'Before/After/Bridge')",
     "ctaType": "string — describe the CTA mechanic (e.g. 'Single button, benefit-led')",
     "hasPsLine": boolean
@@ -95,16 +102,32 @@ Analyze the competitor email below, then produce a complete Lunia remix. Return 
     "ps": "string — a purposeful P.S. line, always include"
   },
   "imagePrompt": "string — a Recraft V3 image generation prompt for a single hero image that would elevate this email. Style: photorealistic wellness lifestyle. 1024x1280 portrait. Describe scene, lighting, mood. No text in image."
-}
+}`;
 
-<competitor_email>
-${cleaned}
-</competitor_email>`;
+    // Build message content — images first, then text prompt
+    type AllowedMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    const ALLOWED_MEDIA_TYPES = new Set<string>(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+    type ImageBlock = { type: "image"; source: { type: "base64"; media_type: AllowedMediaType; data: string } };
+    type TextBlock = { type: "text"; text: string };
+    const messageContent: Array<ImageBlock | TextBlock> = [];
+
+    for (const dataUrl of imageData) {
+      const commaIdx = dataUrl.indexOf(",");
+      if (commaIdx === -1) continue;
+      const header = dataUrl.slice(0, commaIdx);
+      const data = dataUrl.slice(commaIdx + 1);
+      const detected = header.match(/data:([^;]+)/)?.[1] ?? "image/png";
+      const mediaType: AllowedMediaType = ALLOWED_MEDIA_TYPES.has(detected)
+        ? (detected as AllowedMediaType)
+        : "image/png";
+      messageContent.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
+    }
+    messageContent.push({ type: "text", text: analysisPrompt });
 
     const response = await anthropic.messages.create({
       model: "claude-opus-4-6",
       max_tokens: 3000,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: messageContent }],
     });
 
     const raw = response.content[0].type === "text" ? response.content[0].text : "";
