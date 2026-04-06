@@ -5,11 +5,9 @@ import EditorView from "@/components/EditorView";
 import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
 import BatchView from "@/components/BatchView";
-import CalendarView from "@/components/CalendarView";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
-import AdsView from "@/components/AdsView";
 import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
@@ -17,7 +15,7 @@ import VideoLibraryView from "@/components/VideoLibraryView";
 import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "calendar" | "ads" | "video" | "video-assets" | "video-library" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "video" | "video-assets" | "video-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -58,13 +56,6 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
       { key: "batch",     product: "carousel", label: "Batch"    },
       { key: "subjects",          product: "carousel", label: "Subjects" },
       { key: "carousel-library", product: "carousel", label: "Library"  },
-    ],
-  },
-  {
-    section: "Ads",
-    items: [
-      { key: "ads",      product: "ads",  label: "Generate" },
-      { key: "calendar", product: "home", label: "Calendar" },
     ],
   },
   {
@@ -302,8 +293,6 @@ export default function Page() {
             <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
           </div>
         )}
-        {tab === "calendar"  && <CalendarView onNewCarousel={() => navigate("carousel")} onNewScript={() => navigate("generate")} />}
-        {tab === "ads"       && <AdsView />}
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
