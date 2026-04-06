@@ -13,9 +13,11 @@ export async function POST(req: Request) {
     const compositionId: string =
       body.compositionId ?? (data?.videoFormat === "captions" ? "VideoAdCaptions" : "VideoAd");
 
+    // VERCEL_URL is the preview-deployment URL which may be behind Vercel Auth.
+    // VERCEL_PROJECT_PRODUCTION_URL is the stable production domain — always public.
     const appUrl =
-      process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
+      process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
         : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const serveUrl = `${appUrl}/remotion/`;
 
