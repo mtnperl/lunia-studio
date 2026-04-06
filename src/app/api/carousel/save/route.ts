@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const {
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
-      showDecoration, logoScale, arrowScale, darkBackground,
+      showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
     } = body;
 
     if (!topic || !content || selectedHook == null) {
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       logoScale,
       arrowScale,
       darkBackground,
+      showLuniaLifeWatermark,
       savedAt: new Date().toISOString(),
     };
 

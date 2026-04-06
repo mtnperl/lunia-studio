@@ -12,9 +12,10 @@ type Props = {
   shimmer?: boolean;                // show shimmer while loading
   logoScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
+  showLuniaLifeWatermark?: boolean;
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false }: Props) {
   const parts = followLine.split("@lunia_life");
 
   const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? "#f0ece6");
@@ -42,6 +43,26 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
       ) : null}
 
       <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
+      {showLuniaLifeWatermark && (
+        <div style={{
+          position: 'absolute',
+          bottom: 58,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+          fontFamily: 'Jost, Montserrat, sans-serif',
+          fontWeight: 700,
+          fontSize: 36,
+          letterSpacing: '0.35em',
+          textTransform: 'uppercase',
+          color: darkBackground ? '#ffffff' : '#0d2137',
+          opacity: 0.13,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
+          LUNIA LIFE
+        </div>
+      )}
       <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
