@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
     "/api/video/render": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
       "./node_modules/@remotion/compositor-*/**/*",
+      // Bundle JS files must be on the function filesystem so the local
+      // HTTP server can serve them to Chromium without external requests.
+      "./public/remotion/**/*",
     ],
   },
   turbopack: {
