@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata, SavedEmail } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -337,6 +337,38 @@ export async function saveVideoAsset(asset: VideoAssetMetadata): Promise<void> {
 export async function deleteVideoAsset(id: string): Promise<void> {
   const all = await getVideoAssets();
   await redis.set(VIDEO_ASSETS_KEY, all.filter((a) => a.id !== id), { ex: TTL_SECONDS });
+}
+
+// ─── Email Intelligence ───────────────────────────────────────────────────────
+const EMAILS_KEY = "lunia:emails";
+
+export async function getEmails(): Promise<SavedEmail[]> {
+  try {
+    return (await redis.get<SavedEmail[]>(EMAILS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveEmail(email: SavedEmail): Promise<void> {
+  const all = await getEmails();
+  const idx = all.findIndex((e) => e.id === email.id);
+  if (idx >= 0) {
+    all[idx] = email;
+  } else {
+    all.unshift(email);
+  }
+  await redis.set(EMAILS_KEY, all.slice(0, 50), { ex: TTL_SECONDS });
+}
+
+export async function getEmailById(id: string): Promise<SavedEmail | null> {
+  const all = await getEmails();
+  return all.find((e) => e.id === id) ?? null;
+}
+
+export async function deleteEmailKv(id: string): Promise<void> {
+  const all = await getEmails();
+  await redis.set(EMAILS_KEY, all.filter((e) => e.id !== id), { ex: TTL_SECONDS });
 }
 
 // Re-export the internal redis wrapper so analytics routes can import { kv }

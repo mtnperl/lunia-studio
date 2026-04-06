@@ -509,3 +509,43 @@ export type VideoAssetMetadata = {
   assetType: VideoAssetType;
   uploadedAt: string;
 };
+
+// ─── Email Intelligence types ─────────────────────────────────────────────────
+
+export type StylePreset = 'minimal-modern' | 'story-driven' | 'bold-product-first';
+
+export type EmailSection = {
+  heading?: string;
+  body: string;
+};
+
+export type EmailAnatomy = {
+  subjectFormula: string;
+  preheaderStrategy: string;
+  visualStructure: string;
+  inferredImageRatio: string; // heuristic: "heavy image", "text-first", "balanced"
+  copyFramework: string;
+  ctaType: string;
+  hasPsLine: boolean;
+};
+
+export type SavedEmail = {
+  id: string;
+  competitorText: string;       // original pasted text (≤8000 chars, kept for side-by-side view)
+  stylePreset: StylePreset;
+  anatomy: EmailAnatomy;
+  score: number;                // 1-10
+  scoreDiagnosis: string;       // e.g. "Strong hook, weak CTA, no visual hierarchy"
+  frameworkLabel: string;       // e.g. "Pattern Interrupt + PAS + Single CTA"
+  sendTimingChip: string;       // e.g. "Educational → Tue/Wed 9am"
+  generated: {
+    subjectLines: string[];     // 3 variants in Lunia voice
+    preheader: string;
+    sections: EmailSection[];
+    cta: string;
+    ps: string;                 // always generated, non-optional
+  };
+  imageUrl?: string;
+  imagePrompt?: string;         // shown in Image Zone, editable before generating
+  savedAt: string;
+};
