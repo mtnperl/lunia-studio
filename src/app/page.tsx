@@ -12,10 +12,12 @@ import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
-import { Script } from "@/lib/types";
+import EmailView from "@/components/EmailView";
+import EmailLibraryView from "@/components/EmailLibraryView";
+import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "video" | "video-assets" | "video-library" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email" | "email-library" | "video" | "video-assets" | "video-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -56,6 +58,13 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
       { key: "batch",     product: "carousel", label: "Batch"    },
       { key: "subjects",          product: "carousel", label: "Subjects" },
       { key: "carousel-library", product: "carousel", label: "Library"  },
+    ],
+  },
+  {
+    section: "Email",
+    items: [
+      { key: "email",         product: "carousel", label: "Intel"   },
+      { key: "email-library", product: "carousel", label: "Library" },
     ],
   },
   {
@@ -111,6 +120,28 @@ export default function Page() {
   function navigate(t: Tab) {
     setTab(t);
     setMobileNavOpen(false);
+  }
+
+  function handleEmailToCarousel(data: { frameworkLabel: string; subjectLines: string[]; preheader: string; sections: EmailSection[] }) {
+    const synthetic: import("@/lib/types").SavedCarousel = {
+      id: "email-bridge-" + Date.now(),
+      topic: data.frameworkLabel + " — " + data.subjectLines[0],
+      hookTone: "educational",
+      content: {
+        hooks: [{ headline: data.subjectLines[0], subline: data.preheader }],
+        slides: data.sections.slice(0, 3).map(s => ({
+          headline: s.heading ?? "",
+          body: s.body,
+          citation: "",
+        })),
+        cta: { headline: "Follow for more", followLine: "@lunia_life" },
+        caption: "",
+      },
+      selectedHook: 0,
+      savedAt: new Date().toISOString(),
+    };
+    setPendingCarousel(synthetic);
+    navigate("carousel");
   }
 
   const now = new Date();
@@ -291,6 +322,15 @@ export default function Page() {
               <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Carousel Library</h1>
             </div>
             <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
+          </div>
+        )}
+        {tab === "email" && <EmailView onConvertToCarousel={handleEmailToCarousel} />}
+        {tab === "email-library" && (
+          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
+            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
+              <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Email Swipe Library</h1>
+            </div>
+            <EmailLibraryView />
           </div>
         )}
         {tab === "video"         && <VideoView />}
