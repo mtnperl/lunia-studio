@@ -1,9 +1,5 @@
 {
   "functions": {
-    "src/app/api/video/render/route.ts": {
-      "maxDuration": 300,
-      "memory": 3008
-    },
     "src/app/api/carousel/export/route.ts": {
       "maxDuration": 60
     },
