@@ -1,11 +1,63 @@
 import { put } from "@vercel/blob";
-import { readFile, unlink } from "fs/promises";
+import { readFile, unlink, stat } from "fs/promises";
+import { createReadStream } from "fs";
+import { createServer } from "http";
+import type { AddressInfo } from "net";
 import os from "os";
 import path from "path";
 
 export const maxDuration = 300;
 
+const MIME: Record<string, string> = {
+  ".html": "text/html",
+  ".js":   "application/javascript",
+  ".wasm": "application/wasm",
+  ".ico":  "image/x-icon",
+  ".map":  "application/json",
+};
+
+/**
+ * Spin up a local HTTP server to serve the Remotion bundle from the filesystem.
+ * This bypasses all Vercel network/auth/CSP issues that prevent external URLs
+ * from working reliably inside a serverless function.
+ */
+async function startBundleServer(): Promise<{ url: string; close: () => void }> {
+  const bundleDir = path.join(process.cwd(), "public", "remotion");
+
+  return new Promise((resolve, reject) => {
+    const server = createServer(async (req, res) => {
+      const reqPath = (req.url ?? "/").split("?")[0];
+      const filePath = path.join(bundleDir, reqPath === "/" ? "index.html" : reqPath);
+
+      try {
+        await stat(filePath);
+        const ext = path.extname(filePath);
+        res.setHeader("Content-Type", MIME[ext] ?? "application/octet-stream");
+        // Allow the Remotion bundle to load sub-resources from itself
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        createReadStream(filePath).pipe(res);
+      } catch {
+        res.writeHead(404);
+        res.end("Not found");
+      }
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      console.log(`[render] Bundle server started on http://127.0.0.1:${port}/`);
+      resolve({
+        url: `http://127.0.0.1:${port}/`,
+        close: () => server.close(),
+      });
+    });
+
+    server.on("error", reject);
+  });
+}
+
 export async function POST(req: Request) {
+  let bundleServer: { url: string; close: () => void } | null = null;
+
   try {
     const body = await req.json();
     const data = body.data;
@@ -13,13 +65,9 @@ export async function POST(req: Request) {
     const compositionId: string =
       body.compositionId ?? (data?.videoFormat === "captions" ? "VideoAdCaptions" : "VideoAd");
 
-    // VERCEL_URL is the preview-deployment URL which may be behind Vercel Auth.
-    // VERCEL_PROJECT_PRODUCTION_URL is the stable production domain — always public.
-    const appUrl =
-      process.env.VERCEL_PROJECT_PRODUCTION_URL
-        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-        : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const serveUrl = `${appUrl}/remotion/`;
+    // Serve the bundle locally — avoids ALL external URL issues (auth, CSP, networking)
+    bundleServer = await startBundleServer();
+    const serveUrl = bundleServer.url;
 
     const chromiumModule = await import("@sparticuz/chromium");
     const chromium = chromiumModule.default;
@@ -64,7 +112,6 @@ export async function POST(req: Request) {
         puppeteerInstance: browser,
         imageFormat: "jpeg",
         jpegQuality: outputFormat === "gif" ? 70 : 85,
-        // For GIF, limit FPS and use fewer frames to keep file size manageable
         ...(outputFormat === "gif" ? { everyNthFrame: 3 } : { concurrency: 2 }),
       });
 
@@ -87,5 +134,7 @@ export async function POST(req: Request) {
     console.error("[api/video/render]", err);
     const message = err instanceof Error ? err.message : "Render failed";
     return Response.json({ error: message }, { status: 500 });
+  } finally {
+    bundleServer?.close();
   }
 }
