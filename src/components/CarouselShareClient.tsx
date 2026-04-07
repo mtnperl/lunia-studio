@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -27,7 +27,19 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [preparingAll, setPreparingAll] = useState(false);
   const [preparedFiles, setPreparedFiles] = useState<File[] | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [hookDataUrl, setHookDataUrl] = useState<string | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+
+  // Pre-fetch the hook background image as a base64 data URL at mount time.
+  // This is stored in React state so it survives re-renders — unlike the DOM-patch
+  // approach, which gets wiped by React reconciliation during the batch-download loop.
+  useEffect(() => {
+    const src = proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl);
+    if (!src) return;
+    let cancelled = false;
+    toDataUrl(src).then(url => { if (!cancelled) setHookDataUrl(url); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
@@ -166,7 +178,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
+      backgroundImageUrl={hookDataUrl ?? proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
