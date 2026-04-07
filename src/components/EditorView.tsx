@@ -323,6 +323,16 @@ export default function EditorView({
     setLastSavedAt(new Date());
   }
 
+  function handleUnlock() {
+    if (!script) return;
+    const unlocked: Script = { ...script, status: "draft", savedAt: new Date().toISOString() };
+    setScript(unlocked);
+    saveScript(unlocked);
+    onUpdate(unlocked);
+    setIsDirty(false);
+    setLastSavedAt(new Date());
+  }
+
   async function expandScript() {
     if (!script || expanding) return;
     setExpanding(true);
@@ -497,7 +507,11 @@ export default function EditorView({
           </span>
         )}
 
-        {!isLocked && (
+        {isLocked ? (
+          <button className="btn-ghost" onClick={handleUnlock} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
+            Unlock
+          </button>
+        ) : (
           <button className="btn-ghost" onClick={() => setLockModal(true)} style={{ fontSize: 13, padding: "6px 12px", flexShrink: 0 }}>
             Lock & save
           </button>
