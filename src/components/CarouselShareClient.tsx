@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -11,12 +11,24 @@ type Props = { carousel: SavedCarousel };
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.5;
 
+// Fetch a URL and return it as a base64 data URL
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`fetch ${url} → ${r.status}`);
+  const blob = await r.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function CarouselShareClient({ carousel }: Props) {
   const {
     content, selectedHook, topic, hookTone,
     brandStyle, hookImageUrl, slideImages,
     showDecoration = true, logoScale = 1, arrowScale = 1, darkBackground = false,
-    showLuniaLifeWatermark = false,
   } = carousel;
 
   const hook = content.hooks[selectedHook];
@@ -26,25 +38,21 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [hookDataUrl, setHookDataUrl] = useState<string | null>(null);
-  // hookReady: true when no hook image is needed, OR the data URL pre-fetch is done
-  // (success or failure). While false, all download buttons are disabled so we never
-  // hit the racy DOM-patch fallback path — toPng sees the data URL directly via prop.
-  const hookSrc = proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? null;
-  const [hookReady, setHookReady] = useState(!hookSrc);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
-  // Pre-fetch the hook background image as a base64 data URL at mount time.
-  // We block all download buttons until this resolves so the data URL is always
-  // in the React prop — eliminating the React re-render race that wiped DOM patches.
+  // Pre-fetch the hook background as a data URL at mount so it's ready when user
+  // clicks download. Canvas compositing needs it because html-to-image cannot render
+  // <img> elements in SVG foreignObject — they always come out blank.
+  const hookBgDataUrlRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!hookSrc) return;
-    let cancelled = false;
-    toDataUrl(hookSrc)
-      .then(url => { if (!cancelled) { setHookDataUrl(url); setHookReady(true); } })
-      .catch(() => { if (!cancelled) setHookReady(true); }); // unblock on failure too
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return;
+    const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+    fetchAsDataUrl(proxied)
+      .then(u => { hookBgDataUrlRef.current = u; })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
@@ -52,106 +60,58 @@ export default function CarouselShareClient({ carousel }: Props) {
     return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
-  // Fetch a URL through the image proxy and return a base64 data URL.
-  async function toDataUrl(src: string): Promise<string> {
-    const fetchUrl = src.startsWith("/")
-      ? src
-      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
-    const resp = await fetch(fetchUrl);
-    if (!resp.ok) throw new Error(`Image fetch failed: ${resp.status}`);
-    const blob = await resp.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  // Build a PNG File for one slide — no download/share side-effects.
-  async function buildSlideFile(index: number): Promise<File> {
-    const el = exportRefs.current[index];
-    if (!el) throw new Error(`Slide ${index + 1} element not found`);
-    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
-
-    // Hook slide (index 0): html-to-image's SVG foreignObject silently drops <img> elements
-    // on all browsers (confirmed: data URL in img.src, img.complete=true, naturalWidth>0,
-    // yet the canvas output has no image). Fix: canvas compositing — capture foreground
-    // without the background image, then draw bg image + foreground on canvas.
-    if (index === 0) {
-      const bgDataUrl = hookDataUrl ?? (hookSrc ? await toDataUrl(hookSrc).catch(() => null) : null);
-      if (bgDataUrl) {
-        return compositeHookSlide(el, bgDataUrl, filename);
-      }
-    }
-
-    // Content/CTA slides: patch any remaining external URLs then toPng.
-    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
-    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
-    await Promise.all(allEls.map(async (node) => {
-      const bg = node.style.backgroundImage;
-      if (bg) {
-        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-        if (m && !m[1].startsWith("data:")) {
-          try {
-            const dataUrl = await toDataUrl(m[1]);
-            patchedBg.push({ el: node, original: bg });
-            node.style.backgroundImage = `url(${dataUrl})`;
-          } catch { /* best effort */ }
-        }
-      }
-    }));
-
-    let file: File;
+  // Get the hook background as a data URL — use cached value or fetch on demand.
+  async function getHookBgDataUrl(): Promise<string | null> {
+    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return null;
     try {
-      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
-      const blobRes = await fetch(dataUrl);
-      const blob = await blobRes.blob();
-      file = new File([blob], filename, { type: "image/png" });
-    } finally {
-      patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+      const url = await fetchAsDataUrl(proxied);
+      hookBgDataUrlRef.current = url;
+      return url;
+    } catch {
+      return null;
     }
-    return file;
   }
 
-  // Canvas composite for HookSlide — bypasses html-to-image's broken <img> rendering.
-  // 1. Temporarily hide the <img> and make SlideWrapper transparent.
-  // 2. toPng captures the foreground (gradient overlay + decorations + text) with alpha.
-  // 3. Canvas draws: background image → foreground overlay.
+  // Canvas compositing for the hook slide.
+  // 1. Hide <img> + make inner wrapper transparent → toPng captures foreground only
+  // 2. Draw background image onto canvas (cover-fit)
+  // 3. Draw foreground overlay on top → correct final PNG
   async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
-    const slideWrapper = el.firstElementChild as HTMLElement | null;
+    // el > SlideWrapper outer div > SlideWrapper inner div (has background style + content)
+    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
 
     const savedImgDisplay = imgEl?.style.display ?? "";
-    const savedWrapperBg = slideWrapper?.style.background ?? "";
+    const savedWrapperBg = innerWrapper?.style.background ?? "";
 
     if (imgEl) imgEl.style.display = "none";
-    if (slideWrapper) slideWrapper.style.background = "transparent";
+    if (innerWrapper) innerWrapper.style.background = "transparent";
 
     let fgDataUrl: string;
     try {
       fgDataUrl = await toPng(el, {
-        width: 1080, height: 1350, pixelRatio: 2, cacheBust: false,
-        backgroundColor: "transparent",
+        width: 1080, height: 1350, pixelRatio: 2,
+        cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
       if (imgEl) imgEl.style.display = savedImgDisplay;
-      if (slideWrapper) slideWrapper.style.background = savedWrapperBg;
+      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
-    // Composite: background image (cover/center) + foreground (semi-transparent overlay + text)
-    const W = 1080 * 2, H = 1350 * 2; // pixelRatio=2
+    const W = 1080 * 2, H = 1350 * 2; // pixelRatio: 2
     const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
 
-    await new Promise<void>((resolve) => {
+    // Layer 1: background photo (cover-fit, centred)
+    await new Promise<void>(resolve => {
       const bg = new Image();
       bg.onload = () => {
         const scale = Math.max(W / bg.width, H / bg.height);
-        const w = bg.width * scale;
-        const h = bg.height * scale;
+        const w = bg.width * scale, h = bg.height * scale;
         ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
         resolve();
       };
@@ -159,7 +119,8 @@ export default function CarouselShareClient({ carousel }: Props) {
       bg.src = bgDataUrl;
     });
 
-    await new Promise<void>((resolve) => {
+    // Layer 2: foreground (gradient overlay + text + decorations — captured via toPng)
+    await new Promise<void>(resolve => {
       const fg = new Image();
       fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
       fg.onerror = () => resolve();
@@ -172,8 +133,51 @@ export default function CarouselShareClient({ carousel }: Props) {
     return new File([blob], filename, { type: "image/png" });
   }
 
-  // Trigger a direct blob URL download — works on desktop and iOS Safari 13.4+
-  function triggerDownload(file: File) {
+  async function buildSlideFile(index: number): Promise<File> {
+    const el = exportRefs.current[index];
+    if (!el) throw new Error("Export element not found");
+
+    const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
+    const filename = `lunia-slide-${index + 1}-${label}.png`;
+
+    // Wait for any <img> to finish loading
+    await Promise.all(Array.from(el.querySelectorAll("img")).map(img =>
+      img.complete ? Promise.resolve()
+        : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
+    ));
+
+    // Hook slide: canvas compositing required (html-to-image drops <img> contents)
+    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
+      const bgDataUrl = await getHookBgDataUrl();
+      if (bgDataUrl) {
+        return compositeHookSlide(el, bgDataUrl, filename);
+      }
+    }
+
+    // All other slides + hook with no image: standard html-to-image
+    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  // Platform-aware file delivery.
+  // iOS only: Web Share API → native share sheet → user taps "Save Image" → Photos.
+  // Desktop + everything else: direct blob URL download → Downloads folder, no dialogs.
+  async function saveFile(file: File) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS && typeof navigator.share === "function") {
+      // Try share API — no canShare() gate (unreliable on some iOS versions)
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") throw err;
+        // Share failed — fall through to direct download
+      }
+    }
+
+    // Direct download: blob URL → browser saves to Downloads folder
     const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
@@ -189,8 +193,9 @@ export default function CarouselShareClient({ carousel }: Props) {
     setExportError(null);
     try {
       const file = await buildSlideFile(index);
-      triggerDownload(file);
-    } catch {
+      await saveFile(file);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setExportError("Export failed — try again");
     } finally {
       setDownloading(null);
@@ -201,14 +206,30 @@ export default function CarouselShareClient({ carousel }: Props) {
     setDownloadingAll(true);
     setExportError(null);
     try {
-      for (let i = 0; i < 5; i++) {
-        const file = await buildSlideFile(i);
-        triggerDownload(file);
-        // Small delay so the browser registers each download separately
-        await new Promise(r => setTimeout(r, 150));
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+      if (isIOS && typeof navigator.share === "function") {
+        // Build all 5 then share together — iOS shows "Save Image" for the batch
+        const files: File[] = [];
+        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+        try {
+          await navigator.share({ files, title: "Lunia carousel slides" });
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
+          // Multi-file share not supported — share one by one
+          for (const f of files) await saveFile(f);
+        }
+      } else {
+        // Desktop: 5 sequential direct downloads to Downloads folder
+        for (let i = 0; i < 5; i++) {
+          const file = await buildSlideFile(i);
+          await saveFile(file);
+        }
       }
-    } catch {
-      setExportError("Export failed — try again");
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        setExportError("Export failed — try again");
+      }
     } finally {
       setDownloadingAll(false);
     }
@@ -216,65 +237,27 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const previewNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
+      backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={hookDataUrl ?? hookSrc ?? undefined}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
-
-  const btnDisabled = !hookReady || downloadingAll || downloading !== null;
-  const downloadAllBtn = !hookReady ? (
-    <button
-      disabled
-      style={{
-        background: "var(--surface-h)", color: "var(--muted)", border: "none", borderRadius: 7,
-        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-        cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8,
-      }}
-    >
-      <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
-      Loading image…
-    </button>
-  ) : downloadingAll ? (
-    <button
-      disabled
-      style={{
-        background: "var(--surface-h)", color: "var(--muted)", border: "none", borderRadius: 7,
-        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-        cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8,
-      }}
-    >
-      <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
-      Downloading…
-    </button>
-  ) : (
-    <button
-      onClick={downloadAll}
-      style={{
-        background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
-        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-      }}
-    >
-      ↓ Download all (5 PNGs)
-    </button>
-  );
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 24px 80px" }}>
@@ -287,7 +270,23 @@ export default function CarouselShareClient({ carousel }: Props) {
             </div>
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Studio</span>
           </div>
-          {downloadAllBtn}
+          <button
+            onClick={downloadAll}
+            disabled={downloadingAll}
+            style={{
+              background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
+              padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+              cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            {downloadingAll ? (
+              <>
+                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+                Exporting…
+              </>
+            ) : "↓ Download all (5 PNGs)"}
+          </button>
         </div>
 
         <div style={{ marginBottom: 28 }}>
@@ -315,16 +314,16 @@ export default function CarouselShareClient({ carousel }: Props) {
               </div>
               <button
                 onClick={() => downloadSlide(i)}
-                disabled={btnDisabled || downloading === i}
+                disabled={downloading === i || downloadingAll}
                 style={{
                   marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
                   border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
                   fontSize: 12, fontWeight: 600, fontFamily: "inherit",
-                  cursor: (btnDisabled || downloading === i) ? "not-allowed" : "pointer",
-                  opacity: (btnDisabled || downloading === i) ? 0.5 : 1,
+                  cursor: (downloading === i || downloadingAll) ? "not-allowed" : "pointer",
+                  opacity: (downloading === i || downloadingAll) ? 0.5 : 1,
                 }}
               >
-                {!hookReady ? "⟳" : downloading === i ? "…" : "↓ PNG"}
+                {downloading === i ? "…" : "↓ PNG"}
               </button>
             </div>
           ))}

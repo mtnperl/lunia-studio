@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -46,7 +46,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [logoScale, setLogoScale] = useState(1);
   const [arrowScale, setArrowScale] = useState(1);
   const [darkBackground, setDarkBackground] = useState(false);
-  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
 
   // Icon picker state (content slides 1–3, i.e. slideIndex 0–2)
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
@@ -91,105 +90,81 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
-  // Fetch a URL through the image proxy and return a base64 data URL.
-  async function toDataUrl(src: string): Promise<string> {
-    const fetchUrl = src.startsWith("/")
-      ? src
-      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
-    const resp = await fetch(fetchUrl);
-    const blob = await resp.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
+  // Pre-fetch hook background as data URL for canvas compositing.
+  // html-to-image cannot render <img> elements via SVG foreignObject on any browser.
+  const hookBgDataUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
+    if (!rawUrl) return;
+    const proxied = rawUrl.startsWith("/") ? rawUrl : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+    fetch(proxied)
+      .then(r => r.blob())
+      .then(blob => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then(dataUrl => { hookBgDataUrlRef.current = dataUrl; })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgs[0], hookImageUrl]);
 
-  // Build a PNG File for a single slide without triggering any download/share.
-  async function buildSlideFile(index: number): Promise<File> {
-    const el = exportRefs.current[index];
-    if (!el) throw new Error(`Slide ${index + 1} element not found`);
-    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
-
-    // Hook slide: html-to-image's SVG foreignObject silently drops <img> on all browsers.
-    // Use canvas compositing instead.
-    if (index === 0) {
-      const imgEl = el.querySelector("img") as HTMLImageElement | null;
-      if (imgEl) {
-        const imgSrc = imgEl.src;
-        const bgDataUrl = imgSrc.startsWith("data:")
-          ? imgSrc
-          : await toDataUrl(imgSrc).catch(() => null);
-        if (bgDataUrl) {
-          return compositeHookSlide(el, bgDataUrl, filename);
-        }
-      }
-    }
-
-    // Content/CTA slides: patch CSS background-image URLs then toPng.
-    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
-    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
-    await Promise.all(allEls.map(async (node) => {
-      const bg = node.style.backgroundImage;
-      if (bg) {
-        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-        if (m && !m[1].startsWith("data:")) {
-          try {
-            const dataUrl = await toDataUrl(m[1]);
-            patchedBg.push({ el: node, original: bg });
-            node.style.backgroundImage = `url(${dataUrl})`;
-          } catch { /* best effort */ }
-        }
-      }
-    }));
-
-    let file: File;
+  async function getHookBgDataUrl(): Promise<string | null> {
+    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return null;
     try {
-      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
-      const blobRes = await fetch(dataUrl);
-      const blob = await blobRes.blob();
-      file = new File([blob], filename, { type: "image/png" });
-    } finally {
-      patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+      const r = await fetch(proxied);
+      const blob = await r.blob();
+      const url = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      hookBgDataUrlRef.current = url;
+      return url;
+    } catch {
+      return null;
     }
-    return file;
   }
 
-  // Canvas composite for HookSlide — bypasses html-to-image's broken <img> rendering.
+  // Canvas compositing for the hook slide:
+  // Capture foreground (text, overlays, decorations) with transparent bg via toPng,
+  // then draw bg image + fg onto canvas to produce correct final PNG.
   async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
-    const slideWrapper = el.firstElementChild as HTMLElement | null;
-
+    // el > SlideWrapper outer > SlideWrapper inner (has background style)
+    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
     const savedImgDisplay = imgEl?.style.display ?? "";
-    const savedWrapperBg = slideWrapper?.style.background ?? "";
+    const savedWrapperBg = innerWrapper?.style.background ?? "";
 
     if (imgEl) imgEl.style.display = "none";
-    if (slideWrapper) slideWrapper.style.background = "transparent";
+    if (innerWrapper) innerWrapper.style.background = "transparent";
 
     let fgDataUrl: string;
     try {
       fgDataUrl = await toPng(el, {
-        width: 1080, height: 1350, pixelRatio: 2, cacheBust: false,
-        backgroundColor: "transparent",
+        width: 1080, height: 1350, pixelRatio: 2,
+        cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
       if (imgEl) imgEl.style.display = savedImgDisplay;
-      if (slideWrapper) slideWrapper.style.background = savedWrapperBg;
+      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
     const W = 1080 * 2, H = 1350 * 2;
     const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       const bg = new Image();
       bg.onload = () => {
         const scale = Math.max(W / bg.width, H / bg.height);
-        const w = bg.width * scale;
-        const h = bg.height * scale;
+        const w = bg.width * scale, h = bg.height * scale;
         ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
         resolve();
       };
@@ -197,7 +172,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       bg.src = bgDataUrl;
     });
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       const fg = new Image();
       fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
       fg.onerror = () => resolve();
@@ -210,24 +185,62 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     return new File([blob], filename, { type: "image/png" });
   }
 
+  async function buildSlideFile(index: number): Promise<File> {
+    const el = exportRefs.current[index];
+    if (!el) throw new Error("Export element not found");
+
+    const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
+    const filename = `lunia-slide-${index + 1}-${label}.png`;
+
+    const imgEls = Array.from(el.querySelectorAll("img"));
+    await Promise.all(imgEls.map(img =>
+      img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
+    ));
+
+    // Hook slide: canvas compositing (html-to-image cannot render <img> contents)
+    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
+      const bgDataUrl = await getHookBgDataUrl();
+      if (bgDataUrl) {
+        return compositeHookSlide(el, bgDataUrl, filename);
+      }
+    }
+
+    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  async function saveFile(file: File) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && typeof navigator.share === "function") {
+      // iOS only: share sheet → "Save Image" → Photos
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") throw err;
+        // Share doesn't support files → fall through to download
+      }
+    }
+    // Desktop: direct blob URL download → Downloads folder, no dialogs
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
       const file = await buildSlideFile(index);
-      if (navigator.canShare?.({ files: [file] })) {
-        // Mobile: share sheet (one call per user gesture — fine for single slide)
-        await navigator.share({ files: [file], title: file.name });
-      } else {
-        // Desktop: anchor download
-        const url = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
-    } catch {
+      await saveFile(file);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setExportError("Export failed — try again");
     } finally {
       setDownloading(null);
@@ -238,29 +251,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setDownloadingAll(true);
     setExportError(null);
     try {
-      // Generate all 5 PNGs first — never call share/download inside the loop
-      const files: File[] = [];
-      for (let i = 0; i < 5; i++) {
-        files.push(await buildSlideFile(i));
-      }
-
-      if (navigator.canShare?.({ files })) {
-        // Mobile: one share call with all 5 files — only one user gesture needed
-        await navigator.share({ files, title: "Lunia carousel — 5 slides" });
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS && typeof navigator.share === "function") {
+        const files: File[] = [];
+        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+        try {
+          await navigator.share({ files, title: "Lunia carousel slides" });
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
+          for (const f of files) await saveFile(f);
+        }
       } else {
-        // Desktop: sequential anchor downloads with a small gap for the browser
-        for (const file of files) {
-          const url = URL.createObjectURL(file);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = file.name;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          await new Promise(r => setTimeout(r, 120));
+        for (let i = 0; i < 5; i++) {
+          const file = await buildSlideFile(i);
+          await saveFile(file);
         }
       }
-    } catch {
-      setExportError("Export failed — try again");
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") setExportError("Export failed — try again");
     } finally {
       setDownloadingAll(false);
     }
@@ -284,7 +292,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           logoScale,
           arrowScale,
           darkBackground,
-          showLuniaLifeWatermark,
         }),
       });
       if (!res.ok) return;
@@ -527,11 +534,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -539,11 +546,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -669,24 +676,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             border: "1px solid var(--border)", borderRadius: 5,
             cursor: "pointer", fontFamily: "inherit",
           }}>Match hook</button>
-        </div>
-        {/* Lunia Life watermark toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Lunia Life</span>
-          <button onClick={() => setShowLuniaLifeWatermark(true)} style={{
-            padding: "3px 8px", fontSize: 11, fontWeight: 700,
-            background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
-            color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
-            border: "1px solid var(--border)", borderRadius: 5,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>On</button>
-          <button onClick={() => setShowLuniaLifeWatermark(false)} style={{
-            padding: "3px 8px", fontSize: 11, fontWeight: 700,
-            background: !showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
-            color: !showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
-            border: "1px solid var(--border)", borderRadius: 5,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>Off</button>
         </div>
       </div>
 
