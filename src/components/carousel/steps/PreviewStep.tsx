@@ -96,16 +96,43 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     try {
       const el = exportRefs.current[index];
       if (!el) throw new Error("Element not found");
+
+      // Wait for all <img> elements in the export node to fully load before capture.
+      const imgEls = Array.from(el.querySelectorAll("img"));
+      await Promise.all(imgEls.map(img =>
+        img.complete ? Promise.resolve() : new Promise<void>(res => {
+          img.onload = () => res();
+          img.onerror = () => res();
+        })
+      ));
+
       const dataUrl = await toPng(el, {
         width: 1080,
         height: 1350,
         pixelRatio: 2,
         cacheBust: true,
       });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
-      a.click();
+      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
+
+      // iOS Safari silently ignores a.click() for data URLs — use blob URL instead.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      } else {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = filename;
+        a.click();
+      }
     } catch {
       setExportError("Export failed — try again");
     } finally {

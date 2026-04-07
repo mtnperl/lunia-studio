@@ -40,12 +40,19 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
           all subsequent elements stack above without needing explicit z-index */}
       {backgroundImageUrl ? (
         <>
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: `url(${backgroundImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }} />
+          {/* Use <img> instead of CSS background-image — html-to-image captures <img> reliably
+              on mobile Safari/Chrome, whereas CSS background-image is often skipped/blank. */}
+          <img
+            src={backgroundImageUrl}
+            crossOrigin="anonymous"
+            alt=""
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center',
+              display: 'block',
+            }}
+          />
           {/* Overlay: lighter (0.45) for fal images to show more drama; heavier (0.82) for template images */}
           <div style={{
             position: 'absolute', inset: 0,
