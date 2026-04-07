@@ -91,29 +91,38 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
+  // Build a PNG File for a single slide without triggering any download/share
+  async function buildSlideFile(index: number): Promise<File> {
+    const el = exportRefs.current[index];
+    if (!el) throw new Error(`Slide ${index + 1} element not found`);
+    const dataUrl = await toPng(el, {
+      width: 1080,
+      height: 1350,
+      pixelRatio: 2,
+      cacheBust: true,
+    });
+    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
+    const blobRes = await fetch(dataUrl);
+    const blob = await blobRes.blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
-      const el = exportRefs.current[index];
-      if (!el) throw new Error("Element not found");
-      const dataUrl = await toPng(el, {
-        width: 1080,
-        height: 1350,
-        pixelRatio: 2,
-        cacheBust: true,
-      });
-      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
-      const blobRes = await fetch(dataUrl);
-      const blob = await blobRes.blob();
-      const file = new File([blob], filename, { type: "image/png" });
+      const file = await buildSlideFile(index);
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
+        // Mobile: share sheet (one call per user gesture — fine for single slide)
+        await navigator.share({ files: [file], title: file.name });
       } else {
+        // Desktop: anchor download
+        const url = URL.createObjectURL(file);
         const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = filename;
+        a.href = url;
+        a.download = file.name;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch {
       setExportError("Export failed — try again");
@@ -125,10 +134,33 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   async function downloadAll() {
     setDownloadingAll(true);
     setExportError(null);
-    for (let i = 0; i < 5; i++) {
-      await downloadSlide(i);
+    try {
+      // Generate all 5 PNGs first — never call share/download inside the loop
+      const files: File[] = [];
+      for (let i = 0; i < 5; i++) {
+        files.push(await buildSlideFile(i));
+      }
+
+      if (navigator.canShare?.({ files })) {
+        // Mobile: one share call with all 5 files — only one user gesture needed
+        await navigator.share({ files, title: "Lunia carousel — 5 slides" });
+      } else {
+        // Desktop: sequential anchor downloads with a small gap for the browser
+        for (const file of files) {
+          const url = URL.createObjectURL(file);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          await new Promise(r => setTimeout(r, 120));
+        }
+      }
+    } catch {
+      setExportError("Export failed — try again");
+    } finally {
+      setDownloadingAll(false);
     }
-    setDownloadingAll(false);
   }
 
   async function handleSave() {
