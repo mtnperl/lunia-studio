@@ -1,7 +1,7 @@
 // Proxy for fal.ai CDN images — makes them same-origin for html-to-image canvas export.
 // Without this, html-to-image taints the canvas and PNG export fails.
 
-const ALLOWED_HOSTS = ['fal.media', 'v2.fal.media', 'storage.googleapis.com'];
+const ALLOWED_HOSTS = ['fal.media', 'v2.fal.media', 'storage.googleapis.com', 'blob.vercel-storage.com'];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
