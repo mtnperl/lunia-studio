@@ -70,27 +70,43 @@ export default function CarouselShareClient({ carousel }: Props) {
   }
 
   // Build a PNG File for one slide — no download/share side-effects.
-  // Before calling toPng, inline any external CSS background-image URLs as
-  // base64 data URLs directly on the DOM node. html-to-image silently drops
-  // external fetches on mobile Safari (CORS + canvas restrictions), so we
-  // must embed images ourselves. Styles are restored in finally.
+  // For each <img> or CSS background-image with an external URL, fetch via proxy
+  // and replace with a base64 data URL before calling toPng. html-to-image on
+  // mobile Safari can't load external URLs in the canvas context, so we embed them.
+  // HookSlide now uses <img> so the hook image goes through embedImageNode path.
+  // CSS background patches are restored in finally.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
 
-    const patched: Array<{ el: HTMLElement; original: string }> = [];
+    // Patch 1: CSS background-image (non-data URLs)
+    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
+    // Patch 2: <img> src (non-data URLs)
+    const patchedImg: Array<{ el: HTMLImageElement; original: string }> = [];
+
     const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
     await Promise.all(
       allEls.map(async (node) => {
+        // CSS backgroundImage
         const bg = node.style.backgroundImage;
-        if (!bg) return;
-        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-        if (!m || m[1].startsWith("data:")) return;
-        try {
-          const dataUrl = await toDataUrl(m[1]);
-          patched.push({ el: node, original: bg });
-          node.style.backgroundImage = `url(${dataUrl})`;
-        } catch { /* best effort */ }
+        if (bg) {
+          const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+          if (m && !m[1].startsWith("data:")) {
+            try {
+              const dataUrl = await toDataUrl(m[1]);
+              patchedBg.push({ el: node, original: bg });
+              node.style.backgroundImage = `url(${dataUrl})`;
+            } catch { /* best effort */ }
+          }
+        }
+        // <img> src
+        if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+          try {
+            const dataUrl = await toDataUrl(node.src);
+            patchedImg.push({ el: node as HTMLImageElement, original: node.src });
+            (node as HTMLImageElement).src = dataUrl;
+          } catch { /* best effort */ }
+        }
       })
     );
 
@@ -102,7 +118,8 @@ export default function CarouselShareClient({ carousel }: Props) {
       const blob = await blobRes.blob();
       file = new File([blob], filename, { type: "image/png" });
     } finally {
-      patched.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      patchedImg.forEach(({ el: node, original }) => { node.src = original; });
     }
     return file;
   }
