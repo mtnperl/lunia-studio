@@ -123,8 +123,14 @@ export async function GET(req: Request) {
       }
     }
 
-    // Filter to paid orders only
-    const paidOrders = allOrders.filter(o => o.financial_status === 'paid');
+    // Filter to confirmed revenue orders (matching Shopify admin reporting):
+    // 'paid' = captured, 'authorized' = approved but not yet captured, 'partially_paid' = partial capture
+    // Exclude orders under $5 (test orders, $0 discount orders, etc.)
+    const REVENUE_STATUSES = new Set(['paid', 'authorized', 'partially_paid']);
+    const paidOrders = allOrders.filter(o =>
+      REVENUE_STATUSES.has(o.financial_status) &&
+      parseFloat(o.total_price ?? '0') >= 5
+    );
 
     // Aggregate by day
     const dayMap = new Map<string, { orders: number; revenue: number }>();
