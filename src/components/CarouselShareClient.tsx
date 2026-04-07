@@ -24,7 +24,8 @@ export default function CarouselShareClient({ carousel }: Props) {
   const bs: BrandStyle | undefined = brandStyle;
 
   const [downloading, setDownloading] = useState<number | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [preparingAll, setPreparingAll] = useState(false);
+  const [preparedFiles, setPreparedFiles] = useState<File[] | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
@@ -34,24 +35,33 @@ export default function CarouselShareClient({ carousel }: Props) {
     return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
+  // Build a PNG File for one slide — no download/share side-effects
+  async function buildSlideFile(index: number): Promise<File> {
+    const el = exportRefs.current[index];
+    if (!el) throw new Error(`Slide ${index + 1} element not found`);
+    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: true });
+    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
+    const blobRes = await fetch(dataUrl);
+    const blob = await blobRes.blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  // Single slide — try share (mobile), fallback to anchor download (desktop)
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
-      const el = exportRefs.current[index];
-      if (!el) throw new Error("Element not found");
-      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: true });
-      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
-      const blobRes = await fetch(dataUrl);
-      const blob = await blobRes.blob();
-      const file = new File([blob], filename, { type: "image/png" });
+      const file = await buildSlideFile(index);
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
+        // Mobile: share sheet (one gesture per tap — fine for a single slide)
+        await navigator.share({ files: [file], title: file.name });
       } else {
+        const url = URL.createObjectURL(file);
         const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = filename;
+        a.href = url;
+        a.download = file.name;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch {
       setExportError("Export failed — try again");
@@ -60,13 +70,47 @@ export default function CarouselShareClient({ carousel }: Props) {
     }
   }
 
-  async function downloadAll() {
-    setDownloadingAll(true);
+  // Phase 1: generate all 5 PNGs (async — no gesture constraint)
+  async function prepareAll() {
+    setPreparingAll(true);
+    setPreparedFiles(null);
     setExportError(null);
-    for (let i = 0; i < 5; i++) {
-      await downloadSlide(i);
+    try {
+      const files: File[] = [];
+      for (let i = 0; i < 5; i++) {
+        files.push(await buildSlideFile(i));
+      }
+      setPreparedFiles(files);
+    } catch {
+      setExportError("Export failed — try again");
+    } finally {
+      setPreparingAll(false);
     }
-    setDownloadingAll(false);
+  }
+
+  // Phase 2: share / download — called in a fresh user gesture after files are ready
+  async function shareAll() {
+    if (!preparedFiles) return;
+    setExportError(null);
+    try {
+      if (navigator.canShare?.({ files: preparedFiles })) {
+        // Mobile: one share call with all 5 files — iOS shows all images in share sheet
+        await navigator.share({ files: preparedFiles, title: "Lunia carousel — 5 slides" });
+      } else {
+        // Desktop: sequential anchor downloads
+        for (const file of preparedFiles) {
+          const url = URL.createObjectURL(file);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          await new Promise(r => setTimeout(r, 120));
+        }
+      }
+    } catch {
+      setExportError("Share failed — try again");
+    }
   }
 
   const previewNodes = [
@@ -93,6 +137,46 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
+  // Download-all button: 3 states
+  // 1. idle → "↓ Download all (5 PNGs)" — tapping starts generation
+  // 2. preparingAll → "Preparing 5 slides…" — generating PNGs
+  // 3. preparedFiles ready → "Share 5 slides →" — tapping calls share in fresh gesture
+  const downloadAllBtn = preparingAll ? (
+    <button
+      disabled
+      style={{
+        background: "var(--surface-h)", color: "var(--muted)", border: "none", borderRadius: 7,
+        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+        cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8,
+      }}
+    >
+      <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+      Preparing 5 slides…
+    </button>
+  ) : preparedFiles ? (
+    <button
+      onClick={shareAll}
+      style={{
+        background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
+        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+      }}
+    >
+      Share {preparedFiles.length} slides →
+    </button>
+  ) : (
+    <button
+      onClick={prepareAll}
+      style={{
+        background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
+        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+      }}
+    >
+      ↓ Download all (5 PNGs)
+    </button>
+  );
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 24px 80px" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -104,23 +188,7 @@ export default function CarouselShareClient({ carousel }: Props) {
             </div>
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Studio</span>
           </div>
-          <button
-            onClick={downloadAll}
-            disabled={downloadingAll}
-            style={{
-              background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
-              padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-              cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
-              display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
-            {downloadingAll ? (
-              <>
-                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
-                Exporting…
-              </>
-            ) : "↓ Download all (5 PNGs)"}
-          </button>
+          {downloadAllBtn}
         </div>
 
         <div style={{ marginBottom: 28 }}>
@@ -148,13 +216,13 @@ export default function CarouselShareClient({ carousel }: Props) {
               </div>
               <button
                 onClick={() => downloadSlide(i)}
-                disabled={downloading === i || downloadingAll}
+                disabled={downloading === i || preparingAll}
                 style={{
                   marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
                   border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
                   fontSize: 12, fontWeight: 600, fontFamily: "inherit",
-                  cursor: (downloading === i || downloadingAll) ? "not-allowed" : "pointer",
-                  opacity: (downloading === i || downloadingAll) ? 0.5 : 1,
+                  cursor: (downloading === i || preparingAll) ? "not-allowed" : "pointer",
+                  opacity: (downloading === i || preparingAll) ? 0.5 : 1,
                 }}
               >
                 {downloading === i ? "…" : "↓ PNG"}
