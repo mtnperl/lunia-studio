@@ -223,6 +223,8 @@ export default function EditorView({
   const [scriptCopied, setScriptCopied] = useState(false);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"edit" | "shot">("edit");
+  const [rightPanelHasMore, setRightPanelHasMore] = useState(false);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -243,6 +245,24 @@ export default function EditorView({
     }, 10000);
     return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
   }, [isDirty, script]);
+
+  // Re-check right-panel overflow whenever the selection or content changes.
+  useEffect(() => {
+    const el = rightPanelRef.current;
+    if (!el) return;
+    // Use rAF so the DOM has finished painting the new content before measuring.
+    const id = requestAnimationFrame(() => {
+      setRightPanelHasMore(el.scrollHeight > el.clientHeight + 8);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedLine, script?.comments, script?.filmingNotes]);
+
+  function handleRightPanelScroll() {
+    const el = rightPanelRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 8;
+    setRightPanelHasMore(!atBottom);
+  }
 
   // Callback ref: resizes a textarea to fit its content on every React commit.
   // Using a callback ref (not useLayoutEffect) guarantees it fires on every
@@ -742,7 +762,8 @@ export default function EditorView({
         {viewMode === "shot" ? (
           <ShotSheet script={script} isLocked={isLocked} onUpdate={update} />
         ) : (
-          <div style={{ overflowY: "auto", background: "var(--surface)", display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "relative", overflow: "hidden", background: "var(--surface)" }}>
+          <div ref={rightPanelRef} onScroll={handleRightPanelScroll} style={{ overflowY: "auto", height: "100%", display: "flex", flexDirection: "column" }}>
             {selectedLine !== null ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 {/* Selected line preview */}
@@ -858,6 +879,25 @@ export default function EditorView({
                 </div>
               </div>
             )}
+          </div>
+          {/* Scroll-more fade — appears when the right panel has content below the fold */}
+          {rightPanelHasMore && (
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: 52,
+              background: "linear-gradient(to bottom, transparent, var(--surface))",
+              pointerEvents: "none",
+              display: "flex", alignItems: "flex-end", justifyContent: "center",
+              paddingBottom: 8,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+                color: "var(--muted)", textTransform: "uppercase",
+                animation: "fadeInDown .35s ease",
+              }}>
+                scroll ↓
+              </span>
+            </div>
+          )}
           </div>
         )}
       </div>
