@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -90,50 +90,125 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
+  // Pre-fetch hook background as data URL for canvas compositing.
+  // html-to-image cannot render <img> elements via SVG foreignObject on any browser.
+  const [hookBgDataUrl, setHookBgDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
+    if (!rawUrl) return;
+    const proxied = rawUrl.startsWith("/") ? rawUrl : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+    fetch(proxied)
+      .then(r => r.blob())
+      .then(blob => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then(dataUrl => setHookBgDataUrl(dataUrl))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgs[0], hookImageUrl]);
+
+  // Canvas compositing for the hook slide:
+  // Capture foreground (text, overlays, decorations) with transparent bg via toPng,
+  // then draw bg image + fg onto canvas to produce correct final PNG.
+  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
+    const imgEl = el.querySelector("img") as HTMLImageElement | null;
+    // el > SlideWrapper outer > SlideWrapper inner (has background style)
+    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
+    const savedImgDisplay = imgEl?.style.display ?? "";
+    const savedWrapperBg = innerWrapper?.style.background ?? "";
+
+    if (imgEl) imgEl.style.display = "none";
+    if (innerWrapper) innerWrapper.style.background = "transparent";
+
+    let fgDataUrl: string;
+    try {
+      fgDataUrl = await toPng(el, {
+        width: 1080, height: 1350, pixelRatio: 2,
+        cacheBust: false, backgroundColor: "transparent",
+      });
+    } finally {
+      if (imgEl) imgEl.style.display = savedImgDisplay;
+      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
+    }
+
+    const W = 1080 * 2, H = 1350 * 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    await new Promise<void>(resolve => {
+      const bg = new Image();
+      bg.onload = () => {
+        const scale = Math.max(W / bg.width, H / bg.height);
+        const w = bg.width * scale, h = bg.height * scale;
+        ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
+        resolve();
+      };
+      bg.onerror = () => resolve();
+      bg.src = bgDataUrl;
+    });
+
+    await new Promise<void>(resolve => {
+      const fg = new Image();
+      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
+      fg.onerror = () => resolve();
+      fg.src = fgDataUrl;
+    });
+
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
+    );
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  async function buildSlideFile(index: number): Promise<File> {
+    const el = exportRefs.current[index];
+    if (!el) throw new Error("Export element not found");
+
+    const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
+    const filename = `lunia-slide-${index + 1}-${label}.png`;
+
+    const imgEls = Array.from(el.querySelectorAll("img"));
+    await Promise.all(imgEls.map(img =>
+      img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
+    ));
+
+    if (index === 0 && hookBgDataUrl) {
+      return compositeHookSlide(el, hookBgDataUrl, filename);
+    }
+
+    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  async function saveFile(file: File) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: file.name });
+    } else {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
-      const el = exportRefs.current[index];
-      if (!el) throw new Error("Element not found");
-
-      // Wait for all <img> elements in the export node to fully load before capture.
-      const imgEls = Array.from(el.querySelectorAll("img"));
-      await Promise.all(imgEls.map(img =>
-        img.complete ? Promise.resolve() : new Promise<void>(res => {
-          img.onload = () => res();
-          img.onerror = () => res();
-        })
-      ));
-
-      const dataUrl = await toPng(el, {
-        width: 1080,
-        height: 1350,
-        pixelRatio: 2,
-        cacheBust: true,
-      });
-      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(" ", "-")}.png`;
-
-      // iOS Safari silently ignores a.click() for data URLs — use blob URL instead.
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        const blob = await (await fetch(dataUrl)).blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = filename;
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
-      } else {
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = filename;
-        a.click();
-      }
-    } catch {
+      const file = await buildSlideFile(index);
+      await saveFile(file);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setExportError("Export failed — try again");
     } finally {
       setDownloading(null);
@@ -143,10 +218,27 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   async function downloadAll() {
     setDownloadingAll(true);
     setExportError(null);
-    for (let i = 0; i < 5; i++) {
-      await downloadSlide(i);
+    try {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS && typeof navigator.share === "function") {
+        const files: File[] = [];
+        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+        if (navigator.canShare?.({ files })) {
+          await navigator.share({ files, title: "Lunia carousel slides" });
+        } else {
+          for (const f of files) await saveFile(f);
+        }
+      } else {
+        for (let i = 0; i < 5; i++) {
+          const file = await buildSlideFile(i);
+          await saveFile(file);
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") setExportError("Export failed — try again");
+    } finally {
+      setDownloadingAll(false);
     }
-    setDownloadingAll(false);
   }
 
   async function handleSave() {
