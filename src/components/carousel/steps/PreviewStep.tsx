@@ -107,52 +107,107 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   // Build a PNG File for a single slide without triggering any download/share.
-  // Inlines external CSS background-image URLs as base64 before calling toPng
-  // so mobile Safari doesn't silently drop them during canvas rendering.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
+    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
 
-    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
-    const patchedImg: Array<{ el: HTMLImageElement; original: string }> = [];
-    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
-    await Promise.all(
-      allEls.map(async (node) => {
-        // CSS backgroundImage
-        const bg = node.style.backgroundImage;
-        if (bg) {
-          const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-          if (m && !m[1].startsWith("data:")) {
-            try {
-              const dataUrl = await toDataUrl(m[1]);
-              patchedBg.push({ el: node, original: bg });
-              node.style.backgroundImage = `url(${dataUrl})`;
-            } catch { /* best effort */ }
-          }
+    // Hook slide: html-to-image's SVG foreignObject silently drops <img> on all browsers.
+    // Use canvas compositing instead.
+    if (index === 0) {
+      const imgEl = el.querySelector("img") as HTMLImageElement | null;
+      if (imgEl) {
+        const imgSrc = imgEl.src;
+        const bgDataUrl = imgSrc.startsWith("data:")
+          ? imgSrc
+          : await toDataUrl(imgSrc).catch(() => null);
+        if (bgDataUrl) {
+          return compositeHookSlide(el, bgDataUrl, filename);
         }
-        // <img> src — HookSlide uses <img> for background; html-to-image needs data URL on mobile
-        if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+      }
+    }
+
+    // Content/CTA slides: patch CSS background-image URLs then toPng.
+    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
+    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
+    await Promise.all(allEls.map(async (node) => {
+      const bg = node.style.backgroundImage;
+      if (bg) {
+        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+        if (m && !m[1].startsWith("data:")) {
           try {
-            const dataUrl = await toDataUrl(node.src);
-            patchedImg.push({ el: node as HTMLImageElement, original: node.src });
-            (node as HTMLImageElement).src = dataUrl;
+            const dataUrl = await toDataUrl(m[1]);
+            patchedBg.push({ el: node, original: bg });
+            node.style.backgroundImage = `url(${dataUrl})`;
           } catch { /* best effort */ }
         }
-      })
-    );
+      }
+    }));
 
     let file: File;
     try {
       const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
-      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
       const blobRes = await fetch(dataUrl);
       const blob = await blobRes.blob();
       file = new File([blob], filename, { type: "image/png" });
     } finally {
       patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
-      patchedImg.forEach(({ el: node, original }) => { node.src = original; });
     }
     return file;
+  }
+
+  // Canvas composite for HookSlide — bypasses html-to-image's broken <img> rendering.
+  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
+    const imgEl = el.querySelector("img") as HTMLImageElement | null;
+    const slideWrapper = el.firstElementChild as HTMLElement | null;
+
+    const savedImgDisplay = imgEl?.style.display ?? "";
+    const savedWrapperBg = slideWrapper?.style.background ?? "";
+
+    if (imgEl) imgEl.style.display = "none";
+    if (slideWrapper) slideWrapper.style.background = "transparent";
+
+    let fgDataUrl: string;
+    try {
+      fgDataUrl = await toPng(el, {
+        width: 1080, height: 1350, pixelRatio: 2, cacheBust: false,
+        backgroundColor: "transparent",
+      });
+    } finally {
+      if (imgEl) imgEl.style.display = savedImgDisplay;
+      if (slideWrapper) slideWrapper.style.background = savedWrapperBg;
+    }
+
+    const W = 1080 * 2, H = 1350 * 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    await new Promise<void>((resolve) => {
+      const bg = new Image();
+      bg.onload = () => {
+        const scale = Math.max(W / bg.width, H / bg.height);
+        const w = bg.width * scale;
+        const h = bg.height * scale;
+        ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
+        resolve();
+      };
+      bg.onerror = () => resolve();
+      bg.src = bgDataUrl;
+    });
+
+    await new Promise<void>((resolve) => {
+      const fg = new Image();
+      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
+      fg.onerror = () => resolve();
+      fg.src = fgDataUrl;
+    });
+
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
+    );
+    return new File([blob], filename, { type: "image/png" });
   }
 
   async function downloadSlide(index: number) {

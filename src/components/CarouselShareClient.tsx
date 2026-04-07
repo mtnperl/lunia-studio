@@ -70,58 +70,107 @@ export default function CarouselShareClient({ carousel }: Props) {
   }
 
   // Build a PNG File for one slide — no download/share side-effects.
-  // For each <img> or CSS background-image with an external URL, fetch via proxy
-  // and replace with a base64 data URL before calling toPng. html-to-image on
-  // mobile Safari can't load external URLs in the canvas context, so we embed them.
-  // HookSlide now uses <img> so the hook image goes through embedImageNode path.
-  // CSS background patches are restored in finally.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
+    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
 
-    // Patch 1: CSS background-image (non-data URLs)
+    // Hook slide (index 0): html-to-image's SVG foreignObject silently drops <img> elements
+    // on all browsers (confirmed: data URL in img.src, img.complete=true, naturalWidth>0,
+    // yet the canvas output has no image). Fix: canvas compositing — capture foreground
+    // without the background image, then draw bg image + foreground on canvas.
+    if (index === 0) {
+      const bgDataUrl = hookDataUrl ?? (hookSrc ? await toDataUrl(hookSrc).catch(() => null) : null);
+      if (bgDataUrl) {
+        return compositeHookSlide(el, bgDataUrl, filename);
+      }
+    }
+
+    // Content/CTA slides: patch any remaining external URLs then toPng.
     const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
-    // Patch 2: <img> src (non-data URLs)
-    const patchedImg: Array<{ el: HTMLImageElement; original: string }> = [];
-
     const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
-    await Promise.all(
-      allEls.map(async (node) => {
-        // CSS backgroundImage
-        const bg = node.style.backgroundImage;
-        if (bg) {
-          const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-          if (m && !m[1].startsWith("data:")) {
-            try {
-              const dataUrl = await toDataUrl(m[1]);
-              patchedBg.push({ el: node, original: bg });
-              node.style.backgroundImage = `url(${dataUrl})`;
-            } catch { /* best effort */ }
-          }
-        }
-        // <img> src
-        if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+    await Promise.all(allEls.map(async (node) => {
+      const bg = node.style.backgroundImage;
+      if (bg) {
+        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+        if (m && !m[1].startsWith("data:")) {
           try {
-            const dataUrl = await toDataUrl(node.src);
-            patchedImg.push({ el: node as HTMLImageElement, original: node.src });
-            (node as HTMLImageElement).src = dataUrl;
+            const dataUrl = await toDataUrl(m[1]);
+            patchedBg.push({ el: node, original: bg });
+            node.style.backgroundImage = `url(${dataUrl})`;
           } catch { /* best effort */ }
         }
-      })
-    );
+      }
+    }));
 
     let file: File;
     try {
       const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
-      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
       const blobRes = await fetch(dataUrl);
       const blob = await blobRes.blob();
       file = new File([blob], filename, { type: "image/png" });
     } finally {
       patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
-      patchedImg.forEach(({ el: node, original }) => { node.src = original; });
     }
     return file;
+  }
+
+  // Canvas composite for HookSlide — bypasses html-to-image's broken <img> rendering.
+  // 1. Temporarily hide the <img> and make SlideWrapper transparent.
+  // 2. toPng captures the foreground (gradient overlay + decorations + text) with alpha.
+  // 3. Canvas draws: background image → foreground overlay.
+  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
+    const imgEl = el.querySelector("img") as HTMLImageElement | null;
+    const slideWrapper = el.firstElementChild as HTMLElement | null;
+
+    const savedImgDisplay = imgEl?.style.display ?? "";
+    const savedWrapperBg = slideWrapper?.style.background ?? "";
+
+    if (imgEl) imgEl.style.display = "none";
+    if (slideWrapper) slideWrapper.style.background = "transparent";
+
+    let fgDataUrl: string;
+    try {
+      fgDataUrl = await toPng(el, {
+        width: 1080, height: 1350, pixelRatio: 2, cacheBust: false,
+        backgroundColor: "transparent",
+      });
+    } finally {
+      if (imgEl) imgEl.style.display = savedImgDisplay;
+      if (slideWrapper) slideWrapper.style.background = savedWrapperBg;
+    }
+
+    // Composite: background image (cover/center) + foreground (semi-transparent overlay + text)
+    const W = 1080 * 2, H = 1350 * 2; // pixelRatio=2
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    await new Promise<void>((resolve) => {
+      const bg = new Image();
+      bg.onload = () => {
+        const scale = Math.max(W / bg.width, H / bg.height);
+        const w = bg.width * scale;
+        const h = bg.height * scale;
+        ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
+        resolve();
+      };
+      bg.onerror = () => resolve();
+      bg.src = bgDataUrl;
+    });
+
+    await new Promise<void>((resolve) => {
+      const fg = new Image();
+      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
+      fg.onerror = () => resolve();
+      fg.src = fgDataUrl;
+    });
+
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
+    );
+    return new File([blob], filename, { type: "image/png" });
   }
 
   // Single slide — try share (mobile), fallback to anchor download (desktop)
