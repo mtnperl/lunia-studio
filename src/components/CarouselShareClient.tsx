@@ -151,20 +151,27 @@ export default function CarouselShareClient({ carousel }: Props) {
   // iOS: use Web Share API → share sheet → "Save Image" → Photos
   // Desktop + Android: direct blob URL download → Downloads folder
   async function saveFile(file: File) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-    if (isIOS && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: file.name });
-    } else {
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    // On iOS, use Web Share API → share sheet → "Save Image" → Photos.
+    // Don't gate on canShare() — it returns false on some iOS versions even for PNG.
+    // Instead, try directly and fall back to blob download if share isn't available.
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return;
+      } catch (err) {
+        // User cancelled share sheet — propagate so downloadSlide suppresses the error UI
+        if (err instanceof Error && err.name === "AbortError") throw err;
+        // Share API doesn't support files on this device → fall through to direct download
+      }
     }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
   async function downloadSlide(index: number) {
@@ -189,21 +196,20 @@ export default function CarouselShareClient({ carousel }: Props) {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
       if (isIOS && typeof navigator.share === "function") {
-        // Build all 5 files, then share them together in one share sheet
+        // Build all 5 files then share in one sheet (user can "Save Image" each)
         const files: File[] = [];
         for (let i = 0; i < 5; i++) {
           files.push(await buildSlideFile(i));
         }
-        if (navigator.canShare?.({ files })) {
+        try {
           await navigator.share({ files, title: "Lunia carousel slides" });
-        } else {
-          // Fallback: share one at a time
-          for (const f of files) {
-            await saveFile(f);
-          }
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
+          // Multi-file share not supported — share one at a time
+          for (const f of files) await saveFile(f);
         }
       } else {
-        // Desktop: trigger 5 sequential downloads
+        // Desktop: 5 sequential direct downloads
         for (let i = 0; i < 5; i++) {
           const file = await buildSlideFile(i);
           await saveFile(file);

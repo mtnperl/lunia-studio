@@ -186,19 +186,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   async function saveFile(file: File) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: file.name });
-    } else {
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    // Don't gate on canShare() — it returns false on some iOS versions even for PNG.
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") throw err;
+        // Share API doesn't support files on this device → fall through to direct download
+      }
     }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
   async function downloadSlide(index: number) {
@@ -223,9 +228,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (isIOS && typeof navigator.share === "function") {
         const files: File[] = [];
         for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
-        if (navigator.canShare?.({ files })) {
+        try {
           await navigator.share({ files, title: "Lunia carousel slides" });
-        } else {
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
           for (const f of files) await saveFile(f);
         }
       } else {
