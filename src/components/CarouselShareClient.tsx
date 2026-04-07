@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -28,6 +28,29 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [preparedFiles, setPreparedFiles] = useState<File[] | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+
+  // Pre-fetch the hook background image as a base64 data URL so html-to-image
+  // doesn't need to fetch external URLs during toPng — external fetches fail
+  // silently on mobile Safari, leaving the hook slide with a blank background.
+  const [hookExportUrl, setHookExportUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
+    if (!rawUrl) return;
+    const fetchUrl = rawUrl.startsWith("/")
+      ? rawUrl
+      : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+    fetch(fetchUrl)
+      .then(r => r.blob())
+      .then(blob => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .then(dataUrl => setHookExportUrl(dataUrl))
+      .catch(() => { /* silent — toPng will fall back to proxy url */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
@@ -126,7 +149,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      backgroundImageUrl={hookExportUrl ?? proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
