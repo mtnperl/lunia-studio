@@ -91,20 +91,55 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
-  // Build a PNG File for a single slide without triggering any download/share
+  // Fetch a URL through the image proxy and return a base64 data URL.
+  async function toDataUrl(src: string): Promise<string> {
+    const fetchUrl = src.startsWith("/")
+      ? src
+      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
+    const resp = await fetch(fetchUrl);
+    const blob = await resp.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Build a PNG File for a single slide without triggering any download/share.
+  // Inlines external CSS background-image URLs as base64 before calling toPng
+  // so mobile Safari doesn't silently drop them during canvas rendering.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
-    const dataUrl = await toPng(el, {
-      width: 1080,
-      height: 1350,
-      pixelRatio: 2,
-      cacheBust: true,
-    });
-    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
-    const blobRes = await fetch(dataUrl);
-    const blob = await blobRes.blob();
-    return new File([blob], filename, { type: "image/png" });
+
+    const patched: Array<{ el: HTMLElement; original: string }> = [];
+    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
+    await Promise.all(
+      allEls.map(async (node) => {
+        const bg = node.style.backgroundImage;
+        if (!bg) return;
+        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+        if (!m || m[1].startsWith("data:")) return;
+        try {
+          const dataUrl = await toDataUrl(m[1]);
+          patched.push({ el: node, original: bg });
+          node.style.backgroundImage = `url(${dataUrl})`;
+        } catch { /* best effort */ }
+      })
+    );
+
+    let file: File;
+    try {
+      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
+      const blobRes = await fetch(dataUrl);
+      const blob = await blobRes.blob();
+      file = new File([blob], filename, { type: "image/png" });
+    } finally {
+      patched.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+    }
+    return file;
   }
 
   async function downloadSlide(index: number) {

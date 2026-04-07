@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -29,44 +29,63 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [exportError, setExportError] = useState<string | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
-  // Pre-fetch the hook background image as a base64 data URL so html-to-image
-  // doesn't need to fetch external URLs during toPng — external fetches fail
-  // silently on mobile Safari, leaving the hook slide with a blank background.
-  const [hookExportUrl, setHookExportUrl] = useState<string | undefined>(undefined);
-  useEffect(() => {
-    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
-    if (!rawUrl) return;
-    const fetchUrl = rawUrl.startsWith("/")
-      ? rawUrl
-      : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
-    fetch(fetchUrl)
-      .then(r => r.blob())
-      .then(blob => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }))
-      .then(dataUrl => setHookExportUrl(dataUrl))
-      .catch(() => { /* silent — toPng will fall back to proxy url */ });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
     if (url.startsWith("/")) return url;
     return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
-  // Build a PNG File for one slide — no download/share side-effects
+  // Fetch a URL through the image proxy and return a base64 data URL.
+  async function toDataUrl(src: string): Promise<string> {
+    const fetchUrl = src.startsWith("/")
+      ? src
+      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
+    const resp = await fetch(fetchUrl);
+    const blob = await resp.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Build a PNG File for one slide — no download/share side-effects.
+  // Before calling toPng, inline any external CSS background-image URLs as
+  // base64 data URLs directly on the DOM node. html-to-image silently drops
+  // external fetches on mobile Safari (CORS + canvas restrictions), so we
+  // must embed images ourselves. Styles are restored in finally.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
-    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: true });
-    const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
-    const blobRes = await fetch(dataUrl);
-    const blob = await blobRes.blob();
-    return new File([blob], filename, { type: "image/png" });
+
+    const patched: Array<{ el: HTMLElement; original: string }> = [];
+    const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
+    await Promise.all(
+      allEls.map(async (node) => {
+        const bg = node.style.backgroundImage;
+        if (!bg) return;
+        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+        if (!m || m[1].startsWith("data:")) return;
+        try {
+          const dataUrl = await toDataUrl(m[1]);
+          patched.push({ el: node, original: bg });
+          node.style.backgroundImage = `url(${dataUrl})`;
+        } catch { /* best effort */ }
+      })
+    );
+
+    let file: File;
+    try {
+      const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+      const filename = `lunia-slide-${index + 1}-${SLIDE_LABELS[index].toLowerCase().replace(/ /g, "-")}.png`;
+      const blobRes = await fetch(dataUrl);
+      const blob = await blobRes.blob();
+      file = new File([blob], filename, { type: "image/png" });
+    } finally {
+      patched.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+    }
+    return file;
   }
 
   // Single slide — try share (mobile), fallback to anchor download (desktop)
@@ -76,7 +95,6 @@ export default function CarouselShareClient({ carousel }: Props) {
     try {
       const file = await buildSlideFile(index);
       if (navigator.canShare?.({ files: [file] })) {
-        // Mobile: share sheet (one gesture per tap — fine for a single slide)
         await navigator.share({ files: [file], title: file.name });
       } else {
         const url = URL.createObjectURL(file);
@@ -117,10 +135,8 @@ export default function CarouselShareClient({ carousel }: Props) {
     setExportError(null);
     try {
       if (navigator.canShare?.({ files: preparedFiles })) {
-        // Mobile: one share call with all 5 files — iOS shows all images in share sheet
         await navigator.share({ files: preparedFiles, title: "Lunia carousel — 5 slides" });
       } else {
-        // Desktop: sequential anchor downloads
         for (const file of preparedFiles) {
           const url = URL.createObjectURL(file);
           const a = document.createElement("a");
@@ -149,7 +165,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={hookExportUrl ?? proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
@@ -160,10 +176,6 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
-  // Download-all button: 3 states
-  // 1. idle → "↓ Download all (5 PNGs)" — tapping starts generation
-  // 2. preparingAll → "Preparing 5 slides…" — generating PNGs
-  // 3. preparedFiles ready → "Share 5 slides →" — tapping calls share in fresh gesture
   const downloadAllBtn = preparingAll ? (
     <button
       disabled
