@@ -41,6 +41,7 @@ export default function CarouselShareClient({ carousel }: Props) {
       ? src
       : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
     const resp = await fetch(fetchUrl);
+    if (!resp.ok) throw new Error(`Image fetch failed: ${resp.status}`);
     const blob = await resp.blob();
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -154,7 +155,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const previewNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
-      backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
@@ -165,7 +166,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
