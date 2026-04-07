@@ -53,14 +53,12 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Build a PNG File for one slide — no download/share side-effects.
   // Before calling toPng, inline any external CSS background-image URLs as
   // base64 data URLs directly on the DOM node. html-to-image silently drops
-  // external image fetches on mobile Safari (CORS + canvas restrictions),
-  // so we must embed images ourselves first.
+  // external fetches on mobile Safari (CORS + canvas restrictions), so we
+  // must embed images ourselves. Styles are restored in finally.
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
 
-    // Collect all descendant elements (and el itself) that have an external
-    // CSS background-image, fetch each through the proxy, patch inline style.
     const patched: Array<{ el: HTMLElement; original: string }> = [];
     const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
     await Promise.all(
@@ -73,7 +71,7 @@ export default function CarouselShareClient({ carousel }: Props) {
           const dataUrl = await toDataUrl(m[1]);
           patched.push({ el: node, original: bg });
           node.style.backgroundImage = `url(${dataUrl})`;
-        } catch { /* leave as-is — best effort */ }
+        } catch { /* best effort */ }
       })
     );
 
@@ -85,7 +83,6 @@ export default function CarouselShareClient({ carousel }: Props) {
       const blob = await blobRes.blob();
       file = new File([blob], filename, { type: "image/png" });
     } finally {
-      // Always restore original background styles
       patched.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
     }
     return file;
@@ -98,7 +95,6 @@ export default function CarouselShareClient({ carousel }: Props) {
     try {
       const file = await buildSlideFile(index);
       if (navigator.canShare?.({ files: [file] })) {
-        // Mobile: share sheet (one gesture per tap — fine for a single slide)
         await navigator.share({ files: [file], title: file.name });
       } else {
         const url = URL.createObjectURL(file);
@@ -139,10 +135,8 @@ export default function CarouselShareClient({ carousel }: Props) {
     setExportError(null);
     try {
       if (navigator.canShare?.({ files: preparedFiles })) {
-        // Mobile: one share call with all 5 files — iOS shows all images in share sheet
         await navigator.share({ files: preparedFiles, title: "Lunia carousel — 5 slides" });
       } else {
-        // Desktop: sequential anchor downloads
         for (const file of preparedFiles) {
           const url = URL.createObjectURL(file);
           const a = document.createElement("a");
@@ -182,10 +176,6 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
-  // Download-all button: 3 states
-  // 1. idle → "↓ Download all (5 PNGs)" — tapping starts generation
-  // 2. preparingAll → "Preparing 5 slides…" — generating PNGs
-  // 3. preparedFiles ready → "Share 5 slides →" — tapping calls share in fresh gesture
   const downloadAllBtn = preparingAll ? (
     <button
       disabled
