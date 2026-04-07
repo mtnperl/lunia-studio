@@ -24,8 +24,7 @@ export default function CarouselShareClient({ carousel }: Props) {
   const bs: BrandStyle | undefined = brandStyle;
 
   const [downloading, setDownloading] = useState<number | null>(null);
-  const [preparingAll, setPreparingAll] = useState(false);
-  const [preparedFiles, setPreparedFiles] = useState<File[] | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [hookDataUrl, setHookDataUrl] = useState<string | null>(null);
   // hookReady: true when no hook image is needed, OR the data URL pre-fetch is done
@@ -173,22 +172,24 @@ export default function CarouselShareClient({ carousel }: Props) {
     return new File([blob], filename, { type: "image/png" });
   }
 
-  // Single slide — try share (mobile), fallback to anchor download (desktop)
+  // Trigger a direct blob URL download — works on desktop and iOS Safari 13.4+
+  function triggerDownload(file: File) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
       const file = await buildSlideFile(index);
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: file.name });
-      } else {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      triggerDownload(file);
     } catch {
       setExportError("Export failed — try again");
     } finally {
@@ -196,44 +197,20 @@ export default function CarouselShareClient({ carousel }: Props) {
     }
   }
 
-  // Phase 1: generate all 5 PNGs (async — no gesture constraint)
-  async function prepareAll() {
-    setPreparingAll(true);
-    setPreparedFiles(null);
+  async function downloadAll() {
+    setDownloadingAll(true);
     setExportError(null);
     try {
-      const files: File[] = [];
       for (let i = 0; i < 5; i++) {
-        files.push(await buildSlideFile(i));
+        const file = await buildSlideFile(i);
+        triggerDownload(file);
+        // Small delay so the browser registers each download separately
+        await new Promise(r => setTimeout(r, 150));
       }
-      setPreparedFiles(files);
     } catch {
       setExportError("Export failed — try again");
     } finally {
-      setPreparingAll(false);
-    }
-  }
-
-  // Phase 2: share / download — called in a fresh user gesture after files are ready
-  async function shareAll() {
-    if (!preparedFiles) return;
-    setExportError(null);
-    try {
-      if (navigator.canShare?.({ files: preparedFiles })) {
-        await navigator.share({ files: preparedFiles, title: "Lunia carousel — 5 slides" });
-      } else {
-        for (const file of preparedFiles) {
-          const url = URL.createObjectURL(file);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = file.name;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          await new Promise(r => setTimeout(r, 120));
-        }
-      }
-    } catch {
-      setExportError("Share failed — try again");
+      setDownloadingAll(false);
     }
   }
 
@@ -261,7 +238,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
-  const btnDisabled = !hookReady || preparingAll || downloading !== null;
+  const btnDisabled = !hookReady || downloadingAll || downloading !== null;
   const downloadAllBtn = !hookReady ? (
     <button
       disabled
@@ -274,7 +251,7 @@ export default function CarouselShareClient({ carousel }: Props) {
       <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
       Loading image…
     </button>
-  ) : preparingAll ? (
+  ) : downloadingAll ? (
     <button
       disabled
       style={{
@@ -284,22 +261,11 @@ export default function CarouselShareClient({ carousel }: Props) {
       }}
     >
       <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
-      Preparing 5 slides…
-    </button>
-  ) : preparedFiles ? (
-    <button
-      onClick={shareAll}
-      style={{
-        background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
-        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-        cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-      }}
-    >
-      Share {preparedFiles.length} slides →
+      Downloading…
     </button>
   ) : (
     <button
-      onClick={prepareAll}
+      onClick={downloadAll}
       style={{
         background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
         padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
