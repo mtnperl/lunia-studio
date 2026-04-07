@@ -11,6 +11,19 @@ type Props = { carousel: SavedCarousel };
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.5;
 
+// Fetch a URL and return it as a base64 data URL
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`fetch ${url} → ${r.status}`);
+  const blob = await r.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function CarouselShareClient({ carousel }: Props) {
   const {
     content, selectedHook, topic, hookTone,
@@ -27,26 +40,17 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [exportError, setExportError] = useState<string | null>(null);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
-  // Pre-fetch hook background as data URL at mount — needed for canvas compositing
-  // so html-to-image's inability to capture <img> elements doesn't drop the background.
-  const [hookBgDataUrl, setHookBgDataUrl] = useState<string | null>(null);
-
+  // Pre-fetch the hook background as a data URL at mount so it's ready when user
+  // clicks download. Canvas compositing needs it because html-to-image cannot render
+  // <img> elements in SVG foreignObject — they always come out blank.
+  const hookBgDataUrlRef = useRef<string | null>(null);
   useEffect(() => {
-    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
-    if (!rawUrl) return;
-    const proxied = rawUrl.startsWith("/")
-      ? rawUrl
-      : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
-    fetch(proxied)
-      .then(r => r.blob())
-      .then(blob => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }))
-      .then(dataUrl => setHookBgDataUrl(dataUrl))
-      .catch(() => {}); // silent — compositing will skip bg gracefully
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return;
+    const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+    fetchAsDataUrl(proxied)
+      .then(u => { hookBgDataUrlRef.current = u; })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -56,20 +60,33 @@ export default function CarouselShareClient({ carousel }: Props) {
     return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
-  // Canvas compositing for hook slide.
-  // html-to-image cannot render <img> elements in its SVG foreignObject pipeline —
-  // even with data URLs, crossOrigin, and preloading, the image is blank on canvas.
-  // Fix: capture foreground (text, overlays, decorations) with transparent background,
-  // then manually composite: bg image → fg overlay → final PNG.
+  // Get the hook background as a data URL — use cached value or fetch on demand.
+  async function getHookBgDataUrl(): Promise<string | null> {
+    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return null;
+    try {
+      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+      const url = await fetchAsDataUrl(proxied);
+      hookBgDataUrlRef.current = url;
+      return url;
+    } catch {
+      return null;
+    }
+  }
+
+  // Canvas compositing for the hook slide.
+  // 1. Hide <img> + make inner wrapper transparent → toPng captures foreground only
+  // 2. Draw background image onto canvas (cover-fit)
+  // 3. Draw foreground overlay on top → correct final PNG
   async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
-    // The export wrapper structure: el > SlideWrapper outer > SlideWrapper inner (has background)
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
+    // el > SlideWrapper outer div > SlideWrapper inner div (has background style + content)
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
 
     const savedImgDisplay = imgEl?.style.display ?? "";
     const savedWrapperBg = innerWrapper?.style.background ?? "";
 
-    // Hide img + clear background so toPng captures foreground only (transparent canvas)
     if (imgEl) imgEl.style.display = "none";
     if (innerWrapper) innerWrapper.style.background = "transparent";
 
@@ -77,36 +94,32 @@ export default function CarouselShareClient({ carousel }: Props) {
     try {
       fgDataUrl = await toPng(el, {
         width: 1080, height: 1350, pixelRatio: 2,
-        cacheBust: false,
-        backgroundColor: "transparent",
+        cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
-      // Always restore DOM state, even if toPng throws
       if (imgEl) imgEl.style.display = savedImgDisplay;
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
     const W = 1080 * 2, H = 1350 * 2; // pixelRatio: 2
     const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
 
-    // Layer 1: background image (cover-fit, centered)
+    // Layer 1: background photo (cover-fit, centred)
     await new Promise<void>(resolve => {
       const bg = new Image();
       bg.onload = () => {
         const scale = Math.max(W / bg.width, H / bg.height);
-        const w = bg.width * scale;
-        const h = bg.height * scale;
+        const w = bg.width * scale, h = bg.height * scale;
         ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
         resolve();
       };
-      bg.onerror = () => resolve(); // if bg fails, continue with just foreground
+      bg.onerror = () => resolve();
       bg.src = bgDataUrl;
     });
 
-    // Layer 2: foreground overlay (gradient + text + decorations — all captured by toPng)
+    // Layer 2: foreground (gradient overlay + text + decorations — captured via toPng)
     await new Promise<void>(resolve => {
       const fg = new Image();
       fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
@@ -115,9 +128,8 @@ export default function CarouselShareClient({ carousel }: Props) {
     });
 
     const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error("canvas.toBlob failed")), "image/png")
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
     );
-
     return new File([blob], filename, { type: "image/png" });
   }
 
@@ -128,42 +140,44 @@ export default function CarouselShareClient({ carousel }: Props) {
     const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
     const filename = `lunia-slide-${index + 1}-${label}.png`;
 
-    // Wait for any <img> elements to finish loading (mobile browsers may lazy-load)
-    const imgEls = Array.from(el.querySelectorAll("img"));
-    await Promise.all(imgEls.map(img =>
-      img.complete
-        ? Promise.resolve()
+    // Wait for any <img> to finish loading
+    await Promise.all(Array.from(el.querySelectorAll("img")).map(img =>
+      img.complete ? Promise.resolve()
         : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
     ));
 
-    // Hook slide with background image: must use canvas compositing
-    if (index === 0 && hookBgDataUrl) {
-      return compositeHookSlide(el, hookBgDataUrl, filename);
+    // Hook slide: canvas compositing required (html-to-image drops <img> contents)
+    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
+      const bgDataUrl = await getHookBgDataUrl();
+      if (bgDataUrl) {
+        return compositeHookSlide(el, bgDataUrl, filename);
+      }
     }
 
-    // All other slides (and hook with no image): standard html-to-image
+    // All other slides + hook with no image: standard html-to-image
     const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
 
-  // Save a File to the user's device.
-  // iOS: use Web Share API → share sheet → "Save Image" → Photos
-  // Desktop + Android: direct blob URL download → Downloads folder
+  // Platform-aware file delivery.
+  // iOS only: Web Share API → native share sheet → user taps "Save Image" → Photos.
+  // Desktop + everything else: direct blob URL download → Downloads folder, no dialogs.
   async function saveFile(file: File) {
-    // On iOS, use Web Share API → share sheet → "Save Image" → Photos.
-    // Don't gate on canShare() — it returns false on some iOS versions even for PNG.
-    // Instead, try directly and fall back to blob download if share isn't available.
-    if (typeof navigator.share === "function") {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS && typeof navigator.share === "function") {
+      // Try share API — no canShare() gate (unreliable on some iOS versions)
       try {
         await navigator.share({ files: [file], title: file.name });
         return;
       } catch (err) {
-        // User cancelled share sheet — propagate so downloadSlide suppresses the error UI
         if (err instanceof Error && err.name === "AbortError") throw err;
-        // Share API doesn't support files on this device → fall through to direct download
+        // Share failed — fall through to direct download
       }
     }
+
+    // Direct download: blob URL → browser saves to Downloads folder
     const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
@@ -181,7 +195,6 @@ export default function CarouselShareClient({ carousel }: Props) {
       const file = await buildSlideFile(index);
       await saveFile(file);
     } catch (err) {
-      // User cancelled the share sheet — not an error
       if (err instanceof Error && err.name === "AbortError") return;
       setExportError("Export failed — try again");
     } finally {
@@ -196,20 +209,18 @@ export default function CarouselShareClient({ carousel }: Props) {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
       if (isIOS && typeof navigator.share === "function") {
-        // Build all 5 files then share in one sheet (user can "Save Image" each)
+        // Build all 5 then share together — iOS shows "Save Image" for the batch
         const files: File[] = [];
-        for (let i = 0; i < 5; i++) {
-          files.push(await buildSlideFile(i));
-        }
+        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
         try {
           await navigator.share({ files, title: "Lunia carousel slides" });
         } catch (err) {
           if (err instanceof Error && err.name === "AbortError") return;
-          // Multi-file share not supported — share one at a time
+          // Multi-file share not supported — share one by one
           for (const f of files) await saveFile(f);
         }
       } else {
-        // Desktop: 5 sequential direct downloads
+        // Desktop: 5 sequential direct downloads to Downloads folder
         for (let i = 0; i < 5; i++) {
           const file = await buildSlideFile(i);
           await saveFile(file);
@@ -237,7 +248,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
+      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,

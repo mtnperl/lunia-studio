@@ -92,7 +92,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Pre-fetch hook background as data URL for canvas compositing.
   // html-to-image cannot render <img> elements via SVG foreignObject on any browser.
-  const [hookBgDataUrl, setHookBgDataUrl] = useState<string | null>(null);
+  const hookBgDataUrlRef = useRef<string | null>(null);
   useEffect(() => {
     const rawUrl = imgs[0] ?? hookImageUrl ?? null;
     if (!rawUrl) return;
@@ -105,10 +105,31 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       }))
-      .then(dataUrl => setHookBgDataUrl(dataUrl))
+      .then(dataUrl => { hookBgDataUrlRef.current = dataUrl; })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgs[0], hookImageUrl]);
+
+  async function getHookBgDataUrl(): Promise<string | null> {
+    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
+    const raw = imgs[0] ?? hookImageUrl ?? null;
+    if (!raw) return null;
+    try {
+      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+      const r = await fetch(proxied);
+      const blob = await r.blob();
+      const url = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      hookBgDataUrlRef.current = url;
+      return url;
+    } catch {
+      return null;
+    }
+  }
 
   // Canvas compositing for the hook slide:
   // Capture foreground (text, overlays, decorations) with transparent bg via toPng,
@@ -176,8 +197,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
     ));
 
-    if (index === 0 && hookBgDataUrl) {
-      return compositeHookSlide(el, hookBgDataUrl, filename);
+    // Hook slide: canvas compositing (html-to-image cannot render <img> contents)
+    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
+      const bgDataUrl = await getHookBgDataUrl();
+      if (bgDataUrl) {
+        return compositeHookSlide(el, bgDataUrl, filename);
+      }
     }
 
     const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
@@ -186,16 +211,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   async function saveFile(file: File) {
-    // Don't gate on canShare() — it returns false on some iOS versions even for PNG.
-    if (typeof navigator.share === "function") {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && typeof navigator.share === "function") {
+      // iOS only: share sheet → "Save Image" → Photos
       try {
         await navigator.share({ files: [file], title: file.name });
         return;
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") throw err;
-        // Share API doesn't support files on this device → fall through to direct download
+        // Share doesn't support files → fall through to download
       }
     }
+    // Desktop: direct blob URL download → Downloads folder, no dialogs
     const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
