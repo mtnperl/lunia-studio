@@ -38,15 +38,21 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg, overflow: 'hidden' }}>
       {/* Background layer — fal.ai image or template image, painted first in DOM so
-          all subsequent elements stack above without needing explicit z-index */}
+          all subsequent elements stack above without needing explicit z-index.
+          Use <img> instead of CSS background-image so html-to-image captures it
+          correctly on mobile Safari (getComputedStyle drops large data URLs). */}
       {backgroundImageUrl ? (
         <>
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: `url(${backgroundImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }} />
+          <img
+            src={backgroundImageUrl}
+            alt=""
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center',
+              display: 'block',
+            }}
+          />
           {/* Overlay: lighter (0.45) for fal images to show more drama; heavier (0.82) for template images */}
           <div style={{
             position: 'absolute', inset: 0,
