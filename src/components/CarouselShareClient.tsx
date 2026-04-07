@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
@@ -27,7 +27,25 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [preparingAll, setPreparingAll] = useState(false);
   const [preparedFiles, setPreparedFiles] = useState<File[] | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [hookDataUrl, setHookDataUrl] = useState<string | null>(null);
+  // hookReady: true when no hook image is needed, OR the data URL pre-fetch is done
+  // (success or failure). While false, all download buttons are disabled so we never
+  // hit the racy DOM-patch fallback path — toPng sees the data URL directly via prop.
+  const hookSrc = proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? null;
+  const [hookReady, setHookReady] = useState(!hookSrc);
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+
+  // Pre-fetch the hook background image as a base64 data URL at mount time.
+  // We block all download buttons until this resolves so the data URL is always
+  // in the React prop — eliminating the React re-render race that wiped DOM patches.
+  useEffect(() => {
+    if (!hookSrc) return;
+    let cancelled = false;
+    toDataUrl(hookSrc)
+      .then(url => { if (!cancelled) { setHookDataUrl(url); setHookReady(true); } })
+      .catch(() => { if (!cancelled) setHookReady(true); }); // unblock on failure too
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
@@ -166,7 +184,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
-      backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
+      backgroundImageUrl={hookDataUrl ?? hookSrc ?? undefined}
       isFalImage={!!imgs[0]}
       showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
@@ -177,7 +195,20 @@ export default function CarouselShareClient({ carousel }: Props) {
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
-  const downloadAllBtn = preparingAll ? (
+  const btnDisabled = !hookReady || preparingAll || downloading !== null;
+  const downloadAllBtn = !hookReady ? (
+    <button
+      disabled
+      style={{
+        background: "var(--surface-h)", color: "var(--muted)", border: "none", borderRadius: 7,
+        padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+        cursor: "not-allowed", display: "flex", alignItems: "center", gap: 8,
+      }}
+    >
+      <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+      Loading image…
+    </button>
+  ) : preparingAll ? (
     <button
       disabled
       style={{
@@ -252,16 +283,16 @@ export default function CarouselShareClient({ carousel }: Props) {
               </div>
               <button
                 onClick={() => downloadSlide(i)}
-                disabled={downloading === i || preparingAll}
+                disabled={btnDisabled || downloading === i}
                 style={{
                   marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
                   border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
                   fontSize: 12, fontWeight: 600, fontFamily: "inherit",
-                  cursor: (downloading === i || preparingAll) ? "not-allowed" : "pointer",
-                  opacity: (downloading === i || preparingAll) ? 0.5 : 1,
+                  cursor: (btnDisabled || downloading === i) ? "not-allowed" : "pointer",
+                  opacity: (btnDisabled || downloading === i) ? 0.5 : 1,
                 }}
               >
-                {downloading === i ? "…" : "↓ PNG"}
+                {!hookReady ? "⟳" : downloading === i ? "…" : "↓ PNG"}
               </button>
             </div>
           ))}
