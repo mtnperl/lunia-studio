@@ -113,19 +113,31 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const el = exportRefs.current[index];
     if (!el) throw new Error(`Slide ${index + 1} element not found`);
 
-    const patched: Array<{ el: HTMLElement; original: string }> = [];
+    const patchedBg: Array<{ el: HTMLElement; original: string }> = [];
+    const patchedImg: Array<{ el: HTMLImageElement; original: string }> = [];
     const allEls = [el, ...Array.from(el.querySelectorAll<HTMLElement>("*"))];
     await Promise.all(
       allEls.map(async (node) => {
+        // CSS backgroundImage
         const bg = node.style.backgroundImage;
-        if (!bg) return;
-        const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
-        if (!m || m[1].startsWith("data:")) return;
-        try {
-          const dataUrl = await toDataUrl(m[1]);
-          patched.push({ el: node, original: bg });
-          node.style.backgroundImage = `url(${dataUrl})`;
-        } catch { /* best effort */ }
+        if (bg) {
+          const m = bg.match(/url\(["']?([^"')]+)["']?\)/);
+          if (m && !m[1].startsWith("data:")) {
+            try {
+              const dataUrl = await toDataUrl(m[1]);
+              patchedBg.push({ el: node, original: bg });
+              node.style.backgroundImage = `url(${dataUrl})`;
+            } catch { /* best effort */ }
+          }
+        }
+        // <img> src — HookSlide uses <img> for background; html-to-image needs data URL on mobile
+        if (node instanceof HTMLImageElement && node.src && !node.src.startsWith("data:")) {
+          try {
+            const dataUrl = await toDataUrl(node.src);
+            patchedImg.push({ el: node as HTMLImageElement, original: node.src });
+            (node as HTMLImageElement).src = dataUrl;
+          } catch { /* best effort */ }
+        }
       })
     );
 
@@ -137,7 +149,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const blob = await blobRes.blob();
       file = new File([blob], filename, { type: "image/png" });
     } finally {
-      patched.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      patchedBg.forEach(({ el: node, original }) => { node.style.backgroundImage = original; });
+      patchedImg.forEach(({ el: node, original }) => { node.src = original; });
     }
     return file;
   }

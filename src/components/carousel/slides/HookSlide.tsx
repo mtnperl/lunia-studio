@@ -45,6 +45,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
         <>
           <img
             src={backgroundImageUrl}
+            crossOrigin="anonymous"
             alt=""
             style={{
               position: 'absolute', top: 0, left: 0,
