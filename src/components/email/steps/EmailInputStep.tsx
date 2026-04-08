@@ -1,10 +1,10 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { EmailSection } from "@/lib/types";
+import { EmailSection, EmailAnatomy } from "@/lib/types";
 
 type GenerateResult = {
   topic: string;
-  anatomy: unknown;
+  anatomy: EmailAnatomy;
   score: number;
   scoreDiagnosis: string;
   frameworkLabel: string;
