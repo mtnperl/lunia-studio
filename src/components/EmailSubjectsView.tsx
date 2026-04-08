@@ -7,8 +7,16 @@ type SubjectIdea = {
   category: string;
 };
 
+type CalendarEvent = {
+  date: string;       // e.g. "Apr 1"
+  month: string;      // e.g. "April"
+  event: string;      // event name from calendar
+  subject: string;    // email subject line
+  preheader: string;
+  type: string;       // "Sale / Promo" | "Health Awareness" | "Content Anchor" | etc.
+};
+
 // ─── Seed library of email subject ideas ─────────────────────────────────────
-// Categories: Sleep · Energy · Focus · Gut · Stress · Recovery · Ritual · Product · Educational · Seasonal
 const SEED_SUBJECTS: SubjectIdea[] = [
   // Sleep
   { subject: "You're not tired — you're magnesium-deficient", preheader: "One mineral. One hour. A night that actually restores you.", category: "Sleep" },
@@ -79,9 +87,283 @@ const SEED_SUBJECTS: SubjectIdea[] = [
   { subject: "The Q4 burnout pattern — and how to interrupt it", preheader: "What high-output people miss every November.", category: "Seasonal" },
 ];
 
-const CATEGORIES = ["All", ...Array.from(new Set(SEED_SUBJECTS.map(s => s.category)))];
+// ─── Marketing Calendar 2025 — email subjects by month ───────────────────────
+const CALENDAR_EVENTS: CalendarEvent[] = [
+  // ── April ──────────────────────────────────────────────────────────────────
+  {
+    date: "Apr 1", month: "April", type: "Content Anchor",
+    event: "April Fools — myth-bust",
+    subject: "The sleep myth we hear most — and why it's wrong",
+    preheader: "No tricks. Just the truth about what actually helps you sleep.",
+  },
+  {
+    date: "Apr 7", month: "April", type: "Health Awareness",
+    event: "World Health Day",
+    subject: "Sleep is the foundation. Not a bonus.",
+    preheader: "On World Health Day, a reminder that rest is where health begins.",
+  },
+  {
+    date: "Apr 15", month: "April", type: "Paid Ads Spike",
+    event: "Tax Day (US) — stress spike",
+    subject: "Tax season is wrecking your sleep. Here's why.",
+    preheader: "Cortisol spikes, deadline anxiety, and the one thing that helps.",
+  },
+  {
+    date: "Apr 22", month: "April", type: "Cultural / Holiday",
+    event: "Earth Day",
+    subject: "Clean sleep starts with a clean formula",
+    preheader: "USA-made. Vegan. No fillers. This is what we chose — and why.",
+  },
+  {
+    date: "Apr 28", month: "April", type: "Health Awareness",
+    event: "World Sleep Disorders Awareness Day",
+    subject: "Most people don't know they have a sleep disorder",
+    preheader: "The signs are subtle. The fix is simpler than you'd think.",
+  },
+
+  // ── May ────────────────────────────────────────────────────────────────────
+  {
+    date: "May 1", month: "May", type: "Email Trigger",
+    event: "Better Sleep Month — launch email",
+    subject: "It's Better Sleep Month. Here's what we know.",
+    preheader: "One month. A full picture of what it actually takes to sleep better.",
+  },
+  {
+    date: "May 5", month: "May", type: "Content Anchor",
+    event: "Cinco de Mayo — alcohol + sleep",
+    subject: "What one drink actually does to your sleep",
+    preheader: "The science behind alcohol and REM is not what most people expect.",
+  },
+  {
+    date: "May 12", month: "May", type: "Sale / Promo",
+    event: "Mother's Day",
+    subject: "The best gift for someone who never sleeps enough",
+    preheader: "Give the one thing she won't buy herself. Free shipping this weekend.",
+  },
+  {
+    date: "May 26", month: "May", type: "Sale / Promo",
+    event: "Memorial Day Weekend",
+    subject: "This weekend only — sleep better for less",
+    preheader: "3-day sale. No code needed. Ships Monday.",
+  },
+
+  // ── June ───────────────────────────────────────────────────────────────────
+  {
+    date: "Jun 1", month: "June", type: "Cultural / Holiday",
+    event: "Pride Month begins",
+    subject: "Better sleep is for everyone",
+    preheader: "This month and every month — rest is a right, not a reward.",
+  },
+  {
+    date: "Jun 15", month: "June", type: "Sale / Promo",
+    event: "Father's Day",
+    subject: "He won't ask for help sleeping. Give it to him anyway.",
+    preheader: "The sleep stack for the person who pushes through. Gift guide inside.",
+  },
+  {
+    date: "Jun 21", month: "June", type: "Content Anchor",
+    event: "Summer Solstice — longest day",
+    subject: "The longest day of the year just messed with your sleep",
+    preheader: "Light exposure, melatonin timing, and what to do tonight.",
+  },
+  {
+    date: "Jun 27", month: "June", type: "Health Awareness",
+    event: "National PTSD Awareness Day",
+    subject: "Sleep and stress: what the research actually says",
+    preheader: "An honest look at the connection — and how to support your nervous system.",
+  },
+
+  // ── July ───────────────────────────────────────────────────────────────────
+  {
+    date: "Jul 4", month: "July", type: "Content Anchor",
+    event: "Independence Day — late nights, fireworks",
+    subject: "How to reset your sleep after a late night",
+    preheader: "The exact protocol for getting back on track tomorrow morning.",
+  },
+  {
+    date: "Jul 14", month: "July", type: "Email Trigger",
+    event: "Mid-year check-in",
+    subject: "6 months of better sleep — where are you?",
+    preheader: "Halfway through the year. A moment to check in on the habit that changes everything.",
+  },
+  {
+    date: "Jul 28", month: "July", type: "Health Awareness",
+    event: "World Hepatitis Day — inflammation angle",
+    subject: "Inflammation is quiet. And it's ruining your sleep.",
+    preheader: "Low-grade inflammation disrupts your deepest sleep stages. Here's what to know.",
+  },
+
+  // ── August ─────────────────────────────────────────────────────────────────
+  {
+    date: "Aug 8", month: "August", type: "Content Anchor",
+    event: "International Cat Day — playful content",
+    subject: "The one thing cats get right about sleep",
+    preheader: "They don't apologise for resting. Neither should you.",
+  },
+  {
+    date: "Aug 12", month: "August", type: "Content Anchor",
+    event: "Back to School begins",
+    subject: "Your teenager's sleep is worse than you think",
+    preheader: "Chronotypes, early starts, and what the research says about adolescent rest.",
+  },
+  {
+    date: "Aug 19", month: "August", type: "Cultural / Holiday",
+    event: "World Humanitarian Day — brand values",
+    subject: "Made in the USA. Formulated for real sleep.",
+    preheader: "Why our manufacturing choices are part of the product, not just the packaging.",
+  },
+  {
+    date: "Aug 26", month: "August", type: "Sale / Promo",
+    event: "Late-summer sale / Labor Day preview",
+    subject: "Before summer ends — our best offer of Q3",
+    preheader: "A preview of what's coming Labor Day. Early access inside.",
+  },
+
+  // ── September ──────────────────────────────────────────────────────────────
+  {
+    date: "Sep 1", month: "September", type: "Sale / Promo",
+    event: "Labor Day Weekend",
+    subject: "Work hard. Sleep harder. This weekend only.",
+    preheader: "Our biggest Q3 sale. Ends Monday midnight.",
+  },
+  {
+    date: "Sep 8", month: "September", type: "Content Anchor",
+    event: "International Literacy Day",
+    subject: "Read more, sleep better. The connection is real.",
+    preheader: "How sleep consolidates learning — and what to do before you open a book.",
+  },
+  {
+    date: "Sep 21", month: "September", type: "Health Awareness",
+    event: "World Alzheimer's Day",
+    subject: "What deep sleep does to your brain (the science is striking)",
+    preheader: "The glymphatic system runs at night. This is why deep sleep is non-negotiable.",
+  },
+  {
+    date: "Sep 29", month: "September", type: "Health Awareness",
+    event: "World Heart Day",
+    subject: "Your heart recovers at night. Are you letting it?",
+    preheader: "HRV, cardiovascular repair, and the sleep stage that does the work.",
+  },
+
+  // ── October ────────────────────────────────────────────────────────────────
+  {
+    date: "Oct 1", month: "October", type: "Health Awareness",
+    event: "World Mental Health Month begins",
+    subject: "REM sleep and your emotional state — a month of insights",
+    preheader: "October is Mental Health Month. We're starting with the sleep-mood connection.",
+  },
+  {
+    date: "Oct 10", month: "October", type: "Health Awareness",
+    event: "World Mental Health Day",
+    subject: "Mood, stress, and the sleep cycle no one talks about",
+    preheader: "REM isn't just rest. It's emotional regulation. Here's what that means for you.",
+  },
+  {
+    date: "Oct 13", month: "October", type: "Cultural / Holiday",
+    event: "Thanksgiving (Canada)",
+    subject: "Grateful for good sleep — and here's how we get there",
+    preheader: "To our Canadian community: happy Thanksgiving. Rest well this weekend.",
+  },
+  {
+    date: "Oct 31", month: "October", type: "Content Anchor",
+    event: "Halloween — late nights, candy crash",
+    subject: "What sugar at 9pm does to your sleep at midnight",
+    preheader: "The blood sugar spike, the crash, and the REM disruption that follows.",
+  },
+
+  // ── November ───────────────────────────────────────────────────────────────
+  {
+    date: "Nov 1", month: "November", type: "Content Anchor",
+    event: "Daylight Saving Ends (US)",
+    subject: "The clocks fall back. Your body doesn't know that.",
+    preheader: "Circadian disruption, light exposure, and how to recalibrate this week.",
+  },
+  {
+    date: "Nov 3", month: "November", type: "Email Trigger",
+    event: "DST email send",
+    subject: "The clocks changed. Your sleep shouldn't suffer.",
+    preheader: "How to adjust your routine in the next 48 hours — and why it matters.",
+  },
+  {
+    date: "Nov 11", month: "November", type: "Cultural / Holiday",
+    event: "Veterans Day",
+    subject: "For those who serve — and for everyone who needs real rest",
+    preheader: "Veterans Day. A moment to acknowledge the people who protect our ability to rest.",
+  },
+  {
+    date: "Nov 20", month: "November", type: "Sale / Promo",
+    event: "BFCM campaign launch",
+    subject: "Something big is coming. You should see this first.",
+    preheader: "Our biggest sale of the year launches in one week. Early access inside.",
+  },
+  {
+    date: "Nov 27", month: "November", type: "Cultural / Holiday",
+    event: "Thanksgiving (US)",
+    subject: "Rest, gratitude, and what actually comes next",
+    preheader: "Happy Thanksgiving. Enjoy the table — and the sleep after.",
+  },
+  {
+    date: "Nov 28", month: "November", type: "Sale / Promo",
+    event: "Black Friday",
+    subject: "Our biggest sale of the year. Today only.",
+    preheader: "Deepest discount we run. Subscribe and save, or stock up. Ends midnight.",
+  },
+  {
+    date: "Nov 30", month: "November", type: "Sale / Promo",
+    event: "Cyber Monday",
+    subject: "Last chance — ends tonight at midnight",
+    preheader: "Final day of the BFCM window. Same deal. No extensions.",
+  },
+
+  // ── December ───────────────────────────────────────────────────────────────
+  {
+    date: "Dec 8", month: "December", type: "Email Trigger",
+    event: "Post-BFCM list nurture",
+    subject: "Didn't grab it during Black Friday? We saved something for you.",
+    preheader: "A quieter offer for the people who missed the window.",
+  },
+  {
+    date: "Dec 14", month: "December", type: "Sale / Promo",
+    event: "Holiday gift guide final push",
+    subject: "Last call for standard shipping",
+    preheader: "Order by tonight for guaranteed delivery before the holidays. Gift guide inside.",
+  },
+  {
+    date: "Dec 21", month: "December", type: "Content Anchor",
+    event: "Winter Solstice — shortest day",
+    subject: "The shortest day of the year is actually the longest night",
+    preheader: "Darkness, melatonin, and why your body is primed to sleep well right now.",
+  },
+  {
+    date: "Dec 26", month: "December", type: "Email Trigger",
+    event: "Post-holiday reset campaign",
+    subject: "The holidays wrecked your sleep. Let's fix it.",
+    preheader: "Late nights, time zones, sugar, alcohol. A reset protocol for the next 7 days.",
+  },
+  {
+    date: "Dec 31", month: "December", type: "Email Trigger",
+    event: "New Year's Eve — resolution set-up",
+    subject: "One habit. Better sleep in 2026.",
+    preheader: "Before the resolutions pile up — start with the one that makes everything else easier.",
+  },
+];
+
+// Group calendar events by month (already sorted chronologically)
+const CALENDAR_MONTHS = Array.from(new Set(CALENDAR_EVENTS.map(e => e.month)));
+
+const SEED_CATEGORIES = ["All", ...Array.from(new Set(SEED_SUBJECTS.map(s => s.category)))];
+
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  "Sale / Promo": "var(--success)",
+  "Health Awareness": "var(--accent)",
+  "Content Anchor": "var(--muted)",
+  "Email Trigger": "#c084fc",
+  "Cultural / Holiday": "#f59e0b",
+  "Paid Ads Spike": "#f87171",
+};
 
 export default function EmailSubjectsView() {
+  const [view, setView] = useState<"ideas" | "calendar">("ideas");
   const [activeCategory, setActiveCategory] = useState("All");
   const [copied, setCopied] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -91,6 +373,18 @@ export default function EmailSubjectsView() {
     const matchSearch = !search.trim() || s.subject.toLowerCase().includes(search.toLowerCase()) || s.preheader.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
+
+  const filteredCalendar = CALENDAR_EVENTS.filter(e =>
+    !search.trim() ||
+    e.subject.toLowerCase().includes(search.toLowerCase()) ||
+    e.preheader.toLowerCase().includes(search.toLowerCase()) ||
+    e.event.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const calendarByMonth = CALENDAR_MONTHS.map(month => ({
+    month,
+    events: filteredCalendar.filter(e => e.month === month),
+  })).filter(g => g.events.length > 0);
 
   function copy(text: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -102,7 +396,7 @@ export default function EmailSubjectsView() {
   return (
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 40px 80px" }}>
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 24 }}>
         <h1 style={{
           fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 300,
           color: "var(--text)", margin: "0 0 8px", letterSpacing: "-0.02em",
@@ -110,8 +404,28 @@ export default function EmailSubjectsView() {
           Email Subjects
         </h1>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", margin: 0 }}>
-          {SEED_SUBJECTS.length} subject lines + preheaders in Lunia voice. Click to copy.
+          {SEED_SUBJECTS.length} brand ideas + {CALENDAR_EVENTS.length} calendar events. Click to copy.
         </p>
+      </div>
+
+      {/* View toggle */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "var(--surface-r)", borderRadius: 10, padding: 4, width: "fit-content" }}>
+        {(["ideas", "calendar"] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => { setView(v); setSearch(""); setActiveCategory("All"); }}
+            style={{
+              padding: "6px 18px", borderRadius: 7, cursor: "pointer",
+              fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.06em",
+              background: view === v ? "var(--bg)" : "transparent",
+              border: view === v ? "1px solid var(--border)" : "1px solid transparent",
+              color: view === v ? "var(--text)" : "var(--subtle)",
+              transition: "all 0.12s",
+            }}
+          >
+            {v === "ideas" ? "Brand Ideas" : "2025 Calendar"}
+          </button>
+        ))}
       </div>
 
       {/* Search */}
@@ -119,7 +433,7 @@ export default function EmailSubjectsView() {
         type="text"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        placeholder="Search subjects..."
+        placeholder={view === "ideas" ? "Search subjects..." : "Search events or subjects..."}
         style={{
           width: "100%", padding: "10px 14px", marginBottom: 16,
           borderRadius: 8, background: "var(--surface-r)",
@@ -131,84 +445,176 @@ export default function EmailSubjectsView() {
         onBlur={e => (e.target.style.borderColor = "var(--border)")}
       />
 
-      {/* Category filter */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            style={{
-              padding: "5px 14px", borderRadius: 20, cursor: "pointer",
-              fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em",
-              background: activeCategory === cat ? "var(--accent-dim)" : "var(--surface-r)",
-              border: activeCategory === cat ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
-              color: activeCategory === cat ? "var(--accent)" : "var(--subtle)",
-              transition: "all 0.12s",
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Subject list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {filtered.length === 0 && (
-          <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", textAlign: "center", padding: "40px 0" }}>
-            No subjects match your search.
+      {/* ── Ideas view ── */}
+      {view === "ideas" && (
+        <>
+          {/* Category filter */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
+            {SEED_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  padding: "5px 14px", borderRadius: 20, cursor: "pointer",
+                  fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em",
+                  background: activeCategory === cat ? "var(--accent-dim)" : "var(--surface-r)",
+                  border: activeCategory === cat ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
+                  color: activeCategory === cat ? "var(--accent)" : "var(--subtle)",
+                  transition: "all 0.12s",
+                }}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
-        )}
-        {filtered.map((item, i) => {
-          const isCopied = copied === item.subject;
-          return (
-            <div
-              key={i}
-              style={{
-                padding: "14px 16px", borderRadius: 10,
-                background: "var(--surface)", border: "1px solid var(--border)",
-                display: "flex", alignItems: "flex-start", gap: 12,
-                transition: "border-color 0.12s",
-                cursor: "pointer",
-              }}
-              onClick={() => copy(item.subject)}
-              onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"}
-              onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500,
-                  color: "var(--text)", marginBottom: 4, lineHeight: 1.4,
-                }}>
-                  {item.subject}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filtered.length === 0 && (
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", textAlign: "center", padding: "40px 0" }}>
+                No subjects match your search.
+              </div>
+            )}
+            {filtered.map((item, i) => {
+              const isCopied = copied === item.subject;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    padding: "14px 16px", borderRadius: 10,
+                    background: "var(--surface)", border: "1px solid var(--border)",
+                    display: "flex", alignItems: "flex-start", gap: 12,
+                    transition: "border-color 0.12s", cursor: "pointer",
+                  }}
+                  onClick={() => copy(item.subject)}
+                  onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"}
+                  onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 4, lineHeight: 1.4 }}>
+                      {item.subject}
+                    </div>
+                    <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                      {item.preheader}
+                    </div>
+                    <div style={{
+                      marginTop: 6, display: "inline-block",
+                      fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                      textTransform: "uppercase", color: "var(--subtle)",
+                      background: "var(--surface-r)", padding: "2px 7px", borderRadius: 4,
+                    }}>
+                      {item.category}
+                    </div>
+                  </div>
+                  <div style={{
+                    flexShrink: 0, fontFamily: "var(--font-mono)", fontSize: 10,
+                    color: isCopied ? "var(--success)" : "var(--subtle)",
+                    letterSpacing: "0.06em", paddingTop: 2, transition: "color 0.15s",
+                  }}>
+                    {isCopied ? "✓ copied" : "copy"}
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── Calendar view ── */}
+      {view === "calendar" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+          {calendarByMonth.length === 0 && (
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", textAlign: "center", padding: "40px 0" }}>
+              No events match your search.
+            </div>
+          )}
+          {calendarByMonth.map(({ month, events }) => (
+            <div key={month}>
+              {/* Month header */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 12, marginBottom: 12,
+              }}>
                 <div style={{
-                  fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)",
-                  lineHeight: 1.5,
+                  fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700,
+                  letterSpacing: "0.14em", textTransform: "uppercase",
+                  color: "var(--text)",
                 }}>
-                  {item.preheader}
+                  {month}
                 </div>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                 <div style={{
-                  marginTop: 6, display: "inline-block",
-                  fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
-                  textTransform: "uppercase", color: "var(--subtle)",
-                  background: "var(--surface-r)", padding: "2px 7px", borderRadius: 4,
+                  fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)",
+                  letterSpacing: "0.1em",
                 }}>
-                  {item.category}
+                  {events.length} event{events.length !== 1 ? "s" : ""}
                 </div>
               </div>
-              <div style={{
-                flexShrink: 0,
-                fontFamily: "var(--font-mono)", fontSize: 10,
-                color: isCopied ? "var(--success)" : "var(--subtle)",
-                letterSpacing: "0.06em", paddingTop: 2,
-                transition: "color 0.15s",
-              }}>
-                {isCopied ? "✓ copied" : "copy"}
+
+              {/* Events */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {events.map((ev, i) => {
+                  const isCopied = copied === ev.subject;
+                  const typeColor = EVENT_TYPE_COLORS[ev.type] ?? "var(--subtle)";
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "14px 16px", borderRadius: 10,
+                        background: "var(--surface)", border: "1px solid var(--border)",
+                        display: "flex", alignItems: "flex-start", gap: 12,
+                        transition: "border-color 0.12s", cursor: "pointer",
+                      }}
+                      onClick={() => copy(ev.subject)}
+                      onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"}
+                    >
+                      {/* Date column */}
+                      <div style={{ flexShrink: 0, width: 40, paddingTop: 2 }}>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--muted)", letterSpacing: "0.06em" }}>
+                          {ev.date}
+                        </div>
+                      </div>
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 4, lineHeight: 1.4 }}>
+                          {ev.subject}
+                        </div>
+                        <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 6 }}>
+                          {ev.preheader}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <div style={{
+                            fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em",
+                            textTransform: "uppercase", color: "var(--subtle)",
+                            background: "var(--surface-r)", padding: "2px 7px", borderRadius: 4,
+                          }}>
+                            {ev.event}
+                          </div>
+                          <div style={{
+                            fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em",
+                            textTransform: "uppercase", color: typeColor,
+                            padding: "2px 7px", borderRadius: 4,
+                            background: "var(--surface-r)",
+                          }}>
+                            {ev.type}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Copy */}
+                      <div style={{
+                        flexShrink: 0, fontFamily: "var(--font-mono)", fontSize: 10,
+                        color: isCopied ? "var(--success)" : "var(--subtle)",
+                        letterSpacing: "0.06em", paddingTop: 2, transition: "color 0.15s",
+                      }}>
+                        {isCopied ? "✓ copied" : "copy"}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
