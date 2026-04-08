@@ -1,6 +1,7 @@
 import { anthropic } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { EmailAnatomy, EmailSection, StylePreset } from "@/lib/types";
+import { randomUUID } from "crypto";
 
 export const maxDuration = 60;
 
@@ -96,13 +97,18 @@ Produce a complete Lunia remix. Return ONLY valid JSON matching this exact schem
     "subjectLines": ["string", "string", "string"],
     "preheader": "string",
     "sections": [
-      { "heading": "optional string", "body": "string" }
+      {
+        "heading": "optional string",
+        "body": "string",
+        "imagePrompt": "string — a Recraft V3 image generation prompt for a wellness lifestyle image that fits this section. Photorealistic. 1024x1280 portrait. Describe scene, lighting, mood. No text in image. Empty string if section is abstract/no visual fit."
+      }
     ],
     "cta": "string",
     "ps": "string — a purposeful P.S. line, always include"
-  },
-  "imagePrompt": "string — a Recraft V3 image generation prompt for a single hero image that would elevate this email. Style: photorealistic wellness lifestyle. 1024x1280 portrait. Describe scene, lighting, mood. No text in image."
-}`;
+  }
+}
+
+Generate 3 to 5 sections. Each section must have an imagePrompt (or empty string if not applicable).`;
 
     // Build message content — images first, then text prompt
     type AllowedMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
@@ -144,11 +150,10 @@ Produce a complete Lunia remix. Return ONLY valid JSON matching this exact schem
       generated: {
         subjectLines: string[];
         preheader: string;
-        sections: EmailSection[];
+        sections: Array<{ heading?: string; body: string; imagePrompt?: string }>;
         cta: string;
         ps: string;
       };
-      imagePrompt: string;
     };
 
     try {
@@ -158,7 +163,25 @@ Produce a complete Lunia remix. Return ONLY valid JSON matching this exact schem
       return Response.json({ error: "Analysis failed — try with a longer email" }, { status: 422 });
     }
 
-    return Response.json(parsed);
+    if (!parsed.generated?.sections?.length) {
+      return Response.json({ error: "Could not parse sections — try with more text" }, { status: 422 });
+    }
+
+    // Assign server-side stable IDs to each section
+    const sectionsWithIds: EmailSection[] = parsed.generated.sections.map(s => ({
+      id: randomUUID(),
+      heading: s.heading,
+      body: s.body,
+      imagePrompt: s.imagePrompt ?? "",
+    }));
+
+    return Response.json({
+      ...parsed,
+      generated: {
+        ...parsed.generated,
+        sections: sectionsWithIds,
+      },
+    });
   } catch (err) {
     console.error("[api/email/generate]", err);
     return Response.json({ error: "Generation failed" }, { status: 500 });

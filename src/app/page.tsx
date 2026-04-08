@@ -12,7 +12,7 @@ import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
-import EmailView from "@/components/EmailView";
+import EmailBuilderView from "@/components/EmailBuilderView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
@@ -324,7 +324,7 @@ export default function Page() {
             <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
           </div>
         )}
-        {tab === "email" && <EmailView onConvertToCarousel={handleEmailToCarousel} />}
+        {tab === "email" && <EmailBuilderView onConvertToCarousel={handleEmailToCarousel} />}
         {tab === "email-library" && (
           <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
             <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>

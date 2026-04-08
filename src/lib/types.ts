@@ -522,8 +522,12 @@ export type VideoAssetMetadata = {
 export type StylePreset = 'minimal-modern' | 'story-driven' | 'bold-product-first';
 
 export type EmailSection = {
+  id: string;
   heading?: string;
   body: string;
+  imagePrompt?: string;
+  imageUrl?: string;
+  imageStyle?: "realistic" | "illustration" | "anime" | "vector";
 };
 
 export type EmailAnatomy = {
