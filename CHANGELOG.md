@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0] - 2026-04-08
+
+### Added
+- `iconLayout` graphic component: display 1–4 icons per content slide in four layout modes — Row, Column, Grid, and Scattered (absolute-positioned). Picker UI with multi-select + layout toggle in both ContentStep and PreviewStep.
+- "Mind" icon category with 12 new icons (focus, meditation, clarity, mindfulness, awareness, journaling, breathwork, visualization, affirmations, gratitude, neuroplasticity, intention)
+- 44 new icons total across all categories (Sleep +8, Health +8, Lifestyle +8, Fitness +8, Mind +12)
+- Lunia Life watermark toggle (On/Off) in PreviewStep and ContentStep, replacing the wave decoration toggle
+
+### Changed
+- Hook slide: removed wave decoration pattern (`HookDecoration`) — hook slides now render clean text-only backgrounds
+- `regenerate-graphic` API: `iconLayout` added to `VALID_COMPONENTS` allowlist so regeneration requests return valid icon layouts instead of falling back to `callout`
+- `IconLayout.tsx`: stable `key={ic.id}` used for all map renders (was `key={i}`)
+
+### Fixed
+- `getIconById` called once per icon in scattered/column layout renders (was called twice — once for SVG, once for label)
+
 ## [0.2.2] - 2026-03-25
 
 ### Added
