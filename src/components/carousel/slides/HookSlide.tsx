@@ -1,7 +1,6 @@
 'use client';
 
 import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
-import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle } from '@/lib/types';
@@ -21,19 +20,16 @@ type Props = {
   backgroundImageUrl?: string;
   isFalImage?: boolean;  // true = fal.ai generated; use lighter overlay (more dramatic)
   shimmer?: boolean;     // true = show loading shimmer while fal image generates
-  showDecoration?: boolean;
   logoScale?: number;
   arrowScale?: number;
   showLuniaLifeWatermark?: boolean;
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, showDecoration = true, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false }: Props) {
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
-  const decoAccent = brandStyle?.secondary ?? '#e8f4f8';
   const arrowColor = brandStyle?.secondary ?? '#4a7c8e';
-  const decorationType = getHookDecorationType(topic ?? headline);
 
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg, overflow: 'hidden' }}>
@@ -71,9 +67,6 @@ export default function HookSlide({ headline, subline, sourceNote, topic, scale 
       ) : null}
 
       <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
-
-      {/* Topic-matched decoration — replaces static WaveLines */}
-      {showDecoration && <HookDecoration type={decorationType} color="#ffffff" accent={decoAccent} />}
 
       {/* Flex column content block — headline + subline stacked with padding tokens */}
       <div style={{

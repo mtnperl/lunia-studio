@@ -225,6 +225,13 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
     component: z.literal('icon'),
     data: z.object({ id: z.string(), label: z.string().optional() }),
   }),
+  z.object({
+    component: z.literal('iconLayout'),
+    data: z.object({
+      icons: z.array(z.object({ id: z.string() })).min(1).max(4),
+      layout: z.enum(['row', 'column', 'grid', 'scattered']),
+    }),
+  }),
 ]);
 
 export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;

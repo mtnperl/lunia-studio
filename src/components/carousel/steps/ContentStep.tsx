@@ -17,6 +17,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
   const [originalBodies, setOriginalBodies] = useState<Record<number, string>>({});
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
   const [iconPickerCategory, setIconPickerCategory] = useState<IconCategory>("sleep");
+  const [iconPickerLayout, setIconPickerLayout] = useState<"row" | "column" | "grid" | "scattered">("row");
 
   const updateHook = (i: number, field: "headline" | "subline" | "sourceNote", val: string) => {
     const hooks = [...content.hooks];
@@ -30,10 +31,42 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     onChange({ ...content, slides });
   };
 
-  function setSlideIcon(slideIndex: number, iconId: string) {
-    const graphicJson = JSON.stringify({ component: "icon", data: { id: iconId } });
-    updateSlide(slideIndex, "graphic", graphicJson);
-    setIconPickerOpen(null);
+  // Parse selected icons from current graphic JSON (iconLayout or single icon)
+  function getSelectedIcons(slideIndex: number): string[] {
+    try {
+      const g = content.slides[slideIndex]?.graphic ?? "";
+      if (!g) return [];
+      const parsed = JSON.parse(g);
+      if (parsed.component === "iconLayout") return parsed.data.icons.map((ic: { id: string }) => ic.id);
+      if (parsed.component === "icon") return [parsed.data.id];
+    } catch { /* ignore */ }
+    return [];
+  }
+
+  function toggleSlideIcon(slideIndex: number, iconId: string) {
+    const current = getSelectedIcons(slideIndex);
+    let next: string[];
+    if (current.includes(iconId)) {
+      next = current.filter((id) => id !== iconId);
+    } else if (current.length < 4) {
+      next = [...current, iconId];
+    } else {
+      return; // max 4
+    }
+    if (next.length === 0) {
+      updateSlide(slideIndex, "graphic", "");
+    } else if (next.length === 1) {
+      updateSlide(slideIndex, "graphic", JSON.stringify({ component: "iconLayout", data: { icons: [{ id: next[0] }], layout: iconPickerLayout } }));
+    } else {
+      updateSlide(slideIndex, "graphic", JSON.stringify({ component: "iconLayout", data: { icons: next.map((id) => ({ id })), layout: iconPickerLayout } }));
+    }
+  }
+
+  function applyIconLayout(slideIndex: number, layout: "row" | "column" | "grid" | "scattered") {
+    setIconPickerLayout(layout);
+    const current = getSelectedIcons(slideIndex);
+    if (current.length === 0) return;
+    updateSlide(slideIndex, "graphic", JSON.stringify({ component: "iconLayout", data: { icons: current.map((id) => ({ id })), layout } }));
   }
 
   async function handleShorten(slideIndex: number) {
@@ -224,9 +257,22 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
             <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
               {/* Header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Choose icon graphic
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Icons
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+                    {getSelectedIcons(i).length}/4 selected
+                  </span>
+                  {getSelectedIcons(i).length > 0 && (
+                    <button
+                      onClick={() => updateSlide(i, "graphic", "")}
+                      style={{ background: "transparent", fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "1px 6px", borderRadius: 4, border: "1px solid var(--border)" }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={() => setIconPickerOpen(null)}
                   style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}
@@ -234,24 +280,43 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                   ✕
                 </button>
               </div>
+              {/* Layout picker */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Layout</span>
+                {(["row", "column", "grid", "scattered"] as const).map((lyt) => (
+                  <button
+                    key={lyt}
+                    onClick={() => applyIconLayout(i, lyt)}
+                    style={{
+                      padding: "2px 8px", fontSize: 10, fontWeight: 700,
+                      background: iconPickerLayout === lyt ? "var(--accent)" : "var(--bg)",
+                      color: iconPickerLayout === lyt ? "#fff" : "var(--muted)",
+                      border: "1px solid var(--border)", borderRadius: 4,
+                      cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.04em",
+                    }}
+                  >
+                    {lyt}
+                  </button>
+                ))}
+              </div>
               {/* Category tabs */}
               <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
-                {(["sleep", "health", "lifestyle", "fitness"] as IconCategory[]).map((cat) => (
+                {(["sleep", "health", "lifestyle", "fitness", "mind"] as IconCategory[]).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setIconPickerCategory(cat)}
                     style={{
                       flex: 1,
-                      padding: "8px 4px",
+                      padding: "8px 2px",
                       border: "none",
                       borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
                       background: "transparent",
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: iconPickerCategory === cat ? 700 : 500,
                       color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
                       cursor: "pointer",
                       textTransform: "uppercase",
-                      letterSpacing: "0.06em",
+                      letterSpacing: "0.05em",
                       fontFamily: "inherit",
                     }}
                   >
@@ -262,13 +327,15 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
               {/* Icon grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2, padding: 8, background: "var(--bg)", maxHeight: 240, overflowY: "auto" }}>
                 {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
-                  const currentGraphic = slide.graphic ?? "";
-                  const isSelected = currentGraphic.includes(`"id":"${ic.id}"`);
+                  const selected = getSelectedIcons(i);
+                  const isSelected = selected.includes(ic.id);
+                  const atMax = selected.length >= 4 && !isSelected;
                   return (
                     <button
                       key={ic.id}
-                      onClick={() => setSlideIcon(i, ic.id)}
+                      onClick={() => toggleSlideIcon(i, ic.id)}
                       title={ic.label}
+                      disabled={atMax}
                       style={{
                         display: "flex",
                         flexDirection: "column",
@@ -278,7 +345,8 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                         border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
                         borderRadius: 6,
                         background: isSelected ? "var(--accent-dim)" : "transparent",
-                        cursor: "pointer",
+                        cursor: atMax ? "not-allowed" : "pointer",
+                        opacity: atMax ? 0.35 : 1,
                         transition: "background 0.1s",
                       }}
                     >
