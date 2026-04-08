@@ -38,7 +38,7 @@ import { CircularCycleGraphic } from '@/components/carousel/graphics/CircularCyc
 import { BentoTiles } from '@/components/carousel/graphics/BentoTiles';
 import { ConceptFlowGraphic } from '@/components/carousel/graphics/ConceptFlowGraphic';
 import { IconGraphic } from '@/components/carousel/graphics/IconGraphic';
-import HookDecoration, { getHookDecorationType } from '@/components/carousel/shared/HookDecoration';
+import { IconLayout } from '@/components/carousel/graphics/IconLayout';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 
@@ -112,6 +112,7 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   bento: BentoTiles as React.FC<any>,
   conceptFlow: ConceptFlowGraphic as React.FC<any>,
   icon: IconGraphic as React.FC<any>,
+  iconLayout: IconLayout as React.FC<any>,
 };
 
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {
@@ -237,21 +238,8 @@ export default function ContentSlide({
   const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
   const headlineFontSize = headlineSize(headline.length);
 
-  const decoAccent = brandStyle?.accent ?? '#1e7a8a';
-
   return (
     <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
-      {/* Dark background decoration — mirrors hook slide pattern at low opacity for continuity */}
-      {darkBackground && (
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.18, pointerEvents: 'none' }}>
-          <HookDecoration
-            type={getHookDecorationType(headline)}
-            color="#ffffff"
-            accent={decoAccent}
-          />
-        </div>
-      )}
-
       {/* fal.ai background image — 15% opacity, purely atmospheric behind all content */}
       {backgroundImage ? (
         <div style={{

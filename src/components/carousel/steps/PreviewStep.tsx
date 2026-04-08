@@ -41,15 +41,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Hook decoration / logo / arrow / background controls
-  const [showDecoration, setShowDecoration] = useState(true);
+  // Logo / arrow / background / watermark controls
   const [logoScale, setLogoScale] = useState(1);
   const [arrowScale, setArrowScale] = useState(1);
   const [darkBackground, setDarkBackground] = useState(false);
+  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
 
   // Icon picker state (content slides 1–3, i.e. slideIndex 0–2)
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
   const [iconPickerCategory, setIconPickerCategory] = useState<IconCategory>("sleep");
+  const [iconPickerLayout, setIconPickerLayout] = useState<"row" | "column" | "grid" | "scattered">("row");
 
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
@@ -288,10 +289,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           brandStyle,
           hookImageUrl: config.hookImageUrl,
           slideImages: config.slideImages,
-          showDecoration,
           logoScale,
           arrowScale,
           darkBackground,
+          showLuniaLifeWatermark,
         }),
       });
       if (!res.ok) return;
@@ -310,12 +311,49 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     });
   }
 
-  function setSlideIcon(slideIndex: number, iconId: string) {
-    const graphicJson = JSON.stringify({ component: "icon", data: { id: iconId } });
+  function getSelectedIcons(slideIndex: number): string[] {
+    try {
+      const g = content.slides[slideIndex]?.graphic ?? "";
+      if (!g) return [];
+      const parsed = JSON.parse(g);
+      if (parsed.component === "iconLayout") return parsed.data.icons.map((ic: { id: string }) => ic.id);
+      if (parsed.component === "icon") return [parsed.data.id];
+    } catch { /* ignore */ }
+    return [];
+  }
+
+  function toggleSlideIcon(slideIndex: number, iconId: string) {
+    const current = getSelectedIcons(slideIndex);
+    let next: string[];
+    if (current.includes(iconId)) {
+      next = current.filter((id) => id !== iconId);
+    } else if (current.length < 4) {
+      next = [...current, iconId];
+    } else {
+      return;
+    }
+    const graphic = next.length === 0
+      ? ""
+      : JSON.stringify({ component: "iconLayout", data: { icons: next.map((id) => ({ id })), layout: iconPickerLayout } });
     const slides = [...content.slides];
-    slides[slideIndex] = { ...slides[slideIndex], graphic: graphicJson };
+    slides[slideIndex] = { ...slides[slideIndex], graphic };
     onContentChange({ ...config, content: { ...content, slides } });
-    setIconPickerOpen(null);
+  }
+
+  function applyIconLayout(slideIndex: number, layout: "row" | "column" | "grid" | "scattered") {
+    setIconPickerLayout(layout);
+    const current = getSelectedIcons(slideIndex);
+    if (current.length === 0) return;
+    const graphic = JSON.stringify({ component: "iconLayout", data: { icons: current.map((id) => ({ id })), layout } });
+    const slides = [...content.slides];
+    slides[slideIndex] = { ...slides[slideIndex], graphic };
+    onContentChange({ ...config, content: { ...content, slides } });
+  }
+
+  function clearSlideIcons(slideIndex: number) {
+    const slides = [...content.slides];
+    slides[slideIndex] = { ...slides[slideIndex], graphic: "" };
+    onContentChange({ ...config, content: { ...content, slides } });
   }
 
   async function handleRegenerateSlide(slideIndex: number) {
@@ -534,11 +572,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -546,11 +584,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      showDecoration={showDecoration} logoScale={logoScale} arrowScale={arrowScale} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -648,16 +686,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             );
           })}
         </div>
-        {/* Decoration toggle */}
+        {/* Lunia Life watermark toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Hook deco</span>
-          <button onClick={() => setShowDecoration((v) => !v)} style={{
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Lunia Life</span>
+          <button onClick={() => setShowLuniaLifeWatermark((v) => !v)} style={{
             padding: "3px 10px", fontSize: 11, fontWeight: 700,
-            background: showDecoration ? "var(--text)" : "var(--surface)",
-            color: showDecoration ? "var(--bg)" : "var(--muted)",
+            background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
+            color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
             border: "1px solid var(--border)", borderRadius: 5,
             cursor: "pointer", fontFamily: "inherit",
-          }}>{showDecoration ? "On" : "Off"}</button>
+          }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
         </div>
         {/* Background toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -914,35 +952,57 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             {i >= 1 && i <= 3 && iconPickerOpen === i - 1 && (
               <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
                 {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Choose icon graphic</span>
-                  <button onClick={() => setIconPickerOpen(null)} style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icons</span>
+                    <span style={{ fontSize: 10, color: "var(--subtle)" }}>{getSelectedIcons(i - 1).length}/4</span>
+                    {getSelectedIcons(i - 1).length > 0 && (
+                      <button onClick={() => clearSlideIcons(i - 1)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 9, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "1px 5px" }}>Clear</button>
+                    )}
+                  </div>
+                  <button onClick={() => setIconPickerOpen(null)} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
+                </div>
+                {/* Layout picker */}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Layout</span>
+                  {(["row", "column", "grid", "scattered"] as const).map((lyt) => (
+                    <button key={lyt} onClick={() => applyIconLayout(i - 1, lyt)} style={{
+                      padding: "2px 6px", fontSize: 9, fontWeight: 700,
+                      background: iconPickerLayout === lyt ? "var(--accent)" : "var(--bg)",
+                      color: iconPickerLayout === lyt ? "#fff" : "var(--muted)",
+                      border: "1px solid var(--border)", borderRadius: 3,
+                      cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.04em",
+                    }}>{lyt}</button>
+                  ))}
                 </div>
                 {/* Category tabs */}
                 <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-                  {(["sleep", "health", "lifestyle", "fitness"] as IconCategory[]).map((cat) => (
+                  {(["sleep", "health", "lifestyle", "fitness", "mind"] as IconCategory[]).map((cat) => (
                     <button key={cat} onClick={() => setIconPickerCategory(cat)} style={{
-                      flex: 1, padding: "7px 4px", border: "none",
+                      flex: 1, padding: "6px 2px", border: "none",
                       borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
-                      background: "transparent", fontSize: 10, fontWeight: iconPickerCategory === cat ? 700 : 500,
+                      background: "transparent", fontSize: 9, fontWeight: iconPickerCategory === cat ? 700 : 500,
                       color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
-                      cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "inherit",
+                      cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "inherit",
                     }}>{cat}</button>
                   ))}
                 </div>
                 {/* Icon grid */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2, padding: 6, background: "var(--bg)", maxHeight: 200, overflowY: "auto" }}>
                   {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
-                    const currentGraphic = content.slides[i - 1]?.graphic ?? "";
-                    const isSelected = currentGraphic.includes(`"id":"${ic.id}"`);
+                    const selected = getSelectedIcons(i - 1);
+                    const isSelected = selected.includes(ic.id);
+                    const atMax = selected.length >= 4 && !isSelected;
                     return (
-                      <button key={ic.id} onClick={() => setSlideIcon(i - 1, ic.id)} title={ic.label} style={{
+                      <button key={ic.id} onClick={() => toggleSlideIcon(i - 1, ic.id)} title={ic.label} disabled={atMax} style={{
                         display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                         padding: "7px 4px",
                         border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
                         borderRadius: 6,
                         background: isSelected ? "var(--accent-dim)" : "transparent",
-                        cursor: "pointer", transition: "background 0.1s",
+                        cursor: atMax ? "not-allowed" : "pointer",
+                        opacity: atMax ? 0.35 : 1,
+                        transition: "background 0.1s",
                       }}>
                         <svg viewBox="0 0 24 24" fill="none"
                           stroke={isSelected ? "var(--accent)" : "var(--muted)"}
