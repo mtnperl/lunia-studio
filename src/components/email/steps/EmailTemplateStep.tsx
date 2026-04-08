@@ -10,8 +10,10 @@ type Props = {
   preheader: string;
   cta: string;
   ps: string;
+  topic: string;
   activeSubjectIndex: number;
   imageState: Record<string, SectionImageState>;
+  subjectEnhancing: boolean[];
   saving: boolean;
   savedId: string | null;
   onSectionChange: (updated: EmailSection) => void;
@@ -20,9 +22,16 @@ type Props = {
   onPreheaderChange: (val: string) => void;
   onCtaChange: (val: string) => void;
   onPsChange: (val: string) => void;
+  onTopicChange: (val: string) => void;
+  onEnhanceSubject: (index: number) => void;
   onSave: () => void;
   onBack: () => void;
 };
+
+function SpinnerChar() {
+  // Simple inline CSS animation trick via a key-frame style block
+  return <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--accent)" }}>✦</span>;
+}
 
 export function EmailTemplateStep({
   sections,
@@ -30,8 +39,10 @@ export function EmailTemplateStep({
   preheader,
   cta,
   ps,
+  topic,
   activeSubjectIndex,
   imageState,
+  subjectEnhancing,
   saving,
   savedId,
   onSectionChange,
@@ -40,6 +51,8 @@ export function EmailTemplateStep({
   onPreheaderChange,
   onCtaChange,
   onPsChange,
+  onTopicChange,
+  onEnhanceSubject,
   onSave,
   onBack,
 }: Props) {
@@ -47,7 +60,38 @@ export function EmailTemplateStep({
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 40px 100px" }}>
-      {/* Subject selector */}
+
+      {/* ── Email topic ── */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{
+          fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500,
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          color: "var(--muted)", marginBottom: 8,
+        }}>
+          Email Topic
+        </div>
+        <input
+          type="text"
+          value={topic}
+          onChange={e => onTopicChange(e.target.value)}
+          placeholder="e.g. Morning energy optimization with adaptogens"
+          style={{
+            width: "100%", padding: "10px 14px",
+            borderRadius: 8, background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 500,
+            color: "var(--text)", boxSizing: "border-box", outline: "none",
+            transition: "border-color 0.12s",
+          }}
+          onFocus={e => (e.target.style.borderColor = "var(--accent)")}
+          onBlur={e => (e.target.style.borderColor = "var(--border)")}
+        />
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)", marginTop: 5 }}>
+          Used by the AI enhancer to keep suggestions on-topic
+        </div>
+      </div>
+
+      {/* ── Subject selector ── */}
       <div style={{ marginBottom: 32 }}>
         <div style={{
           fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500,
@@ -58,20 +102,40 @@ export function EmailTemplateStep({
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {subjectLines.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => onSubjectSelect(i)}
-              style={{
-                padding: "10px 14px", borderRadius: 8, cursor: "pointer",
-                background: activeSubjectIndex === i ? "var(--accent-dim)" : "var(--surface-r)",
-                border: activeSubjectIndex === i ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
-                fontFamily: "var(--font-ui)", fontSize: 13,
-                color: activeSubjectIndex === i ? "var(--text)" : "var(--muted)",
-                textAlign: "left", transition: "all 0.12s",
-              }}
-            >
-              {s}
-            </button>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => onSubjectSelect(i)}
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 8, cursor: "pointer",
+                  background: activeSubjectIndex === i ? "var(--accent-dim)" : "var(--surface-r)",
+                  border: activeSubjectIndex === i ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
+                  fontFamily: "var(--font-ui)", fontSize: 13,
+                  color: activeSubjectIndex === i ? "var(--text)" : "var(--muted)",
+                  textAlign: "left", transition: "all 0.12s",
+                }}
+              >
+                {s}
+              </button>
+              {/* Enhance button */}
+              <button
+                onClick={() => onEnhanceSubject(i)}
+                disabled={subjectEnhancing[i]}
+                title="Enhance with AI"
+                style={{
+                  flexShrink: 0, width: 32, height: 36, borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-r)",
+                  cursor: subjectEnhancing[i] ? "default" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.12s",
+                  opacity: subjectEnhancing[i] ? 0.5 : 1,
+                }}
+              >
+                {subjectEnhancing[i]
+                  ? <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>…</span>
+                  : <SpinnerChar />}
+              </button>
+            </div>
           ))}
         </div>
 
@@ -101,12 +165,13 @@ export function EmailTemplateStep({
         </div>
       </div>
 
-      {/* Section cards */}
+      {/* ── Section cards ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
         {sections.map(section => (
           <EmailSectionSlide
             key={section.id}
             section={section}
+            topic={topic}
             onSectionChange={onSectionChange}
             onGenerateImage={() => onGenerateImage(section.id)}
             imageLoading={imageState[section.id]?.loading ?? false}
@@ -115,7 +180,7 @@ export function EmailTemplateStep({
         ))}
       </div>
 
-      {/* CTA card */}
+      {/* ── CTA card ── */}
       {cta && (
         <div style={{
           padding: "16px 18px", borderRadius: 10, marginBottom: 10,
@@ -141,7 +206,7 @@ export function EmailTemplateStep({
         </div>
       )}
 
-      {/* P.S. card */}
+      {/* ── P.S. card ── */}
       {ps && (
         <div style={{
           padding: "16px 18px", borderRadius: 10, marginBottom: 24,
@@ -167,7 +232,7 @@ export function EmailTemplateStep({
         </div>
       )}
 
-      {/* Footer actions */}
+      {/* ── Sticky footer ── */}
       <div style={{
         position: "sticky", bottom: 0,
         background: "var(--bg)", borderTop: "1px solid var(--border)",
@@ -195,13 +260,14 @@ export function EmailTemplateStep({
             background: savedId ? "var(--success)" : "var(--accent)",
             border: "none",
             fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
-            color: savedId ? "#fff" : "var(--bg)",
+            color: "#fff",
             transition: "all 0.15s",
           }}
         >
-          {savedId ? "Saved" : saving ? "Saving..." : "Save"}
+          {savedId ? "✓ Saved to Library" : saving ? "Saving..." : "Save to Library"}
         </button>
       </div>
     </div>
   );
 }
+

@@ -15,11 +15,21 @@ export async function POST(req: Request) {
   }
 
   type ImageStyleValue = "realistic" | "illustration" | "anime" | "vector";
+
+  // Maps our style key → fal-ai/recraft-v3 style parameter
+  const STYLE_MAP: Record<ImageStyleValue, string> = {
+    realistic: "realistic_image",
+    illustration: "digital_illustration",
+    anime: "digital_illustration/anime",
+    vector: "vector_illustration/flat_2",
+  };
+
+  // Extra prompt guidance per style (belt-and-suspenders on top of the style param)
   const STYLE_SUFFIX: Record<ImageStyleValue, string> = {
     realistic: "",
-    illustration: ", illustration style, vector art",
-    anime: ", anime style",
-    vector: ", flat vector illustration, minimal",
+    illustration: ", soft painterly illustration, editorial art",
+    anime: ", clean anime art style, line art",
+    vector: ", flat minimal vector graphic, geometric shapes",
   };
 
   try {
@@ -33,12 +43,13 @@ export async function POST(req: Request) {
 
     const suffix = STYLE_SUFFIX[imageStyle] ?? "";
     const fullPrompt = imagePrompt.trim() + suffix;
+    const falStyle = STYLE_MAP[imageStyle] ?? "realistic_image";
 
     const result = await fal.subscribe("fal-ai/recraft-v3", {
       input: {
         prompt: fullPrompt,
         image_size: { width: 1024, height: 1280 },
-        style: "realistic_image",
+        style: falStyle,
         num_images: 1,
       },
       logs: false,
