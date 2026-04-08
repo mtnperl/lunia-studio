@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { StylePreset, EmailSection } from "@/lib/types";
 
 type GenerateResult = {
@@ -29,16 +29,35 @@ const STYLE_PRESETS: { key: StylePreset; label: string; desc: string }[] = [
 
 export function EmailInputStep({ onGenerated }: Props) {
   const [competitorText, setCompetitorText] = useState("");
+  const [pastedImages, setPastedImages] = useState<string[]>([]);
   const [stylePreset, setStylePreset] = useState<StylePreset>("minimal-modern");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pasteZoneRef = useRef<HTMLDivElement>(null);
 
+  const hasImages = pastedImages.length > 0;
   const charCount = competitorText.length;
-  const canGenerate = competitorText.trim().length >= 100;
+  const canGenerate = hasImages || competitorText.trim().length >= 100;
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith("image/"));
+    if (imageItems.length === 0) return;
+    imageItems.forEach(item => {
+      const file = item.getAsFile();
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        setPastedImages(prev => [...prev, dataUrl]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function handleGenerate() {
     if (!canGenerate) {
-      setError("Paste at least 100 characters of email text.");
+      setError("Paste at least 100 characters of email text, or paste a screenshot.");
       return;
     }
     setLoading(true);
@@ -47,7 +66,7 @@ export function EmailInputStep({ onGenerated }: Props) {
       const res = await fetch("/api/email/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ competitorText, stylePreset }),
+        body: JSON.stringify({ competitorText, stylePreset, imageData: pastedImages }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -67,7 +86,12 @@ export function EmailInputStep({ onGenerated }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "56px 40px 80px" }}>
+    <div
+      ref={pasteZoneRef}
+      onPaste={handlePaste}
+      tabIndex={-1}
+      style={{ maxWidth: 680, margin: "0 auto", padding: "56px 40px 80px", outline: "none" }}
+    >
       {/* Header */}
       <div style={{ marginBottom: 40 }}>
         <h1 style={{
@@ -117,7 +141,7 @@ export function EmailInputStep({ onGenerated }: Props) {
       <textarea
         value={competitorText}
         onChange={(e) => setCompetitorText(e.target.value)}
-        placeholder="Paste the full email here — subject line, body, P.S. Plain text or forwarded email both work."
+        placeholder="Paste the full email here — subject line, body, P.S. Or Cmd+V a screenshot anywhere on this page."
         style={{
           width: "100%", minHeight: 280, padding: "16px",
           borderRadius: 10, background: "var(--surface-r)",
@@ -130,10 +154,41 @@ export function EmailInputStep({ onGenerated }: Props) {
         onBlur={e => (e.target.style.borderColor = "var(--border)")}
       />
 
+      {/* Pasted image thumbnails */}
+      {pastedImages.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+          {pastedImages.map((src, i) => (
+            <div key={i} style={{ position: "relative" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={`Screenshot ${i + 1}`}
+                style={{ height: 64, width: "auto", borderRadius: 6, border: "1px solid var(--border)", display: "block" }}
+              />
+              <button
+                onClick={() => setPastedImages(prev => prev.filter((_, j) => j !== i))}
+                style={{
+                  position: "absolute", top: -6, right: -6,
+                  width: 18, height: 18, borderRadius: "50%",
+                  background: "var(--error)", border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--font-mono)", fontSize: 10, color: "#fff", lineHeight: 1,
+                }}
+                aria-label="Remove screenshot"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Footer row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>
-          {charCount} chars{charCount > 8000 ? " — will be trimmed to 8000" : ""}
+          {hasImages
+            ? `${pastedImages.length} screenshot${pastedImages.length > 1 ? "s" : ""} ready · Cmd+V to add more`
+            : `${charCount} chars${charCount > 8000 ? " — will be trimmed to 8000" : ""} · or Cmd+V a screenshot`}
         </span>
         <button
           onClick={handleGenerate}
@@ -148,7 +203,7 @@ export function EmailInputStep({ onGenerated }: Props) {
             transition: "all 0.15s",
           }}
         >
-          {loading ? "Analyzing..." : "Analyze + Build Template →"}
+          {loading ? "Analyzing..." : hasImages && !competitorText.trim() ? "Analyze Screenshot →" : "Analyze + Build Template →"}
         </button>
       </div>
 
