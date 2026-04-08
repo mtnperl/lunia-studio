@@ -200,13 +200,14 @@ export function EmailSectionSlide({
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={onGenerateImage}
-            disabled={imageLoading}
+            disabled={imageLoading || !section.imagePrompt?.trim()}
             style={{
-              padding: "6px 16px", borderRadius: 6, cursor: imageLoading ? "not-allowed" : "pointer",
-              background: imageLoading ? "var(--surface-h)" : "var(--surface-r)",
+              padding: "6px 16px", borderRadius: 6,
+              cursor: imageLoading || !section.imagePrompt?.trim() ? "not-allowed" : "pointer",
+              background: imageLoading || !section.imagePrompt?.trim() ? "var(--surface-h)" : "var(--surface-r)",
               border: "1px solid var(--border-s)",
               fontFamily: "var(--font-ui)", fontSize: 12,
-              color: imageLoading ? "var(--subtle)" : "var(--muted)",
+              color: imageLoading || !section.imagePrompt?.trim() ? "var(--subtle)" : "var(--muted)",
               transition: "all 0.12s",
             }}
           >
