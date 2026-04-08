@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       "stat","bars","steps","dotchain","wave","iconGrid","donut","versus","timeline","split",
       "checklist","callout","table","pyramid","radial","circleStats","spectrum","funnel",
       "scorecard","bubbles","iconStat","matrix2x2","stackedBar","processFlow","heatGrid",
-      "vector","hubSpoke","iceberg","bridge","circularCycle","bento","conceptFlow",
+      "vector","hubSpoke","iceberg","bridge","circularCycle","bento","conceptFlow","iconLayout",
     ]);
 
     const prompt = forceVector
