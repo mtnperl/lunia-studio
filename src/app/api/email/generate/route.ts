@@ -89,6 +89,7 @@ Produce a complete Lunia remix. Return ONLY valid JSON matching this exact schem
     "ctaType": "string — describe the CTA mechanic (e.g. 'Single button, benefit-led')",
     "hasPsLine": boolean
   },
+  "topic": "string — 4-8 word topic/theme of this email (e.g. 'Morning energy optimization with adaptogens')",
   "score": number,
   "scoreDiagnosis": "string — one sentence, name highest and lowest scoring elements",
   "frameworkLabel": "string — concise framework name (e.g. 'Pattern Interrupt + PAS + Single CTA')",
@@ -142,6 +143,7 @@ Generate 3 to 5 sections. Each section must have an imagePrompt (or empty string
     const jsonText = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
 
     let parsed: {
+      topic: string;
       anatomy: EmailAnatomy;
       score: number;
       scoreDiagnosis: string;

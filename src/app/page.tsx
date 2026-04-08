@@ -14,10 +14,11 @@ import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
 import EmailBuilderView from "@/components/EmailBuilderView";
 import EmailLibraryView from "@/components/EmailLibraryView";
+import EmailSubjectsView from "@/components/EmailSubjectsView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email" | "email-library" | "video" | "video-assets" | "video-library" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email" | "email-library" | "email-subjects" | "video" | "video-assets" | "video-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -63,8 +64,9 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Email",
     items: [
-      { key: "email",         product: "carousel", label: "Intel"   },
-      { key: "email-library", product: "carousel", label: "Library" },
+      { key: "email",          product: "carousel", label: "Builder"  },
+      { key: "email-subjects", product: "carousel", label: "Subjects" },
+      { key: "email-library",  product: "carousel", label: "Library"  },
     ],
   },
   {
@@ -324,7 +326,8 @@ export default function Page() {
             <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
           </div>
         )}
-        {tab === "email" && <EmailBuilderView onConvertToCarousel={handleEmailToCarousel} />}
+        {tab === "email" && <EmailBuilderView onConvertToCarousel={handleEmailToCarousel} onSaved={() => navigate("email-library")} />}
+        {tab === "email-subjects" && <EmailSubjectsView />}
         {tab === "email-library" && (
           <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
             <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
