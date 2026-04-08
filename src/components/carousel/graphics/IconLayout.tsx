@@ -87,8 +87,8 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         gap: count <= 2 ? 40 : 24,
         padding: '20px 0',
       }}>
-        {icons.map((ic, i) => (
-          <IconCell key={i} id={ic.id} size={iconSize} color={color} textColor={textColor} />
+        {icons.map((ic) => (
+          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} />
         ))}
       </div>
     );
@@ -105,21 +105,24 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         gap: count <= 2 ? 24 : 16,
         padding: '8px 0',
       }}>
-        {icons.map((ic, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <IconSvg id={ic.id} size={iconSize} color={color} />
-            <div style={{
-              fontFamily: 'Jost, Montserrat, sans-serif',
-              fontWeight: 600,
-              fontSize: Math.round(iconSize * 0.22),
-              color: textColor,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-            }}>
-              {getIconById(ic.id)?.label}
+        {icons.map((ic) => {
+          const icon = getIconById(ic.id);
+          return (
+            <div key={ic.id} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <IconSvg id={ic.id} size={iconSize} color={color} />
+              <div style={{
+                fontFamily: 'Jost, Montserrat, sans-serif',
+                fontWeight: 600,
+                fontSize: Math.round(iconSize * 0.22),
+                color: textColor,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}>
+                {icon?.label}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -136,8 +139,8 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         padding: '16px 0',
         justifyItems: 'center',
       }}>
-        {icons.map((ic, i) => (
-          <IconCell key={i} id={ic.id} size={iconSize} color={color} textColor={textColor} />
+        {icons.map((ic) => (
+          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} />
         ))}
       </div>
     );
@@ -149,8 +152,9 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
     <div style={{ position: 'relative', width: '100%', height: 260, flexShrink: 0 }}>
       {icons.map((ic, i) => {
         const cfg = configs[i];
+        const icon = getIconById(ic.id);
         return (
-          <div key={i} style={{
+          <div key={ic.id} style={{
             position: 'absolute',
             left: `${cfg.x}%`,
             top: `${cfg.y}%`,
@@ -171,7 +175,7 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
               textAlign: 'center',
               opacity: 0.85,
             }}>
-              {getIconById(ic.id)?.label}
+              {icon?.label}
             </div>
           </div>
         );
