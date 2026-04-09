@@ -29,11 +29,11 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
   const pct = isNaN(numeric) ? 0.85 : Math.min(numeric / 100, 1);
 
   const w = 936;
-  const h = 360;
+  const h = 460;
   const cx = w / 2;
   const cy = h / 2 - 10;
-  const outerR = 130;
-  const innerR = 86;
+  const outerR = 155;
+  const innerR = 103;
   const trackW = outerR - innerR;
 
   return (
@@ -49,7 +49,7 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
         strokeLinecap="round"
       />
       {/* Center value */}
-      <text x={cx} y={cy + 16} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="72" fontWeight="800" fill={accent}>
+      <text x={cx} y={cy + 22} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="90" fontWeight="800" fill={accent}>
         {value}
       </text>
       {/* Label */}

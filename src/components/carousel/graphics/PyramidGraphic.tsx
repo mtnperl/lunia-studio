@@ -13,7 +13,7 @@ export function PyramidGraphic({
   const bodyColor = brandStyle?.body     ?? '#4a5568';
 
   const w = 936;
-  const h = 340;
+  const h = 460;
   const n = Math.min(levels.length, 5);
   const rowH = (h - 40) / n;
   const baseW = w - 60;

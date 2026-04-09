@@ -18,7 +18,7 @@ export function StackedBar({ segments = DEFAULTS, title, brandStyle }: Props) {
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
-  const barX = 60, barY = 170, barW = 816, barH = 60, rx = 30;
+  const barX = 60, barY = 210, barW = 816, barH = 68, rx = 34;
   const colors = [
     `${accent}50`, accent, `${accent}CC`, secondary,
   ];
@@ -28,9 +28,9 @@ export function StackedBar({ segments = DEFAULTS, title, brandStyle }: Props) {
   let cumX = barX;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360" overflow="visible">
+    <svg width={936} height={460} viewBox="0 0 936 460" overflow="visible">
       {title && (
-        <text x={468} y={52} textAnchor="middle"
+        <text x={468} y={64} textAnchor="middle"
           fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"
           letterSpacing="0.1em" fill={bodyColor}>
           {title}

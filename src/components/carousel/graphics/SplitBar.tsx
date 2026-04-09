@@ -23,7 +23,7 @@ export function SplitBar({
   const bodyColor = brandStyle?.body     ?? '#4a5568';
 
   const w = 936;
-  const h = 380;
+  const h = 460;
   const barH = 64;
   const barY = (h - barH) / 2;
   const rx = barH / 2;

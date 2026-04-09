@@ -18,9 +18,9 @@ export function ChecklistGraphic({
   const bodyColor = brandStyle?.body     ?? '#4a5568';
 
   const w = 936;
-  const rowH = 68;
+  const rowH = 108;
   const h = rowH * items.length + 16;
-  const circleR = 18;
+  const circleR = 26;
   const textX = circleR * 2 + 20;
 
   return (
@@ -40,7 +40,7 @@ export function ChecklistGraphic({
             {/* Item text */}
             <text
               x={textX} y={cy + 7}
-              fontFamily="Outfit, sans-serif" fontSize="26"
+              fontFamily="Outfit, sans-serif" fontSize="30"
               fill={bodyColor}
             >
               {item}

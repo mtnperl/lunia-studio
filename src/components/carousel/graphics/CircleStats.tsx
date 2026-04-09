@@ -18,7 +18,7 @@ export function CircleStats({ items = DEFAULTS, brandStyle }: Props) {
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
   const n = Math.min(items.length, 4);
-  const W = 936, H = 420, cy = 195, r = n <= 3 ? 100 : 82;
+  const W = 936, H = 460, cy = 215, r = n <= 3 ? 110 : 90;
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">

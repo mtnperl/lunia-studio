@@ -15,7 +15,7 @@ export function SpectrumBar({ min = 0, max = 12, from = 7, to = 9, label = 'OPTI
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
-  const trackX = 60, trackW = 816, trackY = 160, trackH = 36, rx = 18;
+  const trackX = 60, trackW = 816, trackY = 200, trackH = 40, rx = 20;
   const range = max - min;
   const hlX = trackX + ((from - min) / range) * trackW;
   const hlW = ((to - from) / range) * trackW;
@@ -24,7 +24,7 @@ export function SpectrumBar({ min = 0, max = 12, from = 7, to = 9, label = 'OPTI
   const fullLabel = unit ? `${label} (${unit})` : label;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360" overflow="visible">
+    <svg width={936} height={460} viewBox="0 0 936 460" overflow="visible">
       {/* Highlight range label — big, above track */}
       <text x={hlCx} y={trackY - 52} textAnchor="middle"
         fontFamily="Outfit, sans-serif" fontSize="72" fontWeight="800" fill={accent}>
@@ -62,7 +62,7 @@ export function SpectrumBar({ min = 0, max = 12, from = 7, to = 9, label = 'OPTI
       <line x1={hlX + 2} y1={trackY - 6} x2={hlX + 2} y2={trackY} stroke={accent} strokeWidth={2} />
       <line x1={hlX + hlW - 2} y1={trackY - 6} x2={hlX + hlW - 2} y2={trackY} stroke={accent} strokeWidth={2} />
       {/* Main label at bottom */}
-      <text x={468} y={326} textAnchor="middle"
+      <text x={468} y={420} textAnchor="middle"
         fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
         letterSpacing="0.1em" fill={bodyColor}>
         {fullLabel}

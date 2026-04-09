@@ -11,60 +11,69 @@ export function CalloutQuote({
   source,
   brandStyle,
 }: Props) {
-  const accent    = brandStyle?.accent   ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body     ?? '#4a5568';
+  const accent    = brandStyle?.accent    ?? '#1e7a8a';
+  const bodyColor = brandStyle?.body      ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
-  const w = 936;
-  const h = 320;
-  const padX = 60;
-  const textW = w - padX * 2;
-
-  // Rough word-wrap: split into lines of ~40 chars
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const test = current ? `${current} ${word}` : word;
-    if (test.length > 42 && current) { lines.push(current); current = word; }
-    else current = test;
-  }
-  if (current) lines.push(current);
-
-  const lineH = 48;
-  const blockH = lines.length * lineH;
-  const startY = (h - blockH) / 2 + 20;
-
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {/* Decorative left bar */}
-      <rect x={0} y={startY - 16} width={6} height={blockH + 32} rx={3} fill={accent} />
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      padding: '36px 56px 36px 60px',
+      minHeight: 460,
+      boxSizing: 'border-box',
+      position: 'relative',
+    }}>
+      {/* Left accent bar */}
+      <div style={{
+        position: 'absolute',
+        left: 0,
+        top: 36,
+        bottom: 36,
+        width: 6,
+        borderRadius: 3,
+        background: accent,
+      }} />
+
       {/* Opening quote mark */}
-      <text x={padX - 10} y={startY + 8} fontFamily="Georgia, serif" fontSize="80" fill={`${accent}30`} fontWeight="700">
-        "
-      </text>
-      {/* Text lines */}
-      {lines.map((line, i) => (
-        <text
-          key={i}
-          x={padX + 32} y={startY + i * lineH + 36}
-          fontFamily="Outfit, sans-serif" fontSize="32" fontWeight="500"
-          fill={bodyColor} textAnchor="start"
-        >
-          {line}
-        </text>
-      ))}
-      {/* Source */}
+      <div style={{
+        fontFamily: 'Georgia, serif',
+        fontSize: 120,
+        lineHeight: 0.75,
+        color: `${accent}28`,
+        fontWeight: 700,
+        marginBottom: 12,
+        userSelect: 'none',
+      }}>
+        &ldquo;
+      </div>
+
+      {/* Quote text — wraps naturally */}
+      <div style={{
+        fontFamily: 'Outfit, sans-serif',
+        fontSize: 34,
+        fontWeight: 500,
+        color: bodyColor,
+        lineHeight: 1.55,
+        wordBreak: 'break-word',
+        flex: 1,
+      }}>
+        {text}
+      </div>
+
+      {/* Source attribution */}
       {source && (
-        <text
-          x={padX + 32} y={startY + blockH + 52}
-          fontFamily="Outfit, sans-serif" fontSize="19"
-          fill={secondary}
-        >
-          — {source}
-        </text>
+        <div style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: 20,
+          color: secondary,
+          marginTop: 28,
+        }}>
+          &mdash; {source}
+        </div>
       )}
-    </svg>
+    </div>
   );
 }
 

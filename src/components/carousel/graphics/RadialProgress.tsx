@@ -20,7 +20,7 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
   const numeric = parseFloat(value.replace(/[^0-9.]/g, ''));
   const pct = isNaN(numeric) ? 0.87 : Math.min(numeric, 100) / 100;
 
-  const W = 936, H = 440, cx = W / 2, cy = 195, r = 145, sw = 28;
+  const W = 936, H = 460, cx = W / 2, cy = 205, r = 150, sw = 28;
   const START = 225, SWEEP = 270;
 
   const ts = polarToCart(cx, cy, r, START);

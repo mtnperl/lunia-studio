@@ -28,16 +28,16 @@ export function IconGrid({
   const cellW = 936 / cols;
 
   return (
-    <svg width={936} height={160} viewBox="0 0 936 160">
+    <svg width={936} height={420} viewBox="0 0 936 420">
       {items.map((item, i) => {
         const iconPath = DEFAULT_ICONS[i % DEFAULT_ICONS.length].path;
         const x = i * cellW + cellW / 2;
         return (
           <g key={i}>
-            <svg x={x - 28} y={10} width={56} height={56} viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg x={x - 52} y={30} width={104} height={104} viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d={iconPath} />
             </svg>
-            <text x={x} y={100} textAnchor="middle" fontFamily="Outfit" fontSize="24" fill={bodyColor}>{item.label}</text>
+            <text x={x} y={200} textAnchor="middle" fontFamily="Outfit" fontSize="32" fill={bodyColor}>{item.label}</text>
           </g>
         );
       })}

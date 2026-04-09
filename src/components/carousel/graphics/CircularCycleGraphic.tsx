@@ -22,10 +22,10 @@ export function CircularCycleGraphic({ steps = DEFAULTS, brandStyle }: Props) {
   const n = Math.min(Math.max((steps ?? []).length, 3), 5);
   const list = (steps ?? []).slice(0, n);
 
-  const CX = 468, CY = 195;
-  const RING_R = 145;   // distance from center to node center
-  const NODE_R = 52;
-  const W = 936, H = 390;
+  const CX = 468, CY = 230;
+  const RING_R = 165;   // distance from center to node center
+  const NODE_R = 58;
+  const W = 936, H = 460;
 
   const startAngle = -Math.PI / 2; // start at top
   const angleStep = (2 * Math.PI) / n;

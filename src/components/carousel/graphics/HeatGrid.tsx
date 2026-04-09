@@ -25,11 +25,11 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const rows = n <= 4 ? 1 : n <= 8 ? 2 : 3;
   const cols = Math.ceil(n / rows);
   const cellW = Math.min(118, Math.floor(816 / cols));
-  const cellH = 72;
+  const cellH = 110;
   const gap = 10;
   const gridW = cols * cellW + (cols - 1) * gap;
   const gridX = (936 - gridW) / 2;
-  const gridY = title ? 52 : 28;
+  const gridY = title ? 64 : 40;
 
   const cellColor = (v: number) => {
     if (v >= 3) return accent;
@@ -39,7 +39,7 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const textColor = (v: number) => v >= 2 ? '#fff' : bodyColor;
 
   return (
-    <svg width={936} height={title ? 300 : 260} viewBox={`0 0 936 ${title ? 300 : 260}`} overflow="visible">
+    <svg width={936} height={title ? 440 : 420} viewBox={`0 0 936 ${title ? 440 : 420}`} overflow="visible">
       {title && (
         <text x={468} y={34} textAnchor="middle"
           fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"
@@ -62,7 +62,7 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
             <rect x={x} y={y} width={cellW} height={cellH} rx={8} fill={fill} />
             {/* Label */}
             <text x={cx} y={cy - 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="17" fontWeight="700" fill={txtColor}>
+              fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={txtColor}>
               {cell.label}
             </text>
             {/* Dots for intensity */}

@@ -21,11 +21,11 @@ export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
 
   const n = Math.min(Math.max(steps.length, 2), 5);
   const list = steps.slice(0, n);
-  const W = 936, H = 220;
-  const arrowW = 36, boxH = 80;
+  const W = 936, H = 440;
+  const arrowW = 44, boxH = 140;
   const totalArrows = n - 1;
   const boxW = Math.floor((W - 20 - totalArrows * arrowW) / n);
-  const cy = 120;
+  const cy = 220;
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
@@ -40,20 +40,20 @@ export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
             <rect x={boxX} y={cy - boxH / 2} width={boxW} height={boxH} rx={8}
               fill={`${accent}10`} stroke={accent} strokeWidth={2} />
             {/* Step number badge */}
-            <circle cx={boxCx} cy={cy - boxH / 2 - 16} r={14} fill={accent} />
+            <circle cx={boxCx} cy={cy - boxH / 2 - 16} r={18} fill={accent} />
             <text x={boxCx} y={cy - boxH / 2 - 16 + 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="16" fontWeight="700" fill="#fff">
+              fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="700" fill="#fff">
               {i + 1}
             </text>
             {/* Step text */}
-            <text x={boxCx} y={line2 ? cy - 8 : cy + 7} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '15' : '17'}
+            <text x={boxCx} y={line2 ? cy - 12 : cy + 10} textAnchor="middle"
+              fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '18' : '22'}
               fontWeight="600" fill={bodyColor}>
               {line1}
             </text>
             {line2 && (
-              <text x={boxCx} y={cy + 12} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '15' : '17'}
+              <text x={boxCx} y={cy + 18} textAnchor="middle"
+                fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '18' : '22'}
                 fontWeight="600" fill={bodyColor}>
                 {line2}
               </text>

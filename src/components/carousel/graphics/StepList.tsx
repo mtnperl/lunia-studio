@@ -16,15 +16,15 @@ export function StepList({
 }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const headlineColor = brandStyle?.headline ?? '#1a2535';
-  const r = 24;
-  const rowH = 70;
+  const r = 36;
+  const rowH = 108;
   return (
     <svg width={936} height={rowH * steps.length} viewBox={`0 0 936 ${rowH * steps.length}`}>
       {steps.map((step, i) => (
         <g key={i}>
           <circle cx={r} cy={i * rowH + r} r={r} fill={accent} />
-          <text x={r} y={i * rowH + r + 9} textAnchor="middle" fontFamily="Outfit" fontSize="26" fontWeight="700" fill="#ffffff">{i + 1}</text>
-          <text x={r * 2 + 16} y={i * rowH + r + 9} fontFamily="Outfit" fontSize="28" fill={headlineColor}>{step}</text>
+          <text x={r} y={i * rowH + r + 9} textAnchor="middle" fontFamily="Outfit" fontSize="32" fontWeight="700" fill="#ffffff">{i + 1}</text>
+          <text x={r * 2 + 16} y={i * rowH + r + 9} fontFamily="Outfit" fontSize="32" fill={headlineColor}>{step}</text>
         </g>
       ))}
     </svg>

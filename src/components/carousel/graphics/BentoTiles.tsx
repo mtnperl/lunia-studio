@@ -16,19 +16,19 @@ const DEFAULTS: Tile[] = [
 // Layout configurations per tile count
 const LAYOUTS: Record<number, { x: number; y: number; w: number; h: number }[]> = {
   2: [
-    { x: 30, y: 20, w: 418, h: 200 },
-    { x: 488, y: 20, w: 418, h: 200 },
+    { x: 30, y: 20, w: 418, h: 420 },
+    { x: 488, y: 20, w: 418, h: 420 },
   ],
   3: [
-    { x: 30, y: 20, w: 876, h: 100 },
-    { x: 30, y: 132, w: 418, h: 108 },
-    { x: 488, y: 132, w: 418, h: 108 },
+    { x: 30, y: 20, w: 876, h: 180 },
+    { x: 30, y: 220, w: 418, h: 220 },
+    { x: 488, y: 220, w: 418, h: 220 },
   ],
   4: [
-    { x: 30, y: 20, w: 418, h: 108 },
-    { x: 488, y: 20, w: 418, h: 108 },
-    { x: 30, y: 140, w: 418, h: 108 },
-    { x: 488, y: 140, w: 418, h: 108 },
+    { x: 30, y: 20, w: 418, h: 200 },
+    { x: 488, y: 20, w: 418, h: 200 },
+    { x: 30, y: 240, w: 418, h: 200 },
+    { x: 488, y: 240, w: 418, h: 200 },
   ],
 };
 
@@ -41,7 +41,7 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
   const n = Math.min(Math.max((tiles ?? []).length, 2), 4) as 2 | 3 | 4;
   const list = (tiles ?? []).slice(0, n);
   const layout = LAYOUTS[n];
-  const W = 936, H = n === 2 ? 240 : 268;
+  const W = 936, H = 460;
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
@@ -58,17 +58,17 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
             <g key={i}>
               <rect x={x} y={y} width={w} height={h} rx={10}
                 fill={accent} />
-              <text x={x + 36} y={y + 38} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="34">
+              <text x={x + 46} y={y + 38} textAnchor="middle"
+                fontFamily="Outfit, sans-serif" fontSize="46">
                 {tile.icon}
               </text>
-              <text x={x + 76} y={y + (hasBody ? 34 : 42)} textAnchor="start"
-                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill="#fff">
+              <text x={x + 96} y={y + (hasBody ? 40 : 50)} textAnchor="start"
+                fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill="#fff">
                 {tile.label}
               </text>
               {hasBody && (
-                <text x={x + 76} y={y + 62} textAnchor="start"
-                  fontFamily="Outfit, sans-serif" fontSize="17" fill="rgba(255,255,255,0.75)">
+                <text x={x + 96} y={y + 74} textAnchor="start"
+                  fontFamily="Outfit, sans-serif" fontSize="22" fill="rgba(255,255,255,0.75)">
                   {tile.body}
                 </text>
               )}
@@ -90,17 +90,17 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
               strokeWidth={1.5}
             />
             <text x={cx} y={iconY + 14} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="28">
+              fontFamily="Outfit, sans-serif" fontSize="42">
               {tile.icon}
             </text>
             <text x={cx} y={labelY} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="18" fontWeight="700"
+              fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
               fill={isFilled ? '#fff' : accent}>
               {tile.label}
             </text>
             {hasBody && (
               <text x={cx} y={bodyY} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="14"
+                fontFamily="Outfit, sans-serif" fontSize="18"
                 fill={isFilled ? 'rgba(255,255,255,0.75)' : secondary}>
                 {tile.body}
               </text>

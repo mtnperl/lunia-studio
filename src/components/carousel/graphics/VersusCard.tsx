@@ -22,9 +22,9 @@ export function VersusCard({
   const bodyColor = brandStyle?.body     ?? '#4a5568';
 
   const w = 936;
-  const h = 300;
+  const h = 440;
   const panelW = 400;
-  const panelH = 260;
+  const panelH = 400;
   const gap = w - panelW * 2;
   const leftX = 0;
   const rightX = panelW + gap;
@@ -34,34 +34,34 @@ export function VersusCard({
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
       {/* Left panel — muted / bad */}
       <rect x={leftX} y={20} width={panelW} height={panelH} rx={ry} fill={`${bodyColor}12`} />
-      <text x={leftX + panelW / 2} y={76} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={bodyColor} fontWeight="600" letterSpacing="0.05em">
+      <text x={leftX + panelW / 2} y={96} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={bodyColor} fontWeight="600" letterSpacing="0.05em">
         {left.label.toUpperCase()}
       </text>
-      <text x={leftX + panelW / 2} y={172} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={`${bodyColor}55`}>
+      <text x={leftX + panelW / 2} y={260} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={`${bodyColor}55`}>
         {left.value}
       </text>
       {left.note && (
-        <text x={leftX + panelW / 2} y={232} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={bodyColor} opacity="0.6">
+        <text x={leftX + panelW / 2} y={356} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={bodyColor} opacity="0.6">
           {left.note}
         </text>
       )}
 
       {/* VS divider */}
-      <text x={w / 2} y={h / 2 + 10} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary} letterSpacing="0.12em">
+      <text x={w / 2} y={220} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary} letterSpacing="0.12em">
         VS
       </text>
 
       {/* Right panel — good / accent */}
       <rect x={rightX} y={20} width={panelW} height={panelH} rx={ry} fill={`${accent}18`} />
       <rect x={rightX} y={20} width={panelW} height={panelH} rx={ry} fill="none" stroke={accent} strokeWidth="2" opacity="0.5" />
-      <text x={rightX + panelW / 2} y={76} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={accent} fontWeight="600" letterSpacing="0.05em">
+      <text x={rightX + panelW / 2} y={96} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={accent} fontWeight="600" letterSpacing="0.05em">
         {right.label.toUpperCase()}
       </text>
-      <text x={rightX + panelW / 2} y={172} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={accent}>
+      <text x={rightX + panelW / 2} y={260} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={accent}>
         {right.value}
       </text>
       {right.note && (
-        <text x={rightX + panelW / 2} y={232} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={accent} opacity="0.75">
+        <text x={rightX + panelW / 2} y={356} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={accent} opacity="0.75">
           {right.note}
         </text>
       )}

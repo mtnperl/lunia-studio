@@ -9,7 +9,7 @@ export function WaveGraphic({ brandStyle }: Props) {
   const secondary = brandStyle?.secondary ?? '#a8d4da';
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const width = 936;
-  const height = 420;
+  const height = 460;
 
   const generateWave = (amplitude: number, frequency: number, phase: number, opacity: number, color: string) => {
     const points = [];
@@ -33,9 +33,9 @@ export function WaveGraphic({ brandStyle }: Props) {
       {generateWave(60, 2, 0, 0.3, secondary)}
       {generateWave(80, 1.5, 0.5, 0.5, secondary)}
       {generateWave(100, 2.5, 1, 0.9, accent)}
-      <text x={0} y={height - 8} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">LIGHT SLEEP</text>
-      <text x={width / 2 - 60} y={height - 8} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">DEEP SLEEP</text>
-      <text x={width - 100} y={height - 8} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">REM</text>
+      <text x={12} y={height - 16} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">LIGHT SLEEP</text>
+      <text x={width / 2 - 70} y={height - 16} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">DEEP SLEEP</text>
+      <text x={width - 100} y={height - 16} fontFamily="Outfit" fontSize="22" fill={bodyColor} fontStyle="italic">REM</text>
     </svg>
   );
 }

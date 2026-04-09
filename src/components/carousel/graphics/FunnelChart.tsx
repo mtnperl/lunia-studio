@@ -20,7 +20,7 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
 
   const n = Math.min(stages.length, 5);
   const list = stages.slice(0, n);
-  const W = 936, H = 360;
+  const W = 936, H = 460;
   const stageH = (H - 20) / n;
   const maxW = 740, minW = maxW * 0.3;
   const cx = W / 2;
@@ -49,21 +49,21 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
             <path d={trapPath} fill={fill} />
             {/* Label */}
             <text x={cx} y={y + stageH / 2 + 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="21" fontWeight="700"
+              fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
               fill={i === 0 ? '#fff' : i === 1 ? '#fff' : bodyColor}>
               {stage.label}
             </text>
             {/* Value on right */}
             {stage.value && (
               <text x={topR + 16} y={y + stageH / 2 + 6}
-                fontFamily="Outfit, sans-serif" fontSize="18" fontWeight="700" fill={secondary}>
+                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary}>
                 {stage.value}
               </text>
             )}
             {/* Percent on right if no value */}
             {!stage.value && (
               <text x={topR + 16} y={y + stageH / 2 + 6}
-                fontFamily="Outfit, sans-serif" fontSize="18" fontWeight="700" fill={secondary}>
+                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary}>
                 {percents[i]}%
               </text>
             )}

@@ -43,18 +43,18 @@ export function Matrix2x2({
   const cells = [
     { text: topLeft, x: 80, y: 30, highlight: true },
     { text: topRight, x: 480, y: 30, highlight: false },
-    { text: bottomLeft, x: 80, y: 210, highlight: false },
-    { text: bottomRight, x: 480, y: 210, highlight: false },
+    { text: bottomLeft, x: 80, y: 240, highlight: false },
+    { text: bottomRight, x: 480, y: 240, highlight: false },
   ];
-  const cellW = 376, cellH = 160;
+  const cellW = 376, cellH = 190;
 
   return (
-    <svg width={936} height={420} viewBox="0 0 936 420" overflow="visible">
+    <svg width={936} height={460} viewBox="0 0 936 460" overflow="visible">
       {/* Axis lines */}
-      <line x1={80} y1={390} x2={860} y2={390} stroke={`${bodyColor}30`} strokeWidth={1.5} />
-      <line x1={80} y1={30} x2={80} y2={390} stroke={`${bodyColor}30`} strokeWidth={1.5} />
+      <line x1={80} y1={430} x2={860} y2={430} stroke={`${bodyColor}30`} strokeWidth={1.5} />
+      <line x1={80} y1={30} x2={80} y2={430} stroke={`${bodyColor}30`} strokeWidth={1.5} />
       {/* Axis arrows */}
-      <polygon points="860,385 872,390 860,395" fill={`${bodyColor}40`} />
+      <polygon points="860,425 872,430 860,435" fill={`${bodyColor}40`} />
       <polygon points="75,30 80,18 85,30" fill={`${bodyColor}40`} />
 
       {cells.map((cell, i) => {
@@ -84,17 +84,17 @@ export function Matrix2x2({
       })}
 
       {/* Center crosshair */}
-      <line x1={464} y1={30} x2={464} y2={370} stroke={`${bodyColor}20`} strokeWidth={1} strokeDasharray="4 4" />
-      <line x1={80} y1={200} x2={856} y2={200} stroke={`${bodyColor}20`} strokeWidth={1} strokeDasharray="4 4" />
+      <line x1={464} y1={30} x2={464} y2={420} stroke={`${bodyColor}20`} strokeWidth={1} strokeDasharray="4 4" />
+      <line x1={80} y1={235} x2={856} y2={235} stroke={`${bodyColor}20`} strokeWidth={1} strokeDasharray="4 4" />
 
       {/* Axis labels */}
-      <text x={468} y={410} textAnchor="middle"
+      <text x={468} y={450} textAnchor="middle"
         fontFamily="Outfit, sans-serif" fontSize="17" letterSpacing="0.08em" fill={secondary}>
         {xLabel}
       </text>
-      <text x={20} y={210} textAnchor="middle"
+      <text x={20} y={235} textAnchor="middle"
         fontFamily="Outfit, sans-serif" fontSize="17" letterSpacing="0.08em" fill={secondary}
-        transform="rotate(-90, 20, 210)">
+        transform="rotate(-90, 20, 235)">
         {yLabel}
       </text>
     </svg>

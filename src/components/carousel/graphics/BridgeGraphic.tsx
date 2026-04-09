@@ -18,8 +18,8 @@ export function BridgeGraphic({
   const secondary = brandStyle?.secondary ?? '#6b7280';
   const bg = brandStyle?.background ?? '#f0ece6';
 
-  const W = 936, H = 240;
-  const blockW = 240, blockH = 100, blockY = 100;
+  const W = 936, H = 420;
+  const blockW = 300, blockH = 160, blockY = 120;
   const leftX = 60, rightX = W - 60 - blockW;
   const cx = W / 2;
 
@@ -28,7 +28,7 @@ export function BridgeGraphic({
   const x2 = rightX - 8;
   const y1 = blockY + blockH / 2;
   const y2 = blockY + blockH / 2;
-  const arcCpY = blockY - 55; // control point height
+  const arcCpY = blockY - 90; // control point height
 
   const arcPath = `M ${x1} ${y1} C ${x1 + 80} ${arcCpY}, ${x2 - 80} ${arcCpY}, ${x2} ${y2}`;
 
@@ -44,21 +44,21 @@ export function BridgeGraphic({
     return [line1, line2 || null];
   }
 
-  const [fl1, fl2] = wrapText(from, 14);
-  const [tl1, tl2] = wrapText(to, 14);
+  const [fl1, fl2] = wrapText(from, 18);
+  const [tl1, tl2] = wrapText(to, 18);
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {/* Left block (from) */}
       <rect x={leftX} y={blockY} width={blockW} height={blockH} rx={12}
         fill={`${accent}15`} stroke={accent} strokeWidth={2.5} />
-      <text x={leftX + blockW / 2} y={fl2 ? blockY + 36 : blockY + 45} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={accent}>
+      <text x={leftX + blockW / 2} y={fl2 ? blockY + 48 : blockY + 60} textAnchor="middle"
+        fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill={accent}>
         {fl1}
       </text>
       {fl2 && (
-        <text x={leftX + blockW / 2} y={blockY + 62} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={accent}>
+        <text x={leftX + blockW / 2} y={blockY + 80} textAnchor="middle"
+          fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill={accent}>
           {fl2}
         </text>
       )}
@@ -84,25 +84,25 @@ export function BridgeGraphic({
       {/* Right block (to) */}
       <rect x={rightX} y={blockY} width={blockW} height={blockH} rx={12}
         fill={accent} />
-      <text x={rightX + blockW / 2} y={tl2 ? blockY + 36 : blockY + 45} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill="#fff">
+      <text x={rightX + blockW / 2} y={tl2 ? blockY + 48 : blockY + 60} textAnchor="middle"
+        fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill="#fff">
         {tl1}
       </text>
       {tl2 && (
-        <text x={rightX + blockW / 2} y={blockY + 62} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill="#fff">
+        <text x={rightX + blockW / 2} y={blockY + 80} textAnchor="middle"
+          fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill="#fff">
           {tl2}
         </text>
       )}
 
       {/* Bottom labels */}
       <text x={leftX + blockW / 2} y={blockY + blockH + 24} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="13" fontWeight="700"
+        fontFamily="Outfit, sans-serif" fontSize="15" fontWeight="700"
         fill={secondary} letterSpacing="0.08em">
         THE PROBLEM
       </text>
       <text x={rightX + blockW / 2} y={blockY + blockH + 24} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="13" fontWeight="700"
+        fontFamily="Outfit, sans-serif" fontSize="15" fontWeight="700"
         fill={secondary} letterSpacing="0.08em">
         THE RESULT
       </text>

@@ -19,18 +19,18 @@ export function StatCallout({
   const trendColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : null;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360">
-      <line x1={120} y1={60} x2={816} y2={60} stroke={accent} strokeWidth="1.5" />
-      <text x={468} y={220} textAnchor="middle" fontFamily="Outfit" fontSize="140" fontWeight="700" fill={accent}>
+    <svg width={936} height={460} viewBox="0 0 936 460">
+      <line x1={120} y1={77} x2={816} y2={77} stroke={accent} strokeWidth="1.5" />
+      <text x={468} y={282} textAnchor="middle" fontFamily="Outfit" fontSize="140" fontWeight="700" fill={accent}>
         {stat}
       </text>
       {trend && trendColor && (
-        <text x={716} y={140} textAnchor="middle" fontFamily="Outfit" fontSize="64" fontWeight="700" fill={trendColor}>
+        <text x={716} y={179} textAnchor="middle" fontFamily="Outfit" fontSize="64" fontWeight="700" fill={trendColor}>
           {trend === 'up' ? '↑' : '↓'}
         </text>
       )}
-      <line x1={120} y1={270} x2={816} y2={270} stroke={accent} strokeWidth="1.5" />
-      <text x={468} y={330} textAnchor="middle" fontFamily="Outfit" fontSize="30" fill={bodyColor} letterSpacing="3">
+      <line x1={120} y1={345} x2={816} y2={345} stroke={accent} strokeWidth="1.5" />
+      <text x={468} y={422} textAnchor="middle" fontFamily="Outfit" fontSize="30" fill={bodyColor} letterSpacing="3">
         {label}
       </text>
     </svg>
