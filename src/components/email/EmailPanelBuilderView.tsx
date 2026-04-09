@@ -110,14 +110,16 @@ function savePanelProject(topic: string, emailGoal: string, panels: EmailPanelDa
   return id;
 }
 
-// Sanitize em dashes from API responses
+// Sanitize em dashes from API responses + ensure new fields have defaults
 const sanitizePanel = (p: EmailPanelData): EmailPanelData => ({
   ...p,
-  subject:    p.subject.replace(/—/g, " - "),
-  subSubject: p.subSubject.replace(/—/g, " - "),
-  body:       p.body.replace(/—/g, " - "),
-  cta:        p.cta.replace(/—/g, " - "),
-  imagePrompt: p.imagePrompt.replace(/—/g, " - "),
+  subject:        p.subject.replace(/—/g, " - "),
+  subSubject:     p.subSubject.replace(/—/g, " - "),
+  body:           p.body.replace(/—/g, " - "),
+  cta:            p.cta.replace(/—/g, " - "),
+  imagePrompt:    p.imagePrompt.replace(/—/g, " - "),
+  overlayEnabled: p.overlayEnabled ?? true,
+  textBold:       p.textBold ?? false,
 });
 
 // ─── Main view ────────────────────────────────────────────────────────────────
