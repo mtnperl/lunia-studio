@@ -79,7 +79,7 @@ function ReviewCard({
   onRetry: (item: QueueItem) => void;
   onImagePromptChange: (id: string, prompt: string) => void;
   onToggleImagePrompt: (id: string) => void;
-  onContentUpdate: (id: string, content: CarouselContent) => void;
+  onContentUpdate: (id: string, content: CarouselContent, imageUrl?: string) => void;
   onGoBackToReview: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(item.status === "reviewing");
@@ -334,7 +334,7 @@ function ReviewCard({
             hookTone={hookTone}
             onRestart={() => setExpanded(false)}
             onChangeHook={() => onGoBackToReview(item.id)}
-            onContentChange={(cfg) => onContentUpdate(item.id, cfg.content)}
+            onContentChange={(cfg) => onContentUpdate(item.id, cfg.content, cfg.slideImages?.[0] ?? undefined)}
           />
         </div>
       )}
@@ -609,7 +609,7 @@ export default function BatchView() {
                 onRetry={handleRetry}
                 onImagePromptChange={(id, prompt) => updateItem(id, { imagePromptDraft: prompt })}
                 onToggleImagePrompt={(id) => updateItem(id, { imagePromptOpen: !queue.find(i => i.id === id)?.imagePromptOpen })}
-                onContentUpdate={(id, content) => updateItem(id, { content })}
+                onContentUpdate={(id, content, imageUrl) => updateItem(id, { content, ...(imageUrl ? { imageUrl } : {}) })}
                 onGoBackToReview={(id) => updateItem(id, { status: "reviewing" })}
               />
             ))}

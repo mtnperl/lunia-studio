@@ -173,6 +173,7 @@ type Props = {
   arrowScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
   showLuniaLifeWatermark?: boolean;
+  citationFontSize?: number;        // override the default 18px citation size
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -191,6 +192,7 @@ export default function ContentSlide({
   arrowScale = 1,
   darkBackground = false,
   showLuniaLifeWatermark = false,
+  citationFontSize = 18,
 }: Props) {
   // Determine rendering path
   const graphicSpec = parseGraphicSpec(graphic);
@@ -324,7 +326,7 @@ export default function ContentSlide({
             fontFamily: 'Cormorant Garamond, Lora, serif',
             fontWeight: 400,
             fontStyle: 'italic',
-            fontSize: 18,
+            fontSize: citationFontSize,
             color: citationColor,
             lineHeight: 1.4,
           }}>
