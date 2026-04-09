@@ -18,34 +18,35 @@ export function CircleStats({ items = DEFAULTS, brandStyle }: Props) {
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
   const n = Math.min(items.length, 4);
-  const W = 936, H = 320, cy = 150, r = 78;
+  const W = 936, H = 420, cy = 195, r = n <= 3 ? 100 : 82;
 
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
       {items.slice(0, n).map((item, i) => {
         const cxI = (W / (n + 1)) * (i + 1);
+        const valueSize = item.value.length > 5 ? (n <= 3 ? '44' : '36') : (n <= 3 ? '64' : '52');
         return (
           <g key={i}>
             {/* Glow fill */}
-            <circle cx={cxI} cy={cy} r={r} fill={`${accent}10`} />
+            <circle cx={cxI} cy={cy} r={r} fill={`${accent}12`} />
             {/* Ring */}
-            <circle cx={cxI} cy={cy} r={r} fill="none" stroke={accent} strokeWidth={3} />
+            <circle cx={cxI} cy={cy} r={r} fill="none" stroke={accent} strokeWidth={3.5} />
             {/* Value */}
-            <text x={cxI} y={item.sublabel ? cy - 10 : cy + 18} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize={item.value.length > 4 ? '36' : '52'}
+            <text x={cxI} y={item.sublabel ? cy - 8 : cy + 22} textAnchor="middle"
+              fontFamily="Outfit, sans-serif" fontSize={valueSize}
               fontWeight="800" fill={accent}>
               {item.value}
             </text>
             {/* Sublabel (unit) */}
             {item.sublabel && (
-              <text x={cxI} y={cy + 24} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="20" fill={secondary}>
+              <text x={cxI} y={cy + 28} textAnchor="middle"
+                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="600" fill={secondary}>
                 {item.sublabel}
               </text>
             )}
             {/* Label below circle */}
-            <text x={cxI} y={cy + r + 32} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="19" fontWeight="700"
+            <text x={cxI} y={cy + r + 38} textAnchor="middle"
+              fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="700"
               letterSpacing="0.06em" fill={bodyColor}>
               {item.label}
             </text>

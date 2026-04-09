@@ -23,8 +23,8 @@ export function SplitBar({
   const bodyColor = brandStyle?.body     ?? '#4a5568';
 
   const w = 936;
-  const h = 260;
-  const barH = 56;
+  const h = 380;
+  const barH = 64;
   const barY = (h - barH) / 2;
   const rx = barH / 2;
 
@@ -33,7 +33,7 @@ export function SplitBar({
 
   let cursor = 0;
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} overflow="visible">
       {/* Segments */}
       {parts.map((p, i) => {
         const segW = (p.percent / total) * w;
@@ -61,14 +61,14 @@ export function SplitBar({
           const midX = cur2 + segW / 2;
           cur2 += segW;
           const isAbove = i % 2 === 0;
-          const valueY = isAbove ? barY - 18 : barY + barH + 38;
-          const labelY = isAbove ? barY - 44 : barY + barH + 64;
+          const valueY = isAbove ? barY - 22 : barY + barH + 52;
+          const labelY = isAbove ? barY - 82 : barY + barH + 82;
           return (
             <g key={i}>
-              <text x={midX} y={valueY} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="36" fontWeight="800" fill={i === 0 ? accent : bodyColor}>
+              <text x={midX} y={valueY} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="52" fontWeight="800" fill={i === 0 ? accent : bodyColor}>
                 {p.value ?? `${p.percent}%`}
               </text>
-              <text x={midX} y={labelY} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fontWeight="600" letterSpacing="0.08em" fill={bodyColor} opacity="0.6">
+              <text x={midX} y={labelY} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="600" letterSpacing="0.08em" fill={bodyColor} opacity="0.6">
                 {p.label}
               </text>
             </g>
