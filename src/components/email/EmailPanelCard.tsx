@@ -507,6 +507,22 @@ export function EmailPanelCard({
               <path d="M6.5 2L8 3.5l-5 5H1.5V7l5-5z"/>
             </svg>
           </button>
+          {/* Bold toggle */}
+          <button
+            onClick={() => onPanelChange({ ...panel, textBold: !panel.textBold })}
+            title={panel.textBold ? "Switch to regular weight" : "Switch to bold"}
+            style={{
+              width: 26, height: 26, borderRadius: 5,
+              background: panel.textBold ? "var(--accent-dim)" : "var(--surface-r)",
+              border: panel.textBold ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              color: panel.textBold ? "var(--accent)" : "var(--subtle)",
+              fontFamily: "Georgia, serif", fontSize: 13, fontWeight: 700,
+              transition: "all 0.12s",
+            }}
+          >
+            B
+          </button>
           {/* Regenerate text */}
           <button
             onClick={onRegenerateText}
@@ -593,29 +609,6 @@ export function EmailPanelCard({
       {/* ── Edit copy (collapsible) ── */}
       {editOpen && (
         <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 10 }}>
-
-          {/* Bold toggle */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Text weight</span>
-            <button
-              onClick={() => onPanelChange({ ...panel, textBold: !panel.textBold })}
-              title={panel.textBold ? "Switch to regular weight" : "Switch to bold"}
-              style={{
-                padding: "3px 12px", borderRadius: 5, cursor: "pointer",
-                background: panel.textBold ? "var(--accent-dim)" : "var(--surface-r)",
-                border: panel.textBold ? "1px solid var(--accent-mid)" : "1px solid var(--border)",
-                fontFamily: PANEL_FONT, fontSize: 12,
-                fontWeight: panel.textBold ? 700 : 400,
-                color: panel.textBold ? "var(--accent)" : "var(--subtle)",
-                transition: "all 0.12s",
-              }}
-            >
-              B
-            </button>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)" }}>
-              {panel.textBold ? "Bold" : "Regular"}
-            </span>
-          </div>
 
           <div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Subject</div>
