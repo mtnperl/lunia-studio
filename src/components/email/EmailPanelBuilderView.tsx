@@ -87,7 +87,7 @@ function PanelGenerationLoader() {
 
 // ─── Saved projects ───────────────────────────────────────────────────────────
 
-type SavedPanelProject = {
+export type SavedPanelProject = {
   id: string;
   topic: string;
   emailGoal: string;
@@ -95,18 +95,28 @@ type SavedPanelProject = {
   savedAt: string;
 };
 
-function loadSavedProjects(): SavedPanelProject[] {
+export function loadSavedProjects(): SavedPanelProject[] {
   try {
     return JSON.parse(localStorage.getItem("lunia:panel-projects") ?? "[]");
   } catch { return []; }
 }
 
-function savePanelProject(topic: string, emailGoal: string, panels: EmailPanelData[]): string {
-  const id = `panels-${Date.now()}`;
+export function deletePanelProject(id: string) {
+  const existing = loadSavedProjects().filter(p => p.id !== id);
+  localStorage.setItem("lunia:panel-projects", JSON.stringify(existing));
+}
+
+function savePanelProject(
+  topic: string,
+  emailGoal: string,
+  panels: EmailPanelData[],
+  existingId?: string,
+): string {
+  const id = existingId ?? `panels-${Date.now()}`;
   const project: SavedPanelProject = { id, topic, emailGoal, panels, savedAt: new Date().toISOString() };
-  const existing = loadSavedProjects();
-  existing.unshift(project);
-  localStorage.setItem("lunia:panel-projects", JSON.stringify(existing.slice(0, 50)));
+  const rest = loadSavedProjects().filter(p => p.id !== id);
+  rest.unshift(project);
+  localStorage.setItem("lunia:panel-projects", JSON.stringify(rest.slice(0, 50)));
   return id;
 }
 
@@ -122,12 +132,159 @@ const sanitizePanel = (p: EmailPanelData): EmailPanelData => ({
   textBold:       p.textBold ?? false,
 });
 
+// ─── Panel preview card (used in preview step) ────────────────────────────────
+
+const PREVIEW_BRAND = {
+  cream: "#F7F4EF", navy: "#102635", navyMid: "#2c3f51", yellow: "#ffd800",
+};
+const PREVIEW_FONT = "Helvetica, Arial, sans-serif";
+const PANEL_LABELS: Record<string, string> = {
+  hero: "Panel 1 · Hero",
+  value: "Panel 2 · Value",
+  summary: "Panel 3 · Summary",
+};
+
+function PanelPreviewCard({ panel }: { panel: EmailPanelData }) {
+  const isHero = panel.role === "hero";
+  const fw = panel.textBold ? 700 : 400;
+  const showOverlay = panel.overlayEnabled;
+
+  return (
+    <div style={{ width: "100%", borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+      {/* Label */}
+      <div style={{
+        padding: "7px 14px",
+        background: "var(--surface-r)", borderBottom: "1px solid var(--border)",
+        fontFamily: "var(--font-mono)", fontSize: 9,
+        color: "var(--subtle)", letterSpacing: "0.12em", textTransform: "uppercase",
+      }}>
+        {PANEL_LABELS[panel.role]}
+      </div>
+
+      {/* Visual */}
+      <div style={{ position: "relative", width: "100%", paddingTop: "66.67%", background: "#1A1816", overflow: "hidden" }}>
+        {panel.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={panel.imageUrl}
+            alt=""
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
+
+        {/* Gradient overlay */}
+        {showOverlay && (
+          <div style={{
+            position: "absolute", inset: 0,
+            background: isHero
+              ? "linear-gradient(to bottom, rgba(16,38,53,0.25) 0%, rgba(16,38,53,0.78) 100%)"
+              : "linear-gradient(to bottom, transparent 20%, rgba(16,38,53,0.60) 55%, rgba(16,38,53,0.90) 100%)",
+          }} />
+        )}
+
+        {/* Text */}
+        {isHero ? (
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            padding: "20px 28px", textAlign: "center",
+          }}>
+            {panel.subject && (
+              <div style={{
+                fontFamily: PREVIEW_FONT, fontSize: 22, fontWeight: fw,
+                color: PREVIEW_BRAND.cream, lineHeight: 1.25, marginBottom: 8,
+              }}>
+                {panel.subject}
+              </div>
+            )}
+            {panel.subSubject && (
+              <div style={{
+                fontFamily: PREVIEW_FONT, fontSize: 13, fontWeight: fw,
+                color: "rgba(247,244,239,0.82)", lineHeight: 1.55, marginBottom: 14, maxWidth: "88%",
+              }}>
+                {panel.subSubject}
+              </div>
+            )}
+            {panel.cta && (
+              <div style={{
+                padding: "9px 24px", borderRadius: 7,
+                background: PREVIEW_BRAND.yellow, color: PREVIEW_BRAND.navy,
+                fontFamily: PREVIEW_FONT, fontSize: 13, fontWeight: fw,
+              }}>
+                {panel.cta}
+              </div>
+            )}
+            {!panel.imageUrl && !panel.subject && (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>no image yet</span>
+            )}
+          </div>
+        ) : (
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column", justifyContent: "flex-end",
+            padding: "18px 20px",
+          }}>
+            {panel.subject && (
+              <div style={{
+                fontFamily: PREVIEW_FONT, fontSize: panel.role === "value" ? 17 : 19,
+                fontWeight: fw, color: PREVIEW_BRAND.cream, lineHeight: 1.25, marginBottom: 5,
+              }}>
+                {panel.subject}
+              </div>
+            )}
+            {panel.subSubject && (
+              <div style={{
+                fontFamily: PREVIEW_FONT, fontSize: 12, fontWeight: fw,
+                color: "rgba(247,244,239,0.82)", lineHeight: 1.5,
+                marginBottom: panel.role === "value" ? 7 : 10,
+              }}>
+                {panel.subSubject}
+              </div>
+            )}
+            {panel.role === "value" && panel.body && (
+              <div style={{
+                fontFamily: PREVIEW_FONT, fontSize: 11, fontWeight: fw,
+                color: "rgba(247,244,239,0.65)", lineHeight: 1.55,
+                display: "-webkit-box", WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical", overflow: "hidden",
+              }}>
+                {panel.body}
+              </div>
+            )}
+            {panel.role === "summary" && panel.cta && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+                <div style={{
+                  padding: "9px 24px", borderRadius: 7,
+                  background: PREVIEW_BRAND.yellow, color: PREVIEW_BRAND.navy,
+                  fontFamily: PREVIEW_FONT, fontSize: 13, fontWeight: fw,
+                }}>
+                  {panel.cta}
+                </div>
+              </div>
+            )}
+            {!panel.imageUrl && !panel.subject && (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>no image yet</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main view ────────────────────────────────────────────────────────────────
 
+type Step = "input" | "library" | "panels" | "preview";
 type ImageLoadState = { loading: boolean; error: string | null };
 
-export default function EmailPanelBuilderView() {
-  const [step, setStep] = useState<"input" | "panels">("input");
+type Props = {
+  initialStep?: "input" | "library";
+};
+
+export default function EmailPanelBuilderView({ initialStep = "input" }: Props) {
+  const [step, setStep] = useState<Step>(initialStep);
+  const [panelsOrigin, setPanelsOrigin] = useState<"input" | "library">(initialStep);
+
   const [topic, setTopic] = useState("");
   const [emailGoal, setEmailGoal] = useState("");
   const [loading, setLoading] = useState(false);
@@ -143,10 +300,20 @@ export default function EmailPanelBuilderView() {
   const [upcomingEvents, setUpcomingEvents] = useState<LuniaCalendarEvent[]>([]);
   const [recentProjects, setRecentProjects] = useState<SavedPanelProject[]>([]);
 
+  // Library step
+  const [allProjects, setAllProjects] = useState<SavedPanelProject[]>([]);
+
   useEffect(() => {
     setUpcomingEvents(getUpcomingEvents(3));
     setRecentProjects(loadSavedProjects().slice(0, 3));
   }, []);
+
+  // Reload projects when entering library step
+  useEffect(() => {
+    if (step === "library") {
+      setAllProjects(loadSavedProjects());
+    }
+  }, [step]);
 
   const canGenerate = topic.trim().length >= 3;
 
@@ -166,6 +333,7 @@ export default function EmailPanelBuilderView() {
       setPanels((data.panels as EmailPanelData[]).map(sanitizePanel));
       setImageState({});
       setRegeneratingText({});
+      setPanelsOrigin("input");
       setStep("panels");
     } catch {
       setError("Network error — please try again.");
@@ -231,8 +399,10 @@ export default function EmailPanelBuilderView() {
   function handleSave() {
     setSaving(true);
     try {
-      const id = savePanelProject(topic, emailGoal, panels);
+      const id = savePanelProject(topic, emailGoal, panels, savedId ?? undefined);
       setSavedId(id);
+      // Refresh recent list
+      setRecentProjects(loadSavedProjects().slice(0, 3));
     } finally { setSaving(false); }
   }
 
@@ -245,14 +415,160 @@ export default function EmailPanelBuilderView() {
     setDownloadingAll(false);
   }
 
-  function loadProject(project: SavedPanelProject) {
+  function loadProject(project: SavedPanelProject, origin: "input" | "library" = "input") {
     setTopic(project.topic);
     setEmailGoal(project.emailGoal);
-    setPanels(project.panels);
+    setPanels(project.panels.map(sanitizePanel));
     setImageState({});
     setRegeneratingText({});
     setSavedId(project.id);
+    setPanelsOrigin(origin);
     setStep("panels");
+  }
+
+  function handleDeleteProject(id: string) {
+    deletePanelProject(id);
+    setAllProjects(loadSavedProjects());
+    setRecentProjects(loadSavedProjects().slice(0, 3));
+  }
+
+  // ── Library step ────────────────────────────────────────────────────────────
+  if (step === "library") {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 40px 80px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
+          <button
+            onClick={() => setStep("input")}
+            style={{
+              padding: "6px 14px", borderRadius: 7,
+              background: "var(--surface-r)", border: "1px solid var(--border)",
+              fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            ← New Email
+          </button>
+          <div>
+            <h1 style={{
+              fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 300,
+              color: "var(--text)", margin: 0, letterSpacing: "-0.02em",
+            }}>
+              Saved Emails
+            </h1>
+          </div>
+        </div>
+
+        {allProjects.length === 0 ? (
+          <div style={{
+            padding: "48px 24px", textAlign: "center",
+            border: "1px dashed var(--border)", borderRadius: 12,
+          }}>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", marginBottom: 8 }}>
+              No saved emails yet
+            </div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)" }}>
+              Build a 3-panel email and click "Save" to add it here
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {allProjects.map(project => (
+              <div
+                key={project.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "14px 16px", borderRadius: 10,
+                  background: "var(--surface-r)", border: "1px solid var(--border)",
+                  transition: "border-color 0.12s",
+                }}
+                onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border-strong)"}
+                onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"}
+              >
+                {/* Panel image thumbnails */}
+                <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                  {project.panels.map(panel => (
+                    <div key={panel.id} style={{
+                      width: 36, height: 24, borderRadius: 4, overflow: "hidden",
+                      background: "#1A1816", flexShrink: 0,
+                    }}>
+                      {panel.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={panel.imageUrl}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500,
+                    color: "var(--text)", lineHeight: 1.3, marginBottom: 2,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
+                    {project.topic}
+                  </div>
+                  {project.emailGoal && (
+                    <div style={{
+                      fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--subtle)",
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
+                      {project.emailGoal}
+                    </div>
+                  )}
+                </div>
+
+                {/* Date */}
+                <div style={{
+                  flexShrink: 0,
+                  fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)",
+                  letterSpacing: "0.05em",
+                }}>
+                  {new Date(project.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </div>
+
+                {/* Edit button */}
+                <button
+                  onClick={() => loadProject(project, "library")}
+                  style={{
+                    flexShrink: 0,
+                    padding: "5px 14px", borderRadius: 6,
+                    background: "var(--accent-dim)", border: "1px solid var(--accent-mid)",
+                    fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 500,
+                    color: "var(--accent)", cursor: "pointer",
+                    transition: "all 0.12s",
+                  }}
+                >
+                  Edit
+                </button>
+
+                {/* Delete button */}
+                <button
+                  onClick={() => handleDeleteProject(project.id)}
+                  title="Delete"
+                  style={{
+                    flexShrink: 0, width: 28, height: 28, borderRadius: 6,
+                    background: "var(--surface-h)", border: "1px solid var(--border)",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--subtle)", transition: "all 0.12s",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--error)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--subtle)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/>
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   // ── Input step ──────────────────────────────────────────────────────────────
@@ -269,7 +585,7 @@ export default function EmailPanelBuilderView() {
             3-Panel Email
           </h1>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", margin: 0, lineHeight: 1.6 }}>
-            Enter a topic. Claude generates copy + image prompts for Hero, Value, and Summary panels. Generate images, edit, then download as PNG.
+            Enter a topic. Claude generates copy + image prompts for Hero, Value, and Summary panels. Generate images, edit, then preview and download as PNG.
           </p>
         </div>
 
@@ -348,7 +664,7 @@ export default function EmailPanelBuilderView() {
               {recentProjects.map((project) => (
                 <button
                   key={project.id}
-                  onClick={() => loadProject(project)}
+                  onClick={() => loadProject(project, "input")}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "10px 14px", borderRadius: 8, cursor: "pointer",
@@ -387,7 +703,7 @@ export default function EmailPanelBuilderView() {
                     fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted)",
                     letterSpacing: "0.06em",
                   }}>
-                    Resume
+                    Resume →
                   </div>
                 </button>
               ))}
@@ -498,7 +814,107 @@ export default function EmailPanelBuilderView() {
     );
   }
 
-  // ── Panels step ─────────────────────────────────────────────────────────────
+  // ── Preview step ─────────────────────────────────────────────────────────────
+  if (step === "preview") {
+    return (
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 40px 120px" }}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)", letterSpacing: "0.08em", marginBottom: 5 }}>
+            EMAIL PREVIEW
+          </div>
+          <h2 style={{
+            fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 300,
+            color: "var(--text)", margin: "0 0 4px", letterSpacing: "-0.01em",
+          }}>
+            {topic}
+          </h2>
+          {emailGoal && (
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)", lineHeight: 1.5 }}>
+              {emailGoal}
+            </div>
+          )}
+        </div>
+
+        {/* Stacked panels — email-width container */}
+        <div style={{
+          maxWidth: 600, margin: "0 auto",
+          display: "flex", flexDirection: "column", gap: 3,
+          border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden",
+        }}>
+          {panels.map(panel => (
+            <PanelPreviewCard key={panel.id} panel={panel} />
+          ))}
+        </div>
+
+        {/* Hint */}
+        <div style={{
+          maxWidth: 600, margin: "12px auto 0",
+          fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--subtle)",
+          letterSpacing: "0.06em", textAlign: "center",
+        }}>
+          600px wide · email standard · each panel exports as a separate PNG
+        </div>
+
+        {/* Sticky footer */}
+        <div style={{
+          position: "sticky", bottom: 0,
+          background: "var(--bg)", borderTop: "1px solid var(--border)",
+          padding: "14px 0",
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+        }}>
+          <button
+            onClick={() => setStep("panels")}
+            style={{
+              padding: "8px 18px", borderRadius: 8,
+              cursor: "pointer",
+              background: "var(--surface-r)", border: "1px solid var(--border)",
+              fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--muted)",
+            }}
+          >
+            ← Edit
+          </button>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              onClick={handleDownloadAll}
+              disabled={downloadingAll}
+              style={{
+                padding: "8px 16px", borderRadius: 8,
+                cursor: downloadingAll ? "not-allowed" : "pointer",
+                background: "var(--surface-r)", border: "1px solid var(--border)",
+                fontFamily: "var(--font-ui)", fontSize: 13,
+                color: downloadingAll ? "var(--subtle)" : "var(--muted)",
+                display: "flex", alignItems: "center", gap: 6,
+                opacity: downloadingAll ? 0.6 : 1, transition: "all 0.12s",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 1v8M3 6.5l3 3 3-3M1 11h10" />
+              </svg>
+              {downloadingAll ? "Downloading..." : "Download All (3 PNGs)"}
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={saving || !!savedId}
+              style={{
+                padding: "8px 24px", borderRadius: 8,
+                cursor: saving || savedId ? "default" : "pointer",
+                background: savedId ? "var(--success)" : "var(--accent)",
+                border: "none",
+                fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
+                color: "#fff", transition: "all 0.15s",
+              }}
+            >
+              {savedId ? "Saved" : saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Panels step (edit) ───────────────────────────────────────────────────────
   const anyImageLoading = Object.values(imageState).some(s => s.loading);
 
   return (
@@ -543,7 +959,7 @@ export default function EmailPanelBuilderView() {
         display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
       }}>
         <button
-          onClick={() => { setStep("input"); setSavedId(null); }}
+          onClick={() => setStep(panelsOrigin)}
           disabled={anyImageLoading}
           style={{
             padding: "8px 18px", borderRadius: 8,
@@ -553,42 +969,41 @@ export default function EmailPanelBuilderView() {
             color: anyImageLoading ? "var(--subtle)" : "var(--muted)",
           }}
         >
-          Back
+          ← Back
         </button>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
-            onClick={handleDownloadAll}
-            disabled={downloadingAll || anyImageLoading}
-            style={{
-              padding: "8px 16px", borderRadius: 8,
-              cursor: downloadingAll || anyImageLoading ? "not-allowed" : "pointer",
-              background: "var(--surface-r)", border: "1px solid var(--border)",
-              fontFamily: "var(--font-ui)", fontSize: 13,
-              color: downloadingAll ? "var(--subtle)" : "var(--muted)",
-              display: "flex", alignItems: "center", gap: 6,
-              opacity: downloadingAll ? 0.6 : 1, transition: "all 0.12s",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 1v8M3 6.5l3 3 3-3M1 11h10" />
-            </svg>
-            {downloadingAll ? "Downloading..." : "Download All PNGs"}
-          </button>
-
-          <button
             onClick={handleSave}
             disabled={saving || !!savedId}
             style={{
-              padding: "8px 24px", borderRadius: 8,
+              padding: "8px 18px", borderRadius: 8,
               cursor: saving || savedId ? "default" : "pointer",
-              background: savedId ? "var(--success)" : "var(--accent)",
-              border: "none",
-              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
-              color: "#fff", transition: "all 0.15s",
+              background: savedId ? "var(--surface-r)" : "var(--surface-r)",
+              border: savedId ? "1px solid var(--success)" : "1px solid var(--border)",
+              fontFamily: "var(--font-ui)", fontSize: 13,
+              color: savedId ? "var(--success)" : "var(--muted)",
+              transition: "all 0.15s",
             }}
           >
-            {savedId ? "Saved" : saving ? "Saving..." : "Save Project"}
+            {savedId ? "Saved" : saving ? "Saving..." : "Save"}
+          </button>
+
+          <button
+            onClick={() => setStep("preview")}
+            disabled={anyImageLoading}
+            style={{
+              padding: "8px 20px", borderRadius: 8,
+              cursor: anyImageLoading ? "not-allowed" : "pointer",
+              background: anyImageLoading ? "var(--surface-h)" : "var(--accent)",
+              border: "none",
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
+              color: anyImageLoading ? "var(--muted)" : "var(--bg)",
+              display: "flex", alignItems: "center", gap: 6,
+              transition: "all 0.12s",
+            }}
+          >
+            Preview →
           </button>
         </div>
       </div>

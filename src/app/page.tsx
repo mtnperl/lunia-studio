@@ -12,14 +12,13 @@ import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
-import EmailBuilderView from "@/components/EmailBuilderView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -65,7 +64,6 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Email",
     items: [
-      { key: "email",          product: "carousel", label: "Builder"  },
       { key: "email-panels",   product: "carousel", label: "Panels"   },
       { key: "email-subjects", product: "carousel", label: "Subjects" },
       { key: "email-library",  product: "carousel", label: "Library"  },
@@ -328,17 +326,9 @@ export default function Page() {
             <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
           </div>
         )}
-        {tab === "email" && <EmailBuilderView onConvertToCarousel={handleEmailToCarousel} onSaved={() => navigate("email-library")} />}
         {tab === "email-panels" && <EmailPanelBuilderView />}
         {tab === "email-subjects" && <EmailSubjectsView />}
-        {tab === "email-library" && (
-          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
-            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
-              <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Email Swipe Library</h1>
-            </div>
-            <EmailLibraryView />
-          </div>
-        )}
+        {tab === "email-library" && <EmailPanelBuilderView initialStep="library" />}
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
