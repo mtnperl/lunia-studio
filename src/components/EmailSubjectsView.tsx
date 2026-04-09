@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { LUNIA_CALENDAR_2026, EVENT_TYPE_COLORS } from "@/lib/lunia-calendar";
 
 type SubjectIdea = {
   subject: string;
@@ -7,11 +8,12 @@ type SubjectIdea = {
   category: string;
 };
 
+// Legacy local type — kept for type compatibility in the map below
 type CalendarEvent = {
-  date: string;       // e.g. "Apr 1"
-  month: string;      // e.g. "April"
-  event: string;      // event name from calendar
-  subject: string;    // email subject line
+  date: string;
+  month: string;
+  event: string;
+  subject: string;
   preheader: string;
   type: string;       // "Sale / Promo" | "Health Awareness" | "Content Anchor" | etc.
 };
@@ -87,8 +89,11 @@ const SEED_SUBJECTS: SubjectIdea[] = [
   { subject: "The Q4 burnout pattern — and how to interrupt it", preheader: "What high-output people miss every November.", category: "Seasonal" },
 ];
 
-// ─── Marketing Calendar 2025 — email subjects by month ───────────────────────
-const CALENDAR_EVENTS: CalendarEvent[] = [
+// ─── Marketing Calendar 2026 — imported from shared lib ─────────────────────
+const CALENDAR_EVENTS: CalendarEvent[] = LUNIA_CALENDAR_2026 as CalendarEvent[];
+
+// (kept here only so TS recognises the local type as used)
+const _SEED_LOCAL: CalendarEvent[] = [
   // ── April ──────────────────────────────────────────────────────────────────
   {
     date: "Apr 1", month: "April", type: "Content Anchor",
@@ -348,19 +353,10 @@ const CALENDAR_EVENTS: CalendarEvent[] = [
   },
 ];
 
-// Group calendar events by month (already sorted chronologically)
+// Group calendar events by month (already sorted chronologically in the lib)
 const CALENDAR_MONTHS = Array.from(new Set(CALENDAR_EVENTS.map(e => e.month)));
 
 const SEED_CATEGORIES = ["All", ...Array.from(new Set(SEED_SUBJECTS.map(s => s.category)))];
-
-const EVENT_TYPE_COLORS: Record<string, string> = {
-  "Sale / Promo": "var(--success)",
-  "Health Awareness": "var(--accent)",
-  "Content Anchor": "var(--muted)",
-  "Email Trigger": "#c084fc",
-  "Cultural / Holiday": "#f59e0b",
-  "Paid Ads Spike": "#f87171",
-};
 
 export default function EmailSubjectsView() {
   const [view, setView] = useState<"ideas" | "calendar">("ideas");
@@ -404,7 +400,7 @@ export default function EmailSubjectsView() {
           Email Subjects
         </h1>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, color: "var(--muted)", margin: 0 }}>
-          {SEED_SUBJECTS.length} brand ideas + {CALENDAR_EVENTS.length} calendar events. Click to copy.
+          {SEED_SUBJECTS.length} brand ideas + {LUNIA_CALENDAR_2026.length} 2026 calendar events. Click to copy.
         </p>
       </div>
 
@@ -423,7 +419,7 @@ export default function EmailSubjectsView() {
               transition: "all 0.12s",
             }}
           >
-            {v === "ideas" ? "Brand Ideas" : "2025 Calendar"}
+            {v === "ideas" ? "Brand Ideas" : "2026 Calendar"}
           </button>
         ))}
       </div>
