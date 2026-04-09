@@ -653,84 +653,90 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
-      {/* Slide controls toolbar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
-        {/* Logo size */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Logo</span>
-          {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
-            const labels = ["S", "M", "L", "XL"];
-            return (
-              <button key={s} onClick={() => setLogoScale(s)} style={{
-                padding: "3px 8px", fontSize: 11, fontWeight: 700,
-                background: logoScale === s ? "var(--text)" : "var(--surface)",
-                color: logoScale === s ? "var(--bg)" : "var(--muted)",
-                border: "1px solid var(--border)", borderRadius: 5,
-                cursor: "pointer", fontFamily: "inherit",
-              }}>{labels[idx]}</button>
-            );
-          })}
+      {/* Slide controls toolbar — two explicit rows, always fully visible */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        {/* Row 1: decorative controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          {/* Logo size */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Logo</span>
+            {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
+              const labels = ["S", "M", "L", "XL"];
+              return (
+                <button key={s} onClick={() => setLogoScale(s)} style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                  background: logoScale === s ? "var(--text)" : "var(--surface)",
+                  color: logoScale === s ? "var(--bg)" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>{labels[idx]}</button>
+              );
+            })}
+          </div>
+          {/* Arrow size */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Arrows</span>
+            {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
+              const labels = ["S", "M", "L", "XL"];
+              return (
+                <button key={s} onClick={() => setArrowScale(s)} style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                  background: arrowScale === s ? "var(--text)" : "var(--surface)",
+                  color: arrowScale === s ? "var(--bg)" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>{labels[idx]}</button>
+              );
+            })}
+          </div>
+          {/* Lunia Life watermark toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Lunia Life</span>
+            <button onClick={() => setShowLuniaLifeWatermark((v) => !v)} style={{
+              padding: "3px 10px", fontSize: 11, fontWeight: 700,
+              background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
+              color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
+          </div>
         </div>
-        {/* Arrow size */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Arrows</span>
-          {([0.75, 1, 1.4, 1.8] as const).map((s, idx) => {
-            const labels = ["S", "M", "L", "XL"];
-            return (
-              <button key={s} onClick={() => setArrowScale(s)} style={{
-                padding: "3px 8px", fontSize: 11, fontWeight: 700,
-                background: arrowScale === s ? "var(--text)" : "var(--surface)",
-                color: arrowScale === s ? "var(--bg)" : "var(--muted)",
-                border: "1px solid var(--border)", borderRadius: 5,
-                cursor: "pointer", fontFamily: "inherit",
-              }}>{labels[idx]}</button>
-            );
-          })}
-        </div>
-        {/* Lunia Life watermark toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Lunia Life</span>
-          <button onClick={() => setShowLuniaLifeWatermark((v) => !v)} style={{
-            padding: "3px 10px", fontSize: 11, fontWeight: 700,
-            background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
-            color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
-            border: "1px solid var(--border)", borderRadius: 5,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
-        </div>
-        {/* Background toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Slides bg</span>
-          <button onClick={() => setDarkBackground(false)} style={{
-            padding: "3px 8px", fontSize: 11, fontWeight: 700,
-            background: !darkBackground ? "var(--text)" : "var(--surface)",
-            color: !darkBackground ? "var(--bg)" : "var(--muted)",
-            border: "1px solid var(--border)", borderRadius: 5,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>Classic</button>
-          <button onClick={() => setDarkBackground(true)} style={{
-            padding: "3px 8px", fontSize: 11, fontWeight: 700,
-            background: darkBackground ? "var(--text)" : "var(--surface)",
-            color: darkBackground ? "var(--bg)" : "var(--muted)",
-            border: "1px solid var(--border)", borderRadius: 5,
-            cursor: "pointer", fontFamily: "inherit",
-          }}>Match hook</button>
-        </div>
-        {/* Citation font size */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Citation</span>
-          {([18, 26, 36, 48] as const).map((s, idx) => {
-            const labels = ["S", "M", "L", "XL"];
-            return (
-              <button key={s} onClick={() => setCitationFontSize(s)} style={{
-                padding: "3px 8px", fontSize: 11, fontWeight: 700,
-                background: citationFontSize === s ? "var(--text)" : "var(--surface)",
-                color: citationFontSize === s ? "var(--bg)" : "var(--muted)",
-                border: "1px solid var(--border)", borderRadius: 5,
-                cursor: "pointer", fontFamily: "inherit",
-              }}>{labels[idx]}</button>
-            );
-          })}
+        {/* Row 2: content style controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          {/* Background toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Slides bg</span>
+            <button onClick={() => setDarkBackground(false)} style={{
+              padding: "3px 8px", fontSize: 11, fontWeight: 700,
+              background: !darkBackground ? "var(--text)" : "var(--surface)",
+              color: !darkBackground ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>Classic</button>
+            <button onClick={() => setDarkBackground(true)} style={{
+              padding: "3px 8px", fontSize: 11, fontWeight: 700,
+              background: darkBackground ? "var(--text)" : "var(--surface)",
+              color: darkBackground ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>Match hook</button>
+          </div>
+          {/* Citation font size */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Citation size</span>
+            {([18, 26, 36, 48] as const).map((s, idx) => {
+              const labels = ["S", "M", "L", "XL"];
+              return (
+                <button key={s} onClick={() => setCitationFontSize(s)} style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                  background: citationFontSize === s ? "var(--text)" : "var(--surface)",
+                  color: citationFontSize === s ? "var(--bg)" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>{labels[idx]}</button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
