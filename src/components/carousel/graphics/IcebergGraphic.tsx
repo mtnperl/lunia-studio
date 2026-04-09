@@ -22,108 +22,124 @@ export function IcebergGraphic({
   hiddenLabel = DEFAULTS.hiddenLabel,
   brandStyle,
 }: Props) {
-  const accent = brandStyle?.accent ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body ?? '#1a2535';
-  const secondary = brandStyle?.secondary ?? '#6b7280';
-  const bg = brandStyle?.background ?? '#f0ece6';
+  const accent    = brandStyle?.accent     ?? '#1e7a8a';
+  const bodyColor = brandStyle?.body       ?? '#1a2535';
+  const secondary = brandStyle?.secondary  ?? '#6b7280';
+  const slideBg   = brandStyle?.background ?? '#f0ece6';
 
-  const W = 936, H = 320;
-  const waterlineY = 122;
-  const padding = 32;
-  const sItems = surface.slice(0, 3);
-  const hItems = hidden.slice(0, 4);
-
-  // Surface items — evenly spaced above waterline
-  const sBoxW = Math.min(220, (W - padding * 2) / Math.max(sItems.length, 1) - 12);
-  const sTotal = sItems.length * sBoxW + (sItems.length - 1) * 12;
-  const sStartX = (W - sTotal) / 2;
-
-  // Hidden items — evenly spaced below waterline
-  const hBoxW = Math.min(200, (W - padding * 2) / Math.max(hItems.length, 1) - 12);
-  const hTotal = hItems.length * hBoxW + (hItems.length - 1) * 12;
-  const hStartX = (W - hTotal) / 2;
+  const sItems = (surface ?? []).slice(0, 3);
+  const hItems = (hidden  ?? []).slice(0, 4);
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
-      {/* Surface label */}
-      <text x={W / 2} y={18} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="14" fontWeight="700"
-        fill={secondary} letterSpacing="0.1em">
-        {(surfaceLabel ?? '').toUpperCase()}
-      </text>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '20px 48px 28px',
+      minHeight: 340,
+      boxSizing: 'border-box',
+      gap: 0,
+    }}>
+      {/* Surface section label */}
+      <div style={{
+        fontFamily: 'Outfit, sans-serif',
+        fontSize: 13,
+        fontWeight: 700,
+        color: secondary,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        marginBottom: 10,
+      }}>
+        {surfaceLabel}
+      </div>
 
       {/* Surface items */}
-      {sItems.map((item, i) => {
-        const x = sStartX + i * (sBoxW + 12);
-        const words = item.split(' ');
-        const mid = Math.ceil(words.length / 2);
-        const ln1 = words.slice(0, mid).join(' ');
-        const ln2 = words.length > 2 ? words.slice(mid).join(' ') : null;
-        return (
-          <g key={i}>
-            <rect x={x} y={30} width={sBoxW} height={68} rx={8}
-              fill={`${accent}15`} stroke={`${accent}50`} strokeWidth={1.5} />
-            <text x={x + sBoxW / 2} y={ln2 ? 62 : 69} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="17" fontWeight="600" fill={accent}>
-              {ln1}
-            </text>
-            {ln2 && (
-              <text x={x + sBoxW / 2} y={84} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="17" fontWeight="600" fill={accent}>
-                {ln2}
-              </text>
-            )}
-          </g>
-        );
-      })}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {sItems.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              background: `${accent}14`,
+              border: `1.5px solid ${accent}55`,
+              borderRadius: 10,
+              padding: '10px 22px',
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: 18,
+              fontWeight: 600,
+              color: accent,
+              lineHeight: 1.3,
+              wordBreak: 'break-word',
+              flex: '1 1 auto',
+              textAlign: 'center',
+            }}
+          >
+            {item}
+          </div>
+        ))}
+      </div>
 
-      {/* Waterline */}
-      <line x1={padding} y1={waterlineY} x2={W - padding} y2={waterlineY}
-        stroke={accent} strokeWidth={2.5} strokeDasharray="8 5" opacity={0.6} />
-      {/* Waterline triangle indicator */}
-      <polygon
-        points={`${W / 2 - 10},${waterlineY + 1} ${W / 2 + 10},${waterlineY + 1} ${W / 2},${waterlineY + 12}`}
-        fill={accent} opacity={0.5}
-      />
+      {/* Waterline divider */}
+      <div style={{ display: 'flex', alignItems: 'center', margin: '18px 0', gap: 12 }}>
+        <div style={{ flex: 1, height: 2, background: accent, opacity: 0.35, borderRadius: 1 }} />
+        <div style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: 18,
+          color: accent,
+          opacity: 0.55,
+          flexShrink: 0,
+          lineHeight: 1,
+        }}>
+          ▼
+        </div>
+        <div style={{ flex: 1, height: 2, background: accent, opacity: 0.35, borderRadius: 1 }} />
+      </div>
 
-      {/* Hidden label */}
-      <text x={W / 2} y={waterlineY + 28} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="14" fontWeight="700"
-        fill={secondary} letterSpacing="0.1em">
-        {(hiddenLabel ?? '').toUpperCase()}
-      </text>
-
-      {/* Hidden section background */}
-      <rect x={padding} y={waterlineY + 36} width={W - padding * 2} height={H - waterlineY - 48}
-        rx={8} fill={`${accent}08`} />
+      {/* Hidden section label */}
+      <div style={{
+        fontFamily: 'Outfit, sans-serif',
+        fontSize: 13,
+        fontWeight: 700,
+        color: secondary,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        marginBottom: 10,
+      }}>
+        {hiddenLabel}
+      </div>
 
       {/* Hidden items */}
-      {hItems.map((item, i) => {
-        const x = hStartX + i * (hBoxW + 12);
-        const y = waterlineY + 46;
-        const words = item.split(' ');
-        const mid = Math.ceil(words.length / 2);
-        const ln1 = words.slice(0, mid).join(' ');
-        const ln2 = words.length > 2 ? words.slice(mid).join(' ') : null;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={hBoxW} height={70} rx={8}
-              fill={bg} stroke={accent} strokeWidth={2} />
-            <circle cx={x + hBoxW / 2} cy={y} r={8} fill={accent} />
-            <text x={x + hBoxW / 2} y={ln2 ? y + 28 : y + 35} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="16" fontWeight="600" fill={bodyColor}>
-              {ln1}
-            </text>
-            {ln2 && (
-              <text x={x + hBoxW / 2} y={y + 50} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="16" fontWeight="600" fill={bodyColor}>
-                {ln2}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+      <div style={{
+        background: `${accent}08`,
+        borderRadius: 14,
+        padding: '16px',
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap',
+        flex: 1,
+      }}>
+        {hItems.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              background: slideBg,
+              border: `2px solid ${accent}`,
+              borderRadius: 10,
+              padding: '12px 20px',
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: 17,
+              fontWeight: 600,
+              color: bodyColor,
+              flex: '1 1 auto',
+              minWidth: 110,
+              textAlign: 'center',
+              lineHeight: 1.3,
+              wordBreak: 'break-word',
+            }}
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

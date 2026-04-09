@@ -12,62 +12,81 @@ const DEFAULTS: Bubble[] = [
   { label: 'GABA', size: 1 },
 ];
 
-// Pre-computed non-overlapping positions [cx, cy] for 2–5 bubbles
-const POSITIONS: Record<number, [number, number][]> = {
-  2: [[248, 165], [688, 165]],
-  3: [[168, 168], [468, 155], [770, 168]],
-  4: [[118, 165], [356, 148], [580, 165], [818, 148]],
-  5: [[90, 165], [272, 150], [468, 162], [664, 150], [846, 165]],
-};
-
-const RADII: Record<number, Record<1|2|3, number>> = {
-  2: { 1: 64, 2: 88, 3: 112 },
-  3: { 1: 52, 2: 72, 3: 96 },
-  4: { 1: 44, 2: 60, 3: 80 },
-  5: { 1: 38, 2: 52, 3: 68 },
-};
-
 export function BubbleCluster({ items = DEFAULTS, brandStyle }: Props) {
-  const accent = brandStyle?.accent ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body ?? '#4a5568';
-  const secondary = brandStyle?.secondary ?? '#a8d4da';
+  const accent    = brandStyle?.accent    ?? '#1e7a8a';
+  const secondary = brandStyle?.secondary ?? '#6b7280';
 
-  const n = Math.min(Math.max(items.length, 2), 5) as 2|3|4|5;
-  const list = items.slice(0, n);
-  const pos = POSITIONS[n];
-  const radMap = RADII[n];
+  const n = Math.min(Math.max((items ?? []).length, 2), 5);
+  const list = (items ?? []).slice(0, n);
+
+  // Base diameter shrinks as count grows so they all fit in 936px wide container
+  const baseDiam = n <= 2 ? 220 : n <= 3 ? 190 : n <= 4 ? 165 : 145;
+  const labelSize = n <= 2 ? 24 : n <= 3 ? 21 : n <= 4 ? 18 : 16;
+  const subSize   = Math.max(labelSize - 5, 12);
+  const gap       = n <= 3 ? 36 : n <= 4 ? 20 : 14;
 
   return (
-    <svg width={936} height={340} viewBox="0 0 936 340" overflow="visible">
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      gap,
+      padding: '36px 48px',
+      minHeight: 340,
+      boxSizing: 'border-box',
+    }}>
       {list.map((item, i) => {
-        const [cx, cy] = pos[i];
-        const size = (item.size ?? 2) as 1|2|3;
-        const r = radMap[size];
-        const fontSize = r > 80 ? 22 : r > 56 ? 18 : 15;
+        const sizeMulti = (item.size ?? 2) === 3 ? 1 : (item.size ?? 2) === 2 ? 0.82 : 0.66;
+        const d = Math.round(baseDiam * sizeMulti);
+        const isFeatured = i === 0;
 
         return (
-          <g key={i}>
-            {/* Glow */}
-            <circle cx={cx} cy={cy} r={r + 8} fill={`${accent}08`} />
-            {/* Ring */}
-            <circle cx={cx} cy={cy} r={r} fill={`${accent}12`} stroke={accent} strokeWidth={2.5} />
-            {/* Primary label */}
-            <text x={cx} y={item.sublabel ? cy - 6 : cy + fontSize / 3}
-              textAnchor="middle" fontFamily="Outfit, sans-serif"
-              fontSize={fontSize} fontWeight="700" fill={accent}>
+          <div
+            key={i}
+            style={{
+              width: d,
+              height: d,
+              borderRadius: '50%',
+              background: isFeatured ? `${accent}22` : `${accent}10`,
+              border: `${isFeatured ? 3 : 2}px solid ${accent}${isFeatured ? 'cc' : '55'}`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+              boxSizing: 'border-box',
+              textAlign: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: labelSize,
+              fontWeight: 700,
+              color: accent,
+              lineHeight: 1.25,
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+            }}>
               {item.label}
-            </text>
+            </div>
             {item.sublabel && (
-              <text x={cx} y={cy + fontSize / 3 + 18}
-                textAnchor="middle" fontFamily="Outfit, sans-serif"
-                fontSize={Math.max(fontSize - 4, 12)} fill={secondary}>
+              <div style={{
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: subSize,
+                color: secondary,
+                marginTop: 6,
+                lineHeight: 1.2,
+                wordBreak: 'break-word',
+              }}>
                 {item.sublabel}
-              </text>
+              </div>
             )}
-          </g>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

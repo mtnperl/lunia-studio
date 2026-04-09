@@ -10,76 +10,106 @@ interface Props {
   brandStyle?: BrandStyle;
 }
 
-export function TimelineGraphic({
-  events = [
-    { time: '9 PM',    label: 'Dim all lights' },
-    { time: '9:30 PM', label: 'Take Lunia' },
-    { time: '10 PM',   label: 'No screens' },
-    { time: '10:30 PM', label: 'Asleep' },
-  ],
-  brandStyle,
-}: Props) {
-  const accent    = brandStyle?.accent   ?? '#1e7a8a';
-  const secondary = brandStyle?.secondary ?? '#a8d4da';
-  const bodyColor = brandStyle?.body     ?? '#4a5568';
+const DEFAULTS: Event[] = [
+  { time: '9 PM',     label: 'Dim all lights' },
+  { time: '9:30 PM',  label: 'Take Lunia' },
+  { time: '10 PM',    label: 'No screens' },
+  { time: '10:30 PM', label: 'Wind down & sleep' },
+];
 
-  const w = 936;
-  const h = 300;
-  const n = events.length;
-  const nodeY = h / 2;
-  const padX = 60;
-  const spacing = (w - padX * 2) / (n - 1 || 1);
-  const nodeR = 18;
+export function TimelineGraphic({ events = DEFAULTS, brandStyle }: Props) {
+  const accent    = brandStyle?.accent    ?? '#1e7a8a';
+  const bodyColor = brandStyle?.body      ?? '#1a2535';
+  const secondary = brandStyle?.secondary ?? '#6b7280';
+
+  const list = (events ?? []).slice(0, 6);
+  const n = list.length;
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {/* Track line */}
-      <line
-        x1={padX} y1={nodeY}
-        x2={padX + spacing * (n - 1)} y2={nodeY}
-        stroke={`${bodyColor}25`} strokeWidth="3"
-      />
-
-      {events.map((ev, i) => {
-        const x = padX + i * spacing;
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '28px 56px',
+      minHeight: 340,
+      boxSizing: 'border-box',
+      gap: 0,
+    }}>
+      {list.map((ev, i) => {
         const isLast = i === n - 1;
-        const labelY = i % 2 === 0 ? nodeY - 44 : nodeY + 58;
-        const timeY  = i % 2 === 0 ? nodeY - 68 : nodeY + 82;
-
         return (
-          <g key={i}>
-            {/* Connector tick */}
-            <line
-              x1={x} y1={nodeY - nodeR}
-              x2={x} y2={i % 2 === 0 ? nodeY - 44 : nodeY + 44}
-              stroke={isLast ? accent : `${secondary}80`} strokeWidth="2"
-            />
-            {/* Node circle */}
-            <circle cx={x} cy={nodeY} r={nodeR} fill={isLast ? accent : `${secondary}60`} />
-            {isLast && (
-              <circle cx={x} cy={nodeY} r={nodeR - 6} fill={accent} />
-            )}
-            {/* Time label */}
-            <text
-              x={x} y={timeY} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="19" fontWeight="700"
-              fill={isLast ? accent : secondary}
-              letterSpacing="0.04em"
-            >
-              {ev.time}
-            </text>
-            {/* Event label */}
-            <text
-              x={x} y={labelY} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="20"
-              fill={isLast ? accent : bodyColor}
-            >
-              {ev.label}
-            </text>
-          </g>
+          <div key={i} style={{ display: 'flex', gap: 24, minHeight: 0 }}>
+            {/* Track column */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 36 }}>
+              {/* Node */}
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: isLast ? accent : `${accent}25`,
+                border: `2.5px solid ${isLast ? accent : `${accent}70`}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                zIndex: 1,
+              }}>
+                {isLast && (
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff' }} />
+                )}
+                {!isLast && (
+                  <div style={{
+                    fontFamily: 'Outfit, sans-serif',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: accent,
+                  }}>
+                    {i + 1}
+                  </div>
+                )}
+              </div>
+              {/* Connector line */}
+              {!isLast && (
+                <div style={{
+                  width: 2,
+                  flex: 1,
+                  minHeight: 16,
+                  background: `${accent}30`,
+                  marginTop: 0,
+                }} />
+              )}
+            </div>
+
+            {/* Content column */}
+            <div style={{
+              paddingTop: 6,
+              paddingBottom: isLast ? 0 : 24,
+              flex: 1,
+            }}>
+              <div style={{
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: 20,
+                fontWeight: 700,
+                color: isLast ? accent : secondary,
+                lineHeight: 1.2,
+                letterSpacing: '0.02em',
+              }}>
+                {ev.time}
+              </div>
+              <div style={{
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: 19,
+                color: bodyColor,
+                marginTop: 3,
+                lineHeight: 1.35,
+                wordBreak: 'break-word',
+              }}>
+                {ev.label}
+              </div>
+            </div>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

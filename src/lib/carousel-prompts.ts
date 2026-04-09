@@ -120,12 +120,12 @@ Brand rules (follow exactly):
   {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}  — bold pull-quote (last resort if only 1 number)
 
   TIER B — LAYOUT components (match the structural shape of the content):
-  {"component":"hubSpoke","data":{"center":"CENTRAL CONCEPT","spokes":[{"label":"EFFECT 1"},{"label":"EFFECT 2"},{"label":"EFFECT 3"}]}}  — one central mechanism with 3-5 radiating effects; use when slide has one cause with multiple downstream outcomes
-  {"component":"iceberg","data":{"surface":["visible item 1"],"hidden":["hidden truth 1","hidden truth 2","hidden truth 3"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}  — use when slide reveals a hidden reality beneath surface-level perception
+  LABEL RULES FOR ALL TIER B: every label/spoke/step must be ≤4 words. sublabels ≤5 words. surface/hidden items ≤4 words. Never write full sentences inside layout components — short nouns and verbs only. Violating this causes text clipping.
+  {"component":"hubSpoke","data":{"center":"1-3 WORD CONCEPT","spokes":[{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"}]}}  — one central mechanism with 3-5 radiating effects; use when slide has one cause with multiple downstream outcomes
+  {"component":"iceberg","data":{"surface":["2-4 word item"],"hidden":["2-4 word truth","2-4 word truth","2-4 word truth"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}  — use when slide reveals a hidden reality beneath surface-level perception
   {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}  — problem → result arc; use when slide shows a causal link or mechanism between two states
-  {"component":"circularCycle","data":{"steps":[{"label":"Step 1"},{"label":"Step 2"},{"label":"Step 3"}]}}  — 3-5 step repeating cycle; use for biological rhythms, feedback loops, habit cycles
-  {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"SHORT LABEL","body":"optional 1-line note"},{"icon":"💤","label":"SHORT LABEL"}]}}  — 2-4 independent insight tiles; use for lists of distinct benefits or mechanisms
-  {"component":"conceptFlow","data":{"nodes":[{"label":"CONCEPT","sublabel":"what it does"},{"label":"CONCEPT","sublabel":"mechanism"},{"label":"OUTCOME","sublabel":"end result"}]}}  — 3-5 cause-effect nodes each with a sublabel; use when slide traces a chain of events or mechanisms
+  {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}  — 2-4 independent insight tiles; use for lists of distinct benefits or mechanisms
+  {"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}  — 3-5 cause-effect nodes each with a sublabel; use when slide traces a chain of events or mechanisms
   {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 simple connected steps (simpler than conceptFlow, no sublabels)
   {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 numbered sequential steps
   {"component":"processFlow","data":{"steps":["Step 1","Step 2","Step 3","Step 4"]}}  — 2-5 horizontal process boxes with arrows (technical/biochemical sequence)
@@ -134,7 +134,7 @@ Brand rules (follow exactly):
   {"component":"pyramid","data":{"levels":["Top (most specific)","Middle","Base (widest)"]}}  — 2-5 level priority hierarchy
   {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — A vs B comparison
   {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
-  {"component":"bubbles","data":{"items":[{"label":"Item","size":3},{"label":"Item","size":2}]}}  — 2-5 bubbles sized by importance
+  {"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}  — 2-5 bubbles sized by importance
   {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — grade or score
 
   TIER C — VECTOR illustration:
@@ -166,7 +166,7 @@ Brand rules (follow exactly):
 - Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
-- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (hubSpoke/iceberg/bridge/circularCycle/bento/conceptFlow/dotchain/steps/etc.) for structural slides, TIER C (vector with mood) for conceptual slides. Always output a valid component JSON.`;
+- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (hubSpoke/iceberg/bridge/bento/conceptFlow/dotchain/steps/etc.) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels ≤4 words, sublabels ≤5 words. Always output a valid component JSON.`;
 
 export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = []) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
@@ -201,12 +201,12 @@ TIER A — DATA (use REAL numbers/facts only):
 {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional citation"}}
 
 TIER B — LAYOUT:
-{"component":"hubSpoke","data":{"center":"CENTRAL CONCEPT","spokes":[{"label":"EFFECT 1"},{"label":"EFFECT 2"},{"label":"EFFECT 3"}]}}
-{"component":"iceberg","data":{"surface":["visible 1"],"hidden":["truth 1","truth 2","truth 3"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}
+LABEL RULES FOR ALL TIER B: every label/step/spoke must be ≤4 words. sublabels ≤5 words. surface/hidden items ≤4 words. Never write full sentences inside layout components — short nouns and verbs only.
+{"component":"hubSpoke","data":{"center":"1-3 WORD CONCEPT","spokes":[{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"}]}}
+{"component":"iceberg","data":{"surface":["2-4 word item"],"hidden":["2-4 word truth","2-4 word truth","2-4 word truth"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}
 {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}
-{"component":"circularCycle","data":{"steps":[{"label":"Step 1"},{"label":"Step 2"},{"label":"Step 3"}]}}
-{"component":"bento","data":{"tiles":[{"icon":"🧠","label":"SHORT LABEL","body":"optional note"},{"icon":"💤","label":"SHORT LABEL"}]}}
-{"component":"conceptFlow","data":{"nodes":[{"label":"CONCEPT","sublabel":"what it does"},{"label":"CONCEPT","sublabel":"mechanism"},{"label":"OUTCOME","sublabel":"result"}]}}
+{"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}
+{"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}
 {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"processFlow","data":{"steps":["Tryptophan","5-HTP","Serotonin","Melatonin"]}}
@@ -215,7 +215,7 @@ TIER B — LAYOUT:
 {"component":"pyramid","data":{"levels":["Top","Middle","Base"]}}
 {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact"]},"right":{"label":"OPTION B","items":["fact"]}}}
 {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
-{"component":"bubbles","data":{"items":[{"label":"Item","size":3},{"label":"Item","size":2}]}}
+{"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}
 
 TIER C — VECTOR:
 {"component":"vector","data":{"keywords":"EVOCATIVE TOPIC KEYWORDS (3-5 words)","label":"SHORT LABEL","mood":"calm|energetic|scientific|playful"}}
