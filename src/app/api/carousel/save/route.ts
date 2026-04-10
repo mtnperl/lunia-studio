@@ -44,6 +44,7 @@ export async function POST(req: Request) {
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
+      imageStyle, reelsMode,
     } = body;
 
     if (!topic || !content || selectedHook == null) {
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
       arrowScale,
       darkBackground,
       showLuniaLifeWatermark,
+      imageStyle: imageStyle ?? undefined,
+      reelsMode: reelsMode ?? undefined,
       savedAt: new Date().toISOString(),
     };
 

@@ -71,6 +71,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setBrandStyle(initialCarousel.brandStyle ?? null);
     setHookImageUrl(initialCarousel.hookImageUrl ?? null);
     setSlideImages(initialCarousel.slideImages ?? [null, null, null, null, null]);
+    if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
     setStep(4);
     onCarouselLoaded?.();
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -343,6 +344,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               hookTone={hookTone}
               onRestart={handleRestart}
               onChangeHook={() => setStep(3)}
+              initialImageStyle={imageStyle}
+              initialReelsMode={initialCarousel?.reelsMode}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

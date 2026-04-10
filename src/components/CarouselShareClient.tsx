@@ -35,6 +35,7 @@ export default function CarouselShareClient({ carousel }: Props) {
   const imgs = slideImages ?? [null, null, null, null, null];
   const bs: BrandStyle | undefined = brandStyle;
 
+  const [reelsMode, setReelsMode] = useState(carousel.reelsMode ?? false);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function CarouselShareClient({ carousel }: Props) {
   // 1. Hide <img> + make inner wrapper transparent → toPng captures foreground only
   // 2. Draw background image onto canvas (cover-fit)
   // 3. Draw foreground overlay on top → correct final PNG
-  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
+  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH: number): Promise<File> {
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
     // el > SlideWrapper outer div > SlideWrapper inner div (has background style + content)
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
@@ -93,7 +94,7 @@ export default function CarouselShareClient({ carousel }: Props) {
     let fgDataUrl: string;
     try {
       fgDataUrl = await toPng(el, {
-        width: 1080, height: 1350, pixelRatio: 2,
+        width: 1080, height: exportH, pixelRatio: 2,
         cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
@@ -101,7 +102,7 @@ export default function CarouselShareClient({ carousel }: Props) {
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
-    const W = 1080 * 2, H = 1350 * 2; // pixelRatio: 2
+    const W = 1080 * 2, H = exportH * 2; // pixelRatio: 2
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
@@ -137,8 +138,11 @@ export default function CarouselShareClient({ carousel }: Props) {
     const el = exportRefs.current[index];
     if (!el) throw new Error("Export element not found");
 
+    const exportH = reelsMode ? 1920 : 1350;
     const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
-    const filename = `lunia-slide-${index + 1}-${label}.png`;
+    const filename = reelsMode
+      ? `lunia-reel-${index + 1}-${label}.png`
+      : `lunia-slide-${index + 1}-${label}.png`;
 
     // Wait for any <img> to finish loading
     await Promise.all(Array.from(el.querySelectorAll("img")).map(img =>
@@ -150,12 +154,12 @@ export default function CarouselShareClient({ carousel }: Props) {
     if (index === 0 && (imgs[0] ?? hookImageUrl)) {
       const bgDataUrl = await getHookBgDataUrl();
       if (bgDataUrl) {
-        return compositeHookSlide(el, bgDataUrl, filename);
+        return compositeHookSlide(el, bgDataUrl, filename, exportH);
       }
     }
 
     // All other slides + hook with no image: standard html-to-image
-    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
@@ -239,24 +243,25 @@ export default function CarouselShareClient({ carousel }: Props) {
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
   ];
 
   const exportNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl) ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
   ];
 
+  const exportH = reelsMode ? 1920 : 1350;
   const slideW = Math.round(1080 * PREVIEW_SCALE);
 
   return (
@@ -270,23 +275,43 @@ export default function CarouselShareClient({ carousel }: Props) {
             </div>
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em" }}>Lunia Studio</span>
           </div>
-          <button
-            onClick={downloadAll}
-            disabled={downloadingAll}
-            style={{
-              background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
-              padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-              cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
-              display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
-            {downloadingAll ? (
-              <>
-                <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
-                Exporting…
-              </>
-            ) : "↓ Download all (5 PNGs)"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Format toggle */}
+            <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+              {([false, true] as const).map((isReels) => (
+                <button
+                  key={String(isReels)}
+                  onClick={() => setReelsMode(isReels)}
+                  style={{
+                    padding: "6px 12px", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                    border: "none", cursor: "pointer",
+                    background: reelsMode === isReels ? "var(--accent)" : "transparent",
+                    color: reelsMode === isReels ? "var(--bg)" : "var(--muted)",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {isReels ? "9:16" : "4:5"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={downloadAll}
+              disabled={downloadingAll}
+              style={{
+                background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
+                padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+                cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              {downloadingAll ? (
+                <>
+                  <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+                  Exporting…
+                </>
+              ) : `↓ Download all (5 PNGs)`}
+            </button>
+          </div>
         </div>
 
         <div style={{ marginBottom: 28 }}>
@@ -349,7 +374,7 @@ export default function CarouselShareClient({ carousel }: Props) {
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (
-          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: 1350 }}>
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: exportH }}>
             {node}
           </div>
         ))}

@@ -21,12 +21,14 @@ type Props = {
   onRestart: () => void;
   onChangeHook?: () => void;
   onContentChange: (config: CarouselConfig) => void;
+  initialImageStyle?: CarouselImageStyle;
+  initialReelsMode?: boolean;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,7 +49,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [darkBackground, setDarkBackground] = useState(false);
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
   const [citationFontSize, setCitationFontSize] = useState(18);
-  const [reelsMode, setReelsMode] = useState(false);
+  const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
 
@@ -58,7 +60,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
-  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
+  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>(initialImageStyle ?? "realistic");
   const [imageGuidelines, setImageGuidelines] = useState("");
   const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
   const [regeneratingImage, setRegeneratingImage] = useState(false);
@@ -300,6 +302,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           arrowScale,
           darkBackground,
           showLuniaLifeWatermark,
+          imageStyle,
+          reelsMode,
         }),
       });
       if (!res.ok) return;

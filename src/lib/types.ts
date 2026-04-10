@@ -287,6 +287,8 @@ export type SavedCarousel = {
   arrowScale?: number;
   darkBackground?: boolean;
   showLuniaLifeWatermark?: boolean;
+  imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
+  reelsMode?: boolean;     // true = 9:16 Reels format
   savedAt: string;
 };
 
