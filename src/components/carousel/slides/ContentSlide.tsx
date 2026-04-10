@@ -46,6 +46,7 @@ import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
 const GRAPHIC_MIN_HEIGHT = 80;
+const SLIDE_H = { carousel: 1350, reels: 1920 };
 
 // ─── Rendering priority:
 //   Path 1 — GraphicSpec JSON (new generation)  → curated React component
@@ -174,6 +175,7 @@ type Props = {
   darkBackground?: boolean;         // match hook slide dark background
   showLuniaLifeWatermark?: boolean;
   citationFontSize?: number;        // override the default 18px citation size
+  reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -193,7 +195,12 @@ export default function ContentSlide({
   darkBackground = false,
   showLuniaLifeWatermark = false,
   citationFontSize = 18,
+  reels = false,
 }: Props) {
+  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const py = reels ? 220 : SLIDE_PADDING.y;
+  const sectionGap = reels ? 46 : SECTION_GAP;
+  const graphicMinH = reels ? 120 : GRAPHIC_MIN_HEIGHT;
   // Determine rendering path
   const graphicSpec = parseGraphicSpec(graphic);
   const hasGraphicSpec = graphicSpec !== null;                  // Path 1
@@ -241,7 +248,7 @@ export default function ContentSlide({
   const headlineFontSize = headlineSize(headline.length);
 
   return (
-    <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+    <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
       {/* fal.ai background image — 15% opacity, purely atmospheric behind all content */}
       {backgroundImage ? (
         <div style={{
@@ -289,11 +296,11 @@ export default function ContentSlide({
         top: 0, left: 0, right: 0, bottom: 0,
         display: 'flex',
         flexDirection: 'column',
-        paddingTop: SLIDE_PADDING.y,
-        paddingBottom: SLIDE_PADDING.y,
+        paddingTop: py,
+        paddingBottom: py,
         paddingLeft: SLIDE_PADDING.x,
         paddingRight: SLIDE_PADDING.x,
-        gap: SECTION_GAP,
+        gap: sectionGap,
         boxSizing: 'border-box',
       }}>
         {/* Headline zone */}
@@ -336,7 +343,7 @@ export default function ContentSlide({
 
         {/* Graphic zone — Path 1 (GraphicSpec) or Path 2 (raw SVG) */}
         {hasInlineGraphic && (
-          <div style={{ minHeight: GRAPHIC_MIN_HEIGHT, flexShrink: 0 }}>
+          <div style={{ minHeight: graphicMinH, flexShrink: 0 }}>
             {hasGraphicSpec ? (
               <GraphicErrorBoundary graphicSpec={graphicSpec}>
                 {renderGraphicSpec(graphicSpec, brandStyle)}

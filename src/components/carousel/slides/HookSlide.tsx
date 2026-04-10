@@ -8,6 +8,7 @@ import { BrandStyle } from '@/lib/types';
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
+const SLIDE_H = { carousel: 1350, reels: 1920 };
 
 type Props = {
   headline: string;
@@ -23,16 +24,20 @@ type Props = {
   logoScale?: number;
   arrowScale?: number;
   showLuniaLifeWatermark?: boolean;
+  reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, reels = false }: Props) {
+  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const py = reels ? 220 : SLIDE_PADDING.y;
+  const gap = reels ? 46 : SECTION_GAP;
   const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#c8dde8';
   const arrowColor = brandStyle?.secondary ?? '#4a7c8e';
 
   return (
-    <SlideWrapper scale={scale} id={id} style={{ background: bg, overflow: 'hidden' }}>
+    <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: 'hidden' }}>
       {/* Background layer — fal.ai image or template image, painted first in DOM so
           all subsequent elements stack above without needing explicit z-index.
           Use <img> instead of CSS background-image so html-to-image captures it
@@ -74,11 +79,11 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         top: 0, left: 0, right: 0, bottom: 0,
         display: 'flex',
         flexDirection: 'column',
-        paddingTop: SLIDE_PADDING.y,
-        paddingBottom: SLIDE_PADDING.y,
+        paddingTop: py,
+        paddingBottom: py,
         paddingLeft: SLIDE_PADDING.x,
         paddingRight: SLIDE_PADDING.x,
-        gap: SECTION_GAP,
+        gap: gap,
         boxSizing: 'border-box',
       }}>
         {/* Headline zone */}

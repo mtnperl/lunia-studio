@@ -34,6 +34,11 @@ export async function POST(req: Request) {
     const imagePrompt: string | undefined = body.imagePrompt; // Claude-written prompt takes priority
     const imageStyle: string = body.imageStyle ?? 'realistic';
     const falStyle = FAL_STYLE_MAP[imageStyle] ?? 'realistic_image';
+    const VALID_ASPECTS = ['4:5', '9:16'] as const;
+    const imageAspect = VALID_ASPECTS.includes(body.imageAspect) ? body.imageAspect as '4:5' | '9:16' : '4:5';
+    const imageSize = imageAspect === '9:16'
+      ? { width: 864, height: 1536 }   // 9:16 for Reels (864/1536 = exact 9:16, multiples of 32)
+      : { width: 1024, height: 1280 };  // 4:5 for carousel (default)
 
     if (!topic.trim()) {
       return Response.json({ error: 'Topic required' }, { status: 400 });
@@ -49,7 +54,7 @@ export async function POST(req: Request) {
     const result = await fal.subscribe('fal-ai/recraft-v3', {
       input: {
         prompt,
-        image_size: { width: 1024, height: 1280 }, // portrait 4:5 (multiples of 32 ✓)
+        image_size: imageSize,
         style: falStyle,
         num_images: 1,
       },

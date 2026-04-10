@@ -41,12 +41,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Logo / arrow / background / watermark / citation controls
+  // Logo / arrow / background / watermark / citation / format controls
   const [logoScale, setLogoScale] = useState(1);
   const [arrowScale, setArrowScale] = useState(1);
   const [darkBackground, setDarkBackground] = useState(false);
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
   const [citationFontSize, setCitationFontSize] = useState(18);
+  const [reelsMode, setReelsMode] = useState(false);
+  // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
+  const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
 
   // Icon picker state (content slides 1–3, i.e. slideIndex 0–2)
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
@@ -136,7 +139,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Canvas compositing for the hook slide:
   // Capture foreground (text, overlays, decorations) with transparent bg via toPng,
   // then draw bg image + fg onto canvas to produce correct final PNG.
-  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string): Promise<File> {
+  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH = 1350): Promise<File> {
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
     // el > SlideWrapper outer > SlideWrapper inner (has background style)
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
@@ -149,7 +152,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     let fgDataUrl: string;
     try {
       fgDataUrl = await toPng(el, {
-        width: 1080, height: 1350, pixelRatio: 2,
+        width: 1080, height: exportH, pixelRatio: 2,
         cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
@@ -157,7 +160,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
-    const W = 1080 * 2, H = 1350 * 2;
+    const W = 1080 * 2, H = exportH * 2;
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
@@ -192,7 +195,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (!el) throw new Error("Export element not found");
 
     const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
-    const filename = `lunia-slide-${index + 1}-${label}.png`;
+    const filename = reelsMode
+      ? `lunia-reel-${index + 1}-${label}.png`
+      : `lunia-slide-${index + 1}-${label}.png`;
+    const exportH = reelsMode ? 1920 : 1350;
 
     const imgEls = Array.from(el.querySelectorAll("img"));
     await Promise.all(imgEls.map(img =>
@@ -203,11 +209,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (index === 0 && (imgs[0] ?? hookImageUrl)) {
       const bgDataUrl = await getHookBgDataUrl();
       if (bgDataUrl) {
-        return compositeHookSlide(el, bgDataUrl, filename);
+        return compositeHookSlide(el, bgDataUrl, filename, exportH);
       }
     }
 
-    const dataUrl = await toPng(el, { width: 1080, height: 1350, pixelRatio: 2, cacheBust: false });
+    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
@@ -452,17 +458,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       }
 
       // Step 2: generate the new image
+      const targetAspect = reelsMode ? "9:16" : "4:5";
       const imgRes = await fetch("/api/carousel/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt, imageStyle }),
+        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt, imageStyle, imageAspect: targetAspect }),
       });
       const imgData = await imgRes.json();
       if (!imgRes.ok || imgData.error) throw new Error(imgData.error ?? "Image generation failed");
 
-      // Update slideImages[0] in config
+      // Update slideImages[0] in config and track the aspect of the new image
       const newSlideImages = [...(config.slideImages ?? [null, null, null, null, null])];
       newSlideImages[0] = imgData.url;
+      setHookImageAspect(targetAspect);
       onContentChange({ ...config, slideImages: newSlideImages as (string | null)[], content: { ...config.content, imagePrompt: finalPrompt } });
     } catch (err) {
       setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate image");
@@ -573,11 +581,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -585,15 +593,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} />,
-    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
-  const slideH = Math.round(1350 * PREVIEW_SCALE);
+  const slideH = Math.round((reelsMode ? 1920 : 1350) * PREVIEW_SCALE);
 
   return (
     <div style={{ maxWidth: 960 }}>
@@ -700,6 +708,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               cursor: "pointer", fontFamily: "inherit",
             }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
           </div>
+          {/* Format toggle: Carousel (4:5) vs Reels (9:16) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Format</span>
+            <button onClick={() => setReelsMode(false)} style={{
+              padding: "3px 8px", fontSize: 11, fontWeight: 700,
+              background: !reelsMode ? "var(--accent)" : "var(--surface)",
+              color: !reelsMode ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>4:5</button>
+            <button onClick={() => setReelsMode(true)} style={{
+              padding: "3px 8px", fontSize: 11, fontWeight: 700,
+              background: reelsMode ? "var(--accent)" : "var(--surface)",
+              color: reelsMode ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              cursor: "pointer", fontFamily: "inherit",
+            }}>9:16</button>
+          </div>
         </div>
         {/* Row 2: content style controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -739,6 +765,34 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </div>
         </div>
       </div>
+
+      {/* Reels image aspect notice — shown when hook image aspect doesn't match current format */}
+      {(imgs[0] ?? hookImageUrl) && hookImageAspect !== (reelsMode ? "9:16" : "4:5") && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "10px 14px", marginBottom: 16,
+          background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8,
+          flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            {reelsMode
+              ? "Hook image was generated for carousel (4:5). Regenerate for best quality in 9:16."
+              : "Hook image was generated for Reels (9:16). Regenerate for best quality in 4:5."}
+          </span>
+          <button
+            onClick={() => { setImageRefineOpen(false); setImageGuidelines(""); handleRegenerateHookImage(); }}
+            disabled={regeneratingImage}
+            style={{
+              padding: "4px 12px", fontSize: 11, fontWeight: 700,
+              background: "var(--accent)", color: "var(--bg)",
+              border: "none", borderRadius: 5, cursor: regeneratingImage ? "wait" : "pointer",
+              fontFamily: "inherit", whiteSpace: "nowrap", opacity: regeneratingImage ? 0.6 : 1,
+            }}
+          >
+            {regeneratingImage ? "Regenerating…" : reelsMode ? "Regenerate for 9:16" : "Regenerate for 4:5"}
+          </button>
+        </div>
+      )}
 
       {/* Slide strip */}
       <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
@@ -1370,7 +1424,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (
-          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: 1350 }}>
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: reelsMode ? 1920 : 1350 }}>
             {node}
           </div>
         ))}

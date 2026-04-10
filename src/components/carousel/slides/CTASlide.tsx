@@ -13,9 +13,12 @@ type Props = {
   logoScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
   showLuniaLifeWatermark?: boolean;
+  reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false, reels = false }: Props) {
+  const slideH = reels ? 1920 : 1350;
+  const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
 
   const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? "#f0ece6");
@@ -23,7 +26,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
   const followColor = darkBackground ? 'rgba(255,255,255,0.8)' : (brandStyle?.headline ?? "#1e7a8a");
 
   return (
-    <SlideWrapper scale={scale} id={id} style={{ background: bg }}>
+    <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
       {/* fal.ai background image — 15% opacity, atmospheric */}
       {backgroundImage ? (
         <div style={{
@@ -63,7 +66,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
           LUNIA LIFE
         </div>
       )}
-      <div style={{ position: "absolute", top: 110, left: 72, right: 72 }}>
+      <div style={{ position: "absolute", top: contentTop, left: 72, right: 72 }}>
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
