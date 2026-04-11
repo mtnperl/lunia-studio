@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import type { MetaData, ShopifyData, ShopifyMtdData, Insight, CombinedDayRow } from "@/lib/types";
+import type { MetaData, ShopifyData, ShopifyMtdData, Insight, CombinedDayRow, MetaCampaign, MetaAd } from "@/lib/types";
 import { joinDays } from "@/lib/analytics-utils";
 import KPICard from "./dashboard/KPICard";
 import PerformanceChart from "./dashboard/PerformanceChart";
@@ -89,6 +89,10 @@ export default function DashboardView() {
   const [mtdData, setMtdData] = useState<ShopifyMtdData | null>(null);
   const [mtdLoading, setMtdLoading] = useState(false);
   const [mtdError, setMtdError] = useState<string | null>(null);
+
+  // Campaign / ad selection for targeted insights
+  const [selectedCampaign, setSelectedCampaign] = useState<MetaCampaign | null>(null);
+  const [selectedAd, setSelectedAd] = useState<MetaAd | null>(null);
 
   // Campaign type filter — no default, user selects
   const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
@@ -184,6 +188,36 @@ export default function DashboardView() {
       setInsightsError("Data unavailable — fix the errors above to generate insights");
     }
   }, []);
+
+  const fetchInsightsTargeted = useCallback(async (params: { campaignId?: string; adId?: string }) => {
+    if (!metaData || !shopifyData) return;
+    setInsightsLoading(true);
+    setInsightsError(null);
+    try {
+      const res = await fetch("/api/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meta: metaData,
+          shopify: shopifyData,
+          days,
+          campaigns: metaData.campaigns,
+          ads: metaData.ads ?? [],
+          ...params,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInsights(Array.isArray(data) ? data : []);
+      } else {
+        setInsightsError(data.error ?? "Insights unavailable");
+      }
+    } catch {
+      setInsightsError("Could not load insights");
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [metaData, shopifyData, days]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -367,18 +401,52 @@ export default function DashboardView() {
             />
             <KPICard
               label="Website Visits"
-              value={mtdData?.sessionsAvailable ? (mtdData?.sessions ?? 0) : 0}
+              value={mtdData?.sessions ?? 0}
               loading={mtdLoading}
-              tooltip={mtdData?.sessionsAvailable === false ? "Shopify analytics scope not available — check token permissions" : "Online store sessions since the 1st of this month"}
+              unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
+              tooltip={
+                mtdData?.sessionsError
+                  ? `⚠ ${mtdData.sessionsError} — Fix: add read_analytics scope to your Shopify token in Partners > Apps > API credentials`
+                  : mtdData?.sessionsAvailable === false
+                    ? "Sessions unavailable — Shopify token needs read_analytics scope. Go to Shopify Admin > Apps > Develop apps > your app > Configuration > enable read_analytics."
+                    : "Online store sessions since the 1st of this month"
+              }
             />
             <KPICard
               label="CVR"
-              value={mtdData?.sessionsAvailable ? ((mtdData?.cvr ?? 0) * 100) : 0}
+              value={(mtdData?.cvr ?? 0) * 100}
               suffix="%"
               decimals={2}
               loading={mtdLoading}
-              tooltip="Conversion rate = Purchases ÷ Website Visits"
+              unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
+              tooltip={
+                mtdData?.sessionsAvailable === false
+                  ? "Needs Website Visits data — fix token scope first"
+                  : "Conversion rate = Purchases ÷ Website Visits"
+              }
             />
+          </div>
+        )}
+        {/* Sessions unavailable — show actionable fix inline */}
+        {!mtdLoading && !mtdError && mtdData && !mtdData.sessionsAvailable && (
+          <div style={{
+            marginTop: 10,
+            padding: "10px 14px",
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            background: "var(--surface-r)",
+            fontSize: 12,
+            color: "var(--muted)",
+            lineHeight: 1.55,
+          }}>
+            <span style={{ fontWeight: 600, color: "var(--warning)" }}>Website Visits unavailable.</span>
+            {" "}Your Shopify token is missing the <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, background: "var(--surface-h)", padding: "1px 4px", borderRadius: 3 }}>read_analytics</code> scope.
+            {mtdData.sessionsError && (
+              <span style={{ display: "block", marginTop: 4, color: "var(--subtle)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+                Error: {mtdData.sessionsError}
+              </span>
+            )}
+            {" "}<a href="https://help.shopify.com/en/manual/apps/app-types/custom-apps#enable-custom-app-development" target="_blank" rel="noopener" style={{ color: "var(--accent)", textDecoration: "underline" }}>How to add the scope →</a>
           </div>
         )}
       </div>
@@ -520,44 +588,52 @@ export default function DashboardView() {
         />
       </div>
 
-      {/* Campaigns + Insights */}
-      <div className="bottom-row" style={{
-        display: "grid",
-        gridTemplateColumns: "65fr 35fr",
-        gap: 16,
+      {/* Campaigns */}
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: 20,
+        marginBottom: 16,
+      }}>
+        <SectionHeader title="Campaigns &amp; Ads" />
+        {metaError ? (
+          errorBanner(metaError)
+        ) : (
+          <CampaignTable
+            campaigns={filteredCampaigns}
+            ads={metaData?.ads ?? []}
+            loading={metaLoading}
+            onSelectCampaign={c => setSelectedCampaign(c)}
+            onSelectAd={a => setSelectedAd(a)}
+          />
+        )}
+      </div>
+
+      {/* Insights */}
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: 20,
         marginBottom: 24,
       }}>
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 20,
-        }}>
-          <SectionHeader title="Campaigns" />
-          {metaError ? (
-            errorBanner(metaError)
-          ) : (
-            <CampaignTable campaigns={filteredCampaigns} loading={metaLoading} />
-          )}
-        </div>
-
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 20,
-        }}>
-          <SectionHeader title="AI Insights" />
-          {(!metaError && !shopifyError) ? (
-            <InsightsPanel
-              insights={insights}
-              loading={insightsLoading}
-              error={insightsError ?? undefined}
-            />
-          ) : (
-            errorBanner("Data unavailable — fix the errors above to generate insights")
-          )}
-        </div>
+        <SectionHeader title="AI Insights" />
+        {(!metaError && !shopifyError) ? (
+          <InsightsPanel
+            insights={insights}
+            loading={insightsLoading}
+            error={insightsError ?? undefined}
+            campaigns={metaData?.campaigns ?? []}
+            ads={metaData?.ads ?? []}
+            selectedCampaign={selectedCampaign}
+            selectedAd={selectedAd}
+            onRequestAnalysis={fetchInsightsTargeted}
+            analysisLoading={insightsLoading}
+          />
+        ) : (
+          errorBanner("Data unavailable — fix the errors above to generate insights")
+        )}
       </div>
 
     </div>

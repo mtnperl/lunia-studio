@@ -1,6 +1,6 @@
 import { kv } from '@/lib/kv';
 import { calcROAS, computeDateRange } from '@/lib/analytics-utils';
-import type { MetaData, MetaCampaign, MetaAdInsight } from '@/lib/types';
+import type { MetaData, MetaCampaign, MetaAdInsight, MetaAd } from '@/lib/types';
 
 export const maxDuration = 30;
 
@@ -8,10 +8,10 @@ export const maxDuration = 30;
 
 function buildMockData(days: number): MetaData {
   const campaigns: MetaCampaign[] = [
-    { campaignId: 'c1', campaignName: 'Sleep Formula | Prospecting', campaignObjective: 'OUTCOME_SALES',       spend: 4200, revenue: 17640, roas: 4.2, impressions: 310000, clicks: 4800, ctr: 1.55 },
-    { campaignId: 'c2', campaignName: 'Retargeting — 30d',           campaignObjective: 'OUTCOME_SALES',       spend: 1800, revenue: 6120,  roas: 3.4, impressions: 95000,  clicks: 2100, ctr: 2.21 },
-    { campaignId: 'c3', campaignName: 'Lookalike 3% — Sleep',        campaignObjective: 'OUTCOME_TRAFFIC',     spend: 2100, revenue: 5040,  roas: 2.4, impressions: 180000, clicks: 2900, ctr: 1.61 },
-    { campaignId: 'c4', campaignName: 'Broad — Wellness',            campaignObjective: 'OUTCOME_AWARENESS',   spend: 950,  revenue: 1330,  roas: 1.4, impressions: 120000, clicks: 1400, ctr: 1.17 },
+    { campaignId: 'c1', campaignName: 'Sleep Formula | Prospecting', campaignObjective: 'OUTCOME_SALES',       spend: 4200, revenue: 17640, roas: 4.2, impressions: 310000, clicks: 4800, ctr: 1.55, linkClicks: 3900, cpm: 13.55, purchases: 42 },
+    { campaignId: 'c2', campaignName: 'Retargeting — 30d',           campaignObjective: 'OUTCOME_SALES',       spend: 1800, revenue: 6120,  roas: 3.4, impressions: 95000,  clicks: 2100, ctr: 2.21, linkClicks: 1800, cpm: 18.95, purchases: 18 },
+    { campaignId: 'c3', campaignName: 'Lookalike 3% — Sleep',        campaignObjective: 'OUTCOME_TRAFFIC',     spend: 2100, revenue: 5040,  roas: 2.4, impressions: 180000, clicks: 2900, ctr: 1.61, linkClicks: 2400, cpm: 11.67, purchases: 21 },
+    { campaignId: 'c4', campaignName: 'Broad — Wellness',            campaignObjective: 'OUTCOME_AWARENESS',   spend: 950,  revenue: 1330,  roas: 1.4, impressions: 120000, clicks: 1400, ctr: 1.17, linkClicks: 1100, cpm: 7.92,  purchases: 5  },
   ];
 
   const totalSpend   = campaigns.reduce((s, c) => s + c.spend,   0);
@@ -39,6 +39,7 @@ function buildMockData(days: number): MetaData {
       clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
     },
     campaigns,
+    ads: [],
     by_day,
   };
 }
@@ -100,7 +101,7 @@ export async function GET(req: Request) {
 
     // ── 2. Fetch insights ──────────────────────────────────────────────────────
     const params = new URLSearchParams({
-      fields: 'campaign_id,campaign_name,spend,impressions,clicks,action_values,actions',
+      fields: 'campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,action_values,actions',
       level: 'campaign',
       time_range: JSON.stringify({ since: start, until: end }),
       time_increment: '1',
@@ -111,7 +112,7 @@ export async function GET(req: Request) {
     const baseUrl = `${graphBase}/act_${META_AD_ACCOUNT_ID}/insights`;
 
     // Campaign-level aggregation maps
-    const campaignMap = new Map<string, { name: string; spend: number; revenue: number; impressions: number; clicks: number }>();
+    const campaignMap = new Map<string, { name: string; spend: number; revenue: number; impressions: number; clicks: number; linkClicks: number; purchases: number }>();
     const dayMap = new Map<string, { spend: number; revenue: number }>();
 
     let nextUrl: string | null = `${baseUrl}?${params}`;
@@ -154,6 +155,10 @@ export async function GET(req: Request) {
           .reduce((s, a) => s + parseFloat(a.value), 0);
         const impressions = parseInt(row.impressions ?? '0', 10);
         const clicks = parseInt(row.clicks ?? '0', 10);
+        const linkClicks = parseInt((row as any).inline_link_clicks ?? '0', 10);
+        const purchases = ((row as any).actions ?? [])
+          .filter((a: { action_type: string }) => a.action_type === 'offsite_conversion.fb_pixel_purchase')
+          .reduce((s: number, a: { value: string }) => s + parseFloat(a.value), 0);
 
         // Campaign aggregation
         const existing = campaignMap.get(row.campaign_id);
@@ -162,8 +167,10 @@ export async function GET(req: Request) {
           existing.revenue += revenue;
           existing.impressions += impressions;
           existing.clicks += clicks;
+          existing.linkClicks += linkClicks;
+          existing.purchases += purchases;
         } else {
-          campaignMap.set(row.campaign_id, { name: row.campaign_name, spend, revenue, impressions, clicks });
+          campaignMap.set(row.campaign_id, { name: row.campaign_name, spend, revenue, impressions, clicks, linkClicks, purchases });
         }
 
         // Day aggregation
@@ -187,6 +194,9 @@ export async function GET(req: Request) {
       impressions: c.impressions,
       clicks: c.clicks,
       ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+      cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
+      linkClicks: c.linkClicks,
+      purchases: c.purchases,
     }));
 
     const by_day: MetaAdInsight[] = Array.from(dayMap.entries())
@@ -195,6 +205,52 @@ export async function GET(req: Request) {
 
     const totalSpend   = campaigns.reduce((s, c) => s + c.spend,   0);
     const totalRevenue = campaigns.reduce((s, c) => s + c.revenue, 0);
+
+    // ── Ad-level fetch (single page, non-fatal) ────────────────────────────────
+    let ads: MetaAd[] = [];
+    try {
+      const adParams = new URLSearchParams({
+        fields: 'ad_id,ad_name,adset_name,campaign_id,campaign_name,spend,impressions,clicks,inline_link_clicks,action_values,actions',
+        level: 'ad',
+        time_range: JSON.stringify({ since: start, until: end }),
+        access_token: META_ACCESS_TOKEN,
+        limit: '500',
+      });
+      const adRes = await fetch(`${graphBase}/act_${META_AD_ACCOUNT_ID}/insights?${adParams}`);
+      if (adRes.ok) {
+        const adJson = await adRes.json() as { data: any[] };
+        ads = (adJson.data ?? []).map((row: any) => {
+          const adSpend = parseFloat(row.spend ?? '0');
+          const adRevenue = (row.action_values ?? [])
+            .filter((a: { action_type: string }) => a.action_type === 'offsite_conversion.fb_pixel_purchase')
+            .reduce((s: number, a: { value: string }) => s + parseFloat(a.value), 0);
+          const adImpressions = parseInt(row.impressions ?? '0', 10);
+          const adClicks = parseInt(row.clicks ?? '0', 10);
+          const adLinkClicks = parseInt(row.inline_link_clicks ?? '0', 10);
+          const adPurchases = (row.actions ?? [])
+            .filter((a: { action_type: string }) => a.action_type === 'offsite_conversion.fb_pixel_purchase')
+            .reduce((s: number, a: { value: string }) => s + parseFloat(a.value), 0);
+          return {
+            adId: row.ad_id,
+            adName: row.ad_name,
+            adsetName: row.adset_name,
+            campaignId: row.campaign_id,
+            campaignName: row.campaign_name,
+            spend: adSpend,
+            revenue: adRevenue,
+            roas: calcROAS(adSpend, adRevenue),
+            impressions: adImpressions,
+            clicks: adClicks,
+            linkClicks: adLinkClicks,
+            ctr: adImpressions > 0 ? (adLinkClicks / adImpressions) * 100 : 0,
+            cpm: adImpressions > 0 ? (adSpend / adImpressions) * 1000 : 0,
+            purchases: adPurchases,
+          } as MetaAd;
+        });
+      }
+    } catch (err) {
+      console.warn('[api/meta] ad-level fetch failed (non-fatal):', err);
+    }
 
     const data: MetaData = {
       summary: {
@@ -205,6 +261,7 @@ export async function GET(req: Request) {
         clicks: campaigns.reduce((s, c) => s + c.clicks, 0),
       },
       campaigns,
+      ads,
       by_day,
     };
 

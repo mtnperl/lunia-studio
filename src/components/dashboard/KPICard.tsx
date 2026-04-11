@@ -9,13 +9,15 @@ type Props = {
   loading?: boolean;
   decimals?: number;
   tooltip?: string;
+  unavailable?: boolean;
+  trend?: { value: number; label: string };
 };
 
 function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip }: Props) {
+export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip, unavailable = false, trend }: Props) {
   const [displayValue, setDisplayValue] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -125,17 +127,36 @@ export default function KPICard({ label, value, prefix = "", suffix = "", loadin
 
       {loading ? (
         <div className="skeleton-shimmer" style={{ width: "60%", height: 36 }} />
+      ) : unavailable ? (
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 500, color: "var(--subtle)", lineHeight: 1 }}>N/A</div>
       ) : (
-        <div style={{
-          fontFamily: "var(--font-mono)",
-          fontVariantNumeric: "tabular-nums",
-          fontSize: 28,
-          fontWeight: 500,
-          color: "var(--text)",
-          lineHeight: 1,
-        }}>
-          {prefix}{formatted}{suffix}
-        </div>
+        <>
+          <div style={{
+            fontFamily: "var(--font-mono)",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 28,
+            fontWeight: 500,
+            color: "var(--text)",
+            lineHeight: 1,
+          }}>
+            {prefix}{formatted}{suffix}
+          </div>
+          {trend && (
+            <div style={{
+              marginTop: 6,
+              fontFamily: "var(--font-mono)",
+              fontVariantNumeric: "tabular-nums",
+              fontSize: 12,
+              color: trend.value >= 0 ? "var(--success)" : "var(--error)",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}>
+              <span>{trend.value >= 0 ? "▲" : "▼"} {Math.abs(trend.value).toFixed(1)}</span>
+              <span style={{ color: "var(--muted)", fontFamily: "var(--font-ui)" }}>{trend.label}</span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

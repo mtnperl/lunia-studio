@@ -361,6 +361,26 @@ export type MetaCampaign = {
   impressions: number;
   clicks: number;
   ctr: number;             // clicks / impressions * 100
+  linkClicks: number;      // inline_link_clicks
+  cpm: number;             // spend / impressions * 1000
+  purchases: number;       // count from actions[offsite_conversion.fb_pixel_purchase]
+};
+
+export type MetaAd = {
+  adId: string;
+  adName: string;
+  adsetName?: string;
+  campaignId: string;
+  campaignName: string;
+  spend: number;
+  revenue: number;
+  roas: number;
+  impressions: number;
+  clicks: number;
+  linkClicks: number;    // inline_link_clicks
+  ctr: number;           // linkClicks / impressions * 100
+  cpm: number;           // spend / impressions * 1000
+  purchases: number;     // count from actions[offsite_conversion.fb_pixel_purchase]
 };
 
 export type MetaAdInsight = {
@@ -378,6 +398,7 @@ export type MetaData = {
     clicks: number;
   };
   campaigns: MetaCampaign[];
+  ads: MetaAd[];
   by_day: MetaAdInsight[];
 };
 
@@ -420,6 +441,7 @@ export type ShopifyMtdData = {
   sessions: number;  // website sessions so far this calendar month (null if unavailable)
   cvr: number;       // orders / sessions, 0 if sessions === 0
   sessionsAvailable: boolean; // false if Shopify analytics scope is missing
+  sessionsError?: string;    // human-readable reason if sessions unavailable
 };
 
 export type CombinedDayRow = {
