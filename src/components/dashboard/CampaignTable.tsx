@@ -243,13 +243,13 @@ export default function CampaignTable({ campaigns, ads, loading = false, onSelec
                       {c.roas.toFixed(2)}x
                     </td>
                     <td className="col-cpm" style={{ ...tdStyle, ...MONO, textAlign: "right", color: "var(--muted)" }}>
-                      ${c.cpm.toFixed(2)}
+                      {c.cpm != null ? `$${c.cpm.toFixed(2)}` : '—'}
                     </td>
                     <td style={{ ...tdStyle, ...MONO, textAlign: "right", color: "var(--muted)" }}>
-                      {c.ctr.toFixed(2)}%
+                      {c.ctr != null ? `${c.ctr.toFixed(2)}%` : '—'}
                     </td>
                     <td style={{ ...tdStyle, ...MONO, textAlign: "right", color: "var(--muted)" }}>
-                      {Math.round(c.purchases).toLocaleString()}
+                      {c.purchases != null ? Math.round(c.purchases).toLocaleString() : '—'}
                     </td>
                   </tr>
                 );

@@ -66,7 +66,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Meta credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:meta:${days}`;
+  const cacheKey = `analytics:meta:v2:${days}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
