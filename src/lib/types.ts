@@ -450,6 +450,10 @@ export type ShopifyMtdData = {
   // Returning customers (from read_all_orders)
   returningOrders: number;     // orders from repeat customers
   returningRate: number;       // returningOrders / orders * 100
+  // Refunds (from read_all_orders)
+  refundedRevenue: number;     // total value of refunded orders this month
+  netRevenue: number;          // revenue - refundedRevenue
+  refundRate: number;          // refundedOrders / orders * 100
 };
 
 export type CombinedDayRow = {

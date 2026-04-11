@@ -389,7 +389,7 @@ export default function DashboardView() {
           </div>
         ) : (
           <>
-            {/* Row 1: Core purchase metrics */}
+            {/* Row 1: Revenue health */}
             <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 10 }}>
               <KPICard
                 label="Purchases"
@@ -398,30 +398,38 @@ export default function DashboardView() {
                 tooltip="Paid Shopify orders since the 1st of this month (excludes $0 orders)"
               />
               <KPICard
-                label="Revenue"
+                label="Gross Revenue"
                 value={mtdData?.revenue ?? 0}
                 prefix="$"
                 decimals={0}
                 loading={mtdLoading}
-                tooltip="Gross revenue from paid orders this month"
+                tooltip="Total revenue from paid orders before refunds"
               />
+              <KPICard
+                label="Net Revenue"
+                value={mtdData?.netRevenue ?? 0}
+                prefix="$"
+                decimals={0}
+                loading={mtdLoading}
+                tooltip="Gross revenue minus refunded orders — the money you actually keep"
+              />
+              <KPICard
+                label="Refund Rate"
+                value={mtdData?.refundRate ?? 0}
+                suffix="%"
+                decimals={1}
+                loading={mtdLoading}
+                tooltip="Refunded orders ÷ Paid orders × 100. Healthy DTC benchmark is under 5%."
+              />
+            </div>
+            {/* Row 2: Checkout funnel + loyalty */}
+            <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
               <KPICard
                 label="Abandoned Checkouts"
                 value={mtdData?.abandonedCheckouts ?? 0}
                 loading={mtdLoading}
                 tooltip="Open/incomplete checkouts this month — people who started but didn't complete"
               />
-              <KPICard
-                label="Checkout CVR"
-                value={mtdData?.checkoutCvr ?? 0}
-                suffix="%"
-                decimals={1}
-                loading={mtdLoading}
-                tooltip="Checkout completion rate = Purchases ÷ (Purchases + Abandoned Checkouts). Measures payment funnel quality."
-              />
-            </div>
-            {/* Row 2: Funnel + loyalty */}
-            <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
               <KPICard
                 label="Abandoned Revenue"
                 value={mtdData?.abandonedRevenue ?? 0}
@@ -431,6 +439,14 @@ export default function DashboardView() {
                 tooltip="Total cart value sitting in abandoned checkouts — recoverable with email flows"
               />
               <KPICard
+                label="Checkout CVR"
+                value={mtdData?.checkoutCvr ?? 0}
+                suffix="%"
+                decimals={1}
+                loading={mtdLoading}
+                tooltip="Checkout completion rate = Purchases ÷ (Purchases + Abandoned Checkouts). Measures payment funnel quality."
+              />
+              <KPICard
                 label="Returning Customers"
                 value={mtdData?.returningRate ?? 0}
                 suffix="%"
@@ -438,47 +454,7 @@ export default function DashboardView() {
                 loading={mtdLoading}
                 tooltip="% of this month's orders from repeat customers (orders_count > 1 at time of purchase)"
               />
-              <KPICard
-                label="Website Visits"
-                value={mtdData?.sessions ?? 0}
-                loading={mtdLoading}
-                unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
-                tooltip={
-                  mtdData?.sessionsError ??
-                  (mtdData?.sessionsAvailable === false
-                    ? "Requires Shopify plan or higher — ShopifyQL not available on Basic"
-                    : "Online store sessions since the 1st of this month")
-                }
-              />
-              <KPICard
-                label="Session CVR"
-                value={mtdData?.cvr ?? 0}
-                suffix="%"
-                decimals={2}
-                loading={mtdLoading}
-                unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
-                tooltip={
-                  mtdData?.sessionsAvailable === false
-                    ? "Requires Shopify plan or higher for session data"
-                    : "Session conversion rate = Purchases ÷ Website Visits"
-                }
-              />
             </div>
-            {/* Sessions note — only shown when unavailable */}
-            {!mtdLoading && !mtdError && mtdData && !mtdData.sessionsAvailable && (
-              <div style={{
-                marginTop: 8,
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid var(--border)",
-                background: "var(--surface-r)",
-                fontSize: 11,
-                color: "var(--subtle)",
-                fontFamily: "var(--font-mono)",
-              }}>
-                Website Visits / Session CVR — {mtdData.sessionsError ?? "requires Shopify plan or higher (ShopifyQL)"}
-              </div>
-            )}
           </>
         )}
       </div>

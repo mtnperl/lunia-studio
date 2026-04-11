@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify-mtd:v3:${new Date().toISOString().slice(0, 10)}`;
+  const cacheKey = `analytics:shopify-mtd:v4:${new Date().toISOString().slice(0, 10)}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -95,7 +95,17 @@ export async function GET(req: Request) {
   const returningOrders = paidOrders.filter(o => (o.customer?.orders_count ?? 1) > 1).length;
   const returningRate = orders > 0 ? (returningOrders / orders) * 100 : 0;
 
-  // ── 2. Abandoned checkouts (read_checkouts) ───────────────────────────────
+  // ── 2. Refunded orders ────────────────────────────────────────────────────
+  const refundedOrders = await paginatedFetch<ShopifyOrder>(
+    SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
+    `/orders.json?status=any&financial_status=refunded&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price`,
+    'orders',
+  );
+  const refundedRevenue = refundedOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+  const netRevenue = revenue - refundedRevenue;
+  const refundRate = orders > 0 ? (refundedOrders.length / orders) * 100 : 0;
+
+  // ── 3. Abandoned checkouts (read_checkouts) ───────────────────────────────
   type ShopifyCheckout = { id: string; total_price?: string };
   let abandonedCheckouts = 0;
   let abandonedRevenue = 0;
@@ -188,10 +198,13 @@ export async function GET(req: Request) {
     checkoutCvr,
     returningOrders,
     returningRate,
+    refundedRevenue,
+    netRevenue,
+    refundRate,
   };
 
-  console.log('[api/shopify-mtd] orders=%d revenue=%f abandoned=%d checkoutCvr=%f%%',
-    orders, revenue, abandonedCheckouts, checkoutCvr);
+  console.log('[api/shopify-mtd] orders=%d revenue=%f abandoned=%d checkoutCvr=%f%% refunds=%d netRevenue=%f',
+    orders, revenue, abandonedCheckouts, checkoutCvr, refundedOrders.length, netRevenue);
 
   try {
     await kv.set(cacheKey, data, { ex: 3600 }); // 1h cache
