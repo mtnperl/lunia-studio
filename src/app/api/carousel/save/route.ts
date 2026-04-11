@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
-      imageStyle, reelsMode,
+      imageStyle, reelsMode, citationFontSize,
     } = body;
 
     if (!topic || !content || selectedHook == null) {
@@ -79,6 +79,7 @@ export async function POST(req: Request) {
       showLuniaLifeWatermark,
       imageStyle: imageStyle ?? undefined,
       reelsMode: reelsMode ?? undefined,
+      citationFontSize: citationFontSize ?? undefined,
       savedAt: new Date().toISOString(),
     };
 

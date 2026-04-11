@@ -346,6 +346,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               onChangeHook={() => setStep(3)}
               initialImageStyle={imageStyle}
               initialReelsMode={initialCarousel?.reelsMode}
+              initialCitationFontSize={initialCarousel?.citationFontSize}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

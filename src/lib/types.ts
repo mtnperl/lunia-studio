@@ -289,6 +289,7 @@ export type SavedCarousel = {
   showLuniaLifeWatermark?: boolean;
   imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
   reelsMode?: boolean;     // true = 9:16 Reels format
+  citationFontSize?: number;
   savedAt: string;
 };
 

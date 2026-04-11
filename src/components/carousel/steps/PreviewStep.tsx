@@ -23,12 +23,13 @@ type Props = {
   onContentChange: (config: CarouselConfig) => void;
   initialImageStyle?: CarouselImageStyle;
   initialReelsMode?: boolean;
+  initialCitationFontSize?: number;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,7 +49,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [arrowScale, setArrowScale] = useState(1);
   const [darkBackground, setDarkBackground] = useState(false);
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
-  const [citationFontSize, setCitationFontSize] = useState(18);
+  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 26);
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
@@ -304,6 +305,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           showLuniaLifeWatermark,
           imageStyle,
           reelsMode,
+          citationFontSize,
         }),
       });
       if (!res.ok) return;

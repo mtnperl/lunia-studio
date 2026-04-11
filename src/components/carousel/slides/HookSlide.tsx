@@ -102,9 +102,8 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         {/* Subline zone */}
         <div style={{
           fontFamily: 'Cormorant Garamond, Lora, serif',
-          fontWeight: 400,
-          fontStyle: 'italic',
-          fontSize: 38,
+          fontWeight: 600,
+          fontSize: 44,
           color: sublineColor,
           lineHeight: 1.4,
         }}>
