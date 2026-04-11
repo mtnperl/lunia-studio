@@ -45,11 +45,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Logo / arrow / background / watermark / citation / format controls
-  const [logoScale, setLogoScale] = useState(1);
-  const [arrowScale, setArrowScale] = useState(1);
+  const [logoScale, setLogoScale] = useState(1.4);
+  const [arrowScale, setArrowScale] = useState(1.4);
   const [darkBackground, setDarkBackground] = useState(false);
-  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(false);
-  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 26);
+  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(true);
+  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');

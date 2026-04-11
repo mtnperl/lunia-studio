@@ -103,7 +103,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         <div style={{
           fontFamily: 'Cormorant Garamond, Lora, serif',
           fontWeight: 600,
-          fontSize: 44,
+          fontSize: 50,
           color: sublineColor,
           lineHeight: 1.4,
         }}>
@@ -117,7 +117,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
             fontWeight: 400,
             fontSize: 20,
             color: sublineColor,
-            opacity: 0.65,
+            opacity: 0.85,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
             marginTop: -8,
