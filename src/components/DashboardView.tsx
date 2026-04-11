@@ -388,66 +388,98 @@ export default function DashboardView() {
             {mtdError}
           </div>
         ) : (
-          <div className="kpi-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-          }}>
-            <KPICard
-              label="Total Purchases"
-              value={mtdData?.orders ?? 0}
-              loading={mtdLoading}
-              tooltip="Paid Shopify orders since the 1st of this month"
-            />
-            <KPICard
-              label="Website Visits"
-              value={mtdData?.sessions ?? 0}
-              loading={mtdLoading}
-              unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
-              tooltip={
-                mtdData?.sessionsError
-                  ? `⚠ ${mtdData.sessionsError} — Fix: add read_analytics scope to your Shopify token in Partners > Apps > API credentials`
-                  : mtdData?.sessionsAvailable === false
-                    ? "Sessions unavailable — Shopify token needs read_analytics scope. Go to Shopify Admin > Apps > Develop apps > your app > Configuration > enable read_analytics."
-                    : "Online store sessions since the 1st of this month"
-              }
-            />
-            <KPICard
-              label="CVR"
-              value={(mtdData?.cvr ?? 0) * 100}
-              suffix="%"
-              decimals={2}
-              loading={mtdLoading}
-              unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
-              tooltip={
-                mtdData?.sessionsAvailable === false
-                  ? "Needs Website Visits data — fix token scope first"
-                  : "Conversion rate = Purchases ÷ Website Visits"
-              }
-            />
-          </div>
-        )}
-        {/* Sessions unavailable — show actionable fix inline */}
-        {!mtdLoading && !mtdError && mtdData && !mtdData.sessionsAvailable && (
-          <div style={{
-            marginTop: 10,
-            padding: "10px 14px",
-            borderRadius: 6,
-            border: "1px solid var(--border)",
-            background: "var(--surface-r)",
-            fontSize: 12,
-            color: "var(--muted)",
-            lineHeight: 1.55,
-          }}>
-            <span style={{ fontWeight: 600, color: "var(--warning)" }}>Website Visits unavailable.</span>
-            {" "}Your Shopify token is missing the <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, background: "var(--surface-h)", padding: "1px 4px", borderRadius: 3 }}>read_analytics</code> scope.
-            {mtdData.sessionsError && (
-              <span style={{ display: "block", marginTop: 4, color: "var(--subtle)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
-                Error: {mtdData.sessionsError}
-              </span>
+          <>
+            {/* Row 1: Core purchase metrics */}
+            <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 10 }}>
+              <KPICard
+                label="Purchases"
+                value={mtdData?.orders ?? 0}
+                loading={mtdLoading}
+                tooltip="Paid Shopify orders since the 1st of this month (excludes $0 orders)"
+              />
+              <KPICard
+                label="Revenue"
+                value={mtdData?.revenue ?? 0}
+                prefix="$"
+                decimals={0}
+                loading={mtdLoading}
+                tooltip="Gross revenue from paid orders this month"
+              />
+              <KPICard
+                label="Abandoned Checkouts"
+                value={mtdData?.abandonedCheckouts ?? 0}
+                loading={mtdLoading}
+                tooltip="Open/incomplete checkouts this month — people who started but didn't complete"
+              />
+              <KPICard
+                label="Checkout CVR"
+                value={mtdData?.checkoutCvr ?? 0}
+                suffix="%"
+                decimals={1}
+                loading={mtdLoading}
+                tooltip="Checkout completion rate = Purchases ÷ (Purchases + Abandoned Checkouts). Measures payment funnel quality."
+              />
+            </div>
+            {/* Row 2: Funnel + loyalty */}
+            <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+              <KPICard
+                label="Abandoned Revenue"
+                value={mtdData?.abandonedRevenue ?? 0}
+                prefix="$"
+                decimals={0}
+                loading={mtdLoading}
+                tooltip="Total cart value sitting in abandoned checkouts — recoverable with email flows"
+              />
+              <KPICard
+                label="Returning Customers"
+                value={mtdData?.returningRate ?? 0}
+                suffix="%"
+                decimals={1}
+                loading={mtdLoading}
+                tooltip="% of this month's orders from repeat customers (orders_count > 1 at time of purchase)"
+              />
+              <KPICard
+                label="Website Visits"
+                value={mtdData?.sessions ?? 0}
+                loading={mtdLoading}
+                unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
+                tooltip={
+                  mtdData?.sessionsError ??
+                  (mtdData?.sessionsAvailable === false
+                    ? "Requires Shopify plan or higher — ShopifyQL not available on Basic"
+                    : "Online store sessions since the 1st of this month")
+                }
+              />
+              <KPICard
+                label="Session CVR"
+                value={mtdData?.cvr ?? 0}
+                suffix="%"
+                decimals={2}
+                loading={mtdLoading}
+                unavailable={!mtdData?.sessionsAvailable && !mtdLoading}
+                tooltip={
+                  mtdData?.sessionsAvailable === false
+                    ? "Requires Shopify plan or higher for session data"
+                    : "Session conversion rate = Purchases ÷ Website Visits"
+                }
+              />
+            </div>
+            {/* Sessions note — only shown when unavailable */}
+            {!mtdLoading && !mtdError && mtdData && !mtdData.sessionsAvailable && (
+              <div style={{
+                marginTop: 8,
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "var(--surface-r)",
+                fontSize: 11,
+                color: "var(--subtle)",
+                fontFamily: "var(--font-mono)",
+              }}>
+                Website Visits / Session CVR — {mtdData.sessionsError ?? "requires Shopify plan or higher (ShopifyQL)"}
+              </div>
             )}
-            {" "}<a href="https://help.shopify.com/en/manual/apps/app-types/custom-apps#enable-custom-app-development" target="_blank" rel="noopener" style={{ color: "var(--accent)", textDecoration: "underline" }}>How to add the scope →</a>
-          </div>
+          </>
         )}
       </div>
 

@@ -1,13 +1,52 @@
 import { kv } from '@/lib/kv';
 import type { ShopifyMtdData } from '@/lib/types';
 
-export const maxDuration = 30;
+export const maxDuration = 45;
 
-function mtdRange(): { since: string; until: string } {
+function mtdRange(): { since: string; until: string; created_at_min: string } {
   const now = new Date();
   const since = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const until = now.toISOString().slice(0, 10);
-  return { since, until };
+  const created_at_min = new Date(since).toISOString();
+  return { since, until, created_at_min };
+}
+
+async function shopifyFetch(
+  domain: string,
+  token: string,
+  path: string,
+): Promise<{ ok: boolean; json: unknown; status: number }> {
+  const res = await fetch(`https://${domain}/admin/api/2024-10${path}`, {
+    headers: { 'X-Shopify-Access-Token': token },
+  });
+  const json = await res.json().catch(() => null);
+  return { ok: res.ok, json, status: res.status };
+}
+
+async function paginatedFetch<T>(
+  domain: string,
+  token: string,
+  initialPath: string,
+  key: string,
+  maxPages = 10,
+): Promise<T[]> {
+  const all: T[] = [];
+  let nextUrl: string | null = `https://${domain}/admin/api/2024-10${initialPath}`;
+  let pages = 0;
+
+  while (nextUrl && pages < maxPages) {
+    const res = await fetch(nextUrl, {
+      headers: { 'X-Shopify-Access-Token': token },
+    });
+    pages++;
+    if (!res.ok) break;
+    const json = await res.json() as Record<string, T[]>;
+    all.push(...(json[key] ?? []));
+    const link = res.headers.get('link') ?? '';
+    const next = link.match(/<([^>]+)>;\s*rel="next"/);
+    nextUrl = next ? next[1] : null;
+  }
+  return all;
 }
 
 export async function GET(req: Request) {
@@ -19,7 +58,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify-mtd:${new Date().toISOString().slice(0, 10)}`;
+  const cacheKey = `analytics:shopify-mtd:v3:${new Date().toISOString().slice(0, 10)}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -29,41 +68,62 @@ export async function GET(req: Request) {
     } catch { /* Redis unavailable */ }
   }
 
-  const { since, until } = mtdRange();
-  const created_at_min = new Date(since).toISOString();
+  const { created_at_min } = mtdRange();
 
-  // ── Fetch MTD orders ───────────────────────────────────────────────────────
-  type ShopifyOrder = { id: number; financial_status: string; total_price?: string };
-  const allOrders: ShopifyOrder[] = [];
-  let nextUrl: string | null =
-    `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price`;
-  let pages = 0;
+  // ── 1. Paid orders (excl. $0) ─────────────────────────────────────────────
+  type ShopifyOrder = {
+    id: number;
+    financial_status: string;
+    total_price?: string;
+    customer?: { orders_count?: number };
+  };
 
-  while (nextUrl && pages < 10) {
-    const res: Response = await fetch(nextUrl, {
-      headers: { 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN },
-    });
-    pages++;
-    if (!res.ok) {
-      return Response.json({ error: 'Shopify orders unavailable' }, { status: 502 });
-    }
-    const json = await res.json() as { orders: ShopifyOrder[] };
-    allOrders.push(...json.orders);
-    const link = res.headers.get('link') ?? '';
-    const next = link.match(/<([^>]+)>;\s*rel="next"/);
-    nextUrl = next ? next[1] : null;
+  const allOrders = await paginatedFetch<ShopifyOrder>(
+    SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
+    `/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price,customer`,
+    'orders',
+  );
+
+  const paidOrders = allOrders.filter(
+    o => o.financial_status === 'paid' && parseFloat(o.total_price ?? '0') > 1,
+  );
+
+  const orders = paidOrders.length;
+  const revenue = paidOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+
+  // Returning customers = those whose customer.orders_count > 1 at time of order
+  const returningOrders = paidOrders.filter(o => (o.customer?.orders_count ?? 1) > 1).length;
+  const returningRate = orders > 0 ? (returningOrders / orders) * 100 : 0;
+
+  // ── 2. Abandoned checkouts (read_checkouts) ───────────────────────────────
+  type ShopifyCheckout = { id: string; total_price?: string };
+  let abandonedCheckouts = 0;
+  let abandonedRevenue = 0;
+
+  try {
+    const checkouts = await paginatedFetch<ShopifyCheckout>(
+      SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
+      `/checkouts.json?created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,total_price`,
+      'checkouts',
+    );
+    abandonedCheckouts = checkouts.length;
+    abandonedRevenue = checkouts.reduce((s, c) => s + parseFloat(c.total_price ?? '0'), 0);
+  } catch (err) {
+    console.warn('[api/shopify-mtd] checkouts fetch failed:', err);
   }
 
-  const orders = allOrders.filter(o => o.financial_status === 'paid' && parseFloat(o.total_price ?? '0') > 1).length;
+  // Checkout CVR: orders / (orders + abandoned checkouts)
+  const totalCheckouts = orders + abandonedCheckouts;
+  const checkoutCvr = totalCheckouts > 0 ? (orders / totalCheckouts) * 100 : 0;
 
-  // ── Fetch MTD sessions ────────────────────────────────────────────────────
-  // Strategy 1: ShopifyQL (requires read_analytics scope — Shopify plan or higher)
-  // Strategy 2: REST /reports.json (also requires read_analytics, but different endpoint)
-  // If both fail, return the actual error so the UI can explain it clearly.
+  // ── 3. Sessions via ShopifyQL (requires Shopify plan or higher) ───────────
+  // ShopifyQL is only available on Shopify plan+, not Basic.
+  // We try it and gracefully fall back — no longer blocking other metrics.
   let sessions = 0;
   let sessionsAvailable = false;
   let sessionsError: string | undefined;
 
+  const { since, until } = mtdRange();
   try {
     const gqlRes = await fetch(
       `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/graphql.json`,
@@ -78,13 +138,10 @@ export async function GET(req: Request) {
             shopifyqlQuery(query: "FROM sessions SHOW sum(sessions) AS sessions SINCE ${since} UNTIL ${until}") {
               __typename
               ... on TableResponse {
-                tableData {
-                  rowData
-                  columns { name dataType }
-                }
+                tableData { rowData columns { name } }
               }
               ... on ParseErrorResponse {
-                parseErrors { code message reason }
+                parseErrors { code message }
               }
             }
           }`,
@@ -92,60 +149,49 @@ export async function GET(req: Request) {
       }
     );
 
-    if (!gqlRes.ok) {
-      const errText = await gqlRes.text().catch(() => '');
-      const hint = gqlRes.status === 403 || gqlRes.status === 401
-        ? 'Token missing read_analytics scope'
-        : `HTTP ${gqlRes.status}`;
-      sessionsError = `ShopifyQL: ${hint}${errText ? ` — ${errText.slice(0, 120)}` : ''}`;
-      console.warn('[api/shopify-mtd] ShopifyQL HTTP error:', gqlRes.status, errText.slice(0, 200));
-    } else {
-      const gql = await gqlRes.json() as {
-        data?: {
-          shopifyqlQuery?: {
-            __typename: string;
-            tableData?: { rowData: string[][]; columns: { name: string }[] };
-            parseErrors?: { code: string; message: string; reason?: string }[];
-          };
-        };
-        errors?: { message: string }[];
-      };
+    const gql = await gqlRes.json() as {
+      data?: { shopifyqlQuery?: { __typename: string; tableData?: { rowData: string[][]; columns: { name: string }[] }; parseErrors?: { message: string }[] } };
+      errors?: { message: string }[];
+    };
 
-      console.log('[api/shopify-mtd] ShopifyQL response type:', gql.data?.shopifyqlQuery?.__typename);
-
-      const result = gql.data?.shopifyqlQuery;
-      if (result?.__typename === 'TableResponse' && result.tableData) {
-        const sessionIdx = result.tableData.columns.findIndex(c => c.name === 'sessions');
-        const colIdx = sessionIdx !== -1 ? sessionIdx : 0;
-        if (result.tableData.rowData.length > 0) {
-          sessions = result.tableData.rowData.reduce((sum, row) => {
-            return sum + (parseInt(row[colIdx] ?? '0', 10) || 0);
-          }, 0);
-          sessionsAvailable = true;
-        } else {
-          // Query succeeded but returned no rows — store has no session data for this period
-          sessions = 0;
-          sessionsAvailable = true;
-        }
-      } else if (result?.__typename === 'ParseErrorResponse') {
-        const msg = result.parseErrors?.map(e => e.message).join('; ') ?? 'unknown parse error';
-        sessionsError = `ShopifyQL parse error: ${msg}`;
-        console.warn('[api/shopify-mtd] ShopifyQL parse errors:', result.parseErrors);
-      } else if (gql.errors) {
-        // GraphQL-level errors — most likely a scope/permission problem
-        const msg = gql.errors.map(e => e.message).join('; ');
-        sessionsError = `GraphQL error: ${msg}. Add read_analytics scope to your Shopify token.`;
-        console.warn('[api/shopify-mtd] GraphQL errors:', gql.errors);
-      }
+    const result = gql.data?.shopifyqlQuery;
+    if (result?.__typename === 'TableResponse' && result.tableData) {
+      const colIdx = result.tableData.columns.findIndex(c => c.name === 'sessions');
+      sessions = result.tableData.rowData.reduce(
+        (s, row) => s + (parseInt(row[colIdx !== -1 ? colIdx : 0] ?? '0', 10) || 0),
+        0,
+      );
+      sessionsAvailable = true;
+    } else if (gql.errors?.[0]) {
+      const msg = gql.errors[0].message;
+      // shopifyqlQuery not on this plan — give user a clear upgrade message
+      sessionsError = msg.includes("doesn't exist")
+        ? 'Requires Shopify plan or higher (ShopifyQL not available on Basic)'
+        : `GraphQL: ${msg}`;
     }
   } catch (err) {
     sessionsError = 'Network error reaching Shopify GraphQL';
     console.warn('[api/shopify-mtd] sessions fetch failed:', err);
   }
 
-  const cvr = sessionsAvailable && sessions > 0 ? orders / sessions : 0;
+  const cvr = sessionsAvailable && sessions > 0 ? (orders / sessions) * 100 : 0;
 
-  const data: ShopifyMtdData = { orders, sessions, cvr, sessionsAvailable, sessionsError };
+  const data: ShopifyMtdData = {
+    orders,
+    revenue,
+    sessions,
+    cvr,
+    sessionsAvailable,
+    sessionsError,
+    abandonedCheckouts,
+    abandonedRevenue,
+    checkoutCvr,
+    returningOrders,
+    returningRate,
+  };
+
+  console.log('[api/shopify-mtd] orders=%d revenue=%f abandoned=%d checkoutCvr=%f%%',
+    orders, revenue, abandonedCheckouts, checkoutCvr);
 
   try {
     await kv.set(cacheKey, data, { ex: 3600 }); // 1h cache

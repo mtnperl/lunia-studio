@@ -437,11 +437,19 @@ export type ShopifyLTVData = {
 };
 
 export type ShopifyMtdData = {
-  orders: number;    // paid orders so far this calendar month
-  sessions: number;  // website sessions so far this calendar month (null if unavailable)
-  cvr: number;       // orders / sessions, 0 if sessions === 0
-  sessionsAvailable: boolean; // false if Shopify analytics scope is missing
-  sessionsError?: string;    // human-readable reason if sessions unavailable
+  orders: number;              // paid orders since 1st of month (excl. $0)
+  revenue: number;             // gross revenue from paid orders
+  sessions: number;            // website sessions (0 if unavailable)
+  cvr: number;                 // orders / sessions, 0 if sessions === 0
+  sessionsAvailable: boolean;  // false if ShopifyQL not available on plan
+  sessionsError?: string;      // human-readable reason if sessions unavailable
+  // Checkout funnel (from read_checkouts — available on all plans)
+  abandonedCheckouts: number;  // open/incomplete checkouts this month
+  abandonedRevenue: number;    // value in abandoned checkouts
+  checkoutCvr: number;         // orders / (orders + abandoned) * 100
+  // Returning customers (from read_all_orders)
+  returningOrders: number;     // orders from repeat customers
+  returningRate: number;       // returningOrders / orders * 100
 };
 
 export type CombinedDayRow = {
