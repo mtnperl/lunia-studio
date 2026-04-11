@@ -35,7 +35,7 @@ async function paginatedFetch<T>(
   let pages = 0;
 
   while (nextUrl && pages < maxPages) {
-    const res = await fetch(nextUrl, {
+    const res: Response = await fetch(nextUrl, {
       headers: { 'X-Shopify-Access-Token': token },
     });
     pages++;
