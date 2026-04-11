@@ -354,6 +354,24 @@ export default function CarouselShareClient({ carousel }: Props) {
           ))}
         </div>
 
+        {/* Caption */}
+        {content.caption && (
+          <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>Caption</span>
+              <button
+                onClick={() => navigator.clipboard.writeText(content.caption)}
+                style={{ fontSize: 11, fontWeight: 600, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 5, padding: "3px 10px", cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}
+              >
+                Copy
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>
+              {content.caption}
+            </p>
+          </div>
+        )}
+
         {/* Citations */}
         {content.slides.some(s => s.citation) && (
           <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 20 }}>
