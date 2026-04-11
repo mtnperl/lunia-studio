@@ -2,22 +2,22 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Warm Atelier Light (default) ── */
-  --bg:           #F5F0E8;
-  --surface:      #EDE8DF;
-  --surface-r:    #E5DFD0;
-  --surface-h:    #DDD7C8;
-  --text:         #1C1916;
-  --muted:        #6B6359;
-  --subtle:       #9B9389;
-  --accent:       #A07830;
-  --accent-dim:   rgba(160, 120, 48, 0.10);
-  --accent-mid:   rgba(160, 120, 48, 0.28);
-  --border:       #D8D1C0;
-  --border-strong: #C8C0B0;
-  --success:      #3D7A52;
+  /* ── Apple-Inspired Studio Light (default) ── */
+  --bg:           #FFFFFF;
+  --surface:      #F5F5F7;
+  --surface-r:    #EBEBED;
+  --surface-h:    #E3E3E8;
+  --text:         #1D1D1F;
+  --muted:        #6E6E73;
+  --subtle:       #98989D;
+  --accent:       #1D1D1F;
+  --accent-dim:   rgba(0, 0, 0, 0.06);
+  --accent-mid:   rgba(0, 0, 0, 0.16);
+  --border:       #D2D2D7;
+  --border-strong: #BCBCC5;
+  --success:      #1C7A3A;
   --warning:      #B86040;
-  --error:        #A04040;
+  --error:        #C40000;
 
   /* ── Typography ── */
   --font-serif:  'Fraunces', Georgia, serif;
@@ -29,23 +29,23 @@
   --white: #fff;
 }
 
-/* ── Warm Atelier Light ── */
+/* ── Apple-Inspired Studio Light ── */
 [data-theme="light"] {
-  --bg:           #F5F0E8;
-  --surface:      #EDE8DF;
-  --surface-r:    #E5DFD0;
-  --surface-h:    #DDD7C8;
-  --text:         #1C1916;
-  --muted:        #6B6359;
-  --subtle:       #9B9389;
-  --accent:       #A07830;
-  --accent-dim:   rgba(160, 120, 48, 0.10);
-  --accent-mid:   rgba(160, 120, 48, 0.28);
-  --border:       #D8D1C0;
-  --border-strong: #C8C0B0;
-  --success:      #3D7A52;
+  --bg:           #FFFFFF;
+  --surface:      #F5F5F7;
+  --surface-r:    #EBEBED;
+  --surface-h:    #E3E3E8;
+  --text:         #1D1D1F;
+  --muted:        #6E6E73;
+  --subtle:       #98989D;
+  --accent:       #1D1D1F;
+  --accent-dim:   rgba(0, 0, 0, 0.06);
+  --accent-mid:   rgba(0, 0, 0, 0.16);
+  --border:       #D2D2D7;
+  --border-strong: #BCBCC5;
+  --success:      #1C7A3A;
   --warning:      #B86040;
-  --error:        #A04040;
+  --error:        #C40000;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -109,12 +109,10 @@ select option { background: var(--surface-r); }
 .card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 8px; overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04);
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 .card:hover {
   border-color: var(--border-strong); background: var(--surface-h);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
 }
 
 /* ── Status chips ── */

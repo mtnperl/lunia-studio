@@ -18,7 +18,6 @@ function StatCard({ value, label }: { value: number | string; label: string }) {
       flex: 1, padding: "20px 20px 18px",
       background: "var(--surface)", border: "1px solid var(--border)",
       borderRadius: 10,
-      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
     }}>
       <div style={{
         fontFamily: "var(--font-mono)",
@@ -171,22 +170,17 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
             style={{
               padding: "26px 28px 24px", borderRadius: 12, cursor: "pointer",
               background: "var(--surface)", border: "1px solid var(--border)",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
-              transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s",
+              transition: "border-color 0.15s, background 0.15s",
             }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLDivElement;
               el.style.borderColor = "var(--accent)";
               el.style.background = "var(--surface-h)";
-              el.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.06)";
-              el.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLDivElement;
               el.style.borderColor = "var(--border)";
               el.style.background = "var(--surface)";
-              el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)";
-              el.style.transform = "translateY(0)";
             }}
           >
             <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>{card.label}</div>

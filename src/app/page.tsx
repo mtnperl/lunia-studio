@@ -22,12 +22,12 @@ type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-l
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
-  "--bg": "#F5F0E8", "--surface": "#EDE8DF", "--surface-r": "#E5DFD0",
-  "--surface-h": "#DDD7C8", "--text": "#1C1916", "--muted": "#6B6359",
-  "--subtle": "#9B9389", "--accent": "#A07830",
-  "--accent-dim": "rgba(160,120,48,0.10)", "--accent-mid": "rgba(160,120,48,0.28)",
-  "--border": "#D8D1C0", "--border-strong": "#C8C0B0",
-  "--success": "#3D7A52", "--warning": "#B86040", "--error": "#A04040",
+  "--bg": "#FFFFFF", "--surface": "#F5F5F7", "--surface-r": "#EBEBED",
+  "--surface-h": "#E3E3E8", "--text": "#1D1D1F", "--muted": "#6E6E73",
+  "--subtle": "#98989D", "--accent": "#1D1D1F",
+  "--accent-dim": "rgba(0,0,0,0.06)", "--accent-mid": "rgba(0,0,0,0.16)",
+  "--border": "#D2D2D7", "--border-strong": "#BCBCC5",
+  "--success": "#1C7A3A", "--warning": "#B86040", "--error": "#C40000",
 };
 const DARK_VARS: Record<string, string> = {
   "--bg": "#0D0C0A", "--surface": "#171512", "--surface-r": "#201E1B",
@@ -213,9 +213,9 @@ export default function Page() {
             <div key={section} style={{ marginBottom: 24 }}>
               <div style={{
                 padding: "0 24px",
-                fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 500,
-                letterSpacing: "0.16em", textTransform: "uppercase",
-                color: "var(--muted)", marginBottom: 2,
+                fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 600,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "var(--subtle)", marginBottom: 2,
               }}>
                 {section}
               </div>
@@ -275,9 +275,21 @@ export default function Page() {
               background: "var(--accent)",
               transition: "left 0.18s ease",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 10,
             }}>
-              {theme === "light" ? "☀" : "◑"}
+              {theme === "light" ? (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <circle cx="5" cy="5" r="2.5" fill="var(--bg)"/>
+                  {[0,45,90,135,180,225,270,315].map(deg => (
+                    <line key={deg} x1="5" y1="0.5" x2="5" y2="1.8"
+                      stroke="var(--bg)" strokeWidth="1.2" strokeLinecap="round"
+                      transform={`rotate(${deg} 5 5)`}/>
+                  ))}
+                </svg>
+              ) : (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M5 1.5A3.5 3.5 0 1 0 8.5 5 3.5 3.5 0 0 1 5 1.5z" fill="var(--bg)"/>
+                </svg>
+              )}
             </span>
           </button>
         </div>
