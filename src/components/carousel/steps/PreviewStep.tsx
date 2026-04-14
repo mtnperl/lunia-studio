@@ -26,12 +26,13 @@ type Props = {
   initialReelsMode?: boolean;
   initialCitationFontSize?: number;
   carouselFormat?: CarouselFormat;
+  contentImagesLoading?: boolean;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, carouselFormat = "standard" }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, carouselFormat = "standard", contentImagesLoading = false }: Props) {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -584,16 +585,46 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
-  // fal.ai images: hook (imgs[0]) only.
-  // Content + CTA slides stay clean — brand colors + infographics.
+  async function handleRegenerateSlideImage(contentSlideIndex: number) {
+    setRegeneratingGraphic(contentSlideIndex);
+    setGraphicError(null);
+    try {
+      const slide = content.slides[contentSlideIndex];
+      const res = await fetch('/api/carousel/generate-slide-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: null,
+          graphicJson: slide?.graphic ?? '',
+          headline: slide?.headline ?? '',
+          imageStyle,
+          brandStyle,
+        }),
+      });
+      const data = await res.json() as { url?: string; error?: string; reason?: string };
+      if (!res.ok || data.error) { setGraphicError(data.error ?? 'Failed to generate AI image'); return; }
+      if (data.url) {
+        const newSlideImages = [...(config.slideImages ?? [null, null, null, null, null])];
+        newSlideImages[contentSlideIndex + 1] = data.url;
+        onContentChange({ ...config, slideImages: newSlideImages as (string | null)[] });
+      }
+    } catch {
+      setGraphicError('Network error — please check your connection');
+    } finally {
+      setRegeneratingGraphic(null);
+    }
+  }
+
+  // fal.ai images: hook (imgs[0]) + content slides (imgs[1-3]) when TIER B/C.
+  // CTA slide stays clean — brand colors only.
   const slideNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={imgs[1] ?? undefined} shimmerGraphic={contentImagesLoading && !imgs[1]} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={imgs[2] ?? undefined} shimmerGraphic={contentImagesLoading && !imgs[2]} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={imgs[3] ?? undefined} shimmerGraphic={contentImagesLoading && !imgs[3]} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
@@ -605,9 +636,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={proxyUrl(imgs[1])} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={proxyUrl(imgs[2])} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} graphicImageUrl={proxyUrl(imgs[3])} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
@@ -952,6 +983,30 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 )}
                 {i >= 1 && i <= 3 && (
                   <>
+                    {imgs[i] && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRegenerateSlideImage(i - 1); }}
+                        disabled={isRegenerating || isRegeneratingGraphic}
+                        title="Regenerate AI image"
+                        style={{
+                          background: "var(--surface)",
+                          color: "var(--accent)",
+                          border: "1px solid var(--accent-mid)",
+                          borderRadius: 6,
+                          padding: "7px 10px",
+                          fontSize: 11,
+                          fontFamily: "inherit",
+                          cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
+                          opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
+                          transition: "background 0.15s",
+                          letterSpacing: "0.01em",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {isRegeneratingGraphic ? "…" : "↺ AI"}
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleRegenerateSlide(i - 1); }}
                       disabled={isRegenerating || isRegeneratingGraphic}

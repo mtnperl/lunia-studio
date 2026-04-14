@@ -86,6 +86,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [contentImagesLoading, setContentImagesLoading] = useState(false);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -102,6 +103,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
     setFalCount(0);
+    setContentImagesLoading(true);
     const hook = currentContent.hooks[currentHookIndex];
     let loaded = 0;
     let failed = 0;
@@ -130,6 +132,47 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
           setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
           failed++;
           if (loaded + failed === FAL_TOTAL) setFalStatus(loaded > 0 ? "done" : "failed");
+        });
+    });
+
+    // Content slide images (slides 1–3) — generated in parallel, shown as shimmer while loading
+    const CONTENT_SLIDE_TOTAL = 3;
+    let contentLoaded = 0;
+    let contentFailed = 0;
+    const capturedBrandStyle = brandStyle;
+    [0, 1, 2].forEach((ci) => {
+      const slide = currentContent.slides[ci];
+      if (!slide) {
+        contentFailed++;
+        if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
+        return;
+      }
+      fetch('/api/carousel/generate-slide-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: slide.graphicImagePrompt ?? null,
+          graphicJson: slide.graphic ?? '',
+          headline: slide.headline ?? '',
+          imageStyle: currentImageStyle,
+          brandStyle: capturedBrandStyle ?? undefined,
+        }),
+      })
+        .then((r) => r.json())
+        .then(({ url, reason }: { url?: string; reason?: string }) => {
+          if (url) {
+            // slideImages[1], [2], [3] for content slides 0, 1, 2
+            setSlideImages((prev) => { const next = [...prev]; next[ci + 1] = url; return next; });
+            contentLoaded++;
+          } else {
+            // reason === 'tier-a' means SVG is preferred — not an error
+            contentFailed++;
+          }
+          if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
+        })
+        .catch(() => {
+          contentFailed++;
+          if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
         });
     });
   }
@@ -206,6 +249,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setFalStatus("idle");
     setFalCount(0);
     setFalErrors([null, null, null, null, null]);
+    setContentImagesLoading(false);
   }
 
   // ─── fal.ai status badge ──────────────────────────────────────────────────
@@ -360,6 +404,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               initialReelsMode={initialCarousel?.reelsMode}
               initialCitationFontSize={initialCarousel?.citationFontSize}
               carouselFormat={carouselFormat}
+              contentImagesLoading={contentImagesLoading}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

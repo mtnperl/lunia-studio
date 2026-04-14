@@ -165,6 +165,8 @@ type Props = {
   citation: string;
   graphic?: string;            // GraphicSpec JSON (Path 1) or raw SVG (Path 2)
   graphicStyle?: GraphicStyle; // legacy enum for saved carousels (Path 3)
+  graphicImageUrl?: string;    // Path 0: fal.ai AI-generated image for TIER B/C slides
+  shimmerGraphic?: boolean;    // show shimmer in graphic zone while fal image generates
   brandStyle?: BrandStyle;
   scale?: number;
   id?: string;
@@ -185,6 +187,8 @@ export default function ContentSlide({
   citation,
   graphic,
   graphicStyle = 'textOnly',
+  graphicImageUrl,
+  shimmerGraphic = false,
   brandStyle,
   scale = 1,
   id,
@@ -202,14 +206,16 @@ export default function ContentSlide({
   const sectionGap = reels ? 46 : SECTION_GAP;
   const graphicMinH = reels ? 120 : GRAPHIC_MIN_HEIGHT;
   // Determine rendering path
-  const graphicSpec = parseGraphicSpec(graphic);
+  // Path 0: fal.ai AI-generated image (TIER B/C) — highest priority, overrides SVG components
+  const hasAiGraphicImage = !!graphicImageUrl || shimmerGraphic; // Path 0
+  const graphicSpec = !hasAiGraphicImage ? parseGraphicSpec(graphic) : null;
   const hasGraphicSpec = graphicSpec !== null;                  // Path 1
   // Path 2: raw SVG only — if graphic is JSON (starts with { or [) but failed Zod validation,
   // treat as Path 4 (no graphic) rather than rendering malformed JSON as innerHTML.
   const isJsonLike = !!graphic && (graphic.trimStart().startsWith('{') || graphic.trimStart().startsWith('['));
-  const hasSvg = !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10; // Path 2
-  const hasLegacyGraphic = !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
-  const hasInlineGraphic = hasGraphicSpec || hasSvg;            // shown inside flex column
+  const hasSvg = !hasAiGraphicImage && !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10; // Path 2
+  const hasLegacyGraphic = !hasAiGraphicImage && !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
+  const hasInlineGraphic = hasAiGraphicImage || hasGraphicSpec || hasSvg;   // shown inside flex column
 
   // Colors — dark mode overrides when darkBackground=true
   const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? '#f0ece6');
@@ -341,10 +347,39 @@ export default function ContentSlide({
           </div>
         </div>
 
-        {/* Graphic zone — Path 1 (GraphicSpec) or Path 2 (raw SVG) */}
+        {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}
         {hasInlineGraphic && (
           <div style={{ minHeight: graphicMinH, flexShrink: 0 }}>
-            {hasGraphicSpec ? (
+            {hasAiGraphicImage ? (
+              // Path 0 — fal.ai AI-generated image for TIER B/C slides
+              graphicImageUrl ? (
+                <img
+                  src={graphicImageUrl}
+                  alt=""
+                  crossOrigin="anonymous"
+                  style={{
+                    width: '100%',
+                    maxHeight: 500,
+                    objectFit: 'contain',
+                    objectPosition: 'center bottom',
+                    display: 'block',
+                    borderRadius: 8,
+                  }}
+                />
+              ) : (
+                // Shimmer while AI image is generating
+                <div style={{
+                  width: '100%',
+                  height: 300,
+                  borderRadius: 8,
+                  background: 'linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 100%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 1.6s ease-in-out infinite',
+                }}
+                />
+              )
+            ) : hasGraphicSpec ? (
+              // Path 1 — React SVG component (TIER A data-precise)
               <GraphicErrorBoundary graphicSpec={graphicSpec}>
                 {renderGraphicSpec(graphicSpec, brandStyle)}
               </GraphicErrorBoundary>

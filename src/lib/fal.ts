@@ -3,7 +3,7 @@
 // It is only used inside src/app/api/ route handlers.
 import 'server-only';
 import { fal } from '@fal-ai/client';
-import type { Hook } from './types';
+import type { BrandStyle, Hook } from './types';
 
 fal.config({ credentials: process.env.FAL_KEY });
 
@@ -40,6 +40,96 @@ export function buildPrompt(
     `soft warm side-lighting, premium texture closeup, ` +
     `shallow depth of field, serene and inviting. ${STYLE_TOKEN}`
   );
+}
+
+// ─── Slide graphic image generation (TIER B/C) ────────────────────────────────
+// Generates a 936×500 vector illustration for a content slide's graphic zone.
+// Only called for TIER B (layout) and TIER C (concept) slides — TIER A (data)
+// continues to use the existing React SVG components for precision.
+
+export interface SlideGraphicResult {
+  url: string;
+}
+
+export async function generateSlideGraphicImage(
+  prompt: string,
+  imageStyle: string = 'realistic',
+): Promise<SlideGraphicResult> {
+  // Map image style to fal.ai style token — vector/illustration styles work
+  // best for clean infographic aesthetics on content slides.
+  const styleMap: Record<string, string> = {
+    realistic: 'vector_illustration',
+    cartoon: 'digital_illustration',
+    anime: 'digital_illustration/2d_art_poster',
+    vector: 'vector_illustration',
+  };
+  const recraftStyle = styleMap[imageStyle] ?? 'vector_illustration';
+
+  const result = await fal.subscribe('fal-ai/recraft-v3', {
+    input: {
+      prompt,
+      image_size: { width: 936, height: 500 },
+      style: recraftStyle,
+      colors: [],
+    },
+  }) as { images?: Array<{ url: string }> };
+
+  const url = result?.images?.[0]?.url;
+  if (!url) throw new Error('fal.ai returned no image URL for slide graphic');
+  return { url };
+}
+
+// TIER B/C classification — determines whether to use AI image or SVG component.
+// Returns true for components that benefit from AI imagery (layout/concept).
+// Returns false for data-precise components that need React SVG accuracy.
+const TIER_A_COMPONENTS = new Set([
+  'stat', 'bars', 'donut', 'radial', 'circleStats', 'spectrum',
+  'stackedBar', 'funnel', 'scorecard', 'iconStat', 'heatGrid',
+  'wave', 'timeline', 'matrix2x2', 'callout', 'split',
+]);
+
+export function isTierBC(graphicJson: string): boolean {
+  try {
+    const parsed = JSON.parse(graphicJson) as { component?: string };
+    if (!parsed?.component) return false;
+    return !TIER_A_COMPONENTS.has(parsed.component);
+  } catch {
+    return false;
+  }
+}
+
+// Build a fallback fal.ai prompt when graphicImagePrompt is missing from LLM output.
+export function buildSlideGraphicFallback(
+  headline: string,
+  graphicJson: string,
+  brandStyle?: BrandStyle,
+): string {
+  const accent = brandStyle?.accent ?? '#1e7a8a';
+  try {
+    const parsed = JSON.parse(graphicJson) as { component?: string; data?: Record<string, unknown> };
+    const comp = parsed?.component ?? 'concept';
+    const componentVisuals: Record<string, string> = {
+      hubSpoke: 'central glowing node with 4 radiating arcs connecting to smaller circles, hub-and-spoke network diagram',
+      iceberg: 'iceberg cross-section showing small peak above waterline and large hidden mass below, dark ocean gradient',
+      bridge: 'elegant arc bridge connecting two elevated platforms, representing problem to solution transformation',
+      bento: 'four clean tile cards in a 2x2 grid, each with an icon and minimal label, modern dashboard aesthetic',
+      conceptFlow: 'three connected circular nodes with directional arrows, representing a causal chain or process flow',
+      dotchain: 'five connected dots in a horizontal chain with arrows, step-by-step progression, minimal geometric',
+      steps: 'three numbered ascending steps or staircase, clean geometric, upward progression metaphor',
+      processFlow: 'four rectangular boxes connected by arrows in a horizontal sequence, biochemical pathway style',
+      checklist: 'vertical list of three items with checkmark icons, clean minimal, task completion aesthetic',
+      iconGrid: 'nine emoji-style icons arranged in a 3x3 grid, clean white background, colorful minimal icons',
+      pyramid: 'three-tier pyramid structure with base widest, hierarchical representation, clean geometric',
+      versus: 'split-screen composition, two contrasting halves with dividing line, comparison aesthetic',
+      table: 'clean minimal data table with two columns and three rows, modern spreadsheet aesthetic',
+      bubbles: 'floating circles of varying sizes representing concepts, organic cluster, minimal vector',
+      vector: `abstract minimal illustration representing: ${headline}`,
+    };
+    const visual = componentVisuals[comp] ?? `abstract minimal illustration representing: ${headline}`;
+    return `${visual}. Clean minimal vector illustration, no text, no labels, white background, ${accent} accent color highlights, soft geometric shadows, professional infographic aesthetic. Max 40 words.`;
+  } catch {
+    return `Abstract minimal illustration representing: ${headline}. Clean vector, white background, ${accent} highlights, no text.`;
+  }
 }
 
 // Derive a visual scene from the topic string for the hook slide

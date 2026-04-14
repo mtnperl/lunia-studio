@@ -59,6 +59,8 @@ export type CarouselContentSlide = {
   body: string;
   citation: string;
   graphic?: string; // GraphicSpec JSON string (new) or raw SVG string (legacy)
+  graphicImagePrompt?: string; // fal.ai prompt for TIER B/C slides (AI-generated visual)
+  graphicImageUrl?: string;    // fal.ai hosted URL once generated
 };
 
 // ─── GraphicSpec — curated infographic component selection ────────────────────

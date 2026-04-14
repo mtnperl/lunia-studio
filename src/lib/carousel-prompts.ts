@@ -72,9 +72,9 @@ Return ONLY valid JSON in this exact format, no other text:
     { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" }
   ],
   "slides": [
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" }
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" }
   ],
   "cta": {
     "headline": "string",
@@ -151,7 +151,16 @@ Brand rules (follow exactly):
   • "YOU'RE WIRED BUT TIRED" → tangled copper electrical wire in warm shallow-focus light, frayed at the end, quiet exhaustion
   Structure: [literal visual from the hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood].
   Hard rules: if the hook concept involves a human experience (fatigue, stress, a journey, a habit, waking up) you MAY include a single person or human detail — hands, a silhouette, or an editorial close-crop of a face — always partial framing, never a full portrait. No text, no logos. Ultra-sharp, editorial, premium brand aesthetic. Max 55 words. DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
-  Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"`;
+  Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"
+- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
+  Format: [core visual concept — e.g. "hub-and-spoke diagram", "iceberg cross-section", "bridge arc"] + [style: "clean minimal vector illustration, no text, no labels"] + [color: "white background, [accent_color] highlights, soft shadows"] + [mood].
+  The accent color is: ${brandStyle?.accent ?? '#1e7a8a'}.
+  For TIER A slides (stat, bars, donut, radial, circleStats, spectrum, stackedBar, funnel, scorecard, iconStat, heatGrid, wave, timeline, matrix2x2, callout), set graphicImagePrompt to null — SVG components handle data-precise slides.
+  For TIER B (hubSpoke, iceberg, bridge, bento, conceptFlow, dotchain, steps, processFlow, checklist, iconGrid, pyramid, versus, table, bubbles) and TIER C (vector) slides — write a compelling prompt. The visual should communicate the slide's concept without text. Think like an editorial illustrator.
+  Examples:
+  • hubSpoke slide about magnesium benefits → "Central glowing circle with 4 radiating arcs connecting to smaller nodes, clean minimal vector, white background, teal highlights, geometric precision, no text"
+  • iceberg slide about hidden sleep debt → "Iceberg cross-section, small peak above waterline, large mass below, dark ocean blues fading to black, white ice, crisp edges, scientific illustration style, no labels"
+  • vector slide about circadian rhythm → "Sine wave arc representing day-night cycle, sun and moon at opposite peaks, gradient from warm amber to deep midnight blue, minimal geometric, no text"`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
