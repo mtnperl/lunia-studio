@@ -1027,49 +1027,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       {isRegenerating ? "…" : "↺"}
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRegenerateGraphic(i - 1); }}
-                      disabled={isRegenerating || isRegeneratingGraphic}
-                      title="Redesign infographic only"
-                      style={{
-                        background: "var(--surface)",
-                        color: "var(--muted)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        padding: "7px 10px",
-                        fontSize: 11,
-                        fontFamily: "inherit",
-                        cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
-                        opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
-                        transition: "background 0.15s",
-                        letterSpacing: "0.01em",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {isRegeneratingGraphic ? "…" : "↺ graphic"}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleVectorGraphic(i - 1); }}
-                      disabled={isRegenerating || isRegeneratingGraphic}
-                      title="Switch to vector illustration"
-                      style={{
-                        background: isVectorSlide(i - 1) ? "var(--accent-dim)" : "var(--surface)",
-                        color: isVectorSlide(i - 1) ? "var(--accent)" : "var(--muted)",
-                        border: `1px solid ${isVectorSlide(i - 1) ? "var(--accent-mid)" : "var(--border)"}`,
-                        borderRadius: 6,
-                        padding: "7px 10px",
-                        fontSize: 11,
-                        fontFamily: "inherit",
-                        cursor: (isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
-                        opacity: (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
-                        transition: "background 0.15s",
-                        letterSpacing: "0.01em",
-                        fontWeight: 600,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isRegeneratingGraphic ? "…" : "↺ vector"}
-                    </button>
-                    <button
                       onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === i - 1 ? null : i - 1); }}
                       title="Pick an icon graphic"
                       style={{
