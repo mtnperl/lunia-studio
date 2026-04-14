@@ -36,7 +36,12 @@ export type HookTone =
   | "curiosity"
   | "myth-bust"
   | "science-backed"
-  | "personal-story";
+  | "personal-story"
+  | "did-you-know"
+  | "smart-tip";
+export type CarouselFormat = "standard" | "engagement";
+export type EngagementSubType = "reveal" | "diagnostic";
+
 export type Topic = {
   title: string;
   description: string;
@@ -242,6 +247,7 @@ export type CarouselContent = {
   cta: { headline: string; followLine: string };
   caption: string; // IG caption including hashtags
   imagePrompt?: string; // Claude-written Recraft V3 prompt for the hook slide background
+  commentKeyword?: string; // engagement format: auto-generated keyword for comment CTA
 };
 
 export type GraphicStyle =
@@ -288,6 +294,8 @@ export type SavedCarousel = {
   darkBackground?: boolean;
   showLuniaLifeWatermark?: boolean;
   imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
+  format?: CarouselFormat; // "standard" (default) or "engagement"
+  engagementSubType?: EngagementSubType; // "reveal" | "diagnostic" — only when format is "engagement"
   reelsMode?: boolean;     // true = 9:16 Reels format
   citationFontSize?: number;
   savedAt: string;

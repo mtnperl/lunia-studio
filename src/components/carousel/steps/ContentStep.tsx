@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CarouselContent, HookTone } from "@/lib/types";
+import { CarouselContent, CarouselFormat, HookTone } from "@/lib/types";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 
 type Props = {
@@ -9,9 +9,10 @@ type Props = {
   hookTone: HookTone;
   onChange: (c: CarouselContent) => void;
   onNext: () => void;
+  carouselFormat?: CarouselFormat;
 };
 
-export default function ContentStep({ content, topic, hookTone, onChange, onNext }: Props) {
+export default function ContentStep({ content, topic, hookTone, onChange, onNext, carouselFormat = "standard" }: Props) {
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [shorteningSlide, setShorteningSlide] = useState<number | null>(null);
   const [originalBodies, setOriginalBodies] = useState<Record<number, string>>({});
@@ -142,6 +143,35 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Review content</h2>
       <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Edit any field before continuing.</p>
+
+      {/* Comment keyword (engagement format only) */}
+      {carouselFormat === "engagement" && (
+        <div style={{ background: "rgba(30,122,138,0.06)", border: "1.5px solid var(--accent)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent)", marginBottom: 8 }}>Comment keyword</div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>Readers will comment this word to get the guide. Auto-generated — edit if needed.</p>
+          <input
+            type="text"
+            value={content.commentKeyword ?? ""}
+            onChange={(e) => onChange({ ...content, commentKeyword: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12) })}
+            maxLength={12}
+            placeholder="e.g. SLEEP"
+            style={{
+              width: 200,
+              padding: "8px 12px",
+              fontSize: 18,
+              fontWeight: 700,
+              fontFamily: "Jost, Montserrat, sans-serif",
+              letterSpacing: "0.1em",
+              border: "1.5px solid var(--border)",
+              borderRadius: 7,
+              background: "var(--bg)",
+              color: "var(--accent)",
+              outline: "none",
+              textTransform: "uppercase",
+            }}
+          />
+        </div>
+      )}
 
       {/* Hooks */}
       <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 16, border: "1px solid var(--border)" }}>

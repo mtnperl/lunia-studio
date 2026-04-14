@@ -1,7 +1,7 @@
 import { anthropic } from "@/lib/anthropic";
-import { GENERATE_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
+import { GENERATE_CAROUSEL_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
-import { CarouselContent, HookTone } from "@/lib/types";
+import { CarouselContent, CarouselFormat, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export async function POST(req: Request) {
@@ -24,6 +24,8 @@ export async function POST(req: Request) {
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
     const templateId: string | undefined = typeof body.templateId === "string" ? body.templateId : undefined;
     const concise: boolean = body.concise ?? false;
+    const format: CarouselFormat = body.format === "engagement" ? "engagement" : "standard";
+    const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -43,7 +45,9 @@ export async function POST(req: Request) {
     console.log("[generate] templateId:", templateId, "→ found:", template ? `"${template.name}" (${template.images.length} images)` : "null");
 
     const hasStyleRef = styleRefs.length > 0;
-    const promptText = GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise);
+    const promptText = format === "engagement"
+      ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle)
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise);
 
     // Build message content
     type ContentBlock =
@@ -76,7 +80,17 @@ export async function POST(req: Request) {
           });
           const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-          return JSON.parse(text) as CarouselContent;
+          const parsed = JSON.parse(text) as CarouselContent;
+          // Ensure every hook has a sourceNote (trust liner) — LLM sometimes omits it
+          if (parsed.hooks) {
+            for (const hook of parsed.hooks) {
+              if (!hook.sourceNote || hook.sourceNote.trim().length === 0) {
+                console.warn("[generate] hook missing sourceNote, adding fallback");
+                hook.sourceNote = "Based on peer-reviewed sleep research";
+              }
+            }
+          }
+          return parsed;
         } catch (err) {
           console.error("[generate] variant failed:", err instanceof Error ? err.message : err);
           return null;

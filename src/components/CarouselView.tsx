@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BrandStyle, CarouselContent, CarouselConfig, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, CarouselFormat, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
@@ -81,6 +81,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
 
   // ─── fal.ai status ────────────────────────────────────────────────────────
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
+  const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
+  const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -132,11 +134,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     });
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType) {
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
     setImageStyle(style ?? "realistic");
+    setCarouselFormat(format ?? "standard");
+    setEngagementSubType(engSubType ?? "reveal");
     setError(null);
     setWarning(null);
 
@@ -152,7 +156,14 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
       const res = await fetch("/api/carousel/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: t, hookTone: tone, count: 1, concise: conciseMode ?? false }),
+        body: JSON.stringify({
+          topic: t,
+          hookTone: tone,
+          count: 1,
+          concise: conciseMode ?? false,
+          format: format ?? "standard",
+          engagementSubType: engSubType,
+        }),
       });
       const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; brandStyle?: BrandStyle } = await res.json();
       if (!res.ok || data.error) {
@@ -287,6 +298,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               content={content}
               topic={topic}
               hookTone={hookTone}
+              carouselFormat={carouselFormat}
               onChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c;
@@ -347,6 +359,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               initialImageStyle={imageStyle}
               initialReelsMode={initialCarousel?.reelsMode}
               initialCitationFontSize={initialCarousel?.citationFontSize}
+              carouselFormat={carouselFormat}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

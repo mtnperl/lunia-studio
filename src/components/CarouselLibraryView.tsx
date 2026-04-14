@@ -10,6 +10,8 @@ const TONE_COLORS: Record<string, string> = {
   "myth-bust":     "#A04040",
   "science-backed":"#4A82A0",
   "personal-story":"#A07830",
+  "did-you-know":  "#6A8E4E",
+  "smart-tip":     "#4A7A6A",
 };
 
 // ── CopyButton ─────────────────────────────────────────────────────────────────

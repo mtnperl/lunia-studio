@@ -23,6 +23,8 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "myth-bust": "Myth-busting tone: challenge a common misconception about sleep or supplements. Be direct and corrective.",
   "science-backed": "Science-backed tone: lead with research findings and data. Reference studies confidently.",
   "personal-story": "Personal-story tone: write as if a real person is sharing their journey with sleep problems and Lunia.",
+  "did-you-know": "Did-you-know tone: open every hook headline with 'DID YOU KNOW' followed by a surprising, specific fact about the topic. The subline deepens the curiosity with a second layer of intrigue. Make the reader feel they have been missing something important. Every content slide should also open with a surprising revelation.",
+  "smart-tip": "Smart-tip tone: frame the hook as 'BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]'. Be specific with numbers, durations, or mechanisms. The subline adds the science backing. Content slides should each deliver one actionable, evidence-based tip.",
 };
 
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
@@ -65,9 +67,9 @@ ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year]" }
+    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" }
   ],
   "slides": [
     { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
@@ -88,7 +90,7 @@ Brand rules (follow exactly):
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
 - Hook headlines: uppercase, punchy, max 8 words
 - Hook sublines: italic-style sentence fragments, max 10 words, create mild tension or curiosity. No period at end.
-- Hook sourceNote: short trust liner shown at the bottom of the hook slide. Format: "Based on [real journal/institution] research, [year]". Must reference the most relevant real published research supporting the hook's claim. Max 8 words after "Based on". Never fabricate — only cite real sources.
+- Hook sourceNote: MANDATORY — every hook MUST have a non-empty sourceNote. This is the trust liner shown at the bottom of the hook slide. Format: "Based on [real journal/institution] research, [year]". Must reference the most relevant real published research supporting the hook's claim. Max 8 words after "Based on". Never fabricate — only cite real sources. NEVER omit this field or leave it empty.
 - Body copy: 2-3 sentences MAX. First sentence is a bold punchy statement (the core insight). Remaining 1-2 sentences add specific factual support. Total under 60 words. References the cited research.
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
@@ -249,4 +251,59 @@ Rules:
 - label: a short lowercase caption that appears under the illustration (e.g. "sleep pressure", "cortisol peak", "neural recovery")
 - mood: calm=relaxation/recovery/rest, energetic=activation/performance/boost, scientific=mechanisms/biology/research, playful=habits/lifestyle/routine
 - Output ONLY the JSON object — no code fence, no explanation.`;
+};
+
+// ─── Engagement carousel prompt ───────────────────────────────────────────────
+export const GENERATE_ENGAGEMENT_CAROUSEL_PROMPT = (
+  topic: string,
+  subType: "reveal" | "diagnostic" = "reveal",
+  hasStyleRef = false,
+  template: CarouselTemplate | null = null,
+  brandStyle?: BrandStyle,
+) => {
+  const subTypeInstructions: Record<string, string> = {
+    reveal: `REVEAL FORMAT: You are revealing a curated list of items (3 items, one per content slide). Each content slide reveals ONE item with a bold numbered headline (e.g. "#1: THE BLUE LIGHT TRAP") and a short 1-2 sentence explanation. End each slide body with a one-line teaser hinting at the next reveal (e.g. "But #2 is even worse..."). Build anticipation across slides. The final item should be the most surprising or impactful.`,
+    diagnostic: `DIAGNOSTIC FORMAT: Each content slide presents one diagnostic question or symptom that the reader can identify with. Frame headlines as "DO YOU..." or "IF YOU..." questions. Body text explains what it means if the answer is yes, referencing science. Each slide should make the reader feel personally called out. Build toward a conclusion that the comment CTA resolves.`,
+  };
+
+  return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter for Lunia Life, a sleep supplement brand. Generate an ENGAGEMENT carousel designed to drive comments and saves. Topic: "${topic}"
+
+${subTypeInstructions[subType]}
+
+Return ONLY valid JSON in this exact format, no other text:
+{
+  "hooks": [
+    { "headline": "string — UPPERCASE, max 8 words, must create intense curiosity or challenge the reader", "subline": "string — max 10 words, deepen the intrigue", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" }
+  ],
+  "slides": [
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
+    { "headline": "string", "body": "string", "citation": "string", "graphic": "string" }
+  ],
+  "cta": {
+    "headline": "string — UPPERCASE, e.g. 'WANT THE FULL GUIDE?'",
+    "followLine": "Comment the keyword below and we will send it to you."
+  },
+  "commentKeyword": "string — ONE short word (4-8 chars, ALL CAPS) that readers comment to get the guide. Based on the topic, e.g. SLEEP, CHRONO, SCORE, KILLERS, GUIDE, RESET. Must be memorable and relevant.",
+  "caption": "string",
+  "imagePrompt": "string"
+}
+
+Brand rules (follow exactly):
+- No em dashes anywhere. Use commas or short sentences instead.
+- No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
+- Tone: dry, science-forward, minimal, confident. But with an edge of intrigue that drives engagement.
+- Hook headlines: uppercase, punchy, max 8 words. For engagement, make them challenge the reader or promise a reveal.
+- Hook sublines: sentence fragments, max 10 words, create tension. No period at end.
+- Hook sourceNote: MANDATORY. Format: "Based on [real journal/institution] research, [year]". NEVER omit.
+- Body copy: 1-2 sentences MAX. Punchy and direct. Under 40 words per slide.
+- Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
+- CTA headline: uppercase, max 6 words, creates urgency to comment.
+- All headlines uppercase.
+- Caption: Instagram caption. 3 paragraphs. Open with the most engaging question or hook. Close with "Comment [KEYWORD] below to get the full guide. Follow @lunia_life for more." No hashtags. No em dashes.
+- graphic: compact single-line JSON using the same 3-tier routing rules (TIER A for data, TIER B for layout, TIER C for concept). MANDATORY VARIETY: all 3 slides MUST use different component types.
+- imagePrompt: Recraft V3 prompt for hook background. Same rules as standard carousel — literal visual metaphor of hook headline. Max 55 words.
+- commentKeyword: ONE word, 4-8 characters, ALL CAPS. Must be topically relevant and easy to type in a comment.`;
 };

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { HookTone, Subject } from "@/lib/types";
+import { CarouselFormat, EngagementSubType, HookTone, Subject } from "@/lib/types";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
 
@@ -18,6 +18,13 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
   { value: "myth-bust", label: "Myth-bust", description: "Challenge a common misconception" },
   { value: "clickbait", label: "Bold hook", description: "Provocative, creates urgency" },
   { value: "personal-story", label: "Personal story", description: "Relatable journey with Lunia" },
+  { value: "did-you-know", label: "Did you know?", description: "Surprising fact that triggers curiosity" },
+  { value: "smart-tip", label: "Smart tip", description: "By doing X for Y you will improve..." },
+];
+
+const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: string; description: string }[] = [
+  { value: "reveal", label: "Reveal", description: "Unveil items one by one — builds anticipation" },
+  { value: "diagnostic", label: "Diagnostic", description: "Symptom/habit check — reader self-identifies" },
 ];
 
 const CATEGORIES = [
@@ -31,10 +38,11 @@ const CATEGORIES = [
   "Lunia Ingredients",
   "Sleep Disorders",
   "Lifestyle & Productivity",
+  "Longevity & Sleep Research",
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType) => void;
 };
 
 type Mode = "list" | "custom";
@@ -47,6 +55,8 @@ export default function TopicStep({ onNext }: Props) {
   const [category, setCategory] = useState("All");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [custom, setCustom] = useState("");
+  const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
+  const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [concise, setConcise] = useState(false);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
@@ -79,7 +89,9 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    onNext(topic, hookTone, subjectId, concise, imageStyle);
+    const effectiveTone = carouselFormat === "engagement" ? "curiosity" as HookTone : hookTone;
+    const effectiveConcise = carouselFormat === "engagement" ? true : concise;
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined);
   }
 
   return (
@@ -246,10 +258,75 @@ export default function TopicStep({ onNext }: Props) {
         </div>
       )}
 
-      {/* Hook tone */}
+      {/* Carousel format toggle */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Format</label>
+        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          {([
+            { val: "standard" as CarouselFormat, label: "Standard", desc: "Educational carousel" },
+            { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
+          ]).map((opt) => (
+            <button
+              key={opt.val}
+              onClick={() => setCarouselFormat(opt.val)}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: carouselFormat === opt.val ? "var(--text)" : "var(--bg)",
+                color: carouselFormat === opt.val ? "var(--bg)" : "var(--muted)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {carouselFormat === "engagement" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Engagement carousels end with a comment CTA — readers comment a keyword to get a guide.
+          </p>
+        )}
+      </div>
+
+      {/* Engagement sub-type (only for engagement format) */}
+      {carouselFormat === "engagement" && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Engagement type</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {ENGAGEMENT_SUBTYPE_OPTIONS.map((opt) => {
+              const sel = engagementSubType === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => setEngagementSubType(opt.value)}
+                  style={{
+                    flex: 1,
+                    border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                    transition: "all 0.12s",
+                    boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Hook tone (only for standard format) */}
+      {carouselFormat === "standard" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook tone</label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
           {HOOK_TONE_OPTIONS.map((opt) => {
             const sel = hookTone === opt.value;
             return (
@@ -273,6 +350,8 @@ export default function TopicStep({ onNext }: Props) {
           })}
         </div>
       </div>
+
+      )}
 
       {/* Hook image style */}
       <div style={{ marginBottom: 24 }}>
@@ -302,7 +381,8 @@ export default function TopicStep({ onNext }: Props) {
         </div>
       </div>
 
-      {/* Content length toggle */}
+      {/* Content length toggle (standard only — engagement is always concise) */}
+      {carouselFormat === "standard" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Content length</label>
         <div style={{ display: "flex", gap: 8 }}>
@@ -327,6 +407,7 @@ export default function TopicStep({ onNext }: Props) {
           ))}
         </div>
       </div>
+      )}
 
       <button
         disabled={!topic || topicTooLong}
