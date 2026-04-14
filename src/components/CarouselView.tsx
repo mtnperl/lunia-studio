@@ -151,11 +151,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: slide.graphicImagePrompt ?? null,
-          graphicJson: slide.graphic ?? '',
           headline: slide.headline ?? '',
-          imageStyle: currentImageStyle,
-          brandStyle: capturedBrandStyle ?? undefined,
+          topic: currentTopic,
         }),
       })
         .then((r) => r.json())

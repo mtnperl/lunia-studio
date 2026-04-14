@@ -262,7 +262,7 @@ export default function ContentSlide({
           backgroundImage: `url(${backgroundImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.15,
+          opacity: 0.22,
         }} />
       ) : shimmer ? (
         <div style={{

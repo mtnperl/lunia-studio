@@ -42,41 +42,59 @@ export function buildPrompt(
   );
 }
 
-// ─── Slide graphic image generation (TIER B/C) ────────────────────────────────
-// Generates a 936×500 vector illustration for a content slide's graphic zone.
-// Only called for TIER B (layout) and TIER C (concept) slides — TIER A (data)
-// continues to use the existing React SVG components for precision.
+// ─── Content slide background image generation ────────────────────────────────
+// Generates a 1080×1350 editorial/realistic background for content slides.
+// Rendered at low opacity (~22%) behind all slide content — text and SVG
+// graphic components remain fully visible on top.
 
 export interface SlideGraphicResult {
   url: string;
 }
 
-export async function generateSlideGraphicImage(
-  prompt: string,
-  imageStyle: string = 'realistic',
-): Promise<SlideGraphicResult> {
-  // Map image style to fal.ai style token — vector/illustration styles work
-  // best for clean infographic aesthetics on content slides.
-  const styleMap: Record<string, string> = {
-    realistic: 'vector_illustration',
-    cartoon: 'digital_illustration',
-    anime: 'digital_illustration/2d_art_poster',
-    vector: 'vector_illustration',
-  };
-  const recraftStyle = styleMap[imageStyle] ?? 'vector_illustration';
-
+export async function generateSlideBackground(prompt: string): Promise<SlideGraphicResult> {
   const result = await fal.subscribe('fal-ai/recraft-v3', {
     input: {
       prompt,
-      image_size: { width: 936, height: 500 },
-      style: recraftStyle,
+      image_size: { width: 1080, height: 1350 },
+      style: 'realistic_image',
       colors: [],
     },
   }) as { images?: Array<{ url: string }> };
 
   const url = result?.images?.[0]?.url;
-  if (!url) throw new Error('fal.ai returned no image URL for slide graphic');
+  if (!url) throw new Error('fal.ai returned no image URL for slide background');
   return { url };
+}
+
+// Build an editorial/atmospheric background prompt from the slide headline + topic.
+// Goal: premium wellness photography that enhances the slide's emotional tone
+// without competing with text or data graphics.
+export function buildSlideBackgroundPrompt(headline: string, topic: string = ''): string {
+  const text = `${headline} ${topic}`.toLowerCase();
+
+  if (/sleep|rem|melatonin|circadian|insomnia|slumber/.test(text))
+    return `Serene dark bedroom at night, pristine white linens glowing in soft moonlight, sheer curtains diffusing city glow, peaceful and still. ${STYLE_TOKEN}`;
+  if (/stress|cortisol|anxiety|tension/.test(text))
+    return `Dimly lit minimalist desk at night, soft lamplight on scattered papers, an overturned hourglass casting long shadow, quiet tension and exhaustion. ${STYLE_TOKEN}`;
+  if (/brain|neuron|cognitive|memory|neural|glymphatic/.test(text))
+    return `Abstract neural pathways glowing in deep space, bioluminescent tendrils of light branching through darkness, scientific beauty, midnight blue. ${STYLE_TOKEN}`;
+  if (/hormone|testosterone|estrogen|endocrine/.test(text))
+    return `Athlete silhouette at golden hour, sharp form against gradient dusk sky, power and stillness, cinematic premium wellness. ${STYLE_TOKEN}`;
+  if (/magnesium|supplement|mineral|glycinate|capsule/.test(text))
+    return `Elegant amber glass bottle on dark marble surface, single soft spotlight, minimalist luxury wellness still life, deep shadows. ${STYLE_TOKEN}`;
+  if (/gut|digestion|microbiome|probiotic/.test(text))
+    return `Lush deep-green botanical spread, fermented jars catching low candlelight, dark moody earth tones, editorial wellness photography. ${STYLE_TOKEN}`;
+  if (/longevity|aging|lifespan|telomere|epigenetic/.test(text))
+    return `Weathered hands tending a thriving garden at dawn, dew on leaves, warm directional backlight, the promise of decades ahead, cinematic depth of field. ${STYLE_TOKEN}`;
+  if (/recovery|performance|muscle|athlete|plunge/.test(text))
+    return `Cold plunge pool at first light, steam rising over still dark water, luxury wellness resort, silver and midnight blue tones. ${STYLE_TOKEN}`;
+  if (/light|blue light|circadian|photoreceptor/.test(text))
+    return `Single blue glow of a screen in a dark room, long shadows, contrast of cold light against warm darkness, moody and cinematic. ${STYLE_TOKEN}`;
+  if (/temperature|thermoregulation|cold|heat/.test(text))
+    return `Minimal bathroom at night, steaming bath with soft candlelight reflections, dark polished stone, luxury spa stillness. ${STYLE_TOKEN}`;
+
+  // Generic wellness fallback
+  return `Premium wellness editorial evoking "${headline}", dark atmospheric scene, soft selective lighting, serene and aspirational. ${STYLE_TOKEN}`;
 }
 
 // TIER B/C classification — determines whether to use AI image or SVG component.
