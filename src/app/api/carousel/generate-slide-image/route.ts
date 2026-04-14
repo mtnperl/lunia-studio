@@ -1,7 +1,7 @@
 import { checkRateLimit } from "@/lib/kv";
 import { generateSlideBackground, buildSlideBackgroundPrompt } from "@/lib/fal";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request): Promise<Response> {
   const ip =
