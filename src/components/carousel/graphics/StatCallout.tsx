@@ -11,15 +11,18 @@ interface Props {
 export function StatCallout({
   stat = '87%',
   label = 'OF ADULTS ARE MAGNESIUM DEFICIENT',
+  unit,
   trend,
   brandStyle,
 }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
+  const secondary = brandStyle?.secondary ?? '#6b7280';
   const trendColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : null;
 
   // Dynamic font size based on stat length
   const statSize = stat.length <= 4 ? 140 : stat.length <= 6 ? 100 : 72;
+  const unitSize = Math.round(statSize * 0.3);
 
   return (
     <div style={{
@@ -39,13 +42,13 @@ export function StatCallout({
         flexShrink: 0,
       }} />
 
-      {/* Stat + trend container */}
+      {/* Stat + unit + trend container */}
       <div style={{
         flex: 1,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'baseline',
         justifyContent: 'center',
-        gap: 12,
+        gap: unit ? 14 : 12,
         position: 'relative',
       }}>
         <span style={{
@@ -57,6 +60,18 @@ export function StatCallout({
         }}>
           {stat}
         </span>
+        {unit && (
+          <span style={{
+            fontSize: unitSize,
+            fontWeight: 500,
+            color: secondary,
+            lineHeight: 1,
+            letterSpacing: '0.04em',
+            textTransform: 'lowercase',
+          }}>
+            {unit}
+          </span>
+        )}
         {trend && trendColor && (
           <span style={{
             fontSize: 64,
