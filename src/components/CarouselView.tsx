@@ -135,43 +135,28 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
         });
     });
 
-    // Content slide images (slides 1–3) — generated in parallel, shown as shimmer while loading
-    const CONTENT_SLIDE_TOTAL = 3;
-    let contentLoaded = 0;
-    let contentFailed = 0;
-    const capturedBrandStyle = brandStyle;
-    [0, 1, 2].forEach((ci) => {
-      const slide = currentContent.slides[ci];
-      if (!slide) {
-        contentFailed++;
-        if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
-        return;
-      }
-      fetch('/api/carousel/generate-slide-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          headline: slide.headline ?? '',
-          topic: currentTopic,
-        }),
+    // Single background image shared across all 3 content slides — topic-based for cohesion.
+    // One fal.ai call instead of three avoids queue saturation and ensures consistent aesthetics.
+    fetch('/api/carousel/generate-slide-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: currentTopic }),
+    })
+      .then((r) => r.json())
+      .then(({ url }: { url?: string }) => {
+        if (url) {
+          // Apply the same atmospheric background to all 3 content slides
+          setSlideImages((prev) => {
+            const next = [...prev];
+            next[1] = url;
+            next[2] = url;
+            next[3] = url;
+            return next;
+          });
+        }
       })
-        .then((r) => r.json())
-        .then(({ url, reason }: { url?: string; reason?: string }) => {
-          if (url) {
-            // slideImages[1], [2], [3] for content slides 0, 1, 2
-            setSlideImages((prev) => { const next = [...prev]; next[ci + 1] = url; return next; });
-            contentLoaded++;
-          } else {
-            // reason === 'tier-a' means SVG is preferred — not an error
-            contentFailed++;
-          }
-          if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
-        })
-        .catch(() => {
-          contentFailed++;
-          if (contentLoaded + contentFailed === CONTENT_SLIDE_TOTAL) setContentImagesLoading(false);
-        });
-    });
+      .catch(() => {})
+      .finally(() => setContentImagesLoading(false));
   }
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType) {
