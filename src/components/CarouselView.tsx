@@ -70,10 +70,33 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setSelectedHook(initialCarousel.selectedHook ?? 0);
     setBrandStyle(initialCarousel.brandStyle ?? null);
     setHookImageUrl(initialCarousel.hookImageUrl ?? null);
-    setSlideImages(initialCarousel.slideImages ?? [null, null, null, null, null]);
+    const loadedImages = initialCarousel.slideImages ?? [null, null, null, null, null];
+    setSlideImages(loadedImages);
     if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
     setStep(4);
     onCarouselLoaded?.();
+
+    // If content slides have no backgrounds, generate them now
+    if (!loadedImages[1] && !loadedImages[2] && !loadedImages[3]) {
+      setContentImagesLoading(true);
+      fetch('/api/carousel/generate-slide-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: initialCarousel.topic }),
+      })
+        .then((r) => r.json())
+        .then(({ url }: { url?: string }) => {
+          if (url) {
+            setSlideImages((prev) => {
+              const next = [...prev];
+              next[1] = url; next[2] = url; next[3] = url;
+              return next;
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setContentImagesLoading(false));
+    }
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Draft persistence ────────────────────────────────────────────────────
