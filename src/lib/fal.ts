@@ -57,11 +57,12 @@ export async function generateSlideBackground(prompt: string): Promise<SlideGrap
       prompt,
       image_size: { width: 1080, height: 1350 },
       style: 'realistic_image',
-      colors: [],
+      num_images: 1,
     },
-  }) as { images?: Array<{ url: string }> };
+    logs: false,
+  });
 
-  const url = result?.images?.[0]?.url;
+  const url: string | undefined = (result.data as any)?.images?.[0]?.url;
   if (!url) throw new Error('fal.ai returned no image URL for slide background');
   return { url };
 }
