@@ -21,15 +21,8 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const n = Math.min(cells.length, 12);
   const list = cells.slice(0, n);
 
-  // Layout: ≤4 cells = 1 row, ≤8 = 2 rows, else 3 rows
   const rows = n <= 4 ? 1 : n <= 8 ? 2 : 3;
   const cols = Math.ceil(n / rows);
-  const cellW = Math.min(118, Math.floor(816 / cols));
-  const cellH = 110;
-  const gap = 10;
-  const gridW = cols * cellW + (cols - 1) * gap;
-  const gridX = (936 - gridW) / 2;
-  const gridY = title ? 64 : 40;
 
   const cellColor = (v: number) => {
     if (v >= 3) return accent;
@@ -39,58 +32,90 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const textColor = (v: number) => v >= 2 ? '#fff' : bodyColor;
 
   return (
-    <svg width={936} height={title ? 440 : 420} viewBox={`0 0 936 ${title ? 440 : 420}`} overflow="visible">
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 16,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
       {title && (
-        <text x={468} y={34} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"
-          letterSpacing="0.1em" fill={bodyColor}>
+        <span style={{
+          fontSize: 22,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: bodyColor,
+        }}>
           {title}
-        </text>
+        </span>
       )}
-      {list.map((cell, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const cx = gridX + col * (cellW + gap) + cellW / 2;
-        const cy = gridY + row * (cellH + gap) + cellH / 2;
-        const x = gridX + col * (cellW + gap);
-        const y = gridY + row * (cellH + gap);
-        const fill = cellColor(cell.value);
-        const txtColor = textColor(cell.value);
 
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={cellW} height={cellH} rx={8} fill={fill} />
-            {/* Label */}
-            <text x={cx} y={cy - 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={txtColor}>
+      {/* Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gap: 10,
+        width: '90%',
+      }}>
+        {list.map((cell, i) => (
+          <div key={i} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '16px 8px',
+            borderRadius: 8,
+            background: cellColor(cell.value),
+            minHeight: 90,
+          }}>
+            <span style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: textColor(cell.value),
+              lineHeight: 1,
+            }}>
               {cell.label}
-            </text>
+            </span>
             {/* Dots for intensity */}
-            {[...Array(Math.min(cell.value, 3))].map((_, d) => (
-              <circle key={d}
-                cx={cx - (Math.min(cell.value, 3) - 1) * 7 + d * 14}
-                cy={cy + 16} r={4}
-                fill={cell.value >= 2 ? 'rgba(255,255,255,0.6)' : `${accent}80`}
-              />
-            ))}
-          </g>
-        );
-      })}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[...Array(Math.min(cell.value, 3))].map((_, d) => (
+                <div key={d} style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: cell.value >= 2 ? 'rgba(255,255,255,0.6)' : `${accent}80`,
+                }} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Legend */}
-      {[
-        { label: 'Low', v: 1 }, { label: 'Mid', v: 2 }, { label: 'High', v: 3 }
-      ].map((item, i) => (
-        <g key={i}>
-          <rect x={300 + i * 120} y={gridY + rows * (cellH + gap) + 16}
-            width={14} height={14} rx={3} fill={cellColor(item.v)} />
-          <text x={320 + i * 120} y={gridY + rows * (cellH + gap) + 28}
-            fontFamily="Outfit, sans-serif" fontSize="15" fill={secondary}>
-            {item.label}
-          </text>
-        </g>
-      ))}
-    </svg>
+      <div style={{
+        display: 'flex',
+        gap: 24,
+        justifyContent: 'center',
+      }}>
+        {[
+          { label: 'Low', v: 1 },
+          { label: 'Mid', v: 2 },
+          { label: 'High', v: 3 },
+        ].map((item, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 14,
+              height: 14,
+              borderRadius: 3,
+              background: cellColor(item.v),
+            }} />
+            <span style={{ fontSize: 15, color: secondary }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

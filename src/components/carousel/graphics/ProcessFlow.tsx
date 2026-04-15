@@ -7,74 +7,95 @@ interface Props {
 
 const DEFAULTS = ['Magnesium binds', 'GABA activates', 'Brain waves slow', 'Deep sleep begins'];
 
-function wrapStep(text: string): [string, string | null] {
-  const words = text.split(' ');
-  if (words.length <= 2) return [text, null];
-  const mid = Math.ceil(words.length / 2);
-  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
-}
-
 export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
-  const secondary = brandStyle?.secondary ?? '#a8d4da';
 
   const n = Math.min(Math.max(steps.length, 2), 5);
   const list = steps.slice(0, n);
-  const W = 936, H = 440;
-  const arrowW = 44, boxH = 140;
-  const totalArrows = n - 1;
-  const boxW = Math.floor((W - 20 - totalArrows * arrowW) / n);
-  const cy = 220;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
-      {list.map((step, i) => {
-        const boxX = 10 + i * (boxW + arrowW);
-        const boxCx = boxX + boxW / 2;
-        const [line1, line2] = wrapStep(step);
-
-        return (
-          <g key={i}>
-            {/* Box */}
-            <rect x={boxX} y={cy - boxH / 2} width={boxW} height={boxH} rx={8}
-              fill={`${accent}10`} stroke={accent} strokeWidth={2} />
+    <div style={{
+      width: 936,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 0,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
+      {list.map((step, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          {/* Step box */}
+          <div style={{
+            flex: 1,
+            minHeight: 120,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '16px 12px',
+            borderRadius: 8,
+            background: `${accent}10`,
+            border: `2px solid ${accent}`,
+            position: 'relative',
+          }}>
             {/* Step number badge */}
-            <circle cx={boxCx} cy={cy - boxH / 2 - 16} r={18} fill={accent} />
-            <text x={boxCx} y={cy - boxH / 2 - 16 + 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="700" fill="#fff">
-              {i + 1}
-            </text>
+            <div style={{
+              position: 'absolute',
+              top: -16,
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: accent,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <span style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: '#fff',
+                lineHeight: 1,
+              }}>
+                {i + 1}
+              </span>
+            </div>
+
             {/* Step text */}
-            <text x={boxCx} y={line2 ? cy - 12 : cy + 10} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '18' : '22'}
-              fontWeight="600" fill={bodyColor}>
-              {line1}
-            </text>
-            {line2 && (
-              <text x={boxCx} y={cy + 18} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize={boxW < 130 ? '18' : '22'}
-                fontWeight="600" fill={bodyColor}>
-                {line2}
-              </text>
-            )}
-            {/* Arrow to next */}
-            {i < n - 1 && (() => {
-              const ax1 = boxX + boxW + 4;
-              const ax2 = boxX + boxW + arrowW - 4;
-              return (
-                <g>
-                  <line x1={ax1} y1={cy} x2={ax2 - 6} y2={cy}
-                    stroke={`${accent}80`} strokeWidth={2} />
-                  <polygon points={`${ax2},${cy} ${ax2 - 8},${cy - 5} ${ax2 - 8},${cy + 5}`}
-                    fill={accent} opacity={0.7} />
-                </g>
-              );
-            })()}
-          </g>
-        );
-      })}
-    </svg>
+            <span style={{
+              fontSize: n > 3 ? 18 : 22,
+              fontWeight: 600,
+              color: bodyColor,
+              textAlign: 'center',
+              lineHeight: 1.3,
+              marginTop: 8,
+              wordBreak: 'break-word',
+            }}>
+              {step}
+            </span>
+          </div>
+
+          {/* Arrow */}
+          {i < n - 1 && (
+            <div style={{
+              width: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <span style={{
+                fontSize: 24,
+                color: `${accent}80`,
+                lineHeight: 1,
+              }}>
+                →
+              </span>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

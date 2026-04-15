@@ -20,57 +20,70 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
 
   const n = Math.min(stages.length, 5);
   const list = stages.slice(0, n);
-  const W = 936, H = 460;
-  const stageH = (H - 20) / n;
-  const maxW = 740, minW = maxW * 0.3;
-  const cx = W / 2;
 
   // Compute widths from percent or linear fallback
   const percents = list.map((s, i) => s.percent ?? Math.round(100 - i * (60 / (n - 1))));
   const maxP = Math.max(...percents, 1);
-  const widths = percents.map(p => minW + (p / maxP) * (maxW - minW));
+  const widths = percents.map(p => Math.max(30, Math.round((p / maxP) * 100)));
 
   const opacities = [1, 0.82, 0.64, 0.46, 0.32];
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 4,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
       {list.map((stage, i) => {
-        const topW = widths[i];
-        const botW = i < n - 1 ? widths[i + 1] : widths[i] * 0.75;
-        const y = i * stageH + 10;
-        const topL = cx - topW / 2, topR = cx + topW / 2;
-        const botL = cx - botW / 2, botR = cx + botW / 2;
-
-        const trapPath = `M ${topL} ${y} L ${topR} ${y} L ${botR} ${y + stageH - 4} L ${botL} ${y + stageH - 4} Z`;
-        const fill = `${accent}${Math.round(opacities[i] * 255).toString(16).padStart(2, '0')}`;
+        const widthPct = widths[i];
+        const opacity = opacities[i] ?? 0.32;
+        const isLight = opacity >= 0.6;
 
         return (
-          <g key={i}>
-            <path d={trapPath} fill={fill} />
+          <div key={i} style={{
+            width: `${widthPct}%`,
+            minWidth: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            padding: '16px 24px',
+            borderRadius: 8,
+            background: accent,
+            opacity,
+            position: 'relative',
+          }}>
             {/* Label */}
-            <text x={cx} y={y + stageH / 2 + 6} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
-              fill={i === 0 ? '#fff' : i === 1 ? '#fff' : bodyColor}>
+            <span style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: isLight ? '#fff' : bodyColor,
+              textAlign: 'center',
+              lineHeight: 1.2,
+            }}>
               {stage.label}
-            </text>
-            {/* Value on right */}
-            {stage.value && (
-              <text x={topR + 16} y={y + stageH / 2 + 6}
-                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary}>
-                {stage.value}
-              </text>
+            </span>
+            {/* Value or percent on the right */}
+            {(stage.value || percents[i]) && (
+              <span style={{
+                position: 'absolute',
+                right: -80,
+                fontSize: 22,
+                fontWeight: 700,
+                color: secondary,
+                whiteSpace: 'nowrap',
+                opacity: 1 / opacity, // counteract parent opacity
+              }}>
+                {stage.value ?? `${percents[i]}%`}
+              </span>
             )}
-            {/* Percent on right if no value */}
-            {!stage.value && (
-              <text x={topR + 16} y={y + stageH / 2 + 6}
-                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary}>
-                {percents[i]}%
-              </text>
-            )}
-          </g>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

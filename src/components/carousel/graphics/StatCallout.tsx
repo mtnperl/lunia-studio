@@ -18,22 +18,81 @@ export function StatCallout({
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const trendColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : null;
 
+  // Dynamic font size based on stat length
+  const statSize = stat.length <= 4 ? 140 : stat.length <= 6 ? 100 : 72;
+
   return (
-    <svg width={936} height={460} viewBox="0 0 936 460">
-      <line x1={120} y1={77} x2={816} y2={77} stroke={accent} strokeWidth="1.5" />
-      <text x={468} y={282} textAnchor="middle" fontFamily="Outfit" fontSize="140" fontWeight="700" fill={accent}>
-        {stat}
-      </text>
-      {trend && trendColor && (
-        <text x={716} y={179} textAnchor="middle" fontFamily="Outfit" fontSize="64" fontWeight="700" fill={trendColor}>
-          {trend === 'up' ? '↑' : '↓'}
-        </text>
-      )}
-      <line x1={120} y1={345} x2={816} y2={345} stroke={accent} strokeWidth="1.5" />
-      <text x={468} y={422} textAnchor="middle" fontFamily="Outfit" fontSize="30" fill={bodyColor} letterSpacing="3">
+    <div style={{
+      width: 936,
+      height: 460,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Outfit, sans-serif',
+      gap: 0,
+    }}>
+      {/* Top rule */}
+      <div style={{
+        width: '75%',
+        height: 1.5,
+        background: accent,
+        flexShrink: 0,
+      }} />
+
+      {/* Stat + trend container */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        position: 'relative',
+      }}>
+        <span style={{
+          fontSize: statSize,
+          fontWeight: 700,
+          color: accent,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+        }}>
+          {stat}
+        </span>
+        {trend && trendColor && (
+          <span style={{
+            fontSize: 64,
+            fontWeight: 700,
+            color: trendColor,
+            lineHeight: 1,
+          }}>
+            {trend === 'up' ? '↑' : '↓'}
+          </span>
+        )}
+      </div>
+
+      {/* Bottom rule */}
+      <div style={{
+        width: '75%',
+        height: 1.5,
+        background: accent,
+        flexShrink: 0,
+      }} />
+
+      {/* Label */}
+      <div style={{
+        marginTop: 28,
+        fontSize: 30,
+        fontWeight: 400,
+        color: bodyColor,
+        letterSpacing: '0.1em',
+        textAlign: 'center',
+        lineHeight: 1.3,
+        paddingLeft: 40,
+        paddingRight: 40,
+      }}>
         {label}
-      </text>
-    </svg>
+      </div>
+    </div>
   );
 }
 

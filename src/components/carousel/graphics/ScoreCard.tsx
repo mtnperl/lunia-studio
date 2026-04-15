@@ -13,41 +13,88 @@ export function ScoreCard({ score = 'A+', label = 'SLEEP QUALITY RATING', sublab
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
   // Scale font size based on score length
-  const fontSize = score.length <= 2 ? 180 : score.length <= 4 ? 120 : 80;
+  const scoreSize = score.length <= 2 ? 180 : score.length <= 4 ? 120 : 80;
 
   return (
-    <svg width={936} height={460} viewBox="0 0 936 460" overflow="visible">
-      {/* Corner accent lines */}
-      <line x1={240} y1={30} x2={300} y2={30} stroke={accent} strokeWidth={3} />
-      <line x1={240} y1={30} x2={240} y2={82} stroke={accent} strokeWidth={3} />
-      <line x1={696} y1={30} x2={636} y2={30} stroke={accent} strokeWidth={3} />
-      <line x1={696} y1={30} x2={696} y2={82} stroke={accent} strokeWidth={3} />
-      <line x1={240} y1={353} x2={300} y2={353} stroke={accent} strokeWidth={3} />
-      <line x1={240} y1={353} x2={240} y2={302} stroke={accent} strokeWidth={3} />
-      <line x1={696} y1={353} x2={636} y2={353} stroke={accent} strokeWidth={3} />
-      <line x1={696} y1={353} x2={696} y2={302} stroke={accent} strokeWidth={3} />
-      {/* Inner fill */}
-      <rect x={250} y={38} width={436} height={320} rx={4} fill={`${accent}08`} />
-      {/* Score */}
-      <text x={468} y={270} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize={fontSize} fontWeight="800" fill={accent}>
-        {score}
-      </text>
+    <div style={{
+      width: 936,
+      height: 460,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Outfit, sans-serif',
+      position: 'relative',
+    }}>
+      {/* Score frame */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 456,
+        height: 320,
+        border: `3px solid ${accent}`,
+        borderRadius: 4,
+        background: `${accent}08`,
+        position: 'relative',
+      }}>
+        {/* Corner accents */}
+        {/* Top-left */}
+        <div style={{ position: 'absolute', top: -3, left: -3, width: 60, height: 3, background: accent }} />
+        <div style={{ position: 'absolute', top: -3, left: -3, width: 3, height: 52, background: accent }} />
+        {/* Top-right */}
+        <div style={{ position: 'absolute', top: -3, right: -3, width: 60, height: 3, background: accent }} />
+        <div style={{ position: 'absolute', top: -3, right: -3, width: 3, height: 52, background: accent }} />
+        {/* Bottom-left */}
+        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 60, height: 3, background: accent }} />
+        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 3, height: 52, background: accent }} />
+        {/* Bottom-right */}
+        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 60, height: 3, background: accent }} />
+        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 3, height: 52, background: accent }} />
+
+        {/* Score */}
+        <span style={{
+          fontSize: scoreSize,
+          fontWeight: 800,
+          color: accent,
+          lineHeight: 1,
+        }}>
+          {score}
+        </span>
+      </div>
+
       {/* Divider */}
-      <line x1={320} y1={378} x2={616} y2={378} stroke={`${bodyColor}25`} strokeWidth={1} />
+      <div style={{
+        width: 296,
+        height: 1,
+        background: `${bodyColor}25`,
+        marginTop: 20,
+        marginBottom: 14,
+      }} />
+
       {/* Label */}
-      <text x={468} y={413} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="26" fontWeight="700"
-        letterSpacing="0.12em" fill={bodyColor}>
+      <span style={{
+        fontSize: 26,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        color: bodyColor,
+        textAlign: 'center',
+      }}>
         {label}
-      </text>
+      </span>
+
       {sublabel && (
-        <text x={468} y={444} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="18" fill={secondary}>
+        <span style={{
+          fontSize: 18,
+          color: secondary,
+          marginTop: 6,
+          textAlign: 'center',
+        }}>
           {sublabel}
-        </text>
+        </span>
       )}
-    </svg>
+    </div>
   );
 }
 

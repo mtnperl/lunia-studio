@@ -1,9 +1,9 @@
 import type { BrandStyle } from '@/lib/types';
 
 interface Props {
-  value?: string;        // e.g. "96%" or "85"
-  label?: string;        // e.g. "ABSORPTION WASTED"
-  sublabel?: string;     // e.g. "with magnesium oxide"
+  value?: string;
+  label?: string;
+  sublabel?: string;
   brandStyle?: BrandStyle;
 }
 
@@ -36,32 +36,79 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
   const innerR = 103;
   const trackW = outerR - innerR;
 
+  // Dynamic font size for center value
+  const valueSize = value.length <= 4 ? 90 : value.length <= 6 ? 70 : 54;
+
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {/* Track ring */}
-      <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={`${bodyColor}18`} strokeWidth={trackW} />
-      {/* Filled arc */}
-      <path
-        d={donutArc(cx, cy, (outerR + innerR) / 2, pct)}
-        fill="none"
-        stroke={accent}
-        strokeWidth={trackW}
-        strokeLinecap="round"
-      />
+    <div style={{ width: w, height: h, position: 'relative' }}>
+      {/* SVG for arcs only */}
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+        <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={`${bodyColor}18`} strokeWidth={trackW} />
+        <path
+          d={donutArc(cx, cy, (outerR + innerR) / 2, pct)}
+          fill="none"
+          stroke={accent}
+          strokeWidth={trackW}
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* CSS text overlays */}
       {/* Center value */}
-      <text x={cx} y={cy + 22} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="90" fontWeight="800" fill={accent}>
-        {value}
-      </text>
-      {/* Label */}
-      <text x={cx} y={cy + outerR + 42} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="26" fontWeight="700" letterSpacing="0.1em" fill={bodyColor}>
-        {label}
-      </text>
-      {sublabel && (
-        <text x={cx} y={cy + outerR + 76} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="20" fill={secondary}>
-          {sublabel}
-        </text>
-      )}
-    </svg>
+      <div style={{
+        position: 'absolute',
+        top: cy - outerR,
+        left: cx - outerR,
+        width: outerR * 2,
+        height: outerR * 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: valueSize,
+          fontWeight: 800,
+          color: accent,
+          lineHeight: 1,
+        }}>
+          {value}
+        </span>
+      </div>
+
+      {/* Label below ring */}
+      <div style={{
+        position: 'absolute',
+        top: cy + outerR + 16,
+        left: 0,
+        width: w,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+        <span style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: bodyColor,
+          textAlign: 'center',
+        }}>
+          {label}
+        </span>
+        {sublabel && (
+          <span style={{
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 20,
+            color: secondary,
+            textAlign: 'center',
+          }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

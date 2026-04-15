@@ -76,27 +76,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setStep(4);
     onCarouselLoaded?.();
 
-    // If content slides have no backgrounds, generate them now
-    if (!loadedImages[1] && !loadedImages[2] && !loadedImages[3]) {
-      setContentImagesLoading(true);
-      fetch('/api/carousel/generate-slide-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: initialCarousel.topic }),
-      })
-        .then((r) => r.json())
-        .then(({ url }: { url?: string }) => {
-          if (url) {
-            setSlideImages((prev) => {
-              const next = [...prev];
-              next[1] = url; next[2] = url; next[3] = url;
-              return next;
-            });
-          }
-        })
-        .catch(() => {})
-        .finally(() => setContentImagesLoading(false));
-    }
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Draft persistence ────────────────────────────────────────────────────
@@ -109,7 +88,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
-  const [contentImagesLoading, setContentImagesLoading] = useState(false);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -126,7 +104,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
     setFalCount(0);
-    setContentImagesLoading(true);
     const hook = currentContent.hooks[currentHookIndex];
     let loaded = 0;
     let failed = 0;
@@ -158,28 +135,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
         });
     });
 
-    // Single background image shared across all 3 content slides — topic-based for cohesion.
-    // One fal.ai call instead of three avoids queue saturation and ensures consistent aesthetics.
-    fetch('/api/carousel/generate-slide-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic: currentTopic }),
-    })
-      .then((r) => r.json())
-      .then(({ url }: { url?: string }) => {
-        if (url) {
-          // Apply the same atmospheric background to all 3 content slides
-          setSlideImages((prev) => {
-            const next = [...prev];
-            next[1] = url;
-            next[2] = url;
-            next[3] = url;
-            return next;
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setContentImagesLoading(false));
   }
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType) {
@@ -254,7 +209,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setFalStatus("idle");
     setFalCount(0);
     setFalErrors([null, null, null, null, null]);
-    setContentImagesLoading(false);
   }
 
   // ─── fal.ai status badge ──────────────────────────────────────────────────
@@ -409,7 +363,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               initialReelsMode={initialCarousel?.reelsMode}
               initialCitationFontSize={initialCarousel?.citationFontSize}
               carouselFormat={carouselFormat}
-              contentImagesLoading={contentImagesLoading}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

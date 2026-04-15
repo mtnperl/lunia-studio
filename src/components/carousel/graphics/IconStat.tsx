@@ -17,45 +17,77 @@ export function IconStat({ icon = '🧠', value = '23%', unit, label = 'INCREASE
   const valFontSize = value.length <= 4 ? 110 : value.length <= 6 ? 80 : 64;
 
   return (
-    <svg width={936} height={360} viewBox="0 0 936 360" overflow="visible">
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      fontFamily: 'Outfit, sans-serif',
+      minHeight: 340,
+    }}>
       {/* Icon */}
-      <text x={468} y={100} textAnchor="middle"
-        fontFamily="'Segoe UI Emoji', 'Apple Color Emoji', sans-serif" fontSize="80">
-        {icon}
-      </text>
-      {/* Thin separator */}
-      <line x1={340} y1={118} x2={596} y2={118} stroke={`${accent}40`} strokeWidth={1.5} />
-      {/* Value */}
-      {unit ? (
-        <>
-          <text x={440} y={242} textAnchor="end"
-            fontFamily="Outfit, sans-serif" fontSize={valFontSize} fontWeight="800" fill={accent}>
-            {value}
-          </text>
-          <text x={452} y={216} textAnchor="start"
-            fontFamily="Outfit, sans-serif" fontSize="32" fontWeight="700" fill={secondary}>
-            {unit}
-          </text>
-        </>
-      ) : (
-        <text x={468} y={242} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize={valFontSize} fontWeight="800" fill={accent}>
+      <span style={{ fontSize: 80, lineHeight: 1 }}>{icon}</span>
+
+      {/* Separator */}
+      <div style={{
+        width: 256,
+        height: 1.5,
+        background: `${accent}40`,
+        marginTop: 4,
+        marginBottom: 4,
+      }} />
+
+      {/* Value + optional unit */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 8,
+      }}>
+        <span style={{
+          fontSize: valFontSize,
+          fontWeight: 800,
+          color: accent,
+          lineHeight: 1,
+        }}>
           {value}
-        </text>
-      )}
+        </span>
+        {unit && (
+          <span style={{
+            fontSize: 32,
+            fontWeight: 700,
+            color: secondary,
+            lineHeight: 1,
+          }}>
+            {unit}
+          </span>
+        )}
+      </div>
+
       {/* Label */}
-      <text x={468} y={290} textAnchor="middle"
-        fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
-        letterSpacing="0.1em" fill={bodyColor}>
+      <span style={{
+        fontSize: 24,
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        color: bodyColor,
+        textAlign: 'center',
+        lineHeight: 1.3,
+        maxWidth: 700,
+      }}>
         {label}
-      </text>
+      </span>
+
       {sublabel && (
-        <text x={468} y={326} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="19" fill={secondary}>
+        <span style={{
+          fontSize: 19,
+          color: secondary,
+          textAlign: 'center',
+        }}>
           {sublabel}
-        </text>
+        </span>
       )}
-    </svg>
+    </div>
   );
 }
 

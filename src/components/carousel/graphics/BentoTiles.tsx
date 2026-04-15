@@ -13,102 +13,83 @@ const DEFAULTS: Tile[] = [
   { icon: '❤️', label: 'Heart health', body: 'Lower resting heart rate' },
 ];
 
-// Layout configurations per tile count
-const LAYOUTS: Record<number, { x: number; y: number; w: number; h: number }[]> = {
-  2: [
-    { x: 30, y: 20, w: 418, h: 420 },
-    { x: 488, y: 20, w: 418, h: 420 },
-  ],
-  3: [
-    { x: 30, y: 20, w: 876, h: 180 },
-    { x: 30, y: 220, w: 418, h: 220 },
-    { x: 488, y: 220, w: 418, h: 220 },
-  ],
-  4: [
-    { x: 30, y: 20, w: 418, h: 200 },
-    { x: 488, y: 20, w: 418, h: 200 },
-    { x: 30, y: 240, w: 418, h: 200 },
-    { x: 488, y: 240, w: 418, h: 200 },
-  ],
-};
-
 export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#1a2535';
   const secondary = brandStyle?.secondary ?? '#6b7280';
-  const bg = brandStyle?.background ?? '#f0ece6';
 
   const n = Math.min(Math.max((tiles ?? []).length, 2), 4) as 2 | 3 | 4;
   const list = (tiles ?? []).slice(0, n);
-  const layout = LAYOUTS[n];
-  const W = 936, H = 460;
+
+  // For 3 tiles: first tile spans full width, then 2 below
+  // For 2 or 4: simple 2-column grid
+  const isThree = n === 3;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
+    <div style={{
+      width: 936,
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 16,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
       {list.map((tile, i) => {
-        const { x, y, w, h } = layout[i];
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        const isWide = w > 500;
-        const hasBody = !!tile.body;
-
-        // For wide tiles (tile 0 in 3-tile layout), horizontal icon+text layout
-        if (isWide && n === 3 && i === 0) {
-          return (
-            <g key={i}>
-              <rect x={x} y={y} width={w} height={h} rx={10}
-                fill={accent} />
-              <text x={x + 46} y={y + 38} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="46">
-                {tile.icon}
-              </text>
-              <text x={x + 96} y={y + (hasBody ? 40 : 50)} textAnchor="start"
-                fontFamily="Outfit, sans-serif" fontSize="28" fontWeight="700" fill="#fff">
-                {tile.label}
-              </text>
-              {hasBody && (
-                <text x={x + 96} y={y + 74} textAnchor="start"
-                  fontFamily="Outfit, sans-serif" fontSize="22" fill="rgba(255,255,255,0.75)">
-                  {tile.body}
-                </text>
-              )}
-            </g>
-          );
-        }
-
-        // Standard tile — icon at top, label below
-        const iconY = hasBody ? y + h * 0.3 : y + h * 0.38;
-        const labelY = hasBody ? y + h * 0.58 : y + h * 0.7;
-        const bodyY = y + h * 0.78;
-        const isFilled = i === 0 && n !== 3;
+        const isFeatured = (isThree && i === 0) || (!isThree && i === 0);
+        const isWide = isThree && i === 0;
 
         return (
-          <g key={i}>
-            <rect x={x} y={y} width={w} height={h} rx={10}
-              fill={isFilled ? accent : `${accent}12`}
-              stroke={isFilled ? 'none' : accent}
-              strokeWidth={1.5}
-            />
-            <text x={cx} y={iconY + 14} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="42">
+          <div key={i} style={{
+            gridColumn: isWide ? '1 / -1' : undefined,
+            display: 'flex',
+            flexDirection: isWide ? 'row' : 'column',
+            alignItems: isWide ? 'center' : 'center',
+            justifyContent: isWide ? 'flex-start' : 'center',
+            gap: isWide ? 20 : 8,
+            padding: isWide ? '24px 32px' : '28px 20px',
+            borderRadius: 10,
+            background: isFeatured ? accent : `${accent}12`,
+            border: isFeatured ? 'none' : `1.5px solid ${accent}`,
+            minHeight: isWide ? undefined : 180,
+          }}>
+            {/* Icon */}
+            <span style={{
+              fontSize: isWide ? 46 : 42,
+              lineHeight: 1,
+              flexShrink: 0,
+            }}>
               {tile.icon}
-            </text>
-            <text x={cx} y={labelY} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
-              fill={isFilled ? '#fff' : accent}>
-              {tile.label}
-            </text>
-            {hasBody && (
-              <text x={cx} y={bodyY} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="18"
-                fill={isFilled ? 'rgba(255,255,255,0.75)' : secondary}>
-                {tile.body}
-              </text>
-            )}
-          </g>
+            </span>
+
+            {/* Text */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              textAlign: isWide ? 'left' : 'center',
+            }}>
+              <span style={{
+                fontSize: isWide ? 28 : 24,
+                fontWeight: 700,
+                color: isFeatured ? '#fff' : accent,
+                lineHeight: 1.2,
+              }}>
+                {tile.label}
+              </span>
+              {tile.body && (
+                <span style={{
+                  fontSize: isWide ? 22 : 18,
+                  fontWeight: 400,
+                  color: isFeatured ? 'rgba(255,255,255,0.75)' : secondary,
+                  lineHeight: 1.3,
+                }}>
+                  {tile.body}
+                </span>
+              )}
+            </div>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

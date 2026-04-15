@@ -170,8 +170,6 @@ type Props = {
   brandStyle?: BrandStyle;
   scale?: number;
   id?: string;
-  backgroundImage?: string | null;  // fal.ai generated background, rendered at low opacity
-  shimmer?: boolean;                // show shimmer while fal image is loading
   logoScale?: number;
   arrowScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
@@ -192,8 +190,6 @@ export default function ContentSlide({
   brandStyle,
   scale = 1,
   id,
-  backgroundImage,
-  shimmer = false,
   logoScale = 1,
   arrowScale = 1,
   darkBackground = false,
@@ -255,24 +251,6 @@ export default function ContentSlide({
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
-      {/* fal.ai background image — 15% opacity, purely atmospheric behind all content */}
-      {backgroundImage ? (
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.35,
-        }} />
-      ) : shimmer ? (
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.04) 100%)',
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 1.6s ease-in-out infinite',
-        }} />
-      ) : null}
-
       <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
       {showLuniaLifeWatermark && (
         <div style={{
@@ -349,7 +327,7 @@ export default function ContentSlide({
 
         {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}
         {hasInlineGraphic && (
-          <div style={{ minHeight: graphicMinH, flexShrink: 0 }}>
+          <div style={{ minHeight: graphicMinH, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (

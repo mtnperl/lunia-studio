@@ -24,44 +24,92 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
   const START = 225, SWEEP = 270;
 
   const ts = polarToCart(cx, cy, r, START);
-  const te = polarToCart(cx, cy, r, 135); // 225+270=495 mod 360 = 135
+  const te = polarToCart(cx, cy, r, 135);
 
   const fillEndDeg = (START + pct * SWEEP) % 360;
   const fe = polarToCart(cx, cy, r, fillEndDeg);
   const fillLarge = pct * SWEEP > 180 ? 1 : 0;
 
+  // Dynamic font size for center value
+  const valueSize = value.length <= 4 ? 110 : value.length <= 6 ? 80 : 60;
+
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
-      {/* Track */}
-      <path
-        d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 1 1 ${te.x.toFixed(1)} ${te.y.toFixed(1)}`}
-        fill="none" stroke={`${bodyColor}18`} strokeWidth={sw} strokeLinecap="round"
-      />
-      {/* Filled arc */}
-      {pct > 0.02 && (
+    <div style={{ width: W, height: H, position: 'relative' }}>
+      {/* SVG for arcs only */}
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible" style={{ position: 'absolute', top: 0, left: 0 }}>
+        {/* Track */}
         <path
-          d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 ${fillLarge} 1 ${fe.x.toFixed(1)} ${fe.y.toFixed(1)}`}
-          fill="none" stroke={accent} strokeWidth={sw} strokeLinecap="round"
+          d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 1 1 ${te.x.toFixed(1)} ${te.y.toFixed(1)}`}
+          fill="none" stroke={`${bodyColor}18`} strokeWidth={sw} strokeLinecap="round"
         />
-      )}
-      {/* Accent dot at tip */}
-      {pct > 0.02 && (
-        <circle cx={fe.x.toFixed(1)} cy={fe.y.toFixed(1)} r={sw / 2 + 4} fill={accent} opacity={0.25} />
-      )}
-      {/* Value */}
-      <text x={cx} y={cy + 24} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="110" fontWeight="800" fill={accent}>
-        {value}
-      </text>
-      {/* Label */}
-      <text x={cx} y={cy + r + sw / 2 + 46} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="26" fontWeight="700" letterSpacing="0.1em" fill={bodyColor}>
-        {label}
-      </text>
-      {sublabel && (
-        <text x={cx} y={cy + r + sw / 2 + 80} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="20" fill={secondary}>
-          {sublabel}
-        </text>
-      )}
-    </svg>
+        {/* Filled arc */}
+        {pct > 0.02 && (
+          <path
+            d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 ${fillLarge} 1 ${fe.x.toFixed(1)} ${fe.y.toFixed(1)}`}
+            fill="none" stroke={accent} strokeWidth={sw} strokeLinecap="round"
+          />
+        )}
+        {/* Accent dot at tip */}
+        {pct > 0.02 && (
+          <circle cx={fe.x.toFixed(1)} cy={fe.y.toFixed(1)} r={sw / 2 + 4} fill={accent} opacity={0.25} />
+        )}
+      </svg>
+
+      {/* CSS text overlays — centered in the arc */}
+      <div style={{
+        position: 'absolute',
+        top: cy - r,
+        left: cx - r,
+        width: r * 2,
+        height: r * 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <span style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: valueSize,
+          fontWeight: 800,
+          color: accent,
+          lineHeight: 1,
+        }}>
+          {value}
+        </span>
+      </div>
+
+      {/* Label below arc */}
+      <div style={{
+        position: 'absolute',
+        top: cy + r + sw / 2 + 16,
+        left: 0,
+        width: W,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+        <span style={{
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: bodyColor,
+          textAlign: 'center',
+        }}>
+          {label}
+        </span>
+        {sublabel && (
+          <span style={{
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 20,
+            color: secondary,
+            textAlign: 'center',
+          }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

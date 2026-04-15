@@ -18,68 +18,108 @@ export function StackedBar({ segments = DEFAULTS, title, brandStyle }: Props) {
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
-  const barX = 60, barY = 210, barW = 816, barH = 68, rx = 34;
-  const colors = [
-    `${accent}50`, accent, `${accent}CC`, secondary,
-  ];
-
-  // Normalize percents to 100
+  const colors = [`${accent}50`, accent, `${accent}CC`, secondary];
   const total = segments.reduce((s, seg) => s + seg.percent, 0);
-  let cumX = barX;
 
   return (
-    <svg width={936} height={460} viewBox="0 0 936 460" overflow="visible">
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 20,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
       {title && (
-        <text x={468} y={64} textAnchor="middle"
-          fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700"
-          letterSpacing="0.1em" fill={bodyColor}>
+        <span style={{
+          fontSize: 22,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: bodyColor,
+        }}>
           {title}
-        </text>
+        </span>
       )}
 
-      {/* Bar background */}
-      <rect x={barX} y={barY} width={barW} height={barH} rx={rx} fill={`${bodyColor}08`} />
-
-      {segments.map((seg, i) => {
-        const segW = (seg.percent / total) * barW;
-        const segX = cumX;
-        cumX += segW;
-        const isFirst = i === 0;
-        const isLast = i === segments.length - 1;
-        const segCx = segX + segW / 2;
-        return (
-          <g key={i}>
-            <rect
-              x={segX} y={barY} width={segW} height={barH}
-              rx={isFirst || isLast ? rx : 0}
-              fill={colors[i % colors.length]}
-            />
-            {/* Label above */}
-            <text x={segCx} y={barY - 18} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="18" fontWeight="700"
-              letterSpacing="0.06em" fill={bodyColor}>
+      {/* Labels above bar */}
+      <div style={{
+        width: '88%',
+        display: 'flex',
+      }}>
+        {segments.map((seg, i) => (
+          <div key={i} style={{
+            width: `${(seg.percent / total) * 100}%`,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            <span style={{
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: bodyColor,
+              textAlign: 'center',
+              lineHeight: 1.2,
+            }}>
               {seg.label}
-            </text>
-            {/* Tick */}
-            <line x1={segCx} y1={barY - 8} x2={segCx} y2={barY + 2}
-              stroke={`${bodyColor}40`} strokeWidth={1.5} />
-            {/* Percent below */}
-            <text x={segCx} y={barY + barH + 38} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="34" fontWeight="800" fill={accent}>
-              {seg.percent}%
-            </text>
-            {/* Value below percent */}
-            {seg.value && (
-              <text x={segCx} y={barY + barH + 68} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="20" fill={secondary}>
-                {seg.value}
-              </text>
-            )}
-          </g>
-        );
-      })}
+            </span>
+          </div>
+        ))}
+      </div>
 
-    </svg>
+      {/* Bar */}
+      <div style={{
+        width: '88%',
+        height: 68,
+        borderRadius: 34,
+        background: `${bodyColor}08`,
+        display: 'flex',
+        overflow: 'hidden',
+      }}>
+        {segments.map((seg, i) => (
+          <div key={i} style={{
+            width: `${(seg.percent / total) * 100}%`,
+            height: '100%',
+            background: colors[i % colors.length],
+          }} />
+        ))}
+      </div>
+
+      {/* Values below bar */}
+      <div style={{
+        width: '88%',
+        display: 'flex',
+      }}>
+        {segments.map((seg, i) => (
+          <div key={i} style={{
+            width: `${(seg.percent / total) * 100}%`,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            <span style={{
+              fontSize: 34,
+              fontWeight: 800,
+              color: accent,
+              lineHeight: 1,
+            }}>
+              {seg.percent}%
+            </span>
+            {seg.value && (
+              <span style={{
+                fontSize: 20,
+                color: secondary,
+                textAlign: 'center',
+              }}>
+                {seg.value}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

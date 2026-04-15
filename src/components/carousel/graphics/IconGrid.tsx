@@ -1,6 +1,5 @@
 import type { BrandStyle } from '@/lib/types';
 
-// Default icon paths — generic but recognizable for sleep/wellness
 const DEFAULT_ICONS = [
   { path: 'M20 12a8 8 0 01-8 8 8 8 0 01-8-8 8 8 0 018-8c.34 0 .67.02 1 .05A6 6 0 0020 12z' },
   { path: 'M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3' },
@@ -24,24 +23,40 @@ export function IconGrid({
 }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
-  const cols = items.length;
-  const cellW = 936 / cols;
 
   return (
-    <svg width={936} height={420} viewBox="0 0 936 420">
+    <div style={{
+      width: 936,
+      display: 'flex',
+      justifyContent: 'space-evenly',
+      alignItems: 'flex-start',
+      fontFamily: 'Outfit, sans-serif',
+      gap: 12,
+    }}>
       {items.map((item, i) => {
         const iconPath = DEFAULT_ICONS[i % DEFAULT_ICONS.length].path;
-        const x = i * cellW + cellW / 2;
         return (
-          <g key={i}>
-            <svg x={x - 52} y={30} width={104} height={104} viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <div key={i} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 20,
+          }}>
+            <svg width={104} height={104} viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d={iconPath} />
             </svg>
-            <text x={x} y={200} textAnchor="middle" fontFamily="Outfit" fontSize="32" fill={bodyColor}>{item.label}</text>
-          </g>
+            <span style={{
+              fontSize: 32,
+              color: bodyColor,
+              textAlign: 'center',
+              lineHeight: 1.2,
+            }}>
+              {item.label}
+            </span>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

@@ -13,59 +13,127 @@ interface Props {
 }
 
 export function VersusCard({
-  left  = { label: 'Magnesium Oxide',    value: '4%',  note: 'barely absorbed' },
+  left = { label: 'Magnesium Oxide', value: '4%', note: 'barely absorbed' },
   right = { label: 'Magnesium Glycinate', value: '85%', note: 'highly bioavailable' },
   brandStyle,
 }: Props) {
-  const accent    = brandStyle?.accent   ?? '#1e7a8a';
+  const accent = brandStyle?.accent ?? '#1e7a8a';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
-  const bodyColor = brandStyle?.body     ?? '#4a5568';
-
-  const w = 936;
-  const h = 440;
-  const panelW = 400;
-  const panelH = 400;
-  const gap = w - panelW * 2;
-  const leftX = 0;
-  const rightX = panelW + gap;
-  const ry = 16;
+  const bodyColor = brandStyle?.body ?? '#4a5568';
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {/* Left panel — muted / bad */}
-      <rect x={leftX} y={20} width={panelW} height={panelH} rx={ry} fill={`${bodyColor}12`} />
-      <text x={leftX + panelW / 2} y={96} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={bodyColor} fontWeight="600" letterSpacing="0.05em">
-        {left.label.toUpperCase()}
-      </text>
-      <text x={leftX + panelW / 2} y={260} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={`${bodyColor}55`}>
-        {left.value}
-      </text>
-      {left.note && (
-        <text x={leftX + panelW / 2} y={356} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={bodyColor} opacity="0.6">
-          {left.note}
-        </text>
-      )}
+    <div style={{
+      width: 936,
+      display: 'flex',
+      alignItems: 'stretch',
+      gap: 0,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
+      {/* Left panel — muted */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '32px 20px',
+        borderRadius: 16,
+        background: `${bodyColor}12`,
+        minHeight: 380,
+      }}>
+        <span style={{
+          fontSize: 22,
+          fontWeight: 600,
+          letterSpacing: '0.05em',
+          color: bodyColor,
+          textTransform: 'uppercase',
+          textAlign: 'center',
+        }}>
+          {left.label}
+        </span>
+        <span style={{
+          fontSize: 80,
+          fontWeight: 800,
+          color: `${bodyColor}55`,
+          lineHeight: 1,
+        }}>
+          {left.value}
+        </span>
+        {left.note && (
+          <span style={{
+            fontSize: 19,
+            color: bodyColor,
+            opacity: 0.6,
+            textAlign: 'center',
+          }}>
+            {left.note}
+          </span>
+        )}
+      </div>
 
       {/* VS divider */}
-      <text x={w / 2} y={220} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="700" fill={secondary} letterSpacing="0.12em">
-        VS
-      </text>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 80,
+        flexShrink: 0,
+      }}>
+        <span style={{
+          fontSize: 22,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          color: secondary,
+        }}>
+          VS
+        </span>
+      </div>
 
-      {/* Right panel — good / accent */}
-      <rect x={rightX} y={20} width={panelW} height={panelH} rx={ry} fill={`${accent}18`} />
-      <rect x={rightX} y={20} width={panelW} height={panelH} rx={ry} fill="none" stroke={accent} strokeWidth="2" opacity="0.5" />
-      <text x={rightX + panelW / 2} y={96} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="22" fill={accent} fontWeight="600" letterSpacing="0.05em">
-        {right.label.toUpperCase()}
-      </text>
-      <text x={rightX + panelW / 2} y={260} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="80" fontWeight="800" fill={accent}>
-        {right.value}
-      </text>
-      {right.note && (
-        <text x={rightX + panelW / 2} y={356} textAnchor="middle" fontFamily="Outfit, sans-serif" fontSize="19" fill={accent} opacity="0.75">
-          {right.note}
-        </text>
-      )}
-    </svg>
+      {/* Right panel — accent */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '32px 20px',
+        borderRadius: 16,
+        background: `${accent}18`,
+        border: `2px solid ${accent}80`,
+        minHeight: 380,
+      }}>
+        <span style={{
+          fontSize: 22,
+          fontWeight: 600,
+          letterSpacing: '0.05em',
+          color: accent,
+          textTransform: 'uppercase',
+          textAlign: 'center',
+        }}>
+          {right.label}
+        </span>
+        <span style={{
+          fontSize: 80,
+          fontWeight: 800,
+          color: accent,
+          lineHeight: 1,
+        }}>
+          {right.value}
+        </span>
+        {right.note && (
+          <span style={{
+            fontSize: 19,
+            color: accent,
+            opacity: 0.75,
+            textAlign: 'center',
+          }}>
+            {right.note}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -14,41 +14,59 @@ export function ChecklistGraphic({
   ],
   brandStyle,
 }: Props) {
-  const accent    = brandStyle?.accent   ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body     ?? '#4a5568';
-
-  const w = 936;
-  const rowH = 108;
-  const h = rowH * items.length + 16;
-  const circleR = 26;
-  const textX = circleR * 2 + 20;
+  const accent = brandStyle?.accent ?? '#1e7a8a';
+  const bodyColor = brandStyle?.body ?? '#4a5568';
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {items.map((item, i) => {
-        const cy = i * rowH + rowH / 2 + 8;
-        return (
-          <g key={i}>
-            {/* Check circle */}
-            <circle cx={circleR} cy={cy} r={circleR} fill={`${accent}20`} />
-            {/* Checkmark path */}
-            <polyline
-              points={`${circleR - 9},${cy} ${circleR - 2},${cy + 7} ${circleR + 10},${cy - 8}`}
-              fill="none" stroke={accent} strokeWidth="3"
-              strokeLinecap="round" strokeLinejoin="round"
-            />
-            {/* Item text */}
-            <text
-              x={textX} y={cy + 7}
-              fontFamily="Outfit, sans-serif" fontSize="30"
-              fill={bodyColor}
-            >
-              {item}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
+      {items.map((item, i) => (
+        <div key={i} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          paddingTop: 12,
+          paddingBottom: 12,
+        }}>
+          {/* Check circle */}
+          <div style={{
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: `${accent}20`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {/* Checkmark SVG */}
+            <svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <polyline
+                points="4,12 10,18 20,6"
+                stroke={accent}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          {/* Item text */}
+          <span style={{
+            fontSize: items.length > 4 ? 24 : 30,
+            fontWeight: 400,
+            color: bodyColor,
+            lineHeight: 1.4,
+          }}>
+            {item}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 

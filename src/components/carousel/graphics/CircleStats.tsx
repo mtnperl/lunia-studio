@@ -18,42 +18,77 @@ export function CircleStats({ items = DEFAULTS, brandStyle }: Props) {
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
   const n = Math.min(items.length, 4);
-  const W = 936, H = 460, cy = 215, r = n <= 3 ? 110 : 90;
+  const list = items.slice(0, n);
+  const circleSize = n <= 3 ? 220 : 180;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
-      {items.slice(0, n).map((item, i) => {
-        const cxI = (W / (n + 1)) * (i + 1);
-        const valueSize = item.value.length > 5 ? (n <= 3 ? '44' : '36') : (n <= 3 ? '64' : '52');
+    <div style={{
+      width: 936,
+      display: 'flex',
+      justifyContent: 'space-evenly',
+      alignItems: 'flex-start',
+      fontFamily: 'Outfit, sans-serif',
+      gap: 12,
+    }}>
+      {list.map((item, i) => {
+        const valueSize = item.value.length > 5 ? (n <= 3 ? 44 : 36) : (n <= 3 ? 64 : 52);
+
         return (
-          <g key={i}>
-            {/* Glow fill */}
-            <circle cx={cxI} cy={cy} r={r} fill={`${accent}12`} />
-            {/* Ring */}
-            <circle cx={cxI} cy={cy} r={r} fill="none" stroke={accent} strokeWidth={3.5} />
-            {/* Value */}
-            <text x={cxI} y={item.sublabel ? cy - 8 : cy + 22} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize={valueSize}
-              fontWeight="800" fill={accent}>
-              {item.value}
-            </text>
-            {/* Sublabel (unit) */}
-            {item.sublabel && (
-              <text x={cxI} y={cy + 28} textAnchor="middle"
-                fontFamily="Outfit, sans-serif" fontSize="22" fontWeight="600" fill={secondary}>
-                {item.sublabel}
-              </text>
-            )}
+          <div key={i} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 14,
+          }}>
+            {/* Circle with value */}
+            <div style={{
+              width: circleSize,
+              height: circleSize,
+              borderRadius: '50%',
+              border: `3.5px solid ${accent}`,
+              background: `${accent}12`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+            }}>
+              <span style={{
+                fontSize: valueSize,
+                fontWeight: 800,
+                color: accent,
+                lineHeight: 1,
+              }}>
+                {item.value}
+              </span>
+              {item.sublabel && (
+                <span style={{
+                  fontSize: 22,
+                  fontWeight: 600,
+                  color: secondary,
+                  lineHeight: 1,
+                }}>
+                  {item.sublabel}
+                </span>
+              )}
+            </div>
+
             {/* Label below circle */}
-            <text x={cxI} y={cy + r + 38} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="20" fontWeight="700"
-              letterSpacing="0.06em" fill={bodyColor}>
+            <span style={{
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: bodyColor,
+              textAlign: 'center',
+              lineHeight: 1.3,
+              maxWidth: circleSize + 20,
+            }}>
               {item.label}
-            </text>
-          </g>
+            </span>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 

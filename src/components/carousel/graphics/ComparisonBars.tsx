@@ -23,69 +23,79 @@ export function ComparisonBars({
   const secondary = brandStyle?.secondary ?? '#a8d4da';
   const bodyColor = brandStyle?.body ?? '#4a5568';
 
-  const width = 936;
-  const barHeight = 36;
-  const gap = 52;
-  const labelW = 230;
-  const valueW = 70;
-  const maxBarW = width - labelW - valueW - 16;
-
   const numerics = items.map(i => parseNumeric(i.value));
   const maxVal = Math.max(...numerics, 1);
 
-  const totalH = (barHeight + gap) * items.length - gap + 8;
-
   return (
-    <svg width={width} height={totalH} viewBox={`0 0 ${width} ${totalH}`}>
+    <div style={{
+      width: 936,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 20,
+      fontFamily: 'Outfit, sans-serif',
+    }}>
       {items.map((item, i) => {
-        const y = i * (barHeight + gap);
-        const barW = Math.max((numerics[i] / maxVal) * maxBarW, 6);
-        // Gradient: first bar = accent, rest get progressively more muted
+        const pct = Math.max((numerics[i] / maxVal) * 100, 2);
         const fill = i === 0 ? accent : i === 1 ? secondary : `${secondary}99`;
+        const isTop = i === 0;
+
         return (
-          <g key={i}>
-            {/* Label */}
-            <text
-              x={10} y={y + barHeight / 2 + 6}
-              fontFamily="Outfit, sans-serif" fontSize="24" fill={bodyColor}
-            >
-              {item.label}
-            </text>
-            {/* Track */}
-            <rect
-              x={labelW} y={y}
-              width={maxBarW} height={barHeight}
-              rx={barHeight / 2}
-              fill={`${bodyColor}15`}
-            />
-            {/* Glow halo on top bar */}
-            {i === 0 && (
-              <rect
-                x={labelW - 2} y={y - 2}
-                width={barW + 4} height={barHeight + 4}
-                rx={barHeight / 2 + 2}
-                fill={`${accent}20`}
-              />
-            )}
-            {/* Value bar */}
-            <rect
-              x={labelW} y={y}
-              width={barW} height={barHeight}
-              rx={barHeight / 2}
-              fill={fill}
-            />
-            {/* Value label */}
-            <text
-              x={labelW + maxBarW + 12} y={y + barHeight / 2 + 7}
-              fontFamily="Outfit, sans-serif" fontSize="24" fontWeight="700"
-              fill={i === 0 ? accent : bodyColor}
-            >
-              {item.value}
-            </text>
-          </g>
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Label row */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              paddingLeft: 2,
+              paddingRight: 2,
+            }}>
+              <span style={{
+                fontSize: 24,
+                fontWeight: 400,
+                color: bodyColor,
+                lineHeight: 1.2,
+              }}>
+                {item.label}
+              </span>
+              <span style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: isTop ? accent : bodyColor,
+                lineHeight: 1.2,
+              }}>
+                {item.value}
+              </span>
+            </div>
+            {/* Bar track */}
+            <div style={{
+              position: 'relative',
+              height: 36,
+              borderRadius: 18,
+              background: `${bodyColor}15`,
+              overflow: 'hidden',
+            }}>
+              {/* Glow halo on top bar */}
+              {isTop && (
+                <div style={{
+                  position: 'absolute',
+                  inset: -2,
+                  borderRadius: 20,
+                  background: `${accent}20`,
+                }} />
+              )}
+              {/* Value bar */}
+              <div style={{
+                position: 'relative',
+                width: `${pct}%`,
+                height: '100%',
+                borderRadius: 18,
+                background: fill,
+              }} />
+            </div>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 
