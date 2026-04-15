@@ -301,6 +301,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ctaHeadline: content.cta.headline,
           followLine: content.cta.followLine,
           commentKeyword: content.commentKeyword,
+          hookHeadline: hook.headline,
+          hookSubline: hook.subline,
           slides: content.slides.map(s => ({
             headline: s.headline,
             body: s.body,
