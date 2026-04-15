@@ -18,13 +18,19 @@ const nextConfig: NextConfig = {
   ],
   // Native binaries are not JS — file tracing won't detect them automatically.
   // Explicitly include them so Vercel deploys them alongside the render function.
+  // Native binaries are not JS — file tracing won't detect them automatically.
+  // Explicitly include them so Vercel deploys them alongside each Puppeteer route.
   outputFileTracingIncludes: {
     "/api/video/render": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
       "./node_modules/@remotion/compositor-*/**/*",
-      // Bundle JS files must be on the function filesystem so the local
-      // HTTP server can serve them to Chromium without external requests.
       "./public/remotion/**/*",
+    ],
+    "/api/carousel/export": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/carousel/generate-pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
   },
   turbopack: {
