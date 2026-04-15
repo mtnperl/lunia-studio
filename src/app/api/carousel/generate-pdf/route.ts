@@ -249,7 +249,9 @@ export async function POST(req: NextRequest) {
 
     const browser = await getBrowser();
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // "load" instead of "networkidle0" — avoids hanging on slow Google Fonts CDN.
+    // The font link has display=swap so missing fonts fall back gracefully.
+    await page.setContent(html, { waitUntil: "load" });
 
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -274,8 +276,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    console.error("[generate-pdf]", err);
-    return Response.json({ error: "PDF generation failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[generate-pdf]", msg);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }
 

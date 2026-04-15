@@ -41,6 +41,10 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [captionCopied, setCaptionCopied] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const isEngagement = carousel.format === "engagement";
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
   // Pre-fetch the hook background as a data URL at mount so it's ready when user
@@ -194,6 +198,45 @@ export default function CarouselShareClient({ carousel }: Props) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  async function handleGeneratePdf() {
+    setGeneratingPdf(true);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/carousel/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          ctaHeadline: content.cta.headline,
+          followLine: content.cta.followLine,
+          commentKeyword: content.commentKeyword,
+          slides: content.slides.map(s => ({
+            headline: s.headline,
+            body: s.body,
+            citation: s.citation,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "PDF generation failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lunia-guide-${(topic ?? "guide").toLowerCase().replace(/\s+/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "PDF generation failed");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
@@ -296,6 +339,26 @@ export default function CarouselShareClient({ carousel }: Props) {
                 </button>
               ))}
             </div>
+            {isEngagement && (
+              <button
+                onClick={handleGeneratePdf}
+                disabled={generatingPdf}
+                style={{
+                  background: "var(--surface)", color: "var(--text)",
+                  border: "1px solid var(--border)", borderRadius: 7,
+                  padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
+                  cursor: generatingPdf ? "not-allowed" : "pointer", opacity: generatingPdf ? 0.7 : 1,
+                  display: "flex", alignItems: "center", gap: 8,
+                }}
+              >
+                {generatingPdf ? (
+                  <>
+                    <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+                    Generating PDF…
+                  </>
+                ) : "↓ PDF guide"}
+              </button>
+            )}
             <button
               onClick={downloadAll}
               disabled={downloadingAll}
@@ -326,6 +389,12 @@ export default function CarouselShareClient({ carousel }: Props) {
         {exportError && (
           <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
             ⚠ {exportError}
+          </div>
+        )}
+        {pdfError && (
+          <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>PDF error: {pdfError}</span>
+            <button onClick={() => setPdfError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--error)", padding: "0 4px", fontFamily: "inherit" }}>×</button>
           </div>
         )}
 
