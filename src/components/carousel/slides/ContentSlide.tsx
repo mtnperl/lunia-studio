@@ -262,12 +262,12 @@ export default function ContentSlide({
           backgroundImage: `url(${backgroundImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.22,
+          opacity: 0.35,
         }} />
       ) : shimmer ? (
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 100%)',
+          background: 'linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.04) 100%)',
           backgroundSize: '200% 100%',
           animation: 'shimmer 1.6s ease-in-out infinite',
         }} />
