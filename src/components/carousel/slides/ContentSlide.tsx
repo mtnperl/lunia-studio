@@ -199,7 +199,7 @@ export default function ContentSlide({
 }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
-  const sectionGap = reels ? 46 : SECTION_GAP;
+  const sectionGapBase = reels ? 46 : SECTION_GAP;
   const graphicMinH = reels ? 120 : GRAPHIC_MIN_HEIGHT;
   // Determine rendering path
   // Path 0: fal.ai AI-generated image (TIER B/C) — highest priority, overrides SVG components
@@ -212,6 +212,8 @@ export default function ContentSlide({
   const hasSvg = !hasAiGraphicImage && !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10; // Path 2
   const hasLegacyGraphic = !hasAiGraphicImage && !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
   const hasInlineGraphic = hasAiGraphicImage || hasGraphicSpec || hasSvg;   // shown inside flex column
+  // Tighten gap when graphic needs space
+  const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.6) : sectionGapBase;
 
   // Colors — dark mode overrides when darkBackground=true
   const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? '#f0ece6');
@@ -229,9 +231,9 @@ export default function ContentSlide({
   // Dynamic font sizes — when graphic present, text is compact to give graphic space
   function bodySize(len: number, hasGraphic: boolean): number {
     if (hasGraphic) {
-      if (len < 80)  return 42;
-      if (len < 160) return 36;
-      return 30;
+      if (len < 80)  return 36;
+      if (len < 160) return 30;
+      return 26;
     } else {
       if (len < 80)  return 72;
       if (len < 160) return 62;
@@ -245,6 +247,13 @@ export default function ContentSlide({
     if (len < 50) return 56;
     return 48;
   }
+
+  // When a graphic is present, cap the body zone so the graphic zone gets at
+  // least ~55 % of the content area for proper vertical centering.
+  const contentH = slideH - py * 2;           // 1350 − 160 = 1190
+  const bodyMaxH = (hasInlineGraphic || hasLegacyGraphic)
+    ? Math.floor(contentH * 0.35)             // ≈ 416 px
+    : undefined;
 
   const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
   const headlineFontSize = headlineSize(headline.length);
@@ -301,8 +310,15 @@ export default function ContentSlide({
           {headline}
         </div>
 
-        {/* Body zone — shares space with graphic; shrinks when graphic present */}
-        <div style={{ flex: hasInlineGraphic ? '0 1 auto' : 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Body zone — shares space with graphic; capped when graphic present */}
+        <div style={{
+          flex: hasInlineGraphic ? '0 0 auto' : 1,
+          maxHeight: bodyMaxH,
+          overflow: bodyMaxH ? 'hidden' : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+        }}>
           <div style={{
             fontFamily: 'Inter, system-ui, sans-serif',
             fontSize: bodyFontSize,
@@ -327,7 +343,7 @@ export default function ContentSlide({
 
         {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}
         {hasInlineGraphic && (
-          <div style={{ minHeight: graphicMinH, flex: '1 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ minHeight: graphicMinH, flex: '1 1 0px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (

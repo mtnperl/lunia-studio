@@ -21,7 +21,7 @@ export function ComparisonTable({
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       fontFamily: 'Outfit, sans-serif',
       borderRadius: 10,
       overflow: 'hidden',

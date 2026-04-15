@@ -31,7 +31,7 @@ export function CircularCycleGraphic({ steps = DEFAULTS, brandStyle }: Props) {
   const angleStep = (2 * Math.PI) / n;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" overflow="visible" style={{ aspectRatio: `${W} / ${H}` }}>
       {/* Dashed orbit ring */}
       <circle cx={CX} cy={CY} r={RING_R} fill="none"
         stroke={`${accent}25`} strokeWidth={2} strokeDasharray="6 6" />

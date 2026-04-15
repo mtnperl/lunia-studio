@@ -34,9 +34,9 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
   const valueSize = value.length <= 4 ? 110 : value.length <= 6 ? 80 : 60;
 
   return (
-    <div style={{ width: W, height: H, position: 'relative' }}>
+    <div style={{ width: '100%', aspectRatio: `${W} / ${H}`, position: 'relative' }}>
       {/* SVG for arcs only */}
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible" style={{ position: 'absolute', top: 0, left: 0 }}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" overflow="visible" style={{ position: 'absolute', top: 0, left: 0 }}>
         {/* Track */}
         <path
           d={`M ${ts.x.toFixed(1)} ${ts.y.toFixed(1)} A ${r} ${r} 0 1 1 ${te.x.toFixed(1)} ${te.y.toFixed(1)}`}
@@ -58,10 +58,10 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
       {/* CSS text overlays — centered in the arc */}
       <div style={{
         position: 'absolute',
-        top: cy - r,
-        left: cx - r,
-        width: r * 2,
-        height: r * 2,
+        top: `${((cy - r) / H) * 100}%`,
+        left: `${((cx - r) / W) * 100}%`,
+        width: `${((r * 2) / W) * 100}%`,
+        height: `${((r * 2) / H) * 100}%`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -80,9 +80,9 @@ export function RadialProgress({ value = '87%', label = 'OF ADULTS DEFICIENT', s
       {/* Label below arc */}
       <div style={{
         position: 'absolute',
-        top: cy + r + sw / 2 + 16,
+        top: `${((cy + r + sw / 2 + 16) / H) * 100}%`,
         left: 0,
-        width: W,
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

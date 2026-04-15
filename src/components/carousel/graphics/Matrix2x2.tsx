@@ -32,7 +32,7 @@ export function Matrix2x2({
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       fontFamily: 'Outfit, sans-serif',
       display: 'flex',
       flexDirection: 'column',

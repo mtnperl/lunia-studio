@@ -17,11 +17,11 @@ export function CalloutQuote({
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
       padding: '36px 56px 36px 60px',
-      minHeight: 460,
       boxSizing: 'border-box',
       position: 'relative',
     }}>

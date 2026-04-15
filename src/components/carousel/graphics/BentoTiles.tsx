@@ -27,7 +27,7 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
       gap: 16,

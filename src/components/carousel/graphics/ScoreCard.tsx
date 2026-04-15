@@ -17,8 +17,7 @@ export function ScoreCard({ score = 'A+', label = 'SLEEP QUALITY RATING', sublab
 
   return (
     <div style={{
-      width: 936,
-      height: 460,
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

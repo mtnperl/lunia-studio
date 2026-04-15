@@ -40,9 +40,9 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
   const valueSize = value.length <= 4 ? 90 : value.length <= 6 ? 70 : 54;
 
   return (
-    <div style={{ width: w, height: h, position: 'relative' }}>
+    <div style={{ width: '100%', aspectRatio: `${w} / ${h}`, position: 'relative' }}>
       {/* SVG for arcs only */}
-      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', top: 0, left: 0 }}>
+      <svg width="100%" height="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" style={{ position: 'absolute', top: 0, left: 0 }}>
         <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={`${bodyColor}18`} strokeWidth={trackW} />
         <path
           d={donutArc(cx, cy, (outerR + innerR) / 2, pct)}
@@ -57,10 +57,10 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
       {/* Center value */}
       <div style={{
         position: 'absolute',
-        top: cy - outerR,
-        left: cx - outerR,
-        width: outerR * 2,
-        height: outerR * 2,
+        top: `${((cy - outerR) / h) * 100}%`,
+        left: `${((cx - outerR) / w) * 100}%`,
+        width: `${((outerR * 2) / w) * 100}%`,
+        height: `${((outerR * 2) / h) * 100}%`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -79,9 +79,9 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
       {/* Label below ring */}
       <div style={{
         position: 'absolute',
-        top: cy + outerR + 16,
+        top: `${((cy + outerR + 16) / h) * 100}%`,
         left: 0,
-        width: w,
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

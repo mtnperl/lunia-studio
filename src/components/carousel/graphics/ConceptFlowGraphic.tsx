@@ -29,10 +29,10 @@ export function ConceptFlowGraphic({ nodes = DEFAULTS, title, brandStyle }: Prop
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       padding: '28px 32px',
-      minHeight: 340,
       boxSizing: 'border-box',
       gap: 0,
     }}>

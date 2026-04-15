@@ -23,11 +23,11 @@ export function HubSpokeGraphic({ center = 'Magnesium', spokes = DEFAULTS, brand
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       padding: '28px 48px',
-      minHeight: 340,
       boxSizing: 'border-box',
       gap: 0,
     }}>

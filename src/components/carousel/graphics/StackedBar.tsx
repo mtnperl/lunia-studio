@@ -23,7 +23,7 @@ export function StackedBar({ segments = DEFAULTS, title, brandStyle }: Props) {
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

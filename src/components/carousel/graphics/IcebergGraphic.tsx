@@ -32,10 +32,10 @@ export function IcebergGraphic({
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       padding: '20px 48px 28px',
-      minHeight: 340,
       boxSizing: 'border-box',
       gap: 0,
     }}>

@@ -23,7 +23,7 @@ export function CircleStats({ items = DEFAULTS, brandStyle }: Props) {
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       justifyContent: 'space-evenly',
       alignItems: 'flex-start',

@@ -28,7 +28,7 @@ export function ComparisonBars({
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       gap: 20,

@@ -23,7 +23,7 @@ export function VersusCard({
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       alignItems: 'stretch',
       gap: 0,

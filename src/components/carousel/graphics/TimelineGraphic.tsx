@@ -27,10 +27,10 @@ export function TimelineGraphic({ events = DEFAULTS, brandStyle }: Props) {
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       padding: '28px 56px',
-      minHeight: 340,
       boxSizing: 'border-box',
       gap: 0,
     }}>

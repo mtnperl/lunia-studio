@@ -27,6 +27,7 @@ export function BubbleCluster({ items = DEFAULTS, brandStyle }: Props) {
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

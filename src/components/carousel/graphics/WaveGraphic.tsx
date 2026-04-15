@@ -29,7 +29,7 @@ export function WaveGraphic({ brandStyle }: Props) {
   };
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: `${width} / ${height}` }}>
       {generateWave(60, 2, 0, 0.3, secondary)}
       {generateWave(80, 1.5, 0.5, 0.5, secondary)}
       {generateWave(100, 2.5, 1, 0.9, accent)}

@@ -16,7 +16,7 @@ export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       alignItems: 'center',
       gap: 0,

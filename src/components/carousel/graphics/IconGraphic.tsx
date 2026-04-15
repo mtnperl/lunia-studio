@@ -24,6 +24,7 @@ export function IconGraphic({ id, label, brandStyle }: Props) {
 
   return (
     <div style={{
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

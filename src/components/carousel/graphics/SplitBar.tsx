@@ -27,7 +27,7 @@ export function SplitBar({
 
   return (
     <div style={{
-      width: 936,
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

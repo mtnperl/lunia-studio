@@ -23,8 +23,7 @@ export function SpectrumBar({ min = 0, max = 12, from = 7, to = 9, label = 'OPTI
 
   return (
     <div style={{
-      width: 936,
-      height: 460,
+      width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
