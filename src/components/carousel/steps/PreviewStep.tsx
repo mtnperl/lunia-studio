@@ -45,6 +45,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Logo / arrow / background / watermark / citation / format controls
   const [logoScale, setLogoScale] = useState(1.4);
@@ -284,6 +286,45 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (err instanceof Error && err.name !== "AbortError") setExportError("Export failed — try again");
     } finally {
       setDownloadingAll(false);
+    }
+  }
+
+  async function handleGeneratePdf() {
+    setGeneratingPdf(true);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/carousel/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          ctaHeadline: content.cta.headline,
+          followLine: content.cta.followLine,
+          commentKeyword: content.commentKeyword,
+          slides: content.slides.map(s => ({
+            headline: s.headline,
+            body: s.body,
+            citation: s.citation,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "PDF generation failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lunia-guide-${(topic ?? "guide").toLowerCase().replace(/\s+/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "PDF generation failed");
+    } finally {
+      setGeneratingPdf(false);
     }
   }
 
@@ -659,12 +700,35 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               "↓ Download all (5 PNGs)"
             )}
           </button>
+          {carouselFormat === "engagement" && (
+            <button
+              className="btn-ghost"
+              onClick={handleGeneratePdf}
+              disabled={generatingPdf}
+              title="Generate the PDF guide to send to commenters"
+            >
+              {generatingPdf ? (
+                <>
+                  <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 4 }}>⟳</span>
+                  Generating PDF…
+                </>
+              ) : (
+                "↓ PDF guide"
+              )}
+            </button>
+          )}
         </div>
       </div>
 
       {exportError && (
         <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
           ⚠ {exportError}
+        </div>
+      )}
+      {pdfError && (
+        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>PDF error: {pdfError}</span>
+          <button onClick={() => setPdfError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--error)", padding: "0 4px", fontFamily: "inherit" }}>×</button>
         </div>
       )}
       {graphicError && (
