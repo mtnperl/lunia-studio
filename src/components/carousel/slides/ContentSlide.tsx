@@ -45,7 +45,7 @@ import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
-const GRAPHIC_MIN_HEIGHT = 80;
+const GRAPHIC_MIN_HEIGHT = 280;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
 
 // ─── Rendering priority:
@@ -226,12 +226,12 @@ export default function ContentSlide({
   const boldSentence = firstPeriod >= 0 ? body.slice(0, firstPeriod + 1) : body;
   const restBody = firstPeriod >= 0 ? body.slice(firstPeriod + 2).trim() : "";
 
-  // Dynamic font sizes — generous caps; graphic zone reduced to 80px to free space
+  // Dynamic font sizes — when graphic present, text is compact to give graphic space
   function bodySize(len: number, hasGraphic: boolean): number {
     if (hasGraphic) {
-      if (len < 80)  return 56;
-      if (len < 160) return 48;
-      return 40;
+      if (len < 80)  return 42;
+      if (len < 160) return 36;
+      return 30;
     } else {
       if (len < 80)  return 72;
       if (len < 160) return 62;
@@ -240,10 +240,10 @@ export default function ContentSlide({
     }
   }
   function headlineSize(len: number): number {
-    if (len < 20) return 88;
-    if (len < 35) return 76;
-    if (len < 50) return 64;
-    return 56;
+    if (len < 20) return 76;
+    if (len < 35) return 64;
+    if (len < 50) return 56;
+    return 48;
   }
 
   const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
@@ -301,8 +301,8 @@ export default function ContentSlide({
           {headline}
         </div>
 
-        {/* Body zone — grows to fill remaining space above graphic */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Body zone — shares space with graphic; shrinks when graphic present */}
+        <div style={{ flex: hasInlineGraphic ? '0 1 auto' : 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{
             fontFamily: 'Inter, system-ui, sans-serif',
             fontSize: bodyFontSize,
@@ -327,7 +327,7 @@ export default function ContentSlide({
 
         {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}
         {hasInlineGraphic && (
-          <div style={{ minHeight: graphicMinH, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ minHeight: graphicMinH, flex: '1 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (
