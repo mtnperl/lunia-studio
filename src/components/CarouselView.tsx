@@ -73,6 +73,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     const loadedImages = initialCarousel.slideImages ?? [null, null, null, null, null];
     setSlideImages(loadedImages);
     if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
+    if (initialCarousel.format) setCarouselFormat(initialCarousel.format);
     setStep(4);
     onCarouselLoaded?.();
 
