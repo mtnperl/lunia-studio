@@ -187,6 +187,26 @@ export async function editAdImage(opts: {
   return url;
 }
 
+/**
+ * Remove the background from an image (e.g. to cut out a logo). Returns the
+ * URL of a transparent-PNG version hosted on the FAL CDN. Caller is
+ * responsible for mirroring to persistent storage.
+ *
+ * Uses BiRefNet v2 — current SOTA for clean edge detection on logos and
+ * product shots.
+ */
+export async function removeImageBackground(imageUrl: string): Promise<string> {
+  const result = await fal.subscribe('fal-ai/birefnet/v2', {
+    input: { image_url: imageUrl },
+    logs: false,
+  });
+  const url: string | undefined =
+    (result.data as { image?: { url?: string } })?.image?.url ??
+    (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  if (!url) throw new Error('No image URL in fal-ai/birefnet/v2 response');
+  return url;
+}
+
 // Derive a visual scene from the topic string for the hook slide
 // Goal: aspirational lifestyle ad imagery, not literal ingredient shots
 function deriveHookSubject(topic: string): string {
