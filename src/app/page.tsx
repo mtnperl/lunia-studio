@@ -359,7 +359,7 @@ export default function Page() {
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
-        {tab === "ad"         && <AdView initialAd={pendingAd} onAdLoaded={() => setPendingAd(null)} />}
+        {tab === "ad"         && <AdView initialAd={pendingAd} />}
         {tab === "ad-library" && (
           <AdLibraryView onOpenAd={(ad) => { setPendingAd(ad); setTab("ad"); }} />
         )}

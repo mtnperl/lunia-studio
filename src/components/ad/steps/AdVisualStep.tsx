@@ -154,6 +154,8 @@ export default function AdVisualStep({
             kind="product"
             label="Product"
             selectedId={productAssetId}
+            value={productAssetId ?? null}
+            onChange={(id) => onProductAssetIdChange(id ?? undefined)}
             onSelect={(a) => onProductAssetIdChange(a?.id)}
           />
         </div>
@@ -173,6 +175,8 @@ export default function AdVisualStep({
             kind="logo"
             label="Logo"
             selectedId={logoAssetId}
+            value={logoAssetId ?? null}
+            onChange={(id) => onLogoAssetIdChange(id ?? undefined)}
             onSelect={(a) => onLogoAssetIdChange(a?.id)}
           />
         </div>

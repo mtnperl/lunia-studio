@@ -207,6 +207,43 @@ export async function removeImageBackground(imageUrl: string): Promise<string> {
   return url;
 }
 
+/**
+ * Generate a BACKGROUND-ONLY image for Framework #4 canvas composition.
+ *
+ * The prompt must come from AdBrief.backgroundPrompt (already includes the
+ * negative-space zone instruction). We append a hard guardrail suffix to make
+ * absolutely sure Recraft leaves the text zone clean and renders no product or
+ * typography — those are composited programmatically by AdCompositor.tsx.
+ *
+ * Output: 1080×1080 or 1080×1350 at full quality.
+ */
+const BACKGROUND_GUARDRAIL_SUFFIX =
+  '. CRITICAL: (1) No product, bottle, or packaging visible — the product is composited in post. ' +
+  '(2) No text, words, numbers, or typography of any kind in the image. ' +
+  '(3) Leave the specified zone clean, empty, and uncluttered — that area is reserved for text overlay. ' +
+  '(4) Brand colours: deep navy #102635, slate blue #2c3f51, soft ivory #F7F4EF. No purple. No gradients.';
+
+export async function generateAdBackground(opts: {
+  backgroundPrompt: string;   // from AdBrief — already contains negative-space zone
+  aspect: AdAspectRatio;
+}): Promise<string> {
+  const { backgroundPrompt, aspect } = opts;
+  const hardened = backgroundPrompt.trim() + BACKGROUND_GUARDRAIL_SUFFIX;
+
+  const result = await fal.subscribe('fal-ai/recraft/v4/pro/text-to-image', {
+    input: {
+      prompt: hardened,
+      image_size: adImageSize(aspect),
+    },
+    logs: false,
+  });
+
+  const url: string | undefined =
+    (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  if (!url) throw new Error('No image URL in generateAdBackground response');
+  return url;
+}
+
 // Derive a visual scene from the topic string for the hook slide
 // Goal: aspirational lifestyle ad imagery, not literal ingredient shots
 function deriveHookSubject(topic: string): string {

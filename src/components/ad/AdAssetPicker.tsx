@@ -7,13 +7,34 @@ import { useCallback, useEffect, useState } from "react";
 import type { BrandAsset, BrandAssetKind } from "@/lib/types";
 
 type Props = {
-  kind: BrandAssetKind;          // "product" | "logo"
-  selectedId: string | undefined;
-  onSelect: (asset: BrandAsset | null) => void;
-  label: string;                  // "Product" | "Logo"
+  kind: BrandAssetKind;                              // "product" | "logo" | "reference"
+  value: string | null;                              // currently selected asset id
+  onChange: (id: string | null, asset: BrandAsset | null) => void;
+  placeholder?: string;                              // e.g. "Select product"
+  /** @deprecated use value/onChange */
+  selectedId?: string | undefined;
+  /** @deprecated use value/onChange */
+  onSelect?: (asset: BrandAsset | null) => void;
+  /** @deprecated use placeholder */
+  label?: string;
 };
 
-export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Props) {
+export default function AdAssetPicker({
+  kind,
+  value,
+  onChange,
+  placeholder,
+  // legacy compat
+  selectedId,
+  onSelect,
+  label,
+}: Props) {
+  // Normalise to new API
+  const selectedId_ = value ?? selectedId ?? null;
+  const onSelect_ = (asset: BrandAsset | null) => {
+    onChange?.(asset?.id ?? null, asset);
+    onSelect?.(asset);
+  };
   const [assets, setAssets] = useState<BrandAsset[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +57,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
     load();
   }, [load]);
 
-  const selected = assets.find((a) => a.id === selectedId) ?? null;
+  const selected = assets.find((a) => a.id === selectedId_) ?? null;
 
   return (
     <div style={{ position: "relative" }}>
@@ -87,7 +108,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
           </>
         ) : (
           <span style={{ flex: 1, color: "var(--muted)", textAlign: "left" }}>
-            {label}: none
+            {placeholder ?? (label ? `${label}: none` : "None")}
           </span>
         )}
         <span style={{ color: "var(--muted)", fontSize: 10 }}>▾</span>
@@ -122,7 +143,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
           >
             <button
               onClick={() => {
-                onSelect(null);
+                onSelect_(null);
                 setOpen(false);
               }}
               style={{
@@ -132,7 +153,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
                 padding: "6px 10px",
                 fontSize: 12,
                 color: "var(--muted)",
-                background: !selectedId ? "var(--surface)" : "transparent",
+                background: !selectedId_ ? "var(--surface)" : "transparent",
                 border: "none",
                 borderRadius: 5,
                 cursor: "pointer",
@@ -155,7 +176,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
               <button
                 key={a.id}
                 onClick={() => {
-                  onSelect(a);
+                  onSelect_(a);
                   setOpen(false);
                 }}
                 style={{
@@ -164,7 +185,7 @@ export default function AdAssetPicker({ kind, selectedId, onSelect, label }: Pro
                   gap: 8,
                   width: "100%",
                   padding: "6px 8px",
-                  background: selectedId === a.id ? "var(--surface)" : "transparent",
+                  background: selectedId_ === a.id ? "var(--surface)" : "transparent",
                   border: "none",
                   borderRadius: 5,
                   cursor: "pointer",

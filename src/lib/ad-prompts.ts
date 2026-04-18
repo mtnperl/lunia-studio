@@ -45,7 +45,7 @@ Never blend two angles in one ad — it dilutes both.
 
 ## Visual Direction Principles
 
-Lunia's visual language is editorial science illustration meets bioluminescent dreamscape. Brand palette: deep indigo #1A1A2E, purple #6C5CE7, soft lavender #A29BFE.
+Lunia's visual language is calm, scientific, and editorial. Brand palette: deep navy #102635, slate blue #2c3f51, soft ivory #F7F4EF. Accents (rare, ≤10% of any layout): aqua #bffbf8, signal yellow #ffd800. No gradients. No purple. No wellness cliché colors.
 
 - Lead with one dominant visual element. Product shot, lifestyle image, or data overlay — not all three.
 - Clean negative space. Busy backgrounds kill credibility on cold traffic. Lunia runs premium/minimal.
@@ -138,19 +138,19 @@ All three variants MUST share the same angle (passed in the user message). They 
  * Brief context appended to every image-generation prompt to keep the model on
  * brand without us having to restate this in every API payload.
  */
-export const BRAND_VISUAL_GUARDRAILS = `Brand palette: deep indigo (#1A1A2E), purple (#6C5CE7), soft lavender (#A29BFE). Editorial science illustration aesthetic meets bioluminescent dreamscape. Premium, minimal, clean negative space. No on-image text. No competitor bottles or branded packaging. No medical or clinical imagery (no needles, no pill bottles, no hospital settings). No disembodied hands. Product reads as a nightstand object, not a supplement bottle.`;
+export const BRAND_VISUAL_GUARDRAILS = `Brand palette: deep navy #102635, slate blue #2c3f51, soft ivory #F7F4EF. Accent colors used sparingly (≤10%): aqua #bffbf8, signal yellow #ffd800. No gradients. No purple. No neon. Flat and editorial. Premium, minimal, clean negative space. No on-image text or typography. No competitor bottles or branded packaging. No medical or clinical imagery (no needles, no pill bottles, no hospital settings). No disembodied hands. Product reads as a nightstand object, not a supplement bottle.`;
 
 export const VISUAL_FORMAT_PROMPT_HINTS: Record<VisualFormat, string> = {
   "product-dark":
-    "Product rendered on a dark surface with a single directional light source. Deep indigo background, subtle purple rim light. Strong negative space above and around the product.",
+    "Product rendered on a deep navy (#102635) or near-black surface with a single directional overhead light source. Strong negative space — at least one-third of the frame is empty for typography overlay. No text in the image.",
   "lifestyle-flatlay":
-    "Overhead flat lay on a nightstand or morning table. Soft natural light, subtle warm tones with indigo accents. Include secondary lifestyle props (book, linen, mug) but keep the product dominant.",
+    "Overhead flat lay on a dark linen nightstand surface. Soft diffuse light, no harsh shadows. Secondary props (book, small plant, linen fold) arranged around the product — product dominant. Deep navy tones, ivory highlights. Leave generous space in one corner for text. No text in the image.",
   "text-dominant":
-    "Minimal composition with the product small in frame, generous negative space. Editorial layout that suggests typography will sit over the image.",
+    "Extremely minimal composition. Product occupies at most 20% of the frame, offset to one side. Majority of frame is clean deep-navy or soft-ivory negative space. The image exists to support text overlaid in post. No text in the image.",
   "before-after":
-    "Split composition suggesting a shift from fragmented/restless state to calm/rested state. Cool blues on one side, warm amber on the other. Do not render any text.",
+    "Split composition with a visual tension between disrupted and calm states. Left or top half: dark, textured, restless. Right or bottom half: soft ivory, clean, ordered. No text in the image. No product if possible — pure environmental suggestion of sleep state.",
   "ingredient-macro":
-    "Macro close-up of a supplement ingredient (magnesium crystal, green tea leaf, or apigenin flower) with cinematic lighting. Product can be blurred in background.",
+    "Extreme macro close-up of a supplement ingredient: magnesium crystalline structure, green tea leaf veins, or chamomile/apigenin flower. Cinematic single light source. Dark deep-navy background. Product blurred softly in background if included at all. No text in the image.",
 };
 
 /**
@@ -158,14 +158,14 @@ export const VISUAL_FORMAT_PROMPT_HINTS: Record<VisualFormat, string> = {
  * Each chip maps to a phrase that gets appended (or removed) from the active prompt.
  */
 export const GUIDELINE_CHIPS: { key: string; label: string; phrase: string }[] = [
-  { key: "brand-palette", label: "Brand palette", phrase: "Colour palette strictly indigo #1A1A2E, purple #6C5CE7, lavender #A29BFE." },
-  { key: "single-light", label: "Single light source", phrase: "Single directional light source creating strong shadows." },
-  { key: "negative-space", label: "Negative space", phrase: "Generous negative space, minimal composition." },
-  { key: "dark-editorial", label: "Dark editorial", phrase: "Dark editorial mood, high contrast, cinematic." },
-  { key: "lifestyle-flatlay", label: "Lifestyle flat lay", phrase: "Overhead flat lay on a nightstand surface." },
-  { key: "macro-detail", label: "Macro detail", phrase: "Macro close-up with shallow depth of field." },
-  { key: "warm-amber", label: "Warm amber accents", phrase: "Warm amber highlights accenting the cool indigo tones." },
-  { key: "soft-moonlight", label: "Soft moonlight", phrase: "Soft moonlight rimming the subject from above." },
+  { key: "brand-palette", label: "Brand palette", phrase: "Colour palette strictly deep navy #102635, slate blue #2c3f51, soft ivory #F7F4EF. No purple, no gradients." },
+  { key: "single-light", label: "Single light source", phrase: "Single directional overhead light source, hard shadows, no fill." },
+  { key: "negative-space", label: "Negative space", phrase: "Generous negative space occupying at least one-third of the frame. Minimal composition." },
+  { key: "dark-editorial", label: "Dark editorial", phrase: "Deep navy background, high contrast editorial mood. Flat and premium." },
+  { key: "lifestyle-flatlay", label: "Lifestyle flat lay", phrase: "Overhead flat lay on a dark linen nightstand surface. Secondary props, product dominant." },
+  { key: "macro-detail", label: "Macro detail", phrase: "Extreme macro with cinematic shallow depth of field. Dark background." },
+  { key: "aqua-accent", label: "Aqua accent", phrase: "Subtle aqua #bffbf8 highlight on at most one surface edge or shadow — used sparingly." },
+  { key: "soft-diffuse", label: "Soft diffuse light", phrase: "Soft diffuse overhead light, no hard shadows, calm and clinical." },
 ];
 
 /**
