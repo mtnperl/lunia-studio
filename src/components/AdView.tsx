@@ -8,6 +8,7 @@ import AdAngleStep from "@/components/ad/steps/AdAngleStep";
 import AdConceptStep from "@/components/ad/steps/AdConceptStep";
 import AdVisualStep from "@/components/ad/steps/AdVisualStep";
 import AdPreviewStep from "@/components/ad/steps/AdPreviewStep";
+import AdRetroLoader from "@/components/ad/AdRetroLoader";
 import type {
   AdAngle,
   AdConcept,
@@ -276,17 +277,11 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
       )}
 
       {loading && (
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "24px 18px",
-            fontSize: 13,
-            color: "var(--muted)",
-            textAlign: "center",
-          }}
-        >
-          Generating with Claude Sonnet 4.5…
+        <div style={{ margin: "24px 0" }}>
+          <AdRetroLoader
+            mode="concepts"
+            detail={customHook ? `context: ${customHook.substring(0, 60)}` : `angle: ${angle} · format: ${visualFormat}`}
+          />
         </div>
       )}
 

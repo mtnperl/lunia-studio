@@ -92,7 +92,10 @@ export async function POST(req: Request) {
 
     async function generateOnce(): Promise<AdConcept[]> {
       const msg = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
+        // Opus 4.7 — user directive: use Opus for generative content
+        // (concepts, copy). Lightweight rewrites (prompt-enhance) keep
+        // haiku.
+        model: "claude-opus-4-7",
         max_tokens: 3072,
         system: STATIC_AD_CREATOR_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],

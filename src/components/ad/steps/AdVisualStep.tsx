@@ -7,6 +7,7 @@
 import { useState } from "react";
 import AdCanvas from "@/components/ad/AdCanvas";
 import AdPromptEditor from "@/components/ad/AdPromptEditor";
+import AdRetroLoader from "@/components/ad/AdRetroLoader";
 import type { AdConcept, AdImageHistoryEntry, VisualFormat } from "@/lib/types";
 
 type Aspect = "1:1" | "4:5";
@@ -205,16 +206,23 @@ export default function AdVisualStep({
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background: "rgba(13,12,10,0.55)",
+                  background: "rgba(0,0,0,0.92)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 600,
+                  padding: 16,
                 }}
               >
-                {generating ? "Generating with Recraft V4…" : "Editing with Seedream…"}
+                <div style={{ transform: "scale(0.78)", transformOrigin: "center" }}>
+                  <AdRetroLoader
+                    mode={generating ? "image" : "edit"}
+                    detail={
+                      generating
+                        ? `prompt: ${prompt.substring(0, 56)}`
+                        : `instruction: ${editInstruction.substring(0, 56)}`
+                    }
+                  />
+                </div>
               </div>
             )}
           </div>
