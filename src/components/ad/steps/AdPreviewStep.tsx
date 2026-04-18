@@ -1,10 +1,10 @@
 "use client";
 // Step 4 — Preview + PNG export + clipboard caption + save to library.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import AdCanvas from "@/components/ad/AdCanvas";
-import type { AdConcept, AdImageHistoryEntry } from "@/lib/types";
+import type { AdConcept, AdImageHistoryEntry, BrandAsset } from "@/lib/types";
 
 type Aspect = "1:1" | "4:5";
 
@@ -16,6 +16,8 @@ type Props = {
   aspect: Aspect;
   angle: AdConcept["angle"];
   visualFormat: string;
+  productAssetId?: string;
+  logoAssetId?: string;
   onAspectChange: (a: Aspect) => void;
   onBack: () => void;
   onRestart: () => void;
@@ -111,6 +113,8 @@ export default function AdPreviewStep({
   aspect,
   angle,
   visualFormat,
+  productAssetId,
+  logoAssetId,
   onAspectChange,
   onBack,
   onRestart,
@@ -120,7 +124,31 @@ export default function AdPreviewStep({
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const exportRef = useRef<HTMLDivElement | null>(null);
+
+  // Resolve logo URL from its asset ID so AdCanvas can stamp it.
+  useEffect(() => {
+    let cancelled = false;
+    if (!logoAssetId) {
+      setLogoUrl(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch(`/api/brand-assets?kind=logo`);
+        const data = (await res.json()) as { assets?: BrandAsset[] };
+        if (cancelled) return;
+        const match = (data.assets ?? []).find((a) => a.id === logoAssetId);
+        setLogoUrl(match?.url ?? null);
+      } catch {
+        if (!cancelled) setLogoUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [logoAssetId]);
 
   const W = 1080;
   const H = aspect === "1:1" ? 1080 : 1350;
@@ -190,6 +218,8 @@ export default function AdPreviewStep({
           imageUrl,
           imageHistory,
           aspectRatio: aspect,
+          productAssetId,
+          logoAssetId,
         }),
       });
       const data = (await res.json()) as { id?: string; error?: string };
@@ -275,6 +305,7 @@ export default function AdPreviewStep({
             aspect={aspect}
             scale={aspect === "1:1" ? 440 / 1080 : 440 / 1080}
             isFalImage
+            logoUrl={logoUrl}
           />
         </div>
       </div>
@@ -411,7 +442,7 @@ export default function AdPreviewStep({
       {/* Hidden full-size export node */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         <div ref={exportRef} style={{ width: W, height: H }}>
-          <AdCanvas imageUrl={imageUrl} concept={concept} aspect={aspect} scale={1} isFalImage />
+          <AdCanvas imageUrl={imageUrl} concept={concept} aspect={aspect} scale={1} isFalImage logoUrl={logoUrl} />
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
 import AdView from "@/components/AdView";
 import AdLibraryView from "@/components/AdLibraryView";
+import BrandAssetsView from "@/components/BrandAssetsView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
@@ -23,7 +24,7 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ad" | "ad-library" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ad" | "ad-library" | "brand-assets" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -85,8 +86,9 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Ads",
     items: [
-      { key: "ad",         product: "ads", label: "Builder" },
-      { key: "ad-library", product: "ads", label: "Library" },
+      { key: "ad",            product: "ads", label: "Builder" },
+      { key: "ad-library",    product: "ads", label: "Library" },
+      { key: "brand-assets",  product: "ads", label: "Assets"  },
     ],
   },
   {
@@ -361,6 +363,7 @@ export default function Page() {
         {tab === "ad-library" && (
           <AdLibraryView onOpenAd={(ad) => { setPendingAd(ad); setTab("ad"); }} />
         )}
+        {tab === "brand-assets" && <BrandAssetsView />}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

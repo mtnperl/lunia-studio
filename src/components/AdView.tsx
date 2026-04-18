@@ -57,6 +57,8 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageHistory, setImageHistory] = useState<AdImageHistoryEntry[]>([]);
   const [aspect, setAspect] = useState<Aspect>("1:1");
+  const [productAssetId, setProductAssetId] = useState<string | undefined>(undefined);
+  const [logoAssetId, setLogoAssetId] = useState<string | undefined>(undefined);
 
   // ─── Load a saved ad ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -69,6 +71,8 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
     setImageUrl(initialAd.imageUrl);
     setImageHistory(initialAd.imageHistory ?? []);
     setAspect(initialAd.aspectRatio);
+    setProductAssetId(initialAd.productAssetId);
+    setLogoAssetId(initialAd.logoAssetId);
     setStep(4);
     onAdLoaded?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,6 +170,7 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
     setImageHistory([]);
     setCustomHook("");
     setError(null);
+    // Keep productAssetId / logoAssetId — they're sticky brand prefs across runs.
   }
 
   return (
@@ -311,6 +316,10 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
           history={imageHistory}
           onHistoryChange={setImageHistory}
           onImageChange={setImageUrl}
+          productAssetId={productAssetId}
+          onProductAssetIdChange={setProductAssetId}
+          logoAssetId={logoAssetId}
+          onLogoAssetIdChange={setLogoAssetId}
           onBack={() => setStep(2)}
           onNext={() => setStep(4)}
         />
@@ -325,6 +334,8 @@ export default function AdView({ initialAd, onAdLoaded }: Props) {
           aspect={aspect}
           angle={angle}
           visualFormat={visualFormat}
+          productAssetId={productAssetId}
+          logoAssetId={logoAssetId}
           onAspectChange={setAspect}
           onBack={() => setStep(3)}
           onRestart={handleRestart}

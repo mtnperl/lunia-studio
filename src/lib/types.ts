@@ -659,6 +659,8 @@ export type AdConfig = {
   imageUrl: string | null;         // the current image (head of history)
   imageHistory: AdImageHistoryEntry[]; // all generated/edited variants, newest first
   aspectRatio: "1:1" | "4:5";
+  productAssetId?: string;         // optional BrandAsset.id used as product reference for Seedream
+  logoAssetId?: string;            // optional BrandAsset.id canvas-stamped at export
 };
 
 export type SavedAd = {
@@ -671,4 +673,34 @@ export type SavedAd = {
   imageHistory: AdImageHistoryEntry[];
   aspectRatio: "1:1" | "4:5";
   savedAt: string;
+  productAssetId?: string;
+  logoAssetId?: string;
+};
+
+// ---------------------------------------------------------------------------
+// Brand Assets (Ad Builder reference images)
+// ---------------------------------------------------------------------------
+// User-uploaded product shots, logos, and reference images used to condition
+// ad image generation. Stored in Vercel Blob; metadata indexed in KV under
+// `lunia:assets`. Distinct from the carousel-era AssetType/AssetMetadata.
+
+export type BrandAssetKind = "product" | "logo" | "reference";
+
+export const BRAND_ASSET_KIND_LABELS: Record<BrandAssetKind, string> = {
+  product: "Product",
+  logo: "Logo",
+  reference: "Reference",
+};
+
+export type BrandAsset = {
+  id: string;
+  kind: BrandAssetKind;
+  name: string;                    // user-friendly label, e.g. "Lunia Life bottle — front"
+  url: string;                     // Vercel Blob URL
+  mimeType: string;                // image/png, image/jpeg, image/webp
+  width?: number;
+  height?: number;
+  hasTransparentBg: boolean;       // true → logo-safe for canvas stamping
+  tags: string[];                  // free-form, e.g. ["white-bg","3-4-angle"]
+  createdAt: string;
 };

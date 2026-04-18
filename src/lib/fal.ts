@@ -130,6 +130,39 @@ export async function generateAdImage(opts: {
 }
 
 /**
+ * Generate an ad image CONDITIONED on user-supplied reference images
+ * (e.g. the real Lunia bottle + optional secondary refs). Uses Seedream v4
+ * Edit — higher-fidelity than v5 Lite, accepts up to ~10 reference URLs, and
+ * handles subject preservation well. This is what you use when the user has
+ * attached a Product asset: FAL never hallucinates the bottle; it edits
+ * *around* the real product.
+ */
+export async function generateAdImageWithReference(opts: {
+  prompt: string;
+  referenceUrls: string[];  // e.g. [productUrl, ...optionalExtras]
+  aspect: AdAspectRatio;
+}): Promise<string> {
+  const { prompt, referenceUrls, aspect } = opts;
+  if (referenceUrls.length === 0) {
+    throw new Error('generateAdImageWithReference requires at least one reference URL');
+  }
+  const size = adImageSize(aspect);
+  const result = await fal.subscribe('fal-ai/bytedance/seedream/v4/edit', {
+    input: {
+      prompt,
+      image_urls: referenceUrls.slice(0, 10),
+      image_size: size,
+      num_images: 1,
+      enable_safety_checker: true,
+    },
+    logs: false,
+  });
+  const url: string | undefined = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  if (!url) throw new Error('No image URL in fal-ai/bytedance/seedream/v4/edit response');
+  return url;
+}
+
+/**
  * Edit an existing ad image with Seedream 5.0 Lite Edit, using a natural-
  * language edit instruction. The input image is passed as a reference URL.
  */

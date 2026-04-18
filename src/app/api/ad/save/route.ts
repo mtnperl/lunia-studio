@@ -64,6 +64,8 @@ export async function POST(req: Request) {
       imageUrl,
       imageHistory,
       aspectRatio,
+      productAssetId,
+      logoAssetId,
     } = body as Partial<SavedAd>;
 
     if (!angle || !visualFormat || !concept || !imagePrompt || !imageUrl || !aspectRatio) {
@@ -98,6 +100,8 @@ export async function POST(req: Request) {
       })),
       aspectRatio,
       savedAt: new Date().toISOString(),
+      productAssetId: typeof productAssetId === "string" ? productAssetId : undefined,
+      logoAssetId: typeof logoAssetId === "string" ? logoAssetId : undefined,
     };
 
     await saveAd(ad);

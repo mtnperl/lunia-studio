@@ -8,6 +8,7 @@ import { useState } from "react";
 import AdCanvas from "@/components/ad/AdCanvas";
 import AdPromptEditor from "@/components/ad/AdPromptEditor";
 import AdRetroLoader from "@/components/ad/AdRetroLoader";
+import AdAssetPicker from "@/components/ad/AdAssetPicker";
 import type { AdConcept, AdImageHistoryEntry, VisualFormat } from "@/lib/types";
 
 type Aspect = "1:1" | "4:5";
@@ -25,6 +26,10 @@ type Props = {
   history: AdImageHistoryEntry[];
   onHistoryChange: (h: AdImageHistoryEntry[]) => void;
   onImageChange: (url: string | null) => void;
+  productAssetId: string | undefined;
+  onProductAssetIdChange: (id: string | undefined) => void;
+  logoAssetId: string | undefined;
+  onLogoAssetIdChange: (id: string | undefined) => void;
   onBack: () => void;
   onNext: () => void;
 };
@@ -42,6 +47,10 @@ export default function AdVisualStep({
   history,
   onHistoryChange,
   onImageChange,
+  productAssetId,
+  onProductAssetIdChange,
+  logoAssetId,
+  onLogoAssetIdChange,
   onBack,
   onNext,
 }: Props) {
@@ -57,7 +66,7 @@ export default function AdVisualStep({
       const res = await fetch("/api/ad/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, aspect }),
+        body: JSON.stringify({ prompt, aspect, productAssetId }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -117,12 +126,79 @@ export default function AdVisualStep({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Brand asset pickers */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          padding: 12,
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "var(--muted)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Product
+          </span>
+          <AdAssetPicker
+            kind="product"
+            label="Product"
+            selectedId={productAssetId}
+            onSelect={(a) => onProductAssetIdChange(a?.id)}
+          />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "var(--muted)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Logo (stamped on export)
+          </span>
+          <AdAssetPicker
+            kind="logo"
+            label="Logo"
+            selectedId={logoAssetId}
+            onSelect={(a) => onLogoAssetIdChange(a?.id)}
+          />
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--muted)",
+            maxWidth: 280,
+            lineHeight: 1.4,
+            alignSelf: "center",
+          }}
+        >
+          {productAssetId
+            ? "✓ Product attached — Seedream v4 Edit will keep the real bottle in frame."
+            : "Attach a product asset to keep the real Lunia bottle in the render."}
+        </div>
+      </div>
+
       {/* Aspect toggle */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>Generate visual</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-            Recraft V4 for base generation. Seedream 5 Lite Edit for iterative refinements.
+            {productAssetId
+              ? "Seedream v4 Edit (reference-conditioned) → Seedream 5 Lite Edit for refinements."
+              : "Recraft V4 for base generation → Seedream 5 Lite Edit for refinements."}
           </div>
         </div>
         <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>

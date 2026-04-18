@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata, SavedEmail } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata, SavedEmail, BrandAsset } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -80,6 +80,7 @@ const RATE_LIMITS: Record<string, number> = {
   images: 100,    // fal.ai image generation
   ad: 50,         // ad concept generation
   "ad-image": 100, // ad image gen + edit (FAL)
+  "asset-upload": 50, // brand asset uploads
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -376,6 +377,42 @@ export async function getEmailById(id: string): Promise<SavedEmail | null> {
 export async function deleteEmailKv(id: string): Promise<void> {
   const all = await getEmails();
   await redis.set(EMAILS_KEY, all.filter((e) => e.id !== id), { ex: TTL_SECONDS });
+}
+
+// ─── Brand Assets (Ad Builder reference library) ─────────────────────────────
+// Separate from the carousel `lunia:assets` key — different shape, different
+// consumer. Product shots + logos + reference images uploaded by the user for
+// ad generation.
+const BRAND_ASSETS_KEY = "lunia:brand-assets";
+
+export async function getBrandAssets(): Promise<BrandAsset[]> {
+  try {
+    return (await redis.get<BrandAsset[]>(BRAND_ASSETS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getBrandAssetById(id: string): Promise<BrandAsset | null> {
+  const all = await getBrandAssets();
+  return all.find((a) => a.id === id) ?? null;
+}
+
+export async function saveBrandAsset(asset: BrandAsset): Promise<void> {
+  const all = await getBrandAssets();
+  const idx = all.findIndex((a) => a.id === asset.id);
+  if (idx >= 0) {
+    all[idx] = asset;
+  } else {
+    all.unshift(asset);
+  }
+  await redis.set(BRAND_ASSETS_KEY, all.slice(0, 200), { ex: TTL_SECONDS });
+}
+
+export async function deleteBrandAsset(id: string): Promise<void> {
+  const all = await getBrandAssets();
+  const filtered = all.filter((a) => a.id !== id);
+  await redis.set(BRAND_ASSETS_KEY, filtered, { ex: TTL_SECONDS });
 }
 
 // Re-export the internal redis wrapper so analytics routes can import { kv }

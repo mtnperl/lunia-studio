@@ -15,6 +15,7 @@ type Props = {
   scale?: number;          // 1 = export resolution; < 1 for preview
   isFalImage?: boolean;    // true → route through /api/ad/image-proxy
   showOverlay?: boolean;   // defaults true
+  logoUrl?: string | null; // optional brand-asset logo stamped top-right
 };
 
 function proxy(url: string | null | undefined, active: boolean): string | undefined {
@@ -31,6 +32,7 @@ export default function AdCanvas({
   scale = 1,
   isFalImage = false,
   showOverlay = true,
+  logoUrl = null,
 }: Props) {
   const W = 1080;
   const H = aspect === "1:1" ? 1080 : 1350;
@@ -78,6 +80,26 @@ export default function AdCanvas({
               inset: 0,
               background:
                 "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.30) 28%, rgba(0,0,0,0) 55%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Logo stamp — top-right, scaled so it's visible but not dominant */}
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={proxy(logoUrl, isFalImage)}
+            alt=""
+            crossOrigin="anonymous"
+            style={{
+              position: "absolute",
+              top: 48,
+              right: 48,
+              height: aspect === "1:1" ? 96 : 112,
+              width: "auto",
+              objectFit: "contain",
+              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.35))",
               pointerEvents: "none",
             }}
           />
