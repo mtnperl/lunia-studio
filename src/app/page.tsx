@@ -12,13 +12,18 @@ import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
+import AdView from "@/components/AdView";
+import AdLibraryView from "@/components/AdLibraryView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "analytics";
+// Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
+const SHOW_VIDEO = false;
+
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ad" | "ad-library" | "analytics";
 type Product = "home" | "script" | "carousel" | "ads" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -69,12 +74,19 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
       { key: "email-library",  product: "carousel", label: "Library"  },
     ],
   },
-  {
+  ...(SHOW_VIDEO ? [{
     section: "Video",
     items: [
-      { key: "video",         product: "ads", label: "Builder"       },
-      { key: "video-library", product: "ads", label: "Library"       },
-      { key: "video-assets",  product: "ads", label: "Assets"        },
+      { key: "video" as Tab,         product: "ads" as Product, label: "Builder" },
+      { key: "video-library" as Tab, product: "ads" as Product, label: "Library" },
+      { key: "video-assets" as Tab,  product: "ads" as Product, label: "Assets"  },
+    ],
+  }] : []),
+  {
+    section: "Ads",
+    items: [
+      { key: "ad",         product: "ads", label: "Builder" },
+      { key: "ad-library", product: "ads", label: "Library" },
     ],
   },
   {
@@ -91,6 +103,7 @@ export default function Page() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
+  const [pendingAd, setPendingAd] = useState<import("@/lib/types").SavedAd | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -344,6 +357,10 @@ export default function Page() {
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
+        {tab === "ad"         && <AdView initialAd={pendingAd} onAdLoaded={() => setPendingAd(null)} />}
+        {tab === "ad-library" && (
+          <AdLibraryView onOpenAd={(ad) => { setPendingAd(ad); setTab("ad"); }} />
+        )}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

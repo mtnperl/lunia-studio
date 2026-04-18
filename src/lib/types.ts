@@ -343,21 +343,7 @@ export type MultiVariantResponse = {
   warning?: string; // e.g. "2 of 5 variants failed — showing 3"
 };
 
-// ─── Ads types ────────────────────────────────────────────────────────────────
-export type AdCTA = "Shop Now" | "Learn More" | "Get Offer";
-
-export type SavedAd = {
-  id: string;
-  savedAt: string;                 // ISO string
-  competitorCopy: string;          // original pasted input
-  angle?: string;
-  emotion?: string;
-  headline: string;                // ≤27 chars (Meta hard limit)
-  primaryText: string;             // ≤125 chars (Meta hard limit)
-  cta: AdCTA;
-  imageUrl: string;                // fal.ai hosted URL
-  complianceNote?: string;         // empty = clean, non-empty = review flag
-};
+// ─── Ads types: see canonical definitions below (Meta Static Ad Builder) ────
 
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────
 
@@ -605,5 +591,84 @@ export type SavedEmail = {
   };
   imageUrl?: string;
   imagePrompt?: string;         // shown in Image Zone, editable before generating
+  savedAt: string;
+};
+
+// ---------------------------------------------------------------------------
+// Meta Static Ad Builder
+// ---------------------------------------------------------------------------
+
+export type AdAngle =
+  | "credibility"        // Credibility / Science
+  | "price-anchor"       // Under $1/night vs big brands
+  | "skeptic-convert"    // First-person skeptic arc
+  | "outcome-first"      // Clear mornings, better sleep
+  | "formula"            // 3 ingredients, full doses
+  | "comparison"         // Most X, this Y
+  | "social-proof";      // 78,000 customers, ratings
+
+export const AD_ANGLE_LABELS: Record<AdAngle, string> = {
+  "credibility": "Credibility / Science",
+  "price-anchor": "Price anchor",
+  "skeptic-convert": "Skeptic convert",
+  "outcome-first": "Outcome-first",
+  "formula": "Formula transparency",
+  "comparison": "Comparison / contrast",
+  "social-proof": "Social proof",
+};
+
+export type VisualFormat =
+  | "product-dark"       // Product on dark surface, single light source
+  | "lifestyle-flatlay"  // Nightstand / morning table flat lay
+  | "text-dominant"      // Minimal product, text-led
+  | "before-after"       // Before/after state illustration
+  | "ingredient-macro";  // Ingredient close-up
+
+export const VISUAL_FORMAT_LABELS: Record<VisualFormat, string> = {
+  "product-dark": "Product on dark surface",
+  "lifestyle-flatlay": "Lifestyle flat lay",
+  "text-dominant": "Text-dominant",
+  "before-after": "Before / after",
+  "ingredient-macro": "Ingredient close-up",
+};
+
+export type AdConcept = {
+  angle: AdAngle;
+  label: string;           // "AD CONCEPT: [name]" from the skill output
+  headline: string;        // ≤ 5 words
+  primaryText: string;     // 2-4 sentences
+  overlayText: string;     // 3-7 words
+  visualDirection: string; // 2-4 sentences describing the image
+  whyItWorks: string[];    // 2-3 bullets
+};
+
+export type AdImageHistoryEntry = {
+  url: string;
+  prompt: string;               // the prompt used to generate this variant
+  editInstruction?: string;     // present when this entry was produced by an edit, not a fresh generate
+  createdAt: string;
+};
+
+export type AdConfig = {
+  angle: AdAngle;
+  visualFormat: VisualFormat;
+  customHook?: string;             // optional extra instruction from the user
+  concept: AdConcept;              // the concept the user selected
+  imagePrompt: string;             // the Recraft-optimized prompt currently in the editor
+  guidelineChips: string[];        // toggled-on guideline chip keys
+  imageUrl: string | null;         // the current image (head of history)
+  imageHistory: AdImageHistoryEntry[]; // all generated/edited variants, newest first
+  aspectRatio: "1:1" | "4:5";
+};
+
+export type SavedAd = {
+  id: string;
+  angle: AdAngle;
+  visualFormat: VisualFormat;
+  concept: AdConcept;
+  imagePrompt: string;
+  imageUrl: string;                // the selected final image
+  imageHistory: AdImageHistoryEntry[];
+  aspectRatio: "1:1" | "4:5";
   savedAt: string;
 };

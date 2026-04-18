@@ -78,6 +78,8 @@ const RATE_LIMITS: Record<string, number> = {
   carousel: 50,   // carousel generation + slide regen
   graphic: 100,   // infographic regen (cheap Claude calls, used frequently)
   images: 100,    // fal.ai image generation
+  ad: 50,         // ad concept generation
+  "ad-image": 100, // ad image gen + edit (FAL)
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -283,6 +285,11 @@ export async function deleteAdKv(id: string): Promise<void> {
   const all = await getAds();
   const filtered = all.filter((a) => a.id !== id);
   await redis.set(ADS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
+export async function getAdById(id: string): Promise<SavedAd | null> {
+  const all = await getAds();
+  return all.find((a) => a.id === id) ?? null;
 }
 
 // ─── Video Ads ────────────────────────────────────────────────────────────────

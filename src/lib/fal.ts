@@ -95,6 +95,65 @@ export function buildSlideGraphicFallback(
   }
 }
 
+// ─── Ad Builder (Recraft V4 + Seedream 5 Lite Edit) ───────────────────────────
+// These helpers are for the Meta static-ad builder. Recraft V4 is purpose-built
+// for brand/product work; Seedream 5 Lite Edit is the reference-based editor for
+// the iterate loop. Carousel generation continues to use Recraft V3 above.
+
+export type AdAspectRatio = '1:1' | '4:5';
+
+function adImageSize(aspect: AdAspectRatio): { width: number; height: number } {
+  // Meta-feed-optimised output sizes
+  return aspect === '1:1'
+    ? { width: 1024, height: 1024 }
+    : { width: 1024, height: 1280 };
+}
+
+/**
+ * Generate a brand/product ad image with Recraft V4.
+ */
+export async function generateAdImage(opts: {
+  prompt: string;
+  aspect: AdAspectRatio;
+}): Promise<string> {
+  const { prompt, aspect } = opts;
+  const result = await fal.subscribe('fal-ai/recraft/v4/pro/text-to-image', {
+    input: {
+      prompt,
+      image_size: adImageSize(aspect),
+    },
+    logs: false,
+  });
+  const url: string | undefined = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  if (!url) throw new Error('No image URL in fal-ai/recraft/v4/pro/text-to-image response');
+  return url;
+}
+
+/**
+ * Edit an existing ad image with Seedream 5.0 Lite Edit, using a natural-
+ * language edit instruction. The input image is passed as a reference URL.
+ */
+export async function editAdImage(opts: {
+  imageUrl: string;
+  editInstruction: string;
+  aspect: AdAspectRatio;
+}): Promise<string> {
+  const { imageUrl, editInstruction, aspect } = opts;
+  const size = adImageSize(aspect);
+  const result = await fal.subscribe('fal-ai/bytedance/seedream/v5/lite/edit', {
+    input: {
+      prompt: editInstruction,
+      image_urls: [imageUrl],
+      image_size: size,
+      num_images: 1,
+    },
+    logs: false,
+  });
+  const url: string | undefined = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  if (!url) throw new Error('No image URL in fal-ai/bytedance/seedream/v5/lite/edit response');
+  return url;
+}
+
 // Derive a visual scene from the topic string for the hook slide
 // Goal: aspirational lifestyle ad imagery, not literal ingredient shots
 function deriveHookSubject(topic: string): string {
