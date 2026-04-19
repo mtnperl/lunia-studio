@@ -9,6 +9,8 @@ const PUBLIC_PREFIXES = [
   // Share routes — read-only public pages
   "/carousels/",
   "/scripts/",
+  "/ugc/share/",
+  "/api/ugc/briefs/share/",
 ];
 
 export const config = {

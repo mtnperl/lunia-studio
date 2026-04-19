@@ -104,6 +104,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<UGCBrief | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadBriefs = useCallback(async () => {
     setLoading(true);
@@ -136,6 +137,19 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   async function deleteBrief(id: string) {
     if (!confirm("Delete this brief permanently?")) return;
     await fetch(`/api/ugc/briefs/${id}`, { method: "DELETE" });
+    await loadBriefs();
+  }
+
+  async function copyShareLink(brief: UGCBrief) {
+    const url = `${window.location.origin}/ugc/share/${brief.publicBriefId}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedId(brief.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function revokeBrief(id: string) {
+    if (!confirm("Revoke this share link? The creator will no longer be able to view the brief.")) return;
+    await fetch(`/api/ugc/briefs/${id}/revoke`, { method: "POST" });
     await loadBriefs();
   }
 
@@ -197,7 +211,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
               key={brief.id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 130px 90px 70px 140px",
+                gridTemplateColumns: "1fr 130px 90px 70px auto",
                 alignItems: "center",
                 gap: 16,
                 padding: "12px 16px",
@@ -225,10 +239,22 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
               <div style={{ fontSize: 12, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
                 {fmtDate(brief.updatedAt)}
               </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button onClick={() => openEdit(brief)} style={actionBtn}>Edit</button>
                 {brief.status !== "approved" && brief.status !== "archived" && (
                   <button onClick={() => approveBrief(brief.id)} style={{ ...actionBtn, color: "var(--success)" }}>Approve</button>
+                )}
+                {brief.status !== "archived" && !brief.revokedAt && (
+                  <button onClick={() => copyShareLink(brief)} style={{ ...actionBtn, color: copiedId === brief.id ? "var(--success)" : "var(--muted)" }}>
+                    {copiedId === brief.id ? "Copied!" : "Share"}
+                  </button>
+                )}
+                {brief.revokedAt ? (
+                  <span style={{ fontSize: 11, color: "var(--subtle)", padding: "4px 6px" }}>Revoked</span>
+                ) : (
+                  brief.status !== "archived" && (
+                    <button onClick={() => revokeBrief(brief.id)} style={{ ...actionBtn, color: "var(--warning)" }}>Revoke</button>
+                  )
                 )}
                 {brief.status !== "archived" && (
                   <button onClick={() => archiveBrief(brief.id)} style={actionBtn}>Archive</button>
