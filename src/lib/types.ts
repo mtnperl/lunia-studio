@@ -343,8 +343,6 @@ export type MultiVariantResponse = {
   warning?: string; // e.g. "2 of 5 variants failed — showing 3"
 };
 
-// ─── Ads types: see canonical definitions below (Meta Static Ad Builder) ────
-
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────
 
 export type MetaCampaign = {
@@ -594,113 +592,67 @@ export type SavedEmail = {
   savedAt: string;
 };
 
-// ---------------------------------------------------------------------------
-// Meta Static Ad Builder
-// ---------------------------------------------------------------------------
+// ─── UGC Tracker ──────────────────────────────────────────────────────────────
 
-export type AdAngle =
-  | "credibility"        // Credibility / Science
-  | "price-anchor"       // Under $1/night vs big brands
-  | "skeptic-convert"    // First-person skeptic arc
-  | "outcome-first"      // Clear mornings, better sleep
-  | "formula"            // 3 ingredients, full doses
-  | "comparison"         // Most X, this Y
-  | "social-proof";      // 78,000 customers, ratings
+export type UGCPipelineStage =
+  | "invited"
+  | "shipped"
+  | "delivered"
+  | "approved"
+  | "posted";
 
-export const AD_ANGLE_LABELS: Record<AdAngle, string> = {
-  "credibility": "Credibility / Science",
-  "price-anchor": "Price anchor",
-  "skeptic-convert": "Skeptic convert",
-  "outcome-first": "Outcome-first",
-  "formula": "Formula transparency",
-  "comparison": "Comparison / contrast",
-  "social-proof": "Social proof",
+export const UGC_PIPELINE_STAGES: UGCPipelineStage[] = [
+  "invited",
+  "shipped",
+  "delivered",
+  "approved",
+  "posted",
+];
+
+export const UGC_STAGE_LABELS: Record<UGCPipelineStage, string> = {
+  invited: "Invited",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  approved: "Approved",
+  posted: "Posted",
 };
 
-export type VisualFormat =
-  | "product-dark"       // Product on dark surface, single light source
-  | "lifestyle-flatlay"  // Nightstand / morning table flat lay
-  | "text-dominant"      // Minimal product, text-led
-  | "before-after"       // Before/after state illustration
-  | "ingredient-macro";  // Ingredient close-up
+export type UGCSourcingPlatform = "BACKSTAGE" | "upwork" | "other";
 
-export const VISUAL_FORMAT_LABELS: Record<VisualFormat, string> = {
-  "product-dark": "Product on dark surface",
-  "lifestyle-flatlay": "Lifestyle flat lay",
-  "text-dominant": "Text-dominant",
-  "before-after": "Before / after",
-  "ingredient-macro": "Ingredient close-up",
-};
-
-export type AdConcept = {
-  angle: AdAngle;
-  label: string;           // "AD CONCEPT: [name]" from the skill output
-  headline: string;        // ≤ 5 words
-  primaryText: string;     // 2-4 sentences
-  overlayText: string;     // 3-7 words
-  visualDirection: string; // 2-4 sentences describing the image
-  whyItWorks: string[];    // 2-3 bullets
-};
-
-export type AdImageHistoryEntry = {
-  url: string;
-  prompt: string;               // the prompt used to generate this variant
-  editInstruction?: string;     // present when this entry was produced by an edit, not a fresh generate
-  createdAt: string;
-};
-
-export type AdConfig = {
-  angle: AdAngle;
-  visualFormat: VisualFormat;
-  customHook?: string;             // optional extra instruction from the user
-  concept: AdConcept;              // the concept the user selected
-  imagePrompt: string;             // the Recraft-optimized prompt currently in the editor
-  guidelineChips: string[];        // toggled-on guideline chip keys
-  imageUrl: string | null;         // the current image (head of history)
-  imageHistory: AdImageHistoryEntry[]; // all generated/edited variants, newest first
-  aspectRatio: "1:1" | "4:5";
-  productAssetId?: string;         // optional BrandAsset.id used as product reference for Seedream
-  logoAssetId?: string;            // optional BrandAsset.id canvas-stamped at export
-};
-
-export type SavedAd = {
+export interface UGCBriefTemplate {
   id: string;
-  angle: AdAngle;
-  visualFormat: VisualFormat;
-  concept: AdConcept;
-  imagePrompt: string;
-  imageUrl: string;                // the selected final image
-  imageHistory: AdImageHistoryEntry[];
-  aspectRatio: "1:1" | "4:5";
-  savedAt: string;
-  productAssetId?: string;
-  logoAssetId?: string;
-};
+  angle: string;           // "perimenopause" | "financial" | "skeptic" | any free string
+  label: string;           // "Skeptic angle #1"
+  docUrl: string;          // Google Doc URL
+  createdAt: number;
+  archivedAt: number | null;
+}
 
-// ---------------------------------------------------------------------------
-// Brand Assets (Ad Builder reference images)
-// ---------------------------------------------------------------------------
-// User-uploaded product shots, logos, and reference images used to condition
-// ad image generation. Stored in Vercel Blob; metadata indexed in KV under
-// `lunia:assets`. Distinct from the carousel-era AssetType/AssetMetadata.
-
-export type BrandAssetKind = "product" | "logo" | "reference";
-
-export const BRAND_ASSET_KIND_LABELS: Record<BrandAssetKind, string> = {
-  product: "Product",
-  logo: "Logo",
-  reference: "Reference",
-};
-
-export type BrandAsset = {
+export interface UGCCreator {
   id: string;
-  kind: BrandAssetKind;
-  name: string;                    // user-friendly label, e.g. "Lunia Life bottle — front"
-  url: string;                     // Vercel Blob URL
-  mimeType: string;                // image/png, image/jpeg, image/webp
-  width?: number;
-  height?: number;
-  hasTransparentBg: boolean;       // true → logo-safe for canvas stamping
-  tags: string[];                  // free-form, e.g. ["white-bg","3-4-angle"]
-  createdAt: string;
-};
+  name: string;
+  angle: string;
+  briefId: string | null;
+  sourcingPlatform: UGCSourcingPlatform;
+  cost: number;                 // USD
+  goodsShipped: boolean;
+  stage: UGCPipelineStage;
+  versionsDelivered: number;
+  caption1: string;
+  caption2: string;
+  notes: string;
+  postedUrl: string | null;     // reserved for future perf-loop tie-in
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UGCCampaign {
+  id: string;                   // "2026-04"
+  label: string;                // "April 2026"
+  month: number;                // 1-12
+  year: number;
+  creators: UGCCreator[];
+  schemaVersion: 1;
+  createdAt: number;
+  updatedAt: number;
+}

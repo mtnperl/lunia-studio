@@ -12,20 +12,18 @@ import DashboardView from "@/components/DashboardView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
-import AdView from "@/components/AdView";
-import AdLibraryView from "@/components/AdLibraryView";
-import BrandAssetsView from "@/components/BrandAssetsView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
+import UGCTrackerView from "@/components/ugc/UGCTrackerView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ad" | "ad-library" | "brand-assets" | "analytics";
-type Product = "home" | "script" | "carousel" | "ads" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "analytics";
+type Product = "home" | "script" | "carousel" | "ugc" | "video" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
   "--bg": "#FFFFFF", "--surface": "#F5F5F7", "--surface-r": "#EBEBED",
@@ -78,17 +76,15 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   ...(SHOW_VIDEO ? [{
     section: "Video",
     items: [
-      { key: "video" as Tab,         product: "ads" as Product, label: "Builder" },
-      { key: "video-library" as Tab, product: "ads" as Product, label: "Library" },
-      { key: "video-assets" as Tab,  product: "ads" as Product, label: "Assets"  },
+      { key: "video" as Tab,         product: "video" as Product, label: "Builder" },
+      { key: "video-library" as Tab, product: "video" as Product, label: "Library" },
+      { key: "video-assets" as Tab,  product: "video" as Product, label: "Assets"  },
     ],
   }] : []),
   {
-    section: "Ads",
+    section: "UGC",
     items: [
-      { key: "ad",            product: "ads", label: "Builder" },
-      { key: "ad-library",    product: "ads", label: "Library" },
-      { key: "brand-assets",  product: "ads", label: "Assets"  },
+      { key: "ugc", product: "ugc", label: "Tracker" },
     ],
   },
   {
@@ -105,7 +101,6 @@ export default function Page() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
-  const [pendingAd, setPendingAd] = useState<import("@/lib/types").SavedAd | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -359,11 +354,7 @@ export default function Page() {
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
-        {tab === "ad"         && <AdView initialAd={pendingAd} />}
-        {tab === "ad-library" && (
-          <AdLibraryView onOpenAd={(ad) => { setPendingAd(ad); setTab("ad"); }} />
-        )}
-        {tab === "brand-assets" && <BrandAssetsView />}
+        {tab === "ugc" && <UGCTrackerView />}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedAd, SavedVideoAd, VideoAssetMetadata, SavedEmail, BrandAsset } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBriefTemplate } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -78,9 +78,9 @@ const RATE_LIMITS: Record<string, number> = {
   carousel: 50,   // carousel generation + slide regen
   graphic: 100,   // infographic regen (cheap Claude calls, used frequently)
   images: 100,    // fal.ai image generation
-  ad: 50,         // ad concept generation
-  "ad-image": 100, // ad image gen + edit (FAL)
-  "asset-upload": 50, // brand asset uploads
+  "ugc-caption": 100, // UGC caption drafts
+  "ugc-import": 10,   // CSV imports
+  login: 10,      // login attempts per IP
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -260,39 +260,6 @@ export async function getCarouselTemplateById(id: string): Promise<CarouselTempl
   return all.find((t) => t.id === id) ?? null;
 }
 
-// ─── Ads ──────────────────────────────────────────────────────────────────────
-const ADS_KEY = "lunia:ads";
-
-export async function getAds(): Promise<SavedAd[]> {
-  try {
-    return (await redis.get<SavedAd[]>(ADS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export async function saveAd(ad: SavedAd): Promise<void> {
-  const all = await getAds();
-  const idx = all.findIndex((a) => a.id === ad.id);
-  if (idx >= 0) {
-    all[idx] = ad;
-  } else {
-    all.unshift(ad);
-  }
-  await redis.set(ADS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
-}
-
-export async function deleteAdKv(id: string): Promise<void> {
-  const all = await getAds();
-  const filtered = all.filter((a) => a.id !== id);
-  await redis.set(ADS_KEY, filtered, { ex: TTL_SECONDS });
-}
-
-export async function getAdById(id: string): Promise<SavedAd | null> {
-  const all = await getAds();
-  return all.find((a) => a.id === id) ?? null;
-}
-
 // ─── Video Ads ────────────────────────────────────────────────────────────────
 const VIDEO_ADS_KEY = "lunia:video-ads";
 
@@ -379,40 +346,82 @@ export async function deleteEmailKv(id: string): Promise<void> {
   await redis.set(EMAILS_KEY, all.filter((e) => e.id !== id), { ex: TTL_SECONDS });
 }
 
-// ─── Brand Assets (Ad Builder reference library) ─────────────────────────────
-// Separate from the carousel `lunia:assets` key — different shape, different
-// consumer. Product shots + logos + reference images uploaded by the user for
-// ad generation.
-const BRAND_ASSETS_KEY = "lunia:brand-assets";
+// ─── UGC Tracker ──────────────────────────────────────────────────────────────
+// Mirrors the carousel single-key pattern above. Last-write-wins on concurrent
+// edits; single-user tool so the race is accepted. See plan Phase 2 for context.
+const UGC_CAMPAIGNS_KEY = "lunia:ugc:campaigns";
+const UGC_BRIEFS_KEY = "lunia:ugc:briefs";
+const UGC_OUTREACH_KEY = "lunia:ugc:outreach";
 
-export async function getBrandAssets(): Promise<BrandAsset[]> {
+export async function getCampaigns(): Promise<UGCCampaign[]> {
   try {
-    return (await redis.get<BrandAsset[]>(BRAND_ASSETS_KEY)) ?? [];
+    return (await redis.get<UGCCampaign[]>(UGC_CAMPAIGNS_KEY)) ?? [];
   } catch {
     return [];
   }
 }
 
-export async function getBrandAssetById(id: string): Promise<BrandAsset | null> {
-  const all = await getBrandAssets();
-  return all.find((a) => a.id === id) ?? null;
-}
-
-export async function saveBrandAsset(asset: BrandAsset): Promise<void> {
-  const all = await getBrandAssets();
-  const idx = all.findIndex((a) => a.id === asset.id);
+export async function saveCampaign(campaign: UGCCampaign): Promise<void> {
+  // last-write-wins: reads current array, mutates, writes back. Single-user tool.
+  const all = await getCampaigns();
+  const idx = all.findIndex((c) => c.id === campaign.id);
   if (idx >= 0) {
-    all[idx] = asset;
+    all[idx] = campaign;
   } else {
-    all.unshift(asset);
+    all.unshift(campaign);
   }
-  await redis.set(BRAND_ASSETS_KEY, all.slice(0, 200), { ex: TTL_SECONDS });
+  await redis.set(UGC_CAMPAIGNS_KEY, all.slice(0, 24), { ex: TTL_SECONDS });
 }
 
-export async function deleteBrandAsset(id: string): Promise<void> {
-  const all = await getBrandAssets();
-  const filtered = all.filter((a) => a.id !== id);
-  await redis.set(BRAND_ASSETS_KEY, filtered, { ex: TTL_SECONDS });
+export async function getCampaignById(id: string): Promise<UGCCampaign | null> {
+  const all = await getCampaigns();
+  return all.find((c) => c.id === id) ?? null;
+}
+
+export async function deleteCampaignKv(id: string): Promise<void> {
+  const all = await getCampaigns();
+  const filtered = all.filter((c) => c.id !== id);
+  await redis.set(UGC_CAMPAIGNS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
+export async function getBriefs(): Promise<UGCBriefTemplate[]> {
+  try {
+    return (await redis.get<UGCBriefTemplate[]>(UGC_BRIEFS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveBrief(brief: UGCBriefTemplate): Promise<void> {
+  const all = await getBriefs();
+  const idx = all.findIndex((b) => b.id === brief.id);
+  if (idx >= 0) {
+    all[idx] = brief;
+  } else {
+    all.unshift(brief);
+  }
+  await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+}
+
+export async function archiveBrief(id: string): Promise<void> {
+  const all = await getBriefs();
+  const idx = all.findIndex((b) => b.id === id);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], archivedAt: Date.now() };
+    await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+  }
+}
+
+export async function getOutreach(): Promise<string> {
+  try {
+    return (await redis.get<string>(UGC_OUTREACH_KEY)) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export async function setOutreach(text: string): Promise<void> {
+  await redis.set(UGC_OUTREACH_KEY, text, { ex: TTL_SECONDS });
 }
 
 // Re-export the internal redis wrapper so analytics routes can import { kv }
