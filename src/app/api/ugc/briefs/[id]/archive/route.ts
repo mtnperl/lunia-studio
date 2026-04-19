@@ -1,4 +1,4 @@
-import { archiveBrief, getBriefs } from "@/lib/kv";
+import { archiveBrief, getBriefById } from "@/lib/kv";
 import { logEntry, logExit } from "@/lib/ugc-api";
 
 export async function POST(
@@ -8,8 +8,8 @@ export async function POST(
   const { id } = await params;
   const start = logEntry("/api/ugc/briefs/[id]/archive", "archive", { briefId: id });
   try {
-    const briefs = await getBriefs();
-    if (!briefs.find((b) => b.id === id)) {
+    const existing = await getBriefById(id);
+    if (!existing) {
       logExit("/api/ugc/briefs/[id]/archive", "archive", start, 404, { briefId: id });
       return Response.json({ error: "Brief not found" }, { status: 404 });
     }

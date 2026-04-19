@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBriefTemplate } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBrief } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -384,15 +384,15 @@ export async function deleteCampaignKv(id: string): Promise<void> {
   await redis.set(UGC_CAMPAIGNS_KEY, filtered, { ex: TTL_SECONDS });
 }
 
-export async function getBriefs(): Promise<UGCBriefTemplate[]> {
+export async function getBriefs(): Promise<UGCBrief[]> {
   try {
-    return (await redis.get<UGCBriefTemplate[]>(UGC_BRIEFS_KEY)) ?? [];
+    return (await redis.get<UGCBrief[]>(UGC_BRIEFS_KEY)) ?? [];
   } catch {
     return [];
   }
 }
 
-export async function saveBrief(brief: UGCBriefTemplate): Promise<void> {
+export async function saveBrief(brief: UGCBrief): Promise<void> {
   const all = await getBriefs();
   const idx = all.findIndex((b) => b.id === brief.id);
   if (idx >= 0) {
@@ -400,14 +400,38 @@ export async function saveBrief(brief: UGCBriefTemplate): Promise<void> {
   } else {
     all.unshift(brief);
   }
-  await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+  await redis.set(UGC_BRIEFS_KEY, all.slice(0, 500), { ex: TTL_SECONDS });
+}
+
+export async function getBriefById(id: string): Promise<UGCBrief | null> {
+  const all = await getBriefs();
+  return all.find((b) => b.id === id) ?? null;
+}
+
+export async function getBriefByPublicId(publicBriefId: string): Promise<UGCBrief | null> {
+  const all = await getBriefs();
+  return all.find((b) => b.publicBriefId === publicBriefId) ?? null;
+}
+
+export async function deleteBriefKv(id: string): Promise<void> {
+  const all = await getBriefs();
+  await redis.set(UGC_BRIEFS_KEY, all.filter((b) => b.id !== id), { ex: TTL_SECONDS });
 }
 
 export async function archiveBrief(id: string): Promise<void> {
   const all = await getBriefs();
   const idx = all.findIndex((b) => b.id === id);
   if (idx >= 0) {
-    all[idx] = { ...all[idx], archivedAt: Date.now() };
+    all[idx] = { ...all[idx], status: "archived", updatedAt: Date.now() };
+    await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+  }
+}
+
+export async function revokeBriefShare(id: string): Promise<void> {
+  const all = await getBriefs();
+  const idx = all.findIndex((b) => b.id === id);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], revokedAt: Date.now(), updatedAt: Date.now() };
     await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
   }
 }

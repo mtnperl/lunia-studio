@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scanCompliance } from "./compliance";
+import { scanCompliance, stripEmDashes, postProcess } from "./compliance";
 
 describe("scanCompliance", () => {
   it("returns green on clean copy", () => {
@@ -54,5 +54,53 @@ describe("scanCompliance", () => {
     // "pretreated" should not trigger "treat"; "cured meat" triggers "cured" (intentional)
     const r = scanCompliance("Our standards are untreated by comparison.");
     expect(r.level).toBe("green");
+  });
+
+  it("flags influencer phrases as amber", () => {
+    expect(scanCompliance("This is a game changer.").level).toBe("amber");
+    expect(scanCompliance("Life-changing stuff.").level).toBe("amber");
+    expect(scanCompliance("Obsessed with this.").level).toBe("amber");
+    expect(scanCompliance("My holy grail product.").level).toBe("amber");
+    expect(scanCompliance("Click the link in bio.").level).toBe("amber");
+    expect(scanCompliance("Use my code LUNIA.").level).toBe("amber");
+  });
+
+  it("flags 'not X, it's Y' construction", () => {
+    const r = scanCompliance("It is not a supplement, it's a lifestyle.");
+    expect(r.level).toBe("amber");
+    expect(r.violations.some((v) => v.rule.includes("not X"))).toBe(true);
+  });
+});
+
+describe("stripEmDashes", () => {
+  it("replaces spaced em dashes with comma", () => {
+    expect(stripEmDashes("Clean mornings — start here.")).toBe("Clean mornings, start here.");
+  });
+
+  it("replaces unspaced em dashes", () => {
+    expect(stripEmDashes("A—B")).toBe("A, B");
+  });
+
+  it("collapses double commas from adjacent replacement", () => {
+    expect(stripEmDashes("one, — two")).toBe("one, two");
+  });
+
+  it("is idempotent on clean text", () => {
+    expect(stripEmDashes("no dashes here.")).toBe("no dashes here.");
+  });
+});
+
+describe("postProcess", () => {
+  it("strips em dashes and returns green", () => {
+    const r = postProcess("Supports sleep — may help you wind down.");
+    expect(r.cleaned).toBe("Supports sleep, may help you wind down.");
+    expect(r.result.level).toBe("green");
+  });
+
+  it("strips em dashes but keeps red-level violations", () => {
+    const r = postProcess("This cures insomnia — guaranteed.");
+    expect(r.cleaned).toContain(",");
+    expect(r.cleaned).not.toContain("—");
+    expect(r.result.level).toBe("red");
   });
 });

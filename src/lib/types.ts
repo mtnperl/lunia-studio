@@ -619,13 +619,35 @@ export const UGC_STAGE_LABELS: Record<UGCPipelineStage, string> = {
 
 export type UGCSourcingPlatform = "BACKSTAGE" | "upwork" | "other";
 
-export interface UGCBriefTemplate {
+export type BriefStatus = "draft" | "approved" | "archived";
+
+export interface BriefScript {
+  videoHook: string;       // on-camera hook, first 1-2 seconds
+  textHook: string;        // text overlay / caption hook
+  narrative: string;       // main script body (multi-line)
+  cta: string;             // closing line / call-to-action
+}
+
+export interface BriefComplianceFlag {
+  severity: "amber" | "red";
+  rule: string;
+  match: string;
+}
+
+export interface UGCBrief {
   id: string;
-  angle: string;           // "perimenopause" | "financial" | "skeptic" | any free string
-  label: string;           // "Skeptic angle #1"
-  docUrl: string;          // Google Doc URL
+  publicBriefId: string;            // nanoid; used in public share URL
+  angle: string;                    // AngleLibrary key (e.g. "perimenopause")
+  conceptId: string | null;         // AngleConcept.id if generated from library; null if custom
+  conceptLabel: string;             // display label (usually the concept's label)
+  title: string;                    // brief title (angle + concept by default)
+  script: BriefScript;
+  complianceFlags: BriefComplianceFlag[];
+  status: BriefStatus;
+  creatorName: string | null;       // optional assigned creator
   createdAt: number;
-  archivedAt: number | null;
+  updatedAt: number;
+  revokedAt: number | null;         // if set, public share link returns 404
 }
 
 export interface UGCCreator {

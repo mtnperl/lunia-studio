@@ -1,13 +1,23 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import { nanoid } from "nanoid";
 import { getBriefs, saveBrief } from "@/lib/kv";
-import { UGCBriefTemplate } from "@/lib/types";
+import { findAngle, findConcept } from "@/lib/angleLibrary";
+import { UGCBrief } from "@/lib/types";
 import { logEntry, logExit } from "@/lib/ugc-api";
 
 const createSchema = z.object({
-  angle: z.string().min(1).max(80),
-  label: z.string().min(1).max(120),
-  docUrl: z.string().url(),
+  angle: z.string().min(1).max(60),
+  conceptId: z.string().max(120).nullable().optional(),
+  conceptLabel: z.string().min(1).max(200),
+  title: z.string().min(1).max(200),
+  script: z.object({
+    videoHook: z.string().max(1000),
+    textHook: z.string().max(500),
+    narrative: z.string().max(8000),
+    cta: z.string().max(500),
+  }),
+  creatorName: z.string().max(200).nullable().optional(),
 });
 
 export async function GET(): Promise<Response> {
@@ -19,7 +29,7 @@ export async function GET(): Promise<Response> {
   } catch (err) {
     console.error("[api/ugc/briefs] GET", err);
     logExit("/api/ugc/briefs", "list", start, 500);
-    return Response.json([], { status: 200 });
+    return Response.json({ error: "Failed to load briefs" }, { status: 500 });
   }
 }
 
@@ -30,22 +40,39 @@ export async function POST(req: Request): Promise<Response> {
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
       logExit("/api/ugc/briefs", "create", start, 400);
-      return Response.json(
-        { error: "Invalid body", issues: parsed.error.issues },
-        { status: 400 },
-      );
+      return Response.json({ error: "Invalid body", issues: parsed.error.issues }, { status: 400 });
     }
-    const brief: UGCBriefTemplate = {
+
+    const { angle, conceptId, conceptLabel, title, script, creatorName } = parsed.data;
+
+    if (!findAngle(angle)) {
+      logExit("/api/ugc/briefs", "create", start, 400);
+      return Response.json({ error: `Unknown angle: ${angle}` }, { status: 400 });
+    }
+    if (conceptId && !findConcept(angle, conceptId)) {
+      logExit("/api/ugc/briefs", "create", start, 400);
+      return Response.json({ error: `Unknown concept for angle ${angle}: ${conceptId}` }, { status: 400 });
+    }
+
+    const now = Date.now();
+    const brief: UGCBrief = {
       id: randomUUID(),
-      angle: parsed.data.angle,
-      label: parsed.data.label,
-      docUrl: parsed.data.docUrl,
-      createdAt: Date.now(),
-      archivedAt: null,
+      publicBriefId: nanoid(16),
+      angle,
+      conceptId: conceptId ?? null,
+      conceptLabel,
+      title,
+      script,
+      complianceFlags: [],
+      status: "draft",
+      creatorName: creatorName ?? null,
+      createdAt: now,
+      updatedAt: now,
+      revokedAt: null,
     };
     await saveBrief(brief);
-    logExit("/api/ugc/briefs", "create", start, 200, { briefId: brief.id });
-    return Response.json(brief);
+    logExit("/api/ugc/briefs", "create", start, 201, { briefId: brief.id });
+    return Response.json(brief, { status: 201 });
   } catch (err) {
     console.error("[api/ugc/briefs] POST", err);
     logExit("/api/ugc/briefs", "create", start, 500);

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  UGCBriefTemplate,
+  UGCBrief,
   UGCCampaign,
   UGCCreator,
   UGCPipelineStage,
@@ -21,7 +21,7 @@ type Dirty = Record<string, Partial<UGCCreator>>;
 
 export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const [campaign, setCampaign] = useState<UGCCampaign | null>(null);
-  const [briefs, setBriefs] = useState<UGCBriefTemplate[]>([]);
+  const [briefs, setBriefs] = useState<UGCBrief[]>([]);
   const [outreach, setOutreach] = useState<string>("");
   const [dirty, setDirty] = useState<Dirty>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -123,7 +123,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   async function generateCaptions(c: UGCCreator) {
     setCaptionBusy(c.id);
     try {
-      const briefLabel = briefs.find((b) => b.id === c.briefId)?.label ?? "";
+      const briefLabel = briefs.find((b) => b.id === c.briefId)?.title ?? "";
       const res = await fetch("/api/ugc/caption", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -286,7 +286,7 @@ function CreatorRow({
   onToggle, onPatch, onDelete, onGenerate,
 }: {
   creator: UGCCreator;
-  briefs: UGCBriefTemplate[];
+  briefs: UGCBrief[];
   expanded: boolean;
   captionBusy: boolean;
   flags: { caption1?: ComplianceResult; caption2?: ComplianceResult } | undefined;
@@ -314,8 +314,8 @@ function CreatorRow({
             style={selectStyle}
           >
             <option value="">—</option>
-            {briefs.filter((b) => !b.archivedAt || b.id === c.briefId).map((b) => (
-              <option key={b.id} value={b.id}>{b.label}</option>
+            {briefs.filter((b) => b.status !== "archived" || b.id === c.briefId).map((b) => (
+              <option key={b.id} value={b.id}>{b.title}</option>
             ))}
           </select>
         </Td>

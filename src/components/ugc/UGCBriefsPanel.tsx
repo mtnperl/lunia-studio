@@ -1,146 +1,562 @@
 "use client";
-import { useEffect, useState } from "react";
-import { UGCBriefTemplate } from "@/lib/types";
 
+import { useState, useEffect, useCallback } from "react";
+import { ANGLE_LIBRARY } from "@/lib/angleLibrary";
+import type { UGCBrief, BriefScript, BriefComplianceFlag } from "@/lib/types";
+
+type PanelView = "list" | "create" | "edit";
+
+function fmtDate(ts: number) {
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function StatusPill({ status }: { status: string }) {
+  const styleMap: Record<string, { color: string }> = {
+    draft: { color: "var(--muted)" },
+    approved: { color: "var(--success)" },
+    archived: { color: "var(--subtle)" },
+  };
+  const s = styleMap[status] ?? styleMap.draft;
+  return (
+    <span style={{
+      fontSize: 11,
+      fontWeight: 500,
+      letterSpacing: "0.05em",
+      textTransform: "uppercase",
+      color: s.color,
+      border: "1px solid var(--border)",
+      borderRadius: 4,
+      padding: "2px 7px",
+    }}>
+      {status}
+    </span>
+  );
+}
+
+function FlagList({ flags }: { flags: BriefComplianceFlag[] }) {
+  if (!flags.length) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+      {flags.map((f, i) => (
+        <div key={i} style={{
+          fontSize: 12,
+          color: f.severity === "red" ? "var(--error)" : "var(--warning)",
+          background: "var(--surface)",
+          border: `1px solid ${f.severity === "red" ? "var(--error)" : "var(--warning)"}`,
+          borderRadius: 4,
+          padding: "3px 8px",
+        }}>
+          {f.severity === "red" ? "●" : "◐"} {f.rule} — <em>&ldquo;{f.match}&rdquo;</em>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScriptField({
+  label,
+  value,
+  onChange,
+  rows = 3,
+  flags,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  rows?: number;
+  flags: BriefComplianceFlag[];
+}) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <label style={{ display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>
+        {label}
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          fontSize: 14,
+          lineHeight: 1.6,
+          fontFamily: "var(--font-ui)",
+          color: "var(--text)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          resize: "vertical",
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+        onFocus={(e) => { e.target.style.borderColor = "var(--border-strong)"; }}
+        onBlur={(e) => { e.target.style.borderColor = "var(--border)"; }}
+      />
+      <FlagList flags={flags} />
+    </div>
+  );
+}
+
+// --- Main Panel ---
 export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
-  const [briefs, setBriefs] = useState<UGCBriefTemplate[]>([]);
-  const [angle, setAngle] = useState("");
-  const [label, setLabel] = useState("");
-  const [docUrl, setDocUrl] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<PanelView>("list");
+  const [briefs, setBriefs] = useState<UGCBrief[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editTarget, setEditTarget] = useState<UGCBrief | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
-  async function load() {
+  const loadBriefs = useCallback(async () => {
+    setLoading(true);
     const res = await fetch("/api/ugc/briefs");
-    const data = await res.json();
-    setBriefs(Array.isArray(data) ? data : []);
-  }
-  useEffect(() => { void load(); }, []);
+    if (res.ok) setBriefs(await res.json());
+    setLoading(false);
+  }, []);
 
-  async function create() {
-    setErr(null); setBusy(true);
-    try {
-      const res = await fetch("/api/ugc/briefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ angle, label, docUrl }),
-      });
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        setErr(b.error ?? `Failed (${res.status})`);
-        return;
-      }
-      setAngle(""); setLabel(""); setDocUrl("");
-      await load();
-    } finally { setBusy(false); }
+  useEffect(() => { loadBriefs(); }, [loadBriefs]);
+
+  function openEdit(brief: UGCBrief) {
+    setEditTarget(brief);
+    setView("edit");
   }
 
-  async function archive(id: string) {
-    if (!confirm("Archive this brief? Creators that reference it keep it; it just disappears from the dropdown.")) return;
-    await fetch(`/api/ugc/briefs/${encodeURIComponent(id)}/archive`, { method: "POST" });
-    await load();
+  async function approveBrief(id: string) {
+    await fetch(`/api/ugc/briefs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    await loadBriefs();
   }
 
-  const active = briefs.filter((b) => !b.archivedAt);
-  const archived = briefs.filter((b) => b.archivedAt);
+  async function archiveBrief(id: string) {
+    await fetch(`/api/ugc/briefs/${id}/archive`, { method: "POST" });
+    await loadBriefs();
+  }
+
+  async function deleteBrief(id: string) {
+    if (!confirm("Delete this brief permanently?")) return;
+    await fetch(`/api/ugc/briefs/${id}`, { method: "DELETE" });
+    await loadBriefs();
+  }
+
+  const visible = showArchived ? briefs : briefs.filter((b) => b.status !== "archived");
+
+  if (view === "create" || (view === "edit" && editTarget)) {
+    return (
+      <BriefEditor
+        brief={editTarget}
+        onDone={async () => { await loadBriefs(); setEditTarget(null); setView("list"); }}
+        onCancel={() => { setEditTarget(null); setView("list"); }}
+      />
+    );
+  }
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 40px 80px", fontFamily: "var(--font-ui)" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 12 }}>
         ← Tracker
       </button>
-      <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>Brief templates</h1>
-      <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>
-        Global briefs that creators reference. Editing a brief that&apos;s already in use will fork it — originals stay intact.
-      </p>
 
-      <div style={{ marginTop: 24, padding: 20, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)" }}>
-        <h2 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600 }}>New brief</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10 }}>
-          <Input value={angle} onChange={setAngle} placeholder="Angle (e.g. perimenopause)" />
-          <Input value={label} onChange={setLabel} placeholder="Label (e.g. Skeptic #1)" />
-          <Input value={docUrl} onChange={setDocUrl} placeholder="https://docs.google.com/..." />
-        </div>
-        <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>Briefs</h1>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button
-            onClick={create}
-            disabled={!angle || !label || !docUrl || busy}
+            onClick={() => setShowArchived((v) => !v)}
+            style={{ fontSize: 13, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            {showArchived ? "Hide archived" : "Show archived"}
+          </button>
+          <button
+            onClick={() => { setEditTarget(null); setView("create"); }}
             style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--bg)",
+              background: "var(--accent)",
+              border: "none",
+              borderRadius: 6,
               padding: "8px 16px",
-              background: (!angle || !label || !docUrl || busy) ? "var(--surface-h)" : "var(--accent)",
-              color: (!angle || !label || !docUrl || busy) ? "var(--muted)" : "var(--bg)",
-              border: "1px solid var(--accent)", borderRadius: 6,
-              fontSize: 12, fontWeight: 500,
-              cursor: (!angle || !label || !docUrl || busy) ? "default" : "pointer",
+              cursor: "pointer",
             }}
           >
-            {busy ? "Creating…" : "Create"}
+            New brief
           </button>
-          {err && <span style={{ color: "var(--error)", fontSize: 12, alignSelf: "center" }}>{err}</span>}
         </div>
       </div>
 
-      <div style={{ marginTop: 24 }}>
-        <BriefList title="Active" items={active} onArchive={archive} />
-        {archived.length > 0 && <BriefList title="Archived" items={archived} onArchive={null} />}
-      </div>
+      {loading ? (
+        <p style={{ color: "var(--muted)", fontSize: 13 }}>Loading...</p>
+      ) : visible.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "64px 0", color: "var(--muted)", fontSize: 14 }}>
+          No briefs yet. Hit "New brief" to draft your first script.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {visible.map((brief) => (
+            <div
+              key={brief.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 130px 90px 70px 140px",
+                alignItems: "center",
+                gap: 16,
+                padding: "12px 16px",
+                background: "var(--surface)",
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                transition: "background 150ms ease",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface-h)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
+            >
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>{brief.title}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{brief.conceptLabel}</div>
+                {brief.complianceFlags.length > 0 && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: brief.complianceFlags.some((f) => f.severity === "red") ? "var(--error)" : "var(--warning)" }}>
+                    {brief.complianceFlags.length} flag{brief.complianceFlags.length !== 1 ? "s" : ""}
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                {ANGLE_LIBRARY.find((a) => a.key === brief.angle)?.label ?? brief.angle}
+              </div>
+              <StatusPill status={brief.status} />
+              <div style={{ fontSize: 12, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
+                {fmtDate(brief.updatedAt)}
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button onClick={() => openEdit(brief)} style={actionBtn}>Edit</button>
+                {brief.status !== "approved" && brief.status !== "archived" && (
+                  <button onClick={() => approveBrief(brief.id)} style={{ ...actionBtn, color: "var(--success)" }}>Approve</button>
+                )}
+                {brief.status !== "archived" && (
+                  <button onClick={() => archiveBrief(brief.id)} style={actionBtn}>Archive</button>
+                )}
+                <button onClick={() => deleteBrief(brief.id)} style={{ ...actionBtn, color: "var(--error)" }}>Del</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function BriefList({ title, items, onArchive }: {
-  title: string;
-  items: UGCBriefTemplate[];
-  onArchive: ((id: string) => void) | null;
+const actionBtn: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: "var(--muted)",
+  background: "none",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  padding: "4px 10px",
+  cursor: "pointer",
+};
+
+// --- Brief Editor (create + edit) ---
+function BriefEditor({
+  brief,
+  onDone,
+  onCancel,
+}: {
+  brief: UGCBrief | null;
+  onDone: () => void;
+  onCancel: () => void;
 }) {
+  const isNew = !brief;
+
+  // Step 1: angle/concept selection (only for new briefs)
+  const [step, setStep] = useState<1 | 2>(isNew ? 1 : 2);
+  const [angleKey, setAngleKey] = useState(brief?.angle ?? "");
+  const [conceptId, setConceptId] = useState<string>(brief?.conceptId ?? "");
+  const [conceptLabel, setConceptLabel] = useState(brief?.conceptLabel ?? "");
+  const [title, setTitle] = useState(brief?.title ?? "");
+  const [extraNotes, setExtraNotes] = useState("");
+  const [creatorName, setCreatorName] = useState(brief?.creatorName ?? "");
+
+  const [script, setScript] = useState<BriefScript>(
+    brief?.script ?? { videoHook: "", textHook: "", narrative: "", cta: "" },
+  );
+  const [flags, setFlags] = useState<BriefComplianceFlag[]>(brief?.complianceFlags ?? []);
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [genError, setGenError] = useState("");
+
+  const selectedAngle = ANGLE_LIBRARY.find((a) => a.key === angleKey) ?? null;
+  const selectedConcept = selectedAngle?.concepts.find((c) => c.id === conceptId) ?? null;
+
+  async function generateScript() {
+    setGenerating(true);
+    setGenError("");
+    try {
+      const res = await fetch("/api/ugc/briefs/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ angle: angleKey, conceptId: conceptId || null, conceptLabel, title, extraNotes: extraNotes || undefined }),
+      });
+      if (!res.ok) { const d = await res.json(); setGenError(d.error ?? "Generation failed"); return; }
+      const data = await res.json();
+      setScript(data.script);
+      setFlags(data.flags);
+      setStep(2);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      if (isNew) {
+        const res = await fetch("/api/ugc/briefs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ angle: angleKey, conceptId: conceptId || null, conceptLabel, title, script, creatorName: creatorName || null }),
+        });
+        if (res.ok) { onDone(); return; }
+        const d = await res.json(); setGenError(d.error ?? "Save failed");
+      } else {
+        const res = await fetch(`/api/ugc/briefs/${brief!.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, conceptLabel, script, creatorName: creatorName || null, complianceFlags: flags }),
+        });
+        if (res.ok) { onDone(); return; }
+        const d = await res.json(); setGenError(d.error ?? "Save failed");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateScriptField(field: keyof BriefScript, value: string) {
+    setScript((prev) => ({ ...prev, [field]: value }));
+  }
+
+  const fieldFlags = (field: keyof BriefScript) =>
+    flags.filter((f) => f.rule.toLowerCase().includes(field.toLowerCase()) ||
+      script[field]?.includes(f.match));
+
   return (
-    <div style={{ marginBottom: 24 }}>
-      <h2 style={{ margin: "0 0 10px", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--subtle)", fontWeight: 600 }}>{title}</h2>
-      <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-        {items.length === 0 && (
-          <div style={{ padding: 16, fontSize: 12, color: "var(--muted)" }}>None.</div>
-        )}
-        {items.map((b) => (
-          <div key={b.id} style={{
-            display: "flex", gap: 12, padding: "12px 16px",
-            borderTop: items[0].id === b.id ? "none" : "1px solid var(--border)",
-            background: "var(--surface)",
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{b.label}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{b.angle}</div>
-              <a href={b.docUrl} target="_blank" rel="noreferrer"
-                 style={{ fontSize: 11, color: "var(--accent)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block", maxWidth: "100%" }}>
-                {b.docUrl}
-              </a>
-            </div>
-            {onArchive && (
-              <button
-                onClick={() => onArchive(b.id)}
-                style={{ background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "var(--muted)", cursor: "pointer", alignSelf: "center" }}
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 40px 80px", fontFamily: "var(--font-ui)" }}>
+      <button onClick={onCancel} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 12 }}>
+        ← Briefs
+      </button>
+      <h1 style={{ margin: "0 0 24px", fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>
+        {isNew ? "New brief" : "Edit brief"}
+      </h1>
+
+      {/* Step 1: configure */}
+      {step === 1 && (
+        <div>
+          <Field label="Angle">
+            <select
+              value={angleKey}
+              onChange={(e) => { setAngleKey(e.target.value); setConceptId(""); setConceptLabel(""); }}
+              style={selectStyle}
+            >
+              <option value="">— select angle —</option>
+              {ANGLE_LIBRARY.map((a) => (
+                <option key={a.key} value={a.key}>{a.label}</option>
+              ))}
+            </select>
+            {selectedAngle && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>{selectedAngle.description}</p>}
+          </Field>
+
+          {selectedAngle && (
+            <Field label="Concept">
+              <select
+                value={conceptId}
+                onChange={(e) => {
+                  const cid = e.target.value;
+                  setConceptId(cid);
+                  const c = selectedAngle.concepts.find((x) => x.id === cid);
+                  setConceptLabel(c?.label ?? "");
+                }}
+                style={selectStyle}
               >
-                Archive
+                <option value="">— choose concept or use custom —</option>
+                {selectedAngle.concepts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+
+          <Field label="Concept label (editable)">
+            <input
+              value={conceptLabel}
+              onChange={(e) => setConceptLabel(e.target.value)}
+              placeholder="e.g. The 3am wake-up fix"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Brief title">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Michelle — perimenopause sleep angle"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Creator name (optional)">
+            <input
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="e.g. Michelle M."
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Extra notes for Claude (optional)">
+            <textarea
+              value={extraNotes}
+              onChange={(e) => setExtraNotes(e.target.value)}
+              rows={3}
+              placeholder="e.g. Creator is a nurse practitioner, emphasize the clinical angle"
+              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+            />
+          </Field>
+
+          {genError && <p style={{ color: "var(--error)", fontSize: 13, marginBottom: 12 }}>{genError}</p>}
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={generateScript}
+              disabled={!angleKey || !conceptLabel || !title || generating}
+              style={primaryBtn(generating || !angleKey || !conceptLabel || !title)}
+            >
+              {generating ? "Generating..." : "Generate draft"}
+            </button>
+          </div>
+
+          {selectedConcept && (
+            <div style={{ marginTop: 32, padding: 16, background: "var(--surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", margin: "0 0 10px" }}>Concept seed</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: "0 0 6px" }}><strong>Hook:</strong> {selectedConcept.videoHook}</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: "0 0 6px" }}><strong>Text:</strong> {selectedConcept.textHook}</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: 0 }}><strong>Arc:</strong> {selectedConcept.narrativeArc}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: editor */}
+      {step === 2 && (
+        <div>
+          {isNew && (
+            <div style={{ marginBottom: 20, padding: 12, background: "var(--surface)", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13, color: "var(--muted)" }}>
+              <strong style={{ color: "var(--text)" }}>{title}</strong> — {ANGLE_LIBRARY.find((a) => a.key === angleKey)?.label} / {conceptLabel}
+              <button onClick={() => setStep(1)} style={{ marginLeft: 12, fontSize: 12, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                change
+              </button>
+            </div>
+          )}
+
+          {!isNew && (
+            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+              <Field label="Brief title" style={{ flex: 1 }}>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
+              </Field>
+            </div>
+          )}
+
+          <ScriptField label="Video hook" value={script.videoHook} onChange={(v) => updateScriptField("videoHook", v)} rows={2} flags={[]} />
+          <ScriptField label="Text hook" value={script.textHook} onChange={(v) => updateScriptField("textHook", v)} rows={2} flags={[]} />
+          <ScriptField label="Narrative" value={script.narrative} onChange={(v) => updateScriptField("narrative", v)} rows={8} flags={[]} />
+          <ScriptField label="CTA" value={script.cta} onChange={(v) => updateScriptField("cta", v)} rows={2} flags={[]} />
+
+          {flags.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>Compliance flags</p>
+              <FlagList flags={flags} />
+            </div>
+          )}
+
+          {genError && <p style={{ color: "var(--error)", fontSize: 13, marginBottom: 12 }}>{genError}</p>}
+
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <button onClick={save} disabled={saving} style={primaryBtn(saving)}>
+              {saving ? "Saving..." : "Save as draft"}
+            </button>
+            {isNew && (
+              <button onClick={generateScript} disabled={generating} style={ghostBtn}>
+                {generating ? "Regenerating..." : "Regenerate"}
+              </button>
+            )}
+            {!isNew && (
+              <button onClick={generateScript} disabled={generating} style={ghostBtn}>
+                {generating ? "Regenerating..." : "Regenerate script"}
               </button>
             )}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Input({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <input
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        padding: "8px 10px",
-        background: "var(--bg)", color: "var(--text)",
-        border: "1px solid var(--border)", borderRadius: 6,
-        fontFamily: "var(--font-ui)", fontSize: 12,
-      }}
-    />
+    <div style={{ marginBottom: 20, ...style }}>
+      <label style={{ display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px",
+  fontSize: 14,
+  fontFamily: "var(--font-ui)",
+  color: "var(--text)",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  outline: "none",
+  cursor: "pointer",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px",
+  fontSize: 14,
+  fontFamily: "var(--font-ui)",
+  color: "var(--text)",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+function primaryBtn(disabled: boolean): React.CSSProperties {
+  return {
+    fontSize: 13,
+    fontWeight: 500,
+    color: disabled ? "var(--subtle)" : "var(--bg)",
+    background: disabled ? "var(--surface)" : "var(--accent)",
+    border: "1px solid var(--border)",
+    borderRadius: 6,
+    padding: "9px 20px",
+    cursor: disabled ? "not-allowed" : "pointer",
+    transition: "background 150ms ease",
+  };
+}
+
+const ghostBtn: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 500,
+  color: "var(--muted)",
+  background: "none",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  padding: "9px 16px",
+  cursor: "pointer",
+};
