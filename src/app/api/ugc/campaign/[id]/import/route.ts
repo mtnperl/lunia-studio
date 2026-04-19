@@ -42,28 +42,19 @@ function normalizePlatform(v: string): UGCSourcingPlatform {
   return "other";
 }
 
-type ParsedRow = { creator: UGCCreator | null; error: string | null };
-
-function parseRow(row: Record<string, string>): ParsedRow {
+function parseRow(row: Record<string, string>): UGCCreator {
   const name = (row["Name"] ?? row["name"] ?? "").trim();
-  if (!name) return { creator: null, error: "missing Name" };
 
-  const rawCost = (row["cost"] ?? row["Cost"] ?? "0").replace(/[$,]/g, "").trim();
-  const cost = Number(rawCost);
-  if (rawCost && Number.isNaN(cost)) {
-    return { creator: null, error: `invalid cost: "${rawCost}"` };
-  }
+  const rawCost = (row["cost"] ?? row["Cost"] ?? "").replace(/[$,]/g, "").trim();
+  const cost = rawCost ? Number(rawCost) : 0;
 
-  const rawVersions = (row["# of versions"] ?? row["versions"] ?? "0").trim();
+  const rawVersions = (row["# of versions"] ?? row["versions"] ?? "").trim();
   const versions = rawVersions ? Number(rawVersions) : 0;
-  if (rawVersions && Number.isNaN(versions)) {
-    return { creator: null, error: `invalid # of versions: "${rawVersions}"` };
-  }
 
   const now = Date.now();
   const script = (row["script"] ?? row["Script"] ?? "").trim();
 
-  const creator: UGCCreator = {
+  return {
     id: randomUUID(),
     name,
     angle: (row["Content Angle"] ?? row["angle"] ?? "").trim(),
@@ -80,8 +71,6 @@ function parseRow(row: Record<string, string>): ParsedRow {
     createdAt: now,
     updatedAt: now,
   };
-
-  return { creator, error: null };
 }
 
 export async function POST(
@@ -134,32 +123,20 @@ export async function POST(
       );
     }
 
-    const results = table.rows.map((r, i) => ({ index: i, ...parseRow(r) }));
-    const errors = results
-      .filter((r) => r.error)
-      .map((r) => ({ row: r.index + 2, error: r.error }));
-    const creators = results.filter((r) => r.creator).map((r) => r.creator!);
+    const creators = table.rows.map((r) => parseRow(r));
 
     if (dryRun) {
       logExit("/api/ugc/campaign/[id]/import", "import", start, 200, {
         campaignId: id,
         dryRun: true,
         parsed: creators.length,
-        errors: errors.length,
       });
       return Response.json({
         dryRun: true,
         parsed: creators.length,
-        errors,
+        errors: [],
         preview: creators.slice(0, 50),
       });
-    }
-
-    if (errors.length > 0) {
-      return Response.json(
-        { error: "Fix row errors before importing", errors },
-        { status: 400 },
-      );
     }
 
     if (campaign.creators.length + creators.length > MAX_ROWS) {
