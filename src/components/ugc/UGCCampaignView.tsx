@@ -152,7 +152,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
     }
   }
 
-  function exportCSV() {
+  function exportSheet() {
     window.open(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/export`, "_blank");
   }
 
@@ -197,8 +197,8 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>{campaign.label}</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <GhostBtn onClick={copyOutreach}>{copied ? "Copied" : "Copy outreach"}</GhostBtn>
-          <GhostBtn onClick={() => setImportOpen(true)}>Import CSV</GhostBtn>
-          <GhostBtn onClick={exportCSV}>Export CSV</GhostBtn>
+          <GhostBtn onClick={() => setImportOpen(true)}>Import XLSX</GhostBtn>
+          <GhostBtn onClick={exportSheet}>Export XLSX</GhostBtn>
         </div>
       </div>
 
@@ -264,7 +264,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
             {creators.length === 0 && (
               <tr>
                 <td colSpan={9} style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
-                  No creators yet. Add one below, or import a CSV.
+                  No creators yet. Add one below, or import a spreadsheet.
                 </td>
               </tr>
             )}

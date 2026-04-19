@@ -1,5 +1,5 @@
 import { getCampaignById } from "@/lib/kv";
-import { serializeCSV } from "@/lib/csv";
+import { serializeXLSX } from "@/lib/xlsx";
 import { logEntry, logExit } from "@/lib/ugc-api";
 import { UGCCreator, UGC_STAGE_LABELS } from "@/lib/types";
 
@@ -46,16 +46,16 @@ export async function GET(
       logExit("/api/ugc/campaign/[id]/export", "export", start, 404, { campaignId: id });
       return Response.json({ error: "Campaign not found" }, { status: 404 });
     }
-    const csv = serializeCSV(HEADERS, campaign.creators.map(rowFor));
+    const buf = serializeXLSX(HEADERS, campaign.creators.map(rowFor), "Creators");
     logExit("/api/ugc/campaign/[id]/export", "export", start, 200, {
       campaignId: id,
       rows: campaign.creators.length,
     });
-    return new Response(csv, {
+    return new Response(buf as BodyInit, {
       status: 200,
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${campaign.id}-ugc.csv"`,
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${campaign.id}-ugc.xlsx"`,
       },
     });
   } catch (err) {

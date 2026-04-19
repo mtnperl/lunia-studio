@@ -230,7 +230,16 @@ export default function DashboardView() {
   }, [unlocked, fetchMtd]);
 
   if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+    return (
+      <PasswordGate
+        title="Analytics"
+        description="Enter password to view performance data"
+        buttonLabel="Unlock Analytics"
+        verifyUrl="/api/analytics/verify"
+        storageKey="lunia:analytics:unlocked"
+        onUnlock={() => setUnlocked(true)}
+      />
+    );
   }
 
   const combinedDays: CombinedDayRow[] = (metaData && shopifyData)

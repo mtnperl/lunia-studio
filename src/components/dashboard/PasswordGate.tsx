@@ -2,10 +2,22 @@
 import { useState, useRef } from "react";
 
 type Props = {
+  title: string;
+  description: string;
+  buttonLabel: string;
+  verifyUrl: string;
+  storageKey: string;
   onUnlock: () => void;
 };
 
-export default function PasswordGate({ onUnlock }: Props) {
+export default function PasswordGate({
+  title,
+  description,
+  buttonLabel,
+  verifyUrl,
+  storageKey,
+  onUnlock,
+}: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,14 +31,14 @@ export default function PasswordGate({ onUnlock }: Props) {
     setError(null);
 
     try {
-      const res = await fetch("/api/analytics/verify", {
+      const res = await fetch(verifyUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
 
       if (res.ok) {
-        localStorage.setItem("lunia:analytics:unlocked", "1");
+        localStorage.setItem(storageKey, "1");
         onUnlock();
         return;
       }
@@ -34,10 +46,10 @@ export default function PasswordGate({ onUnlock }: Props) {
       if (res.status === 401) {
         setError("Incorrect password");
       } else {
-        setError("Could not connect — try again");
+        setError("Could not connect, try again");
       }
     } catch {
-      setError("Could not connect — try again");
+      setError("Could not connect, try again");
     } finally {
       setLoading(false);
     }
@@ -57,7 +69,7 @@ export default function PasswordGate({ onUnlock }: Props) {
         marginBottom: 24,
         textAlign: "center",
       }}>
-        Analytics
+        {title}
       </h2>
 
       <div className="modal-box" style={{ padding: "28px 24px" }}>
@@ -69,7 +81,7 @@ export default function PasswordGate({ onUnlock }: Props) {
           marginTop: 0,
           textAlign: "center",
         }}>
-          Enter password to view performance data
+          {description}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -117,7 +129,7 @@ export default function PasswordGate({ onUnlock }: Props) {
               cursor: loading || !password ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Verifying…" : "Unlock Analytics"}
+            {loading ? "Verifying…" : buttonLabel}
           </button>
         </form>
       </div>

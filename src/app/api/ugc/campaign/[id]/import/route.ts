@@ -1,16 +1,11 @@
-import { z } from "zod";
 import { randomUUID } from "crypto";
 import { getCampaignById, saveCampaign, checkRateLimit } from "@/lib/kv";
 import { UGCCreator, UGCPipelineStage, UGCSourcingPlatform } from "@/lib/types";
-import { parseCSV } from "@/lib/csv";
+import { parseXLSX } from "@/lib/xlsx";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
 
-const bodySchema = z.object({
-  csv: z.string().min(1).max(200_000),
-  dryRun: z.boolean().default(false),
-});
-
 const MAX_ROWS = 200;
+const MAX_BYTES = 5 * 1024 * 1024;
 
 const STAGE_MAP: Record<string, UGCPipelineStage> = {
   invited: "invited",
@@ -102,11 +97,17 @@ export async function POST(
     return Response.json({ error: "Too many imports. Try again in an hour." }, { status: 429 });
   }
   try {
-    const body = await req.json();
-    const parsed = bodySchema.safeParse(body);
-    if (!parsed.success) {
+    const url = new URL(req.url);
+    const dryRun = url.searchParams.get("dryRun") === "true";
+
+    const buf = await req.arrayBuffer();
+    if (buf.byteLength === 0) {
       logExit("/api/ugc/campaign/[id]/import", "import", start, 400, { campaignId: id });
-      return Response.json({ error: "Invalid body", issues: parsed.error.issues }, { status: 400 });
+      return Response.json({ error: "Empty file" }, { status: 400 });
+    }
+    if (buf.byteLength > MAX_BYTES) {
+      logExit("/api/ugc/campaign/[id]/import", "import", start, 413, { campaignId: id });
+      return Response.json({ error: `File too large (max ${MAX_BYTES} bytes)` }, { status: 413 });
     }
 
     const campaign = await getCampaignById(id);
@@ -115,9 +116,16 @@ export async function POST(
       return Response.json({ error: "Campaign not found" }, { status: 404 });
     }
 
-    const table = parseCSV(parsed.data.csv);
+    let table: { headers: string[]; rows: Record<string, string>[] };
+    try {
+      table = parseXLSX(buf);
+    } catch (err) {
+      console.error("[api/ugc/campaign/[id]/import] parse", err);
+      return Response.json({ error: "Could not parse spreadsheet (XLS/XLSX only)" }, { status: 400 });
+    }
+
     if (table.rows.length === 0) {
-      return Response.json({ error: "No rows in CSV" }, { status: 400 });
+      return Response.json({ error: "No rows in spreadsheet" }, { status: 400 });
     }
     if (table.rows.length > MAX_ROWS) {
       return Response.json(
@@ -129,10 +137,10 @@ export async function POST(
     const results = table.rows.map((r, i) => ({ index: i, ...parseRow(r) }));
     const errors = results
       .filter((r) => r.error)
-      .map((r) => ({ row: r.index + 2, error: r.error })); // +2 = header + 1-indexed
+      .map((r) => ({ row: r.index + 2, error: r.error }));
     const creators = results.filter((r) => r.creator).map((r) => r.creator!);
 
-    if (parsed.data.dryRun) {
+    if (dryRun) {
       logExit("/api/ugc/campaign/[id]/import", "import", start, 200, {
         campaignId: id,
         dryRun: true,

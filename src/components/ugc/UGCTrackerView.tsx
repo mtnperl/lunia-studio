@@ -4,6 +4,7 @@ import UGCCampaignList from "./UGCCampaignList";
 import UGCCampaignView from "./UGCCampaignView";
 import UGCBriefsPanel from "./UGCBriefsPanel";
 import UGCOutreachPanel from "./UGCOutreachPanel";
+import PasswordGate from "@/components/dashboard/PasswordGate";
 
 type View =
   | { kind: "list" }
@@ -14,6 +15,12 @@ type View =
 export default function UGCTrackerView() {
   const [view, setView] = useState<View>({ kind: "list" });
   const [isDesktop, setIsDesktop] = useState(true);
+  const [unlocked, setUnlocked] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("lunia:ugc:unlocked");
+    if (stored === "1") setUnlocked(true);
+  }, []);
 
   useEffect(() => {
     function check() { setIsDesktop(window.innerWidth >= 768); }
@@ -21,6 +28,19 @@ export default function UGCTrackerView() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  if (!unlocked) {
+    return (
+      <PasswordGate
+        title="UGC"
+        description="Enter password to view the UGC tracker"
+        buttonLabel="Unlock UGC"
+        verifyUrl="/api/ugc/verify"
+        storageKey="lunia:ugc:unlocked"
+        onUnlock={() => setUnlocked(true)}
+      />
+    );
+  }
 
   if (!isDesktop) {
     return (

@@ -1,5 +1,5 @@
 import { verifyEnvPassword } from "@/lib/password-gate";
 
 export function POST(req: Request): Promise<Response> {
-  return verifyEnvPassword(req, "ANALYTICS_PASSWORD");
+  return verifyEnvPassword(req, "UGC_PASSWORD");
 }

@@ -16,26 +16,27 @@ type Props = {
 };
 
 export default function UGCCSVImportModal({ campaignId, onClose, onImported }: Props) {
-  const [csv, setCsv] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [dry, setDry] = useState<DryRunResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function onFileChosen(file: File) {
-    const text = await file.text();
-    setCsv(text);
-    setDry(null);
+  async function postFile(f: File, dryRun: boolean): Promise<Response> {
+    const buf = await f.arrayBuffer();
+    const qs = dryRun ? "?dryRun=true" : "";
+    return fetch(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/import${qs}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: buf,
+    });
   }
 
   async function runDryRun() {
+    if (!file) return;
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv, dryRun: true }),
-      });
+      const res = await postFile(file, true);
       const body = await res.json();
       if (!res.ok) {
         setErr(body.error ?? `Import failed (${res.status})`);
@@ -51,15 +52,11 @@ export default function UGCCSVImportModal({ campaignId, onClose, onImported }: P
   }
 
   async function commit() {
-    if (!dry || dry.errors.length > 0) return;
+    if (!file || !dry || dry.errors.length > 0) return;
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv, dryRun: false }),
-      });
+      const res = await postFile(file, false);
       const body = await res.json();
       if (!res.ok) {
         setErr(body.error ?? `Commit failed (${res.status})`);
@@ -97,7 +94,7 @@ export default function UGCCSVImportModal({ campaignId, onClose, onImported }: P
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text)" }}>Import CSV</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text)" }}>Import spreadsheet</h2>
           <button
             onClick={onClose}
             style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer" }}
@@ -108,35 +105,32 @@ export default function UGCCSVImportModal({ campaignId, onClose, onImported }: P
         </div>
 
         <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 0 }}>
-          Paste the spreadsheet or drop a CSV. Max 200 rows. Expected headers: Name, Content Angle, platform, cost, goods shipped?, script, Status, Ready to be posted?, # of versions, Caption1, Caption 2.
+          Upload an XLS or XLSX file. Max 200 rows. Expected headers: Name, Content Angle, platform, cost, goods shipped?, script, Status, Ready to be posted?, # of versions, Caption1, Caption 2.
         </p>
 
         <input
           type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFileChosen(f); }}
+          accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setFile(f);
+            setDry(null);
+            setErr(null);
+          }}
           style={{ marginBottom: 8, fontSize: 12, color: "var(--muted)" }}
         />
 
-        <textarea
-          value={csv}
-          onChange={(e) => { setCsv(e.target.value); setDry(null); }}
-          placeholder="Paste CSV here…"
-          rows={10}
-          style={{
-            width: "100%", boxSizing: "border-box",
-            padding: 12,
-            background: "var(--surface)", color: "var(--text)",
-            border: "1px solid var(--border)", borderRadius: 6,
-            fontFamily: "var(--font-mono)", fontSize: 11, lineHeight: 1.5,
-          }}
-        />
+        {file && (
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+            Selected: <span style={{ color: "var(--text)" }}>{file.name}</span> ({Math.round(file.size / 1024)} KB)
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button
             onClick={runDryRun}
-            disabled={!csv.trim() || busy}
-            style={btnGhost(!csv.trim() || busy)}
+            disabled={!file || busy}
+            style={btnGhost(!file || busy)}
           >
             {busy && !dry ? "Parsing…" : "Dry run"}
           </button>
