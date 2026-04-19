@@ -1,15 +1,18 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { UGCPipelineStage, UGC_PIPELINE_STAGES, UGC_STAGE_LABELS } from "@/lib/types";
 
 const STAGE_STYLES: Record<UGCPipelineStage, { bg: string; border: string; text: string }> = {
-  invited:          { bg: "var(--surface-r)",  border: "var(--border)",       text: "var(--muted)"   },
-  approved:         { bg: "var(--accent-dim)", border: "var(--accent-mid)",   text: "var(--text)"    },
-  delivered:        { bg: "color-mix(in srgb, var(--accent) 20%, transparent)", border: "color-mix(in srgb, var(--accent) 50%, transparent)", text: "var(--text)" },
+  invited:            { bg: "var(--surface-r)",  border: "var(--border)",       text: "var(--muted)"   },
+  approved:           { bg: "var(--accent-dim)", border: "var(--accent-mid)",   text: "var(--text)"    },
+  delivered:          { bg: "color-mix(in srgb, var(--accent) 20%, transparent)", border: "color-mix(in srgb, var(--accent) 50%, transparent)", text: "var(--text)" },
   "edited-and-ready": { bg: "color-mix(in srgb, var(--success) 14%, transparent)", border: "color-mix(in srgb, var(--success) 40%, transparent)", text: "var(--success)" },
-  posted:           { bg: "var(--success)",    border: "var(--success)",      text: "#FFFFFF"        },
-  cancelled:        { bg: "var(--surface)",    border: "var(--border)",       text: "var(--subtle)"  },
+  posted:             { bg: "var(--success)",    border: "var(--success)",      text: "#FFFFFF"        },
+  cancelled:          { bg: "var(--surface)",    border: "var(--border)",       text: "var(--subtle)"  },
 };
+
+const MENU_HEIGHT = 220; // approximate max height of the dropdown
 
 type Props = {
   stage: UGCPipelineStage;
@@ -18,22 +21,96 @@ type Props = {
 
 export default function UGCPipelinePill({ stage, onChange }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, openUp: false });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const style = STAGE_STYLES[stage] ?? STAGE_STYLES.invited;
 
+  // Close on outside click
   useEffect(() => {
     if (!menuOpen) return;
     function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setMenuOpen(false);
+      if (
+        !btnRef.current?.contains(e.target as Node) &&
+        !menuRef.current?.contains(e.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [menuOpen]);
 
+  // Close on scroll so the menu doesn't drift
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onScroll() { setMenuOpen(false); }
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
+  }, [menuOpen]);
+
+  function openMenu() {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < MENU_HEIGHT;
+    setMenuPos({
+      top: openUp ? rect.top - 4 : rect.bottom + 4,
+      left: rect.left,
+      openUp,
+    });
+    setMenuOpen((v) => !v);
+  }
+
+  const menu = menuOpen
+    ? createPortal(
+        <div
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top: menuPos.openUp ? undefined : menuPos.top,
+            bottom: menuPos.openUp ? window.innerHeight - menuPos.top : undefined,
+            left: menuPos.left,
+            background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            padding: 4,
+            zIndex: 9999,
+            minWidth: 150,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+          }}
+        >
+          {UGC_PIPELINE_STAGES.map((s) => (
+            <button
+              key={s}
+              onClick={() => { onChange(s); setMenuOpen(false); }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "6px 10px",
+                fontFamily: "var(--font-ui)",
+                fontSize: 12,
+                color: s === stage ? "var(--text)" : "var(--muted)",
+                background: s === stage ? "var(--accent-dim)" : "transparent",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              {UGC_STAGE_LABELS[s]}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )
+    : null;
+
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <>
       <button
-        onClick={() => setMenuOpen((v) => !v)}
+        ref={btnRef}
+        onClick={openMenu}
         title="Click to change stage"
         style={{
           background: style.bg,
@@ -52,46 +129,7 @@ export default function UGCPipelinePill({ stage, onChange }: Props) {
       >
         {UGC_STAGE_LABELS[stage] ?? stage}
       </button>
-      {menuOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            background: "var(--surface-r)",
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            padding: 4,
-            zIndex: 50,
-            minWidth: 140,
-          }}
-        >
-          {UGC_PIPELINE_STAGES.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                onChange(s);
-                setMenuOpen(false);
-              }}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                padding: "6px 10px",
-                fontFamily: "var(--font-ui)",
-                fontSize: 12,
-                color: s === stage ? "var(--text)" : "var(--muted)",
-                background: s === stage ? "var(--accent-dim)" : "transparent",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-              }}
-            >
-              {UGC_STAGE_LABELS[s]}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {menu}
+    </>
   );
 }
