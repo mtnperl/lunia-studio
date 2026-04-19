@@ -309,17 +309,72 @@ function BriefEditor({
   const [saving, setSaving] = useState(false);
   const [genError, setGenError] = useState("");
 
+  // Suggest-angle state
+  const [suggestions, setSuggestions] = useState<{ angleKey: string; reason: string }[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+
+  // Generate-concept state
+  const [customConcept, setCustomConcept] = useState<{ label: string; videoHook: string; textHook: string; narrativeArc: string } | null>(null);
+  const [generatingConcept, setGeneratingConcept] = useState(false);
+
   const selectedAngle = ANGLE_LIBRARY.find((a) => a.key === angleKey) ?? null;
   const selectedConcept = selectedAngle?.concepts.find((c) => c.id === conceptId) ?? null;
+
+  async function suggestAngle() {
+    if (!extraNotes.trim()) return;
+    setSuggesting(true);
+    setSuggestions([]);
+    try {
+      const res = await fetch("/api/ugc/suggest-angle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creatorNotes: extraNotes }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data.suggestions ?? []);
+      }
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function generateConcept() {
+    if (!angleKey) return;
+    setGeneratingConcept(true);
+    setCustomConcept(null);
+    try {
+      const res = await fetch("/api/ugc/generate-concept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ angle: angleKey, creatorNotes: extraNotes || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomConcept(data.concept);
+        setConceptLabel(data.concept.label);
+        setConceptId("");
+      }
+    } finally {
+      setGeneratingConcept(false);
+    }
+  }
 
   async function generateScript() {
     setGenerating(true);
     setGenError("");
     try {
+      // If we have a Claude-generated custom concept, serialize it into extraNotes
+      // so generate-script can use it as a seed (concept seeds only exist in ANGLE_LIBRARY).
+      let notesWithConcept = extraNotes;
+      if (customConcept && !conceptId) {
+        const conceptSeed = `Custom concept seed:\n- Video hook: ${customConcept.videoHook}\n- Text hook: ${customConcept.textHook}\n- Narrative arc: ${customConcept.narrativeArc}`;
+        notesWithConcept = [conceptSeed, extraNotes].filter(Boolean).join("\n\n");
+      }
       const res = await fetch("/api/ugc/briefs/generate-script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ angle: angleKey, conceptId: conceptId || null, conceptLabel, title, extraNotes: extraNotes || undefined }),
+        body: JSON.stringify({ angle: angleKey, conceptId: conceptId || null, conceptLabel, title, extraNotes: notesWithConcept || undefined }),
       });
       if (!res.ok) { const d = await res.json(); setGenError(d.error ?? "Generation failed"); return; }
       const data = await res.json();
@@ -376,10 +431,67 @@ function BriefEditor({
       {/* Step 1: configure */}
       {step === 1 && (
         <div>
+          <Field label="Creator name (optional)">
+            <input
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="e.g. Michelle M."
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Creator notes (used by AI for angle + concept suggestions)">
+            <textarea
+              value={extraNotes}
+              onChange={(e) => { setExtraNotes(e.target.value); setSuggestions([]); }}
+              rows={3}
+              placeholder="e.g. Nurse practitioner, 48, perimenopause symptoms, skeptical of supplements but curious about science"
+              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+            />
+            <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={suggestAngle}
+                disabled={!extraNotes.trim() || suggesting}
+                style={ghostBtn}
+              >
+                {suggesting ? "Thinking..." : "Suggest angle"}
+              </button>
+              {suggestions.length > 0 && (
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>Click a suggestion to apply</span>
+              )}
+            </div>
+            {suggestions.length > 0 && (
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                {suggestions.map((s) => {
+                  const a = ANGLE_LIBRARY.find((x) => x.key === s.angleKey);
+                  if (!a) return null;
+                  return (
+                    <button
+                      key={s.angleKey}
+                      onClick={() => { setAngleKey(s.angleKey); setConceptId(""); setConceptLabel(""); setCustomConcept(null); setSuggestions([]); }}
+                      style={{
+                        textAlign: "left",
+                        padding: "10px 12px",
+                        background: angleKey === s.angleKey ? "var(--accent-dim)" : "var(--surface)",
+                        border: `1px solid ${angleKey === s.angleKey ? "var(--accent-mid)" : "var(--border)"}`,
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        transition: "background 120ms ease",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.label}</span>
+                      <span style={{ fontSize: 12, color: "var(--muted)", display: "block", marginTop: 2 }}>{s.reason}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Field>
+
           <Field label="Angle">
             <select
               value={angleKey}
-              onChange={(e) => { setAngleKey(e.target.value); setConceptId(""); setConceptLabel(""); }}
+              onChange={(e) => { setAngleKey(e.target.value); setConceptId(""); setConceptLabel(""); setCustomConcept(null); setSuggestions([]); }}
               style={selectStyle}
             >
               <option value="">— select angle —</option>
@@ -397,17 +509,39 @@ function BriefEditor({
                 onChange={(e) => {
                   const cid = e.target.value;
                   setConceptId(cid);
+                  setCustomConcept(null);
                   const c = selectedAngle.concepts.find((x) => x.id === cid);
                   setConceptLabel(c?.label ?? "");
                 }}
                 style={selectStyle}
               >
-                <option value="">— choose concept or use custom —</option>
+                <option value="">— choose concept or generate one —</option>
                 {selectedAngle.concepts.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
               </select>
+              {!conceptId && (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    onClick={generateConcept}
+                    disabled={generatingConcept}
+                    style={ghostBtn}
+                  >
+                    {generatingConcept ? "Generating..." : "Generate concept for me"}
+                  </button>
+                </div>
+              )}
             </Field>
+          )}
+
+          {customConcept && !conceptId && (
+            <div style={{ marginBottom: 20, padding: 14, background: "var(--surface)", borderRadius: 6, border: "1px solid var(--border)" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", margin: "0 0 10px" }}>Generated concept</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: "0 0 8px" }}>{customConcept.label}</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: "0 0 6px" }}><strong>Hook:</strong> {customConcept.videoHook}</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: "0 0 6px" }}><strong>Text:</strong> {customConcept.textHook}</p>
+              <p style={{ fontSize: 13, color: "var(--text)", margin: 0 }}><strong>Arc:</strong> {customConcept.narrativeArc}</p>
+            </div>
           )}
 
           <Field label="Concept label (editable)">
@@ -425,25 +559,6 @@ function BriefEditor({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Michelle — perimenopause sleep angle"
               style={inputStyle}
-            />
-          </Field>
-
-          <Field label="Creator name (optional)">
-            <input
-              value={creatorName}
-              onChange={(e) => setCreatorName(e.target.value)}
-              placeholder="e.g. Michelle M."
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label="Extra notes for Claude (optional)">
-            <textarea
-              value={extraNotes}
-              onChange={(e) => setExtraNotes(e.target.value)}
-              rows={3}
-              placeholder="e.g. Creator is a nurse practitioner, emphasize the clinical angle"
-              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
             />
           </Field>
 
