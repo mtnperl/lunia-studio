@@ -3,11 +3,21 @@ import { getBriefById, saveBrief, deleteBriefKv } from "@/lib/kv";
 import { BriefStatus } from "@/lib/types";
 import { logEntry, logExit } from "@/lib/ugc-api";
 
+const docSchema = z.object({
+  aboutBrand: z.string().max(4000),
+  whoWereLookingFor: z.string().max(4000),
+  theConcept: z.string().max(4000),
+  theSetup: z.string().max(4000),
+  whereToFilm: z.string().max(4000),
+  deliverables: z.string().max(4000),
+});
+
 const patchSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  conceptLabel: z.string().min(1).max(200).optional(),
+  title: z.string().max(200).optional(),
+  conceptLabel: z.string().max(200).optional(),
   creatorName: z.string().max(200).nullable().optional(),
   status: z.enum(["draft", "approved", "archived"]).optional(),
+  doc: docSchema.nullable().optional(),
   script: z.object({
     videoHook: z.string().max(1000),
     textHook: z.string().max(500),
@@ -19,6 +29,7 @@ const patchSchema = z.object({
     rule: z.string(),
     match: z.string(),
   })).optional(),
+  sharedAt: z.number().nullable().optional(),
 });
 
 export async function GET(

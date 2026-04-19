@@ -74,26 +74,30 @@ function ScriptSection({ label, text }: { label: string; text: string }) {
   );
 }
 
+function DocSection({ label, text }: { label: string; text: string }) {
+  if (!text?.trim()) return null;
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#98989D", margin: "0 0 10px" }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 15, lineHeight: 1.75, color: "#1D1D1F", margin: 0, whiteSpace: "pre-wrap" }}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
 function BriefView({ brief }: { brief: UGCBrief }) {
-  const { title, angle, conceptLabel, creatorName, script, status } = brief;
+  const { title, angle, conceptLabel, creatorName, doc, script, status } = brief;
+  const hasDoc = doc && Object.values(doc).some((v) => v?.trim());
+  const hasScript = script && Object.values(script).some((v) => v?.trim());
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#FFFFFF",
-      fontFamily: "Inter, system-ui, sans-serif",
-    }}>
+    <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: "Inter, system-ui, sans-serif" }}>
       {/* Header strip */}
-      <div style={{
-        borderBottom: "1px solid #D2D2D7",
-        padding: "16px 40px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "#1D1D1F", letterSpacing: "-0.01em" }}>
-          Lunia Life
-        </span>
+      <div style={{ borderBottom: "1px solid #D2D2D7", padding: "16px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#1D1D1F", letterSpacing: "-0.01em" }}>Lunia Life</span>
         <span style={{ fontSize: 12, color: "#98989D" }}>UGC Brief</span>
       </div>
 
@@ -102,41 +106,18 @@ function BriefView({ brief }: { brief: UGCBrief }) {
         {/* Meta */}
         <div style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-            <span style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "#6E6E73",
-              border: "1px solid #D2D2D7",
-              borderRadius: 4,
-              padding: "2px 8px",
-            }}>
-              {angleLabel(angle)}
-            </span>
+            {angle && angle !== "other" && (
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#6E6E73", border: "1px solid #D2D2D7", borderRadius: 4, padding: "2px 8px" }}>
+                {angleLabel(angle)}
+              </span>
+            )}
             {status === "approved" && (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#1C7A3A",
-                border: "1px solid #D2D2D7",
-                borderRadius: 4,
-                padding: "2px 8px",
-              }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#1C7A3A", border: "1px solid #D2D2D7", borderRadius: 4, padding: "2px 8px" }}>
                 Approved
               </span>
             )}
           </div>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: "-0.025em",
-            color: "#1D1D1F",
-            margin: "0 0 8px",
-            lineHeight: 1.25,
-          }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.025em", color: "#1D1D1F", margin: "0 0 8px", lineHeight: 1.25 }}>
             {title}
           </h1>
           <p style={{ fontSize: 14, color: "#6E6E73", margin: 0 }}>
@@ -145,20 +126,36 @@ function BriefView({ brief }: { brief: UGCBrief }) {
           </p>
         </div>
 
-        {/* Divider */}
         <div style={{ height: 1, background: "#D2D2D7", marginBottom: 40 }} />
 
-        {/* Script */}
-        <ScriptSection label="Video hook" text={script.videoHook} />
-        <ScriptSection label="Text hook / caption" text={script.textHook} />
-        <ScriptSection label="Narrative" text={script.narrative} />
-        <ScriptSection label="CTA" text={script.cta} />
+        {/* Brief document sections */}
+        {hasDoc && (
+          <>
+            <DocSection label="About the brand" text={doc!.aboutBrand} />
+            <DocSection label="Who we're looking for" text={doc!.whoWereLookingFor} />
+            <DocSection label="The concept" text={doc!.theConcept} />
+            <DocSection label="The setup" text={doc!.theSetup} />
+            <DocSection label="Where to film" text={doc!.whereToFilm} />
+            <DocSection label="Deliverables" text={doc!.deliverables} />
+          </>
+        )}
+
+        {/* Video script */}
+        {hasScript && (
+          <>
+            {hasDoc && <div style={{ height: 1, background: "#D2D2D7", margin: "40px 0" }} />}
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#98989D", margin: "0 0 24px" }}>Video script</p>
+            <ScriptSection label="Video hook" text={script.videoHook} />
+            <ScriptSection label="Text hook / caption" text={script.textHook} />
+            <ScriptSection label="Narrative" text={script.narrative} />
+            <ScriptSection label="CTA" text={script.cta} />
+          </>
+        )}
 
         {/* Footer */}
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid #D2D2D7" }}>
           <p style={{ fontSize: 12, color: "#98989D", margin: 0, lineHeight: 1.6 }}>
-            This script is a creative starting point. Personalise the story to your experience.
-            Any questions? Reach out to the Lunia team.
+            This brief is a creative starting point. Personalise the story to your experience. Any questions? Reach out to the Lunia team.
           </p>
         </div>
       </div>

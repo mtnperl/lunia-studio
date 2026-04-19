@@ -596,25 +596,28 @@ export type SavedEmail = {
 
 export type UGCPipelineStage =
   | "invited"
-  | "shipped"
-  | "delivered"
   | "approved"
-  | "posted";
+  | "delivered"
+  | "edited-and-ready"
+  | "posted"
+  | "cancelled";
 
 export const UGC_PIPELINE_STAGES: UGCPipelineStage[] = [
   "invited",
-  "shipped",
-  "delivered",
   "approved",
+  "delivered",
+  "edited-and-ready",
   "posted",
+  "cancelled",
 ];
 
 export const UGC_STAGE_LABELS: Record<UGCPipelineStage, string> = {
   invited: "Invited",
-  shipped: "Shipped",
-  delivered: "Delivered",
   approved: "Approved",
+  delivered: "Delivered",
+  "edited-and-ready": "Edited & ready",
   posted: "Posted",
+  cancelled: "Cancelled",
 };
 
 export type UGCSourcingPlatform = "BACKSTAGE" | "upwork" | "other";
@@ -626,6 +629,15 @@ export interface BriefScript {
   textHook: string;        // text overlay / caption hook
   narrative: string;       // main script body (multi-line)
   cta: string;             // closing line / call-to-action
+}
+
+export interface UGCBriefDoc {
+  aboutBrand: string;          // Who Lunia Life is and why it matters
+  whoWereLookingFor: string;   // Target creator profile
+  theConcept: string;          // The content angle / concept
+  theSetup: string;            // How the video should be structured
+  whereToFilm: string;         // Location / environment guidance
+  deliverables: string;        // What the creator must deliver
 }
 
 export interface BriefComplianceFlag {
@@ -641,13 +653,15 @@ export interface UGCBrief {
   conceptId: string | null;         // AngleConcept.id if generated from library; null if custom
   conceptLabel: string;             // display label (usually the concept's label)
   title: string;                    // brief title (angle + concept by default)
+  doc: UGCBriefDoc | null;          // structured brief document sections (null on old briefs)
   script: BriefScript;
   complianceFlags: BriefComplianceFlag[];
   status: BriefStatus;
   creatorName: string | null;       // optional assigned creator
   createdAt: number;
   updatedAt: number;
-  revokedAt: number | null;         // if set, public share link returns 404
+  sharedAt: number | null;          // when the share link was first copied (controls revoke visibility)
+  revokedAt: number | null;         // if set, public share link returns 410
 }
 
 export interface UGCCreator {

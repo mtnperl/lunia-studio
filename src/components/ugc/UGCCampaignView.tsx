@@ -10,6 +10,7 @@ import {
 } from "@/lib/types";
 import UGCPipelinePill from "./UGCPipelinePill";
 import UGCCSVImportModal from "./UGCCSVImportModal";
+import UGCCRTLoader from "./UGCCRTLoader";
 import type { ComplianceLevel, ComplianceResult, ComplianceViolation } from "@/lib/compliance";
 
 type Props = {
@@ -22,25 +23,22 @@ type Dirty = Record<string, Partial<UGCCreator>>;
 export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const [campaign, setCampaign] = useState<UGCCampaign | null>(null);
   const [briefs, setBriefs] = useState<UGCBrief[]>([]);
-  const [outreach, setOutreach] = useState<string>("");
   const [dirty, setDirty] = useState<Dirty>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [captionBusy, setCaptionBusy] = useState<string | null>(null);
   const [flags, setFlags] = useState<Record<string, { caption1?: ComplianceResult; caption2?: ComplianceResult }>>({});
+  const [outreachModal, setOutreachModal] = useState<{ creator: UGCCreator } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
-    const [c, b, o] = await Promise.all([
+    const [c, b] = await Promise.all([
       fetch(`/api/ugc/campaign/${encodeURIComponent(campaignId)}`).then((r) => r.ok ? r.json() : null),
       fetch("/api/ugc/briefs").then((r) => r.ok ? r.json() : []),
-      fetch("/api/ugc/outreach").then((r) => r.ok ? r.json() : { text: "" }),
     ]);
     setCampaign(c);
     setBriefs(Array.isArray(b) ? b : []);
-    setOutreach(o?.text ?? "");
   }, [campaignId]);
 
   useEffect(() => { void load(); }, [load]);
@@ -142,29 +140,24 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
     }
   }
 
-  async function copyOutreach() {
-    try {
-      await navigator.clipboard.writeText(outreach);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* ignore */
-    }
-  }
-
   function exportSheet() {
     window.open(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/export`, "_blank");
   }
 
   if (!campaign) {
-    return <div style={{ padding: 40, color: "var(--muted)", fontFamily: "var(--font-ui)" }}>Loading…</div>;
+    return (
+      <div style={{ padding: 40, fontFamily: "var(--font-ui)" }}>
+        <UGCCRTLoader label="LOADING CAMPAIGN" />
+      </div>
+    );
   }
 
   const creators = campaign.creators;
   const totalCost = creators.reduce((s, c) => s + (c.cost || 0), 0);
-  const delivered = creators.filter((c) => c.stage === "delivered" || c.stage === "approved" || c.stage === "posted").length;
-  const shippedCount = creators.filter((c) => c.stage !== "invited").length;
-  const approvedCount = creators.filter((c) => c.stage === "approved" || c.stage === "posted").length;
+  const approvedCount = creators.filter((c) => c.stage !== "invited" && c.stage !== "cancelled").length;
+  const delivered = creators.filter((c) => c.stage === "delivered" || c.stage === "edited-and-ready" || c.stage === "posted").length;
+  const editedReadyCount = creators.filter((c) => c.stage === "edited-and-ready" || c.stage === "posted").length;
+  const postedCount = creators.filter((c) => c.stage === "posted").length;
   const costPerDelivered = delivered > 0 ? totalCost / delivered : 0;
   const byAngle: Record<string, number> = {};
   for (const c of creators) {
@@ -183,6 +176,13 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
           onImported={load}
         />
       )}
+      {outreachModal && (
+        <OutreachModal
+          creator={outreachModal.creator}
+          brief={briefs.find((b) => b.id === outreachModal.creator.briefId) ?? null}
+          onClose={() => setOutreachModal(null)}
+        />
+      )}
 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, cursor: "pointer", padding: 0 }}>
@@ -196,7 +196,6 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 16, marginBottom: 20, borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>{campaign.label}</h1>
         <div style={{ display: "flex", gap: 8 }}>
-          <GhostBtn onClick={copyOutreach}>{copied ? "Copied" : "Copy outreach"}</GhostBtn>
           <GhostBtn onClick={() => setImportOpen(true)}>Import XLSX</GhostBtn>
           <GhostBtn onClick={exportSheet}>Export XLSX</GhostBtn>
         </div>
@@ -207,9 +206,10 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
         <Stat label="Creators" value={String(creators.length)} />
         <Stat label="Total spend" value={`$${totalCost.toLocaleString()}`} />
         <Stat label="Cost / delivered" value={delivered ? `$${Math.round(costPerDelivered).toLocaleString()}` : "—"} />
-        <Stat label="Shipped" value={`${pct(shippedCount)}%`} />
+        <Stat label="Approved" value={`${pct(approvedCount)}%`} />
         <Stat label="Delivered" value={`${pct(delivered)}%`} />
-        <Stat label="Ready to post" value={`${pct(approvedCount)}%`} />
+        <Stat label="Edited & ready" value={`${pct(editedReadyCount)}%`} />
+        <Stat label="Posted" value={`${pct(postedCount)}%`} />
       </div>
 
       {Object.keys(byAngle).length > 0 && (
@@ -258,6 +258,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
                   onPatch={(p) => patchLocal(c.id, p)}
                   onDelete={() => deleteCreator(c.id)}
                   onGenerate={() => generateCaptions(c)}
+                  onOutreach={() => setOutreachModal({ creator: c })}
                 />
               );
             })}
@@ -283,7 +284,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
 
 function CreatorRow({
   creator: c, briefs, expanded, captionBusy, flags,
-  onToggle, onPatch, onDelete, onGenerate,
+  onToggle, onPatch, onDelete, onGenerate, onOutreach,
 }: {
   creator: UGCCreator;
   briefs: UGCBrief[];
@@ -294,6 +295,7 @@ function CreatorRow({
   onPatch: (p: Partial<UGCCreator>) => void;
   onDelete: () => void;
   onGenerate: () => void;
+  onOutreach: () => void;
 }) {
   return (
     <>
@@ -302,7 +304,22 @@ function CreatorRow({
         style={{ borderTop: "1px solid var(--border)", cursor: "pointer", background: expanded ? "var(--surface-h)" : undefined }}
       >
         <Td onClick={(e) => e.stopPropagation()}>
-          <InlineText value={c.name} onChange={(v) => onPatch({ name: v })} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <InlineText value={c.name} onChange={(v) => onPatch({ name: v })} />
+            <button
+              onClick={onOutreach}
+              title="Generate outreach message"
+              style={{
+                flexShrink: 0,
+                background: "none", border: "1px solid var(--border)",
+                borderRadius: 4, padding: "2px 7px",
+                fontSize: 10, color: "var(--muted)", cursor: "pointer",
+                letterSpacing: "0.04em", fontFamily: "var(--font-ui)",
+              }}
+            >
+              DM
+            </button>
+          </div>
         </Td>
         <Td onClick={(e) => e.stopPropagation()}>
           <InlineText value={c.angle} onChange={(v) => onPatch({ angle: v })} placeholder="–" />
@@ -525,6 +542,138 @@ function Th({ children, style }: { children: React.ReactNode; style?: React.CSSP
 
 function Td({ children, onClick }: { children: React.ReactNode; onClick?: (e: React.MouseEvent) => void }) {
   return <td onClick={onClick} style={{ padding: "8px 10px", verticalAlign: "middle", color: "var(--text)" }}>{children}</td>;
+}
+
+function OutreachModal({ creator, brief, onClose }: {
+  creator: UGCCreator;
+  brief: UGCBrief | null;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    void generate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function generate() {
+    setBusy(true);
+    setErr("");
+    try {
+      const briefUrl = brief
+        ? `${window.location.origin}/ugc/share/${brief.publicBriefId}`
+        : undefined;
+      const res = await fetch("/api/ugc/outreach-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorName: creator.name,
+          angle: creator.angle || undefined,
+          conceptLabel: brief?.conceptLabel || undefined,
+          briefTitle: brief?.title || undefined,
+          briefUrl,
+          deliverables: brief?.doc?.deliverables || undefined,
+          notes: creator.notes || undefined,
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); setErr(d.error ?? "Generation failed"); return; }
+      const data = await res.json();
+      setMessage(data.message ?? "");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 560,
+          background: "var(--surface-r)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: 24,
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--text)" }}>Outreach — {creator.name}</h2>
+            {brief && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>{brief.title}</p>}
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 18, cursor: "pointer" }}>×</button>
+        </div>
+
+        {busy ? (
+          <UGCCRTLoader label="DRAFTING MESSAGE" size="sm" />
+        ) : err ? (
+          <div style={{ color: "var(--error)", fontSize: 13, marginBottom: 12 }}>{err}</div>
+        ) : (
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={12}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: 12, background: "var(--surface)", color: "var(--text)",
+              border: "1px solid var(--border)", borderRadius: 6,
+              fontFamily: "var(--font-ui)", fontSize: 13, lineHeight: 1.6,
+              resize: "vertical",
+            }}
+          />
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button
+            onClick={copy}
+            disabled={busy || !message}
+            style={{
+              padding: "9px 16px",
+              background: copied ? "var(--success)" : "var(--accent)",
+              color: "var(--bg)",
+              border: "none", borderRadius: 6,
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500,
+              cursor: busy || !message ? "default" : "pointer",
+              opacity: busy || !message ? 0.5 : 1,
+            }}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          <button
+            onClick={generate}
+            disabled={busy}
+            style={{
+              padding: "9px 14px",
+              background: "transparent", color: "var(--text)",
+              border: "1px solid var(--border)", borderRadius: 6,
+              fontFamily: "var(--font-ui)", fontSize: 13,
+              cursor: busy ? "default" : "pointer",
+              opacity: busy ? 0.5 : 1,
+            }}
+          >
+            Regenerate
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export { UGC_PIPELINE_STAGES };

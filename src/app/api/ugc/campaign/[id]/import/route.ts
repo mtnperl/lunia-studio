@@ -9,24 +9,29 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 const STAGE_MAP: Record<string, UGCPipelineStage> = {
   invited: "invited",
-  sent: "shipped",
-  shipped: "shipped",
-  "in transit": "shipped",
+  sent: "approved",
+  shipped: "approved",
+  "in transit": "approved",
+  approved: "approved",
+  accepted: "approved",
   delivered: "delivered",
   "in progress": "delivered",
-  approved: "approved",
-  ready: "approved",
-  "ready to post": "approved",
+  edited: "edited-and-ready",
+  ready: "edited-and-ready",
+  "ready to post": "edited-and-ready",
+  "edited and ready": "edited-and-ready",
   posted: "posted",
   published: "posted",
   live: "posted",
+  cancelled: "cancelled",
+  canceled: "cancelled",
 };
 
 function normalizeStage(status: string, readyToPost: string): UGCPipelineStage {
   const ready = truthy(readyToPost);
   const key = status.trim().toLowerCase();
   const base = STAGE_MAP[key];
-  if (ready && (base === "delivered" || !base)) return "approved";
+  if (ready && (base === "delivered" || !base)) return "edited-and-ready";
   return base ?? "invited";
 }
 

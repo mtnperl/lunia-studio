@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { UGCCampaign } from "@/lib/types";
+import UGCCRTLoader from "./UGCCRTLoader";
 
 type Props = {
   onOpen: (campaignId: string) => void;
@@ -25,7 +26,7 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
     }
   }
 
-  async function seedApril() {
+  async function seedMonth() {
     if (seeding) return;
     setSeeding(true);
     setError(null);
@@ -53,23 +54,17 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px", fontFamily: "var(--font-ui)" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
+      <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>UGC Tracker</h1>
-        <div style={{ display: "flex", gap: 10 }}>
-          <GhostButton onClick={onOpenBriefs}>Briefs</GhostButton>
-          <GhostButton onClick={onOpenOutreach}>Outreach</GhostButton>
-        </div>
       </div>
 
-      {campaigns === null && <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading…</div>}
+      {campaigns === null && <UGCCRTLoader label="LOADING CAMPAIGNS" />}
 
       {campaigns !== null && !hasCampaigns && (
         <div style={{ textAlign: "center", padding: "80px 20px" }}>
-          <div style={{ fontSize: 15, color: "var(--muted)", marginBottom: 20 }}>
-            No campaigns yet.
-          </div>
+          <div style={{ fontSize: 15, color: "var(--muted)", marginBottom: 20 }}>No campaigns yet.</div>
           <button
-            onClick={seedApril}
+            onClick={seedMonth}
             disabled={seeding}
             style={{
               padding: "12px 24px",
@@ -124,7 +119,7 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
               );
             })}
           <button
-            onClick={seedApril}
+            onClick={seedMonth}
             disabled={seeding}
             style={{
               padding: 20, minHeight: 72,
@@ -135,8 +130,22 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
               cursor: seeding ? "default" : "pointer",
             }}
           >
-            {seeding ? "…" : `+ Seed ${new Date().toLocaleString("en-US", { month: "short", year: "numeric" })}`}
+            {seeding ? "…" : `+ ${new Date().toLocaleString("en-US", { month: "short", year: "numeric" })}`}
           </button>
+        </div>
+      )}
+
+      {/* Settings links — below campaigns */}
+      {campaigns !== null && (
+        <div style={{
+          marginTop: 48,
+          paddingTop: 24,
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          gap: 8,
+        }}>
+          <GhostButton onClick={onOpenBriefs}>Briefs</GhostButton>
+          <GhostButton onClick={onOpenOutreach}>Outreach template</GhostButton>
         </div>
       )}
     </div>
@@ -152,7 +161,7 @@ function GhostButton({ children, onClick }: { children: React.ReactNode; onClick
         background: "transparent",
         border: "1px solid var(--border)",
         borderRadius: 6,
-        fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text)",
+        fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--muted)",
         cursor: "pointer",
         letterSpacing: "0.02em",
       }}
