@@ -172,19 +172,22 @@ export default function CarouselShareClient({ carousel }: Props) {
   }
 
   // Platform-aware file delivery.
-  // iOS only: Web Share API → native share sheet → user taps "Save Image" → Photos.
-  // Desktop + everything else: direct blob URL download → Downloads folder, no dialogs.
+  // Any device that supports navigator.canShare({ files }) (iOS Safari, Android Chrome):
+  //   Web Share API → native share sheet → "Save Image" / Downloads.
+  // Desktop + browsers that don't support file sharing: blob URL download.
   async function saveFile(file: File) {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const canShareFiles =
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] });
 
-    if (isIOS && typeof navigator.share === "function") {
-      // Try share API — no canShare() gate (unreliable on some iOS versions)
+    if (canShareFiles) {
       try {
         await navigator.share({ files: [file], title: file.name });
         return;
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") throw err;
-        // Share failed — fall through to direct download
+        // Share failed (e.g. in-app browser restriction) — fall through
       }
     }
 
@@ -258,25 +261,27 @@ export default function CarouselShareClient({ carousel }: Props) {
     setDownloadingAll(true);
     setExportError(null);
     try {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // Build all 5 files first, then attempt a single multi-file share.
+      // If the browser supports file sharing (iOS Safari + Android Chrome), use it.
+      // Desktop or unsupported browsers fall back to sequential blob downloads.
+      const files: File[] = [];
+      for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
 
-      if (isIOS && typeof navigator.share === "function") {
-        // Build all 5 then share together — iOS shows "Save Image" for the batch
-        const files: File[] = [];
-        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+      const canShareFiles =
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files });
+
+      if (canShareFiles) {
         try {
           await navigator.share({ files, title: "Lunia carousel slides" });
         } catch (err) {
           if (err instanceof Error && err.name === "AbortError") return;
-          // Multi-file share not supported — share one by one
+          // Multi-file share rejected — fall back to one-by-one
           for (const f of files) await saveFile(f);
         }
       } else {
-        // Desktop: 5 sequential direct downloads to Downloads folder
-        for (let i = 0; i < 5; i++) {
-          const file = await buildSlideFile(i);
-          await saveFile(file);
-        }
+        for (const f of files) await saveFile(f);
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
