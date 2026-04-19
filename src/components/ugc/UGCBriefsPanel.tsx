@@ -108,9 +108,17 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
 
   const loadBriefs = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/ugc/briefs");
-    if (res.ok) setBriefs(await res.json());
-    setLoading(false);
+    try {
+      const res = await fetch("/api/ugc/briefs");
+      if (res.ok) {
+        const data = await res.json();
+        setBriefs(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // network error — leave briefs as []
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadBriefs(); }, [loadBriefs]);
@@ -224,11 +232,11 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
             >
               <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>{brief.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>{brief.title ?? (brief as unknown as Record<string, unknown>)["label"] as string ?? "(untitled)"}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>{brief.conceptLabel}</div>
-                {brief.complianceFlags.length > 0 && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: brief.complianceFlags.some((f) => f.severity === "red") ? "var(--error)" : "var(--warning)" }}>
-                    {brief.complianceFlags.length} flag{brief.complianceFlags.length !== 1 ? "s" : ""}
+                {(brief.complianceFlags?.length ?? 0) > 0 && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: brief.complianceFlags?.some((f) => f.severity === "red") ? "var(--error)" : "var(--warning)" }}>
+                    {brief.complianceFlags!.length} flag{brief.complianceFlags!.length !== 1 ? "s" : ""}
                   </div>
                 )}
               </div>
