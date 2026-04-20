@@ -22,6 +22,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [fontScale, setFontScale] = useState(1);
 
   const variant = variants[selected];
   if (!variant) return null;
@@ -148,16 +149,48 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         </div>
       )}
 
+      {/* Font size control */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
+        padding: "10px 14px", background: "var(--surface)",
+        border: "1px solid var(--border)", borderRadius: 8,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Font size
+        </span>
+        <input
+          type="range"
+          min={0.85}
+          max={1.3}
+          step={0.05}
+          value={fontScale}
+          onChange={(e) => setFontScale(Number(e.target.value))}
+          style={{ flex: 1, accentColor: "var(--accent)" }}
+        />
+        <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums", color: "var(--text)", minWidth: 44, textAlign: "right" }}>
+          {Math.round(fontScale * 100)}%
+        </span>
+        <button
+          onClick={() => setFontScale(1)}
+          style={{
+            fontSize: 11, fontWeight: 600, color: "var(--accent)",
+            background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit",
+          }}
+        >
+          Reset
+        </button>
+      </div>
+
       {/* Slides preview */}
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
         <div ref={slide1Ref}>
           <div data-dyk-slide>
-            <DidYouKnowSlide slide={variant.slide1} scale={PREVIEW_SCALE} />
+            <DidYouKnowSlide slide={variant.slide1} scale={PREVIEW_SCALE} fontScale={fontScale} />
           </div>
         </div>
         <div ref={slide2Ref}>
           <div data-dyk-slide>
-            <DidYouKnowSlide slide={variant.slide2} scale={PREVIEW_SCALE} />
+            <DidYouKnowSlide slide={variant.slide2} scale={PREVIEW_SCALE} fontScale={fontScale} />
           </div>
         </div>
       </div>

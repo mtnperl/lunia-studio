@@ -4,6 +4,7 @@ import type { DidYouKnowSlideContent, DidYouKnowToken } from "@/lib/types";
 type Props = {
   slide: DidYouKnowSlideContent;
   scale?: number;
+  fontScale?: number;
   id?: string;
 };
 
@@ -13,11 +14,14 @@ const HIGHLIGHT_COLOR = "#1E6B8C";
 const BODY_COLOR = "#1A1A1A";
 const FOOTER_COLOR = "#1A1A1A";
 
+const BASE_HEADER_PX = 92;
+const BASE_BODY_PX = 46;
+
 function renderTokens(tokens: DidYouKnowToken[]) {
   return tokens.map((t, i) => (
     <span
       key={i}
-      style={t.highlight ? { color: HIGHLIGHT_COLOR, fontWeight: 700 } : undefined}
+      style={t.highlight ? { color: HIGHLIGHT_COLOR, fontWeight: 800 } : undefined}
     >
       {t.text}
     </span>
@@ -28,27 +32,17 @@ function LuniaLifeMark() {
   return (
     <div style={{
       position: "absolute",
-      top: 80,
+      top: 70,
       left: 0,
       right: 0,
       display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 14,
+      justifyContent: "center",
     }}>
-      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-        <path d="M24 2 L28 20 L46 24 L28 28 L24 46 L20 28 L2 24 L20 20 Z" fill={HEADER_COLOR} />
-      </svg>
-      <div style={{
-        fontFamily: "Jost, Montserrat, sans-serif",
-        fontWeight: 500,
-        fontSize: 22,
-        letterSpacing: "0.32em",
-        color: "#1A1A1A",
-        textTransform: "uppercase",
-      }}>
-        LUNIA LIFE
-      </div>
+      <img
+        src="/lunia-life-logo.png"
+        alt="Lunia Life"
+        style={{ height: 220, width: "auto", display: "block" }}
+      />
     </div>
   );
 }
@@ -69,20 +63,23 @@ function Chevrons() {
   );
 }
 
-export default function DidYouKnowSlide({ slide, scale = 1, id }: Props) {
+export default function DidYouKnowSlide({ slide, scale = 1, fontScale = 1, id }: Props) {
+  const headerSize = Math.round(BASE_HEADER_PX * fontScale);
+  const bodySize = Math.round(BASE_BODY_PX * fontScale);
   return (
     <SlideWrapper scale={scale} height={1350} id={id} style={{ background: BG }}>
       <LuniaLifeMark />
 
       <div style={{
         position: "absolute",
-        top: 380,
+        top: 410,
         left: 96,
         right: 96,
+        textAlign: "center",
         fontFamily: "Inter, 'Helvetica Neue', sans-serif",
         fontWeight: 700,
         fontStyle: "italic",
-        fontSize: 76,
+        fontSize: headerSize,
         letterSpacing: "0.02em",
         color: HEADER_COLOR,
         lineHeight: 1.05,
@@ -92,12 +89,13 @@ export default function DidYouKnowSlide({ slide, scale = 1, id }: Props) {
 
       <div style={{
         position: "absolute",
-        top: 540,
+        top: 580,
         left: 96,
         right: 96,
+        textAlign: "center",
         fontFamily: "Inter, 'Helvetica Neue', sans-serif",
         fontWeight: 400,
-        fontSize: 38,
+        fontSize: bodySize,
         lineHeight: 1.32,
         color: BODY_COLOR,
         letterSpacing: "-0.005em",
@@ -105,7 +103,7 @@ export default function DidYouKnowSlide({ slide, scale = 1, id }: Props) {
         hyphens: "none",
       }}>
         <p style={{ margin: 0 }}>{renderTokens(slide.body1)}</p>
-        <p style={{ margin: "28px 0 0 0" }}>{renderTokens(slide.body2)}</p>
+        <p style={{ margin: "32px 0 0 0" }}>{renderTokens(slide.body2)}</p>
       </div>
 
       <div style={{
