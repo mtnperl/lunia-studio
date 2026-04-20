@@ -39,7 +39,7 @@ function LuniaLifeMark() {
       justifyContent: "center",
     }}>
       <img
-        src="/lunia-life-logo.png"
+        src="/lunia-logo.png"
         alt="Lunia Life"
         style={{ height: 220, width: "auto", display: "block" }}
       />
