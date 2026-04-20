@@ -72,7 +72,7 @@ export default function DidYouKnowSlide({ slide, scale = 1, fontScale = 1, id }:
 
       <div style={{
         position: "absolute",
-        top: 340,
+        top: 280,
         left: 96,
         right: 96,
         textAlign: "center",
@@ -89,7 +89,7 @@ export default function DidYouKnowSlide({ slide, scale = 1, fontScale = 1, id }:
 
       <div style={{
         position: "absolute",
-        top: 510,
+        top: 460,
         left: 96,
         right: 96,
         textAlign: "center",
