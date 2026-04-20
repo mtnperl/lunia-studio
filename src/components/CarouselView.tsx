@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BrandStyle, CarouselContent, CarouselConfig, CarouselFormat, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, CarouselFormat, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
+import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 
 type Step = 1 | 2 | 3 | 4;
@@ -74,6 +75,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setSlideImages(loadedImages);
     if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
     if (initialCarousel.format) setCarouselFormat(initialCarousel.format);
+    if (initialCarousel.didYouKnowContent) {
+      setDidYouKnowVariants([initialCarousel.didYouKnowContent]);
+      setSelectedDidYouKnow(0);
+    }
     setStep(4);
     onCarouselLoaded?.();
 
@@ -86,6 +91,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
+  const [didYouKnowVariants, setDidYouKnowVariants] = useState<DidYouKnowContent[]>([]);
+  const [selectedDidYouKnow, setSelectedDidYouKnow] = useState(0);
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -163,27 +170,42 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
         body: JSON.stringify({
           topic: t,
           hookTone: tone,
-          count: 1,
+          count: format === "did_you_know" ? 3 : 1,
           concise: conciseMode ?? false,
           format: format ?? "standard",
           engagementSubType: engSubType,
         }),
       });
-      const data: MultiVariantResponse & { error?: string; styleRefsUsed?: number; brandStyle?: BrandStyle } = await res.json();
+      const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;
       }
-      setVariants(data.variants);
+      if (format === "did_you_know") {
+        const dykVariants = (data.variants ?? []) as DidYouKnowContent[];
+        if (dykVariants.length === 0) {
+          setError("No usable variants returned. Try again.");
+          return;
+        }
+        setDidYouKnowVariants(dykVariants);
+        setSelectedDidYouKnow(0);
+        setVariants([]);
+        setFalStatus("idle");
+        setFalCount(0);
+        setStep(4);
+        return;
+      }
+      const std = data as MultiVariantResponse & { styleRefsUsed?: number; brandStyle?: BrandStyle };
+      setVariants(std.variants);
       setSelectedVariant(0);
       setSelectedHook(0);
-      setBrandStyle(data.brandStyle ?? null);
+      setBrandStyle(std.brandStyle ?? null);
       setHookImageUrl((data as any).hookImageUrl ?? null);
       setFalStatus("idle");
       setFalCount(0);
       const msgs = [
-        data.styleRefsUsed ? `${data.styleRefsUsed} style reference${data.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
-        data.warning ?? null,
+        std.styleRefsUsed ? `${std.styleRefsUsed} style reference${std.styleRefsUsed > 1 ? "s" : ""} applied.` : null,
+        std.warning ?? null,
       ].filter(Boolean);
       if (msgs.length) setWarning(msgs.join(" "));
       setStep(2);
@@ -210,6 +232,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     setFalStatus("idle");
     setFalCount(0);
     setFalErrors([null, null, null, null, null]);
+    setDidYouKnowVariants([]);
+    setSelectedDidYouKnow(0);
+    setCarouselFormat("standard");
   }
 
   // ─── fal.ai status badge ──────────────────────────────────────────────────
@@ -341,12 +366,20 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               onImageStyleChange={setImageStyle}
             />
           )}
-          {!loading && !error && step === 4 && falStatus === "loading" && (
+          {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
+            <DidYouKnowPreviewStep
+              topic={topic}
+              variants={didYouKnowVariants}
+              selected={selectedDidYouKnow}
+              onSelect={setSelectedDidYouKnow}
+            />
+          )}
+          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "loading" && (
             <RetroImageLoader items={[
               { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
             ]} />
           )}
-          {!loading && !error && step === 4 && falStatus === "failed" && (
+          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "failed" && (
             <RetroImageError
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
@@ -354,7 +387,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle)}
             />
           )}
-          {!loading && !error && step === 4 && (falStatus === "done" || falStatus === "idle") && config && (
+          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
               config={config}
               hookTone={hookTone}

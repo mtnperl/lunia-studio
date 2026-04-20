@@ -18,7 +18,7 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
   { value: "myth-bust", label: "Myth-bust", description: "Challenge a common misconception" },
   { value: "clickbait", label: "Bold hook", description: "Provocative, creates urgency" },
   { value: "personal-story", label: "Personal story", description: "Relatable journey with Lunia" },
-  { value: "did-you-know", label: "Did you know?", description: "Surprising fact that triggers curiosity" },
+  // "did-you-know" tone is intentionally hidden — superseded by the did_you_know CarouselFormat.
   { value: "smart-tip", label: "Smart tip", description: "By doing X for Y you will improve..." },
 ];
 
@@ -39,6 +39,7 @@ const CATEGORIES = [
   "Sleep Disorders",
   "Lifestyle & Productivity",
   "Longevity & Sleep Research",
+  "Did You Know",
 ];
 
 type Props = {
@@ -89,9 +90,48 @@ export default function TopicStep({ onNext }: Props) {
   function handleNext() {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
-    const effectiveTone = carouselFormat === "engagement" ? "curiosity" as HookTone : hookTone;
-    const effectiveConcise = carouselFormat === "engagement" ? true : concise;
+    const effectiveTone =
+      carouselFormat === "engagement" ? ("curiosity" as HookTone)
+      : carouselFormat === "did_you_know" ? ("educational" as HookTone)
+      : hookTone;
+    const effectiveConcise =
+      carouselFormat === "engagement" ? true
+      : carouselFormat === "did_you_know" ? true
+      : concise;
     onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined);
+  }
+
+  // Cherry-pick #5: inline add-custom-topic from list mode
+  const [adding, setAdding] = useState(false);
+  const [newTopic, setNewTopic] = useState("");
+  const [newCategory, setNewCategory] = useState("Did You Know");
+  const [addError, setAddError] = useState<string | null>(null);
+  async function submitNewTopic() {
+    const text = newTopic.trim();
+    if (text.length < 4 || text.length > 200) {
+      setAddError("Topic must be 4-200 characters");
+      return;
+    }
+    setAddError(null);
+    try {
+      const res = await fetch("/api/subjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, category: newCategory }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setAddError(j.error || "Failed to add topic");
+        return;
+      }
+      const created = await res.json();
+      setSubjects((prev) => [created, ...prev]);
+      setSelectedSubject(created);
+      setNewTopic("");
+      setAdding(false);
+    } catch {
+      setAddError("Network error");
+    }
   }
 
   return (
@@ -162,9 +202,63 @@ export default function TopicStep({ onNext }: Props) {
             </select>
           </div>
 
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-            {loadingSubjects ? "Loading..." : `${filteredSubjects.length} of ${unusedCount} unused subjects${usedCount > 0 ? ` · ${usedCount} used (hidden)` : ""}`}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              {loadingSubjects ? "Loading..." : `${filteredSubjects.length} of ${unusedCount} unused subjects${usedCount > 0 ? ` · ${usedCount} used (hidden)` : ""}`}
+            </div>
+            <button
+              onClick={() => { setAdding((a) => !a); setAddError(null); }}
+              style={{
+                fontSize: 12, fontWeight: 600, color: "var(--accent)",
+                background: "transparent", border: "none", cursor: "pointer", padding: 0,
+                fontFamily: "inherit",
+              }}
+            >
+              {adding ? "× Cancel" : "+ Add custom topic"}
+            </button>
           </div>
+
+          {adding && (
+            <div style={{ marginBottom: 12, padding: 12, border: "1.5px dashed var(--border)", borderRadius: 8, background: "var(--bg)" }}>
+              <input
+                type="text"
+                value={newTopic}
+                maxLength={200}
+                onChange={(e) => setNewTopic(e.target.value)}
+                placeholder="New topic text..."
+                style={{
+                  width: "100%", padding: "8px 12px", fontSize: 13,
+                  border: "1.5px solid var(--border)", borderRadius: 6,
+                  fontFamily: "inherit", background: "var(--bg)", color: "var(--text)",
+                  outline: "none", boxSizing: "border-box", marginBottom: 8,
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  style={{
+                    flex: 1, padding: "8px 10px", fontSize: 12,
+                    border: "1.5px solid var(--border)", borderRadius: 6,
+                    background: "var(--bg)", color: "var(--text)", fontFamily: "inherit", cursor: "pointer",
+                  }}
+                >
+                  {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button
+                  onClick={submitNewTopic}
+                  style={{
+                    padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                    background: "var(--text)", color: "var(--bg)", border: "none",
+                    borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+              {addError && <div style={{ fontSize: 11, color: "#e53e3e", marginTop: 6 }}>{addError}</div>}
+            </div>
+          )}
 
           {/* Subject list */}
           <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", maxHeight: 340, overflowY: "auto" }}>
@@ -265,6 +359,7 @@ export default function TopicStep({ onNext }: Props) {
           {([
             { val: "standard" as CarouselFormat, label: "Standard", desc: "Educational carousel" },
             { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
+            { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
           ]).map((opt) => (
             <button
               key={opt.val}
@@ -287,6 +382,11 @@ export default function TopicStep({ onNext }: Props) {
         {carouselFormat === "engagement" && (
           <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
             Engagement carousels end with a comment CTA — readers comment a keyword to get a guide.
+          </p>
+        )}
+        {carouselFormat === "did_you_know" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.
           </p>
         )}
       </div>
@@ -353,7 +453,8 @@ export default function TopicStep({ onNext }: Props) {
 
       )}
 
-      {/* Hook image style */}
+      {/* Hook image style — hidden for did_you_know (no AI imagery) */}
+      {carouselFormat !== "did_you_know" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook image style</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
@@ -380,6 +481,7 @@ export default function TopicStep({ onNext }: Props) {
           })}
         </div>
       </div>
+      )}
 
       {/* Content length toggle (standard only — engagement is always concise) */}
       {carouselFormat === "standard" && (

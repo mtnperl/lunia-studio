@@ -5,6 +5,7 @@ import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
+import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import { SavedCarousel, BrandStyle } from "@/lib/types";
 
 type Props = { carousel: SavedCarousel };
@@ -26,6 +27,10 @@ async function fetchAsDataUrl(url: string): Promise<string> {
 }
 
 export default function CarouselShareClient({ carousel }: Props) {
+  if (carousel.format === "did_you_know" && carousel.didYouKnowContent) {
+    return <DidYouKnowShareView carousel={carousel} />;
+  }
+
   const {
     content, selectedHook, topic, hookTone,
     brandStyle, hookImageUrl, slideImages,
@@ -484,6 +489,81 @@ export default function CarouselShareClient({ carousel }: Props) {
             {node}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+
+// ── Did You Know share view ───────────────────────────────────────────────────
+function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
+  const dyk = carousel.didYouKnowContent!;
+  const slide1Ref = useRef<HTMLDivElement>(null);
+  const slide2Ref = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [captionCopied, setCaptionCopied] = useState(false);
+
+  async function downloadOne(node: HTMLElement | null, filename: string) {
+    if (!node) return;
+    const dataUrl = await toPng(node, {
+      width: 1080, height: 1350, pixelRatio: 1, cacheBust: true,
+      style: { transform: "scale(1)", transformOrigin: "top left" },
+    });
+    const a = document.createElement("a");
+    a.href = dataUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  async function downloadAll() {
+    setError(null); setDownloading(true);
+    try {
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
+      await downloadOne(slide1Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-1.png`);
+      await downloadOne(slide2Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-2.png`);
+    } catch (e) {
+      console.error(e); setError("Download failed.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  function copyCaption() {
+    navigator.clipboard.writeText(dyk.caption).then(() => {
+      setCaptionCopied(true); setTimeout(() => setCaptionCopied(false), 1600);
+    });
+  }
+
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 80px" }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{carousel.topic}</h1>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+          Did You Know · saved {new Date(carousel.savedAt).toLocaleDateString()}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
+        <div ref={slide1Ref}><div data-dyk-slide><DidYouKnowSlide slide={dyk.slide1} scale={0.5} /></div></div>
+        <div ref={slide2Ref}><div data-dyk-slide><DidYouKnowSlide slide={dyk.slide2} scale={0.5} /></div></div>
+      </div>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Caption</div>
+          <button onClick={copyCaption} style={{ fontSize: 12, fontWeight: 600, color: captionCopied ? "var(--success)" : "var(--accent)", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+            {captionCopied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{dyk.caption}</div>
+      </div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <button onClick={downloadAll} disabled={downloading} style={{
+          background: "var(--text)", color: "var(--bg)", border: "none", borderRadius: 8,
+          padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit",
+        }}>
+          {downloading ? "Downloading..." : "Download both slides"}
+        </button>
+        {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
       </div>
     </div>
   );

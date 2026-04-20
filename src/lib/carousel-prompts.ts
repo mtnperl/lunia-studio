@@ -316,3 +316,55 @@ Brand rules (follow exactly):
 - imagePrompt: Recraft V3 prompt for hook background. Same rules as standard carousel — literal visual metaphor of hook headline. Max 55 words.
 - commentKeyword: ONE word, 4-8 characters, ALL CAPS. Must be topically relevant and easy to type in a comment.`;
 };
+
+// ─── Did You Know format ─────────────────────────────────────────────────────
+
+export const GENERATE_DID_YOU_KNOW_PROMPT = (topic: string, variantCount = 3, violations?: string[]) => {
+  const violationBlock = violations && violations.length > 0
+    ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
+    : "";
+
+  return `You are writing for Lunia Life, a women's sleep & longevity brand. Audience: women 25-40, urban, health-literate. Voice: science-forward, calm, confident, never preachy.
+
+Generate ${variantCount} variants of a 2-slide "Did You Know" Instagram carousel about: "${topic}".
+
+Each variant is a frozen-template carousel:
+- Slide 1: header is exactly "DID YOU KNOW?". Body presents a surprising, research-grounded fact (2 paragraphs).
+- Slide 2: header is exactly "BY". Body presents a concrete actionable takeaway tied to the slide-1 fact (2 paragraphs).
+
+Body copy is rendered as tokenized rich text. Each paragraph is an array of tokens. A token is { "text": string, "highlight": boolean }. Highlighted tokens render bold + teal-blue inline; non-highlighted tokens render charcoal regular weight.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "variants": [
+    {
+      "topic": "${topic}",
+      "slide1": {
+        "header": "DID YOU KNOW?",
+        "body1": [{"text":"Women entering ","highlight":false},{"text":"perimenopause","highlight":true},{"text":" lose an average of ","highlight":false},{"text":"30 minutes","highlight":true},{"text":" of deep sleep per night.","highlight":false}],
+        "body2": [{"text":"...","highlight":false}]
+      },
+      "slide2": {
+        "header": "BY",
+        "body1": [{"text":"...","highlight":false}],
+        "body2": [{"text":"...","highlight":false}]
+      },
+      "caption": "3-paragraph IG caption tied to the fact and takeaway. Plain text, no hashtags, no em dashes."
+    }
+  ]
+}
+
+HARD RULES (violating any of these is failure):
+1. NO em dashes (—) or en dashes (–) ANYWHERE. Use commas, periods, or short sentences.
+2. NO medical claims. Forbidden words: cures, cure, treats, treat, heals, heal, prevents, prevent, diagnose, diagnoses, guaranteed, miracle. Use: "may support", "is associated with", "research suggests", "shown in studies".
+3. NO product mentions. Do NOT name Lunia or any supplement product. The fact stands on its own.
+4. Body length per slide: total characters across body1 + body2 must be 280-340. Count carefully.
+5. Highlights per paragraph: 2-4. Highlight only substantive content words: nouns, numbers, adjectives, key verbs. NEVER highlight articles (a, an, the), prepositions (of, in, on, by, with, for), conjunctions (and, or, but), or filler verbs (is, are, was, were, be, been).
+6. Token spacing: each token's text includes its own surrounding spaces. Tokens are concatenated with no separator. Example: [{"text":"Sleep ","highlight":false},{"text":"5 hours","highlight":true}] renders as "Sleep 5 hours" (the space lives at the end of the first token).
+7. Slide 2 body MUST tie to Slide 1 fact. Slide 1 reveals a problem or insight; Slide 2 gives the actionable response.
+8. Facts must be plausibly research-grounded. If you state a number, it should be defensible against published literature. Do NOT fabricate citations.
+9. Variants must be MEANINGFULLY different angles on the same topic. Not paraphrases. Different framings, different facts, different takeaways.
+10. Caption: 3 short paragraphs. Open with the most striking line. Middle paragraph adds depth. Close with a question or call to save the post. No hashtags. No em dashes.
+
+Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};

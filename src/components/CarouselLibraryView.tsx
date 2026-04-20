@@ -143,11 +143,15 @@ function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () 
     await fetch(`/api/carousel/${c.id}`, { method: "DELETE" });
     onDelete();
   }
+  const isDidYouKnow = c.format === "did_you_know";
   const hookImg = c.slideImages?.[0] ?? c.hookImageUrl ?? null;
-  const toneColor = TONE_COLORS[c.hookTone] ?? "var(--accent)";
-  const caption = c.content?.caption ?? "";
-  const slideCount = (c.content?.slides?.length ?? 0) + 2;
+  const toneColor = isDidYouKnow ? "#1E6B8C" : (TONE_COLORS[c.hookTone] ?? "var(--accent)");
+  const caption = isDidYouKnow ? (c.didYouKnowContent?.caption ?? "") : (c.content?.caption ?? "");
+  const slideCount = isDidYouKnow ? 2 : (c.content?.slides?.length ?? 0) + 2;
   const shareHref = `${typeof window !== "undefined" ? window.location.origin : ""}/carousels/${c.id}`;
+  const dykPreviewText = isDidYouKnow
+    ? c.didYouKnowContent?.slide1.body1.map((t) => t.text).join("").slice(0, 100) ?? ""
+    : "";
 
   return (
     <div
@@ -173,7 +177,32 @@ function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () 
         background: "var(--surface-r)",
         position: "relative", overflow: "hidden",
       }}>
-        {hookImg ? (
+        {isDidYouKnow ? (
+          <div style={{
+            width: "100%", height: "100%",
+            background: "#EEEBE3",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "24px 20px", textAlign: "center", gap: 14,
+          }}>
+            <div style={{
+              fontFamily: "Inter, 'Helvetica Neue', sans-serif",
+              fontStyle: "italic", fontWeight: 700, fontSize: 22,
+              color: "#1E6B8C", letterSpacing: "0.02em",
+            }}>
+              DID YOU KNOW?
+            </div>
+            <div style={{
+              fontFamily: "Inter, 'Helvetica Neue', sans-serif",
+              fontWeight: 400, fontSize: 12, lineHeight: 1.4,
+              color: "#1A1A1A",
+              display: "-webkit-box", WebkitLineClamp: 5,
+              WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {dykPreviewText}…
+            </div>
+          </div>
+        ) : hookImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={hookImg} alt={c.topic}
@@ -227,7 +256,7 @@ function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () 
             textTransform: "uppercase", letterSpacing: "0.1em",
             fontFamily: "var(--font-mono)",
           }}>
-            {c.hookTone.replace("-", " ")}
+            {isDidYouKnow ? "did you know" : c.hookTone.replace("-", " ")}
           </span>
           <span style={{ fontSize: 10, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
             {new Date(c.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}

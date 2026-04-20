@@ -1,7 +1,8 @@
 import { anthropic } from "@/lib/anthropic";
-import { GENERATE_CAROUSEL_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
+import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
+import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
-import { CarouselContent, CarouselFormat, EngagementSubType, HookTone } from "@/lib/types";
+import { CarouselContent, CarouselFormat, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export async function POST(req: Request) {
@@ -24,7 +25,10 @@ export async function POST(req: Request) {
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
     const templateId: string | undefined = typeof body.templateId === "string" ? body.templateId : undefined;
     const concise: boolean = body.concise ?? false;
-    const format: CarouselFormat = body.format === "engagement" ? "engagement" : "standard";
+    const format: CarouselFormat =
+      body.format === "engagement" ? "engagement"
+      : body.format === "did_you_know" ? "did_you_know"
+      : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
 
     if (!topic || topic.trim().length === 0) {
@@ -32,6 +36,10 @@ export async function POST(req: Request) {
     }
     if (topic.length > 500) {
       return Response.json({ error: "Topic too long (max 500 characters)" }, { status: 400 });
+    }
+
+    if (format === "did_you_know") {
+      return await generateDidYouKnow(topic, count);
     }
 
     // Fetch carousel-style reference images (up to 2)
@@ -119,4 +127,66 @@ export async function POST(req: Request) {
     console.error("[api/carousel/generate]", err);
     return Response.json({ error: "Failed to generate content" }, { status: 500 });
   }
+}
+
+async function callDidYouKnow(topic: string, variantCount: number, violations?: string[]): Promise<DidYouKnowContent[]> {
+  const prompt = GENERATE_DID_YOU_KNOW_PROMPT(topic, variantCount, violations);
+  const msg = await anthropic.messages.create({
+    model: "claude-opus-4-7",
+    max_tokens: 4096,
+    messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+  });
+  const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const json = JSON.parse(text);
+  const result = DidYouKnowVariantsResponseSchema.safeParse(json);
+  if (!result.success) {
+    throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  }
+  return result.data.variants;
+}
+
+async function generateDidYouKnow(topic: string, count: number): Promise<Response> {
+  const variantCount = Math.max(1, Math.min(3, count || 3));
+  let variants: DidYouKnowContent[] = [];
+
+  try {
+    variants = await callDidYouKnow(topic, variantCount);
+  } catch (err) {
+    console.error("[generate/did_you_know] first attempt failed:", err instanceof Error ? err.message : err);
+    return Response.json({ error: "Failed to generate. Please try again." }, { status: 500 });
+  }
+
+  // Per-variant compliance lint with single reprompt — run reprompts in parallel
+  const finalVariants: DidYouKnowContent[] = await Promise.all(
+    variants.map(async (variant): Promise<DidYouKnowContent> => {
+      const lint = lintDidYouKnowContent(variant);
+      if (lint.ok) return variant;
+      console.warn("[generate/did_you_know] lint violations:", lint.violations);
+      try {
+        const reprompted = await callDidYouKnow(variant.topic || topic, 1, lint.violations);
+        const fixed = reprompted[0];
+        if (!fixed) {
+          variant.violations = lint.violations;
+          return variant;
+        }
+        const recheck = lintDidYouKnowContent(fixed);
+        if (!recheck.ok) {
+          console.warn("[generate/did_you_know] reprompt still has violations:", recheck.violations);
+          fixed.violations = recheck.violations;
+        }
+        return fixed;
+      } catch (err) {
+        console.error("[generate/did_you_know] reprompt failed:", err instanceof Error ? err.message : err);
+        variant.violations = lint.violations;
+        return variant;
+      }
+    })
+  );
+
+  if (finalVariants.length === 0) {
+    return Response.json({ error: "Generation produced no usable variants. Try again." }, { status: 500 });
+  }
+
+  return Response.json({ variants: finalVariants });
 }

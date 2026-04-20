@@ -1,5 +1,5 @@
 import { saveCarousel } from "@/lib/kv";
-import { SavedCarousel } from "@/lib/types";
+import { DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { put } from "@vercel/blob";
 
@@ -45,10 +45,26 @@ export async function POST(req: Request) {
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
+      format, engagementSubType, didYouKnowContent,
     } = body;
 
-    if (!topic || !content || selectedHook == null) {
-      return Response.json({ error: "Missing required fields" }, { status: 400 });
+    if (!topic) {
+      return Response.json({ error: "Missing required field: topic" }, { status: 400 });
+    }
+    let validatedDyk: typeof didYouKnowContent | undefined;
+    if (format === "did_you_know") {
+      const parsed = DidYouKnowContentSchema.safeParse(didYouKnowContent);
+      if (!parsed.success) {
+        return Response.json({
+          error: "Invalid didYouKnowContent",
+          details: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`),
+        }, { status: 400 });
+      }
+      validatedDyk = parsed.data;
+    } else {
+      if (!content || selectedHook == null) {
+        return Response.json({ error: "Missing required fields" }, { status: 400 });
+      }
     }
 
     const id = randomUUID();
@@ -66,7 +82,7 @@ export async function POST(req: Request) {
       topic,
       hookTone: hookTone ?? "educational",
       content,
-      selectedHook,
+      selectedHook: selectedHook ?? 0,
       brandStyle,
       hookImageUrl: mirroredHook ?? hookImageUrl,
       slideImages: mirroredSlides.length > 0
@@ -78,6 +94,9 @@ export async function POST(req: Request) {
       darkBackground,
       showLuniaLifeWatermark,
       imageStyle: imageStyle ?? undefined,
+      format: format ?? undefined,
+      engagementSubType: engagementSubType ?? undefined,
+      didYouKnowContent: validatedDyk ?? undefined,
       reelsMode: reelsMode ?? undefined,
       citationFontSize: citationFontSize ?? undefined,
       savedAt: new Date().toISOString(),

@@ -39,8 +39,40 @@ export type HookTone =
   | "personal-story"
   | "did-you-know"
   | "smart-tip";
-export type CarouselFormat = "standard" | "engagement";
+export type CarouselFormat = "standard" | "engagement" | "did_you_know";
 export type EngagementSubType = "reveal" | "diagnostic";
+
+// ─── Did You Know format ─────────────────────────────────────────────────────
+import { z as zDyk } from 'zod';
+
+export const DidYouKnowTokenSchema = zDyk.object({
+  text: zDyk.string(),
+  highlight: zDyk.boolean(),
+});
+
+export const DidYouKnowSlideContentSchema = zDyk.object({
+  header: zDyk.string().min(1),
+  body1: zDyk.array(DidYouKnowTokenSchema).min(1),
+  body2: zDyk.array(DidYouKnowTokenSchema).min(1),
+});
+
+export const DidYouKnowContentSchema = zDyk.object({
+  topic: zDyk.string().min(1),
+  slide1: DidYouKnowSlideContentSchema,
+  slide2: DidYouKnowSlideContentSchema,
+  caption: zDyk.string().min(1),
+  violations: zDyk.array(zDyk.string()).optional(),
+});
+
+export const DidYouKnowVariantsResponseSchema = zDyk.object({
+  variants: zDyk.array(DidYouKnowContentSchema).min(1),
+  warning: zDyk.string().optional(),
+});
+
+export type DidYouKnowToken = zDyk.infer<typeof DidYouKnowTokenSchema>;
+export type DidYouKnowSlideContent = zDyk.infer<typeof DidYouKnowSlideContentSchema>;
+export type DidYouKnowContent = zDyk.infer<typeof DidYouKnowContentSchema>;
+export type DidYouKnowVariantsResponse = zDyk.infer<typeof DidYouKnowVariantsResponseSchema>;
 
 export type Topic = {
   title: string;
@@ -296,8 +328,9 @@ export type SavedCarousel = {
   darkBackground?: boolean;
   showLuniaLifeWatermark?: boolean;
   imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
-  format?: CarouselFormat; // "standard" (default) or "engagement"
+  format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
   engagementSubType?: EngagementSubType; // "reveal" | "diagnostic" — only when format is "engagement"
+  didYouKnowContent?: DidYouKnowContent; // present iff format === "did_you_know"
   reelsMode?: boolean;     // true = 9:16 Reels format
   citationFontSize?: number;
   savedAt: string;

@@ -173,16 +173,18 @@ export async function getSubjects(): Promise<Subject[]> {
   try {
     const { DEFAULT_SUBJECTS } = await import("./default-subjects");
     const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
-    // Only auto-seed when there's nothing stored (first run). Respect manual deletes.
-    if (stored && stored.length > 0) return stored;
-    // Preserve usedAt flags when reseeding
-    const usedMap = new Map((stored ?? []).map((s) => [s.text, s.usedAt]));
-    const seeded = DEFAULT_SUBJECTS.map((s) => {
-      const usedAt = usedMap.get(s.text);
-      return usedAt ? { ...s, usedAt } : s;
-    });
-    await redis.set(SUBJECTS_KEY, seeded, { ex: TTL_SECONDS });
-    return seeded;
+    if (!stored || stored.length === 0) {
+      await redis.set(SUBJECTS_KEY, DEFAULT_SUBJECTS, { ex: TTL_SECONDS });
+      return DEFAULT_SUBJECTS;
+    }
+    // Merge: append any DEFAULT_SUBJECTS not already present (by case-insensitive text).
+    // Lets new seed categories (e.g. "Did You Know") show up without wiping user data.
+    const haveTexts = new Set(stored.map((s) => s.text.trim().toLowerCase()));
+    const newcomers = DEFAULT_SUBJECTS.filter((d) => !haveTexts.has(d.text.trim().toLowerCase()));
+    if (newcomers.length === 0) return stored;
+    const merged = [...stored, ...newcomers];
+    await redis.set(SUBJECTS_KEY, merged, { ex: TTL_SECONDS });
+    return merged;
   } catch {
     // Redis unavailable (e.g. local dev without KV_URL) — return defaults in-memory
     const { DEFAULT_SUBJECTS } = await import("./default-subjects").catch(() => ({ DEFAULT_SUBJECTS: [] as Subject[] }));
