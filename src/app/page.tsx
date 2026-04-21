@@ -200,7 +200,7 @@ export default function Page() {
         }} onClick={() => navigate("home")}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/lunia-logo.jpg" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
+            <img src="/lunia-logo.png" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
             <span style={{
               fontFamily: "var(--font-ui)",
               fontSize: 12, fontWeight: 600,
