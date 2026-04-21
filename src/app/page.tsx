@@ -17,6 +17,12 @@ import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
 import UGCBriefsView from "@/components/ugc/UGCBriefsView";
+import {
+  IconHome, IconSparkles, IconPencil, IconFolder, IconGrid, IconStack,
+  IconHash, IconMail, IconDocument, IconBoard, IconTrendingUp,
+  IconVideo, IconImage, IconSearch, IconPlus, IconChevronDown,
+  IconSun, IconMoon,
+} from "@/components/Icons";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
@@ -47,6 +53,46 @@ function applyThemeVars(t: "dark" | "light") {
   const el = document.documentElement;
   Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
 }
+
+const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  home: IconHome,
+  generate: IconSparkles,
+  editor: IconPencil,
+  library: IconFolder,
+  carousel: IconGrid,
+  batch: IconStack,
+  subjects: IconHash,
+  "carousel-library": IconFolder,
+  "email-panels": IconMail,
+  "email-subjects": IconHash,
+  "email-library": IconFolder,
+  video: IconVideo,
+  "video-library": IconFolder,
+  "video-assets": IconImage,
+  ugc: IconBoard,
+  "ugc-briefs": IconDocument,
+  analytics: IconTrendingUp,
+};
+
+const TAB_TITLES: Record<string, string> = {
+  home: "Home",
+  generate: "Generate script",
+  editor: "Script editor",
+  library: "Script library",
+  carousel: "Carousel builder",
+  batch: "Batch carousels",
+  subjects: "Subjects",
+  "carousel-library": "Carousel library",
+  "email-panels": "Email panels",
+  "email-subjects": "Email subjects",
+  "email-library": "Email library",
+  video: "Video builder",
+  "video-library": "Video library",
+  "video-assets": "Video assets",
+  ugc: "UGC tracker",
+  "ugc-briefs": "UGC briefs",
+  analytics: "Analytics",
+};
 
 const NAV: { section: string; items: { key: Tab; product: Product; label: string }[] }[] = [
   {
@@ -158,22 +204,33 @@ export default function Page() {
     navigate("carousel");
   }
 
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }).toUpperCase();
+  const [navQuery, setNavQuery] = useState("");
+  const filteredNav = navQuery.trim()
+    ? NAV.map(({ section, items }) => ({
+        section,
+        items: items.filter(i =>
+          i.label.toLowerCase().includes(navQuery.trim().toLowerCase()) ||
+          section.toLowerCase().includes(navQuery.trim().toLowerCase())
+        ),
+      })).filter(s => s.items.length > 0)
+    : NAV;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
       <style>{`
         @media (max-width: 700px) {
           .lunia-sidebar { transform: translateX(-100%); transition: transform 0.22s ease; position: fixed !important; z-index: 100; }
           .lunia-sidebar.open { transform: translateX(0); }
           .lunia-mobile-toggle { display: flex !important; }
           .lunia-main { padding-left: 0 !important; }
+          .lunia-topbar-title { padding-left: 52px !important; }
         }
         @media (min-width: 701px) {
           .lunia-mobile-toggle { display: none !important; }
           .lunia-mobile-overlay { display: none !important; }
         }
+        .lunia-nav-row:hover:not(.active) { background: var(--surface-h) !important; color: var(--text) !important; }
+        .lunia-nav-row:hover:not(.active) .lunia-nav-icon { color: var(--text) !important; }
       `}</style>
 
       {/* ── Mobile overlay ── */}
@@ -192,117 +249,149 @@ export default function Page() {
         position: "sticky", top: 0, height: "100vh",
         overflow: "hidden",
       }}>
-        {/* Brand */}
+        {/* Workspace header */}
         <div style={{
-          padding: "24px 24px 18px",
+          padding: "14px 12px",
           borderBottom: "1px solid var(--border)",
           cursor: "pointer",
+          display: "flex", alignItems: "center", gap: 10,
         }} onClick={() => navigate("home")}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/lunia-logo.png" alt="Lunia Life" style={{ height: 28, width: "auto", borderRadius: 4 }} />
-            <span style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 12, fontWeight: 600,
-              letterSpacing: "0.08em", textTransform: "uppercase",
-              color: "var(--text)",
-            }}>Studio</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lunia-logo.png" alt="Lunia Life" style={{
+            height: 32, width: 32, borderRadius: 6, objectFit: "cover",
+            boxShadow: "var(--shadow-sm)",
+          }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
+              color: "var(--text)", letterSpacing: 0, lineHeight: 1.2,
+            }}>Lunia Studio</div>
+            <div style={{
+              fontFamily: "var(--font-ui)", fontSize: 11,
+              color: "var(--muted)", lineHeight: 1.3,
+            }}>Main workspace</div>
           </div>
+          <IconChevronDown size={14} />
         </div>
 
-        {/* Date */}
-        <div style={{
-          padding: "14px 24px 2px",
-          fontFamily: "var(--font-mono)", fontSize: 10,
-          color: "var(--subtle)", letterSpacing: "0.06em",
-        }}>
-          {dateLabel}
+        {/* Search + Create */}
+        <div style={{ padding: "10px 12px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ position: "relative" }}>
+            <span style={{
+              position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+              color: "var(--subtle)", pointerEvents: "none",
+              display: "flex", alignItems: "center",
+            }}>
+              <IconSearch size={14} />
+            </span>
+            <input
+              value={navQuery}
+              onChange={e => setNavQuery(e.target.value)}
+              placeholder="Search"
+              style={{
+                width: "100%",
+                padding: "6px 10px 6px 32px",
+                fontSize: 13,
+                background: "var(--surface-r)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-md)",
+                color: "var(--text)",
+              }}
+            />
+          </div>
+          <button
+            onClick={() => navigate("generate")}
+            className="btn"
+            style={{ width: "100%", justifyContent: "center", padding: "8px 12px" }}
+          >
+            <IconPlus size={15} />
+            <span>Create</span>
+          </button>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: "14px 0 20px", overflowY: "auto" }}>
-          {NAV.map(({ section, items }) => (
-            <div key={section} style={{ marginBottom: 24 }}>
+        <nav style={{ flex: 1, padding: "6px 8px 16px", overflowY: "auto" }}>
+          {filteredNav.map(({ section, items }) => (
+            <div key={section} style={{ marginBottom: 14 }}>
               <div style={{
-                padding: "0 24px",
-                fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 600,
-                letterSpacing: "0.14em", textTransform: "uppercase",
-                color: "var(--subtle)", marginBottom: 2,
+                padding: "8px 12px 4px",
+                fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                color: "var(--subtle)",
               }}>
                 {section}
               </div>
               {items.map(({ key, label }) => {
                 const active = tab === key;
+                const Icon = NAV_ICONS[key] ?? IconFolder;
                 return (
-                  <button key={key} onClick={() => navigate(key)} style={{
-                    display: "block", width: "100%", textAlign: "left",
-                    padding: "10px 24px",
-                    fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: active ? 500 : 400,
-                    color: active ? "var(--text)" : "var(--muted)",
-                    background: active ? "var(--accent-dim)" : "transparent",
-                    border: "none",
-                    borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
-                    cursor: "pointer",
-                    transition: "color 0.12s, background 0.12s",
-                    letterSpacing: "0.01em",
-                  }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.03)"; }}}
-                  onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}}
+                  <button
+                    key={key}
+                    onClick={() => navigate(key)}
+                    className={`lunia-nav-row${active ? " active" : ""}`}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", textAlign: "left",
+                      padding: "7px 12px",
+                      marginBottom: 1,
+                      fontFamily: "var(--font-ui)", fontSize: 13,
+                      fontWeight: active ? 600 : 400,
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      border: "none",
+                      borderRadius: "var(--r-md)",
+                      cursor: "pointer",
+                      transition: "color 0.12s, background 0.12s",
+                    }}
                   >
-                    {label}
+                    <span className="lunia-nav-icon" style={{
+                      display: "inline-flex",
+                      color: active ? "var(--accent)" : "var(--subtle)",
+                      flexShrink: 0,
+                    }}>
+                      <Icon size={16} />
+                    </span>
+                    <span>{label}</span>
                   </button>
                 );
               })}
             </div>
           ))}
+          {filteredNav.length === 0 && (
+            <div style={{
+              padding: "20px 16px", textAlign: "center",
+              fontSize: 12, color: "var(--subtle)",
+            }}>
+              No matches for &ldquo;{navQuery}&rdquo;
+            </div>
+          )}
         </nav>
 
         {/* Footer */}
         <div style={{
-          padding: "12px 24px",
+          padding: "10px 12px",
           borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
         }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)", letterSpacing: "0.04em" }}>
-            lunia.life · studio
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--subtle)" }}>
+            lunia.life
           </span>
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             style={{
-              background: "var(--surface-r)", border: "1px solid var(--border-strong)",
-              borderRadius: 8, cursor: "pointer",
-              width: 44, height: 26, padding: 0,
-              display: "flex", alignItems: "center",
-              position: "relative", flexShrink: 0,
-              transition: "background 0.2s",
+              background: "transparent", border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)", cursor: "pointer",
+              width: 28, height: 28, padding: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--muted)",
+              transition: "background 0.12s, color 0.12s",
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-h)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
             aria-label="Toggle theme"
           >
-            <span style={{
-              position: "absolute",
-              left: theme === "light" ? 20 : 3,
-              width: 20, height: 20,
-              borderRadius: 5,
-              background: "var(--accent)",
-              transition: "left 0.18s ease",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {theme === "light" ? (
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <circle cx="5" cy="5" r="2.5" fill="var(--bg)"/>
-                  {[0,45,90,135,180,225,270,315].map(deg => (
-                    <line key={deg} x1="5" y1="0.5" x2="5" y2="1.8"
-                      stroke="var(--bg)" strokeWidth="1.2" strokeLinecap="round"
-                      transform={`rotate(${deg} 5 5)`}/>
-                  ))}
-                </svg>
-              ) : (
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M5 1.5A3.5 3.5 0 1 0 8.5 5 3.5 3.5 0 0 1 5 1.5z" fill="var(--bg)"/>
-                </svg>
-              )}
-            </span>
+            {theme === "light" ? <IconMoon size={15} /> : <IconSun size={15} />}
           </button>
         </div>
       </aside>
@@ -312,10 +401,11 @@ export default function Page() {
         className="lunia-mobile-toggle"
         onClick={() => setMobileNavOpen(v => !v)}
         style={{
-          display: "none", position: "fixed", top: 16, left: 16, zIndex: 101,
+          display: "none", position: "fixed", top: 14, left: 14, zIndex: 101,
           width: 36, height: 36, alignItems: "center", justifyContent: "center",
           background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 7, cursor: "pointer",
+          borderRadius: "var(--r-md)", cursor: "pointer",
+          boxShadow: "var(--shadow-sm)",
         }}
         aria-label="Menu"
       >
@@ -327,7 +417,43 @@ export default function Page() {
       </button>
 
       {/* ── Main ── */}
-      <main className="lunia-main" style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
+      <main className="lunia-main" style={{ flex: 1, minWidth: 0, overflowX: "hidden", display: "flex", flexDirection: "column" }}>
+        {/* Top bar */}
+        <div style={{
+          position: "sticky", top: 0, zIndex: 50,
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
+          padding: "0 24px",
+          height: 56,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 16,
+        }}>
+          <div className="lunia-topbar-title" style={{
+            display: "flex", alignItems: "center", gap: 10, minWidth: 0,
+          }}>
+            <h1 style={{
+              fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600,
+              margin: 0, color: "var(--text)", letterSpacing: "-0.01em",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {TAB_TITLES[tab] ?? "Studio"}
+            </h1>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: "50%",
+              background: "var(--accent)", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 12, fontWeight: 600,
+              fontFamily: "var(--font-ui)",
+            }} aria-label="Account" title="mtnperl@gmail.com">
+              M
+            </div>
+          </div>
+        </div>
+
+        {/* View content */}
+        <div style={{ flex: 1, minHeight: 0 }}>
         {tab === "home" && (
           <HomeView
             onNewScript={() => navigate("generate")}
@@ -359,6 +485,7 @@ export default function Page() {
         {tab === "ugc" && <UGCTrackerView />}
         {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
         {tab === "analytics" && <DashboardView />}
+        </div>
       </main>
     </div>
   );

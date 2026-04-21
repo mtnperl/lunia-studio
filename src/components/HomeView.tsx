@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { Script, SavedCarousel } from "@/lib/types";
 import { getLibrary } from "@/lib/storage";
+import { IconSparkles, IconGrid, IconArrowRight, IconPencil } from "@/components/Icons";
 
-const DRAFT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const DRAFT_TTL_MS = 30 * 60 * 1000;
 
 type Props = {
   onNewScript: () => void;
@@ -12,80 +13,71 @@ type Props = {
   onOpenCarousel: (c?: SavedCarousel & { _unsaved?: boolean }) => void;
 };
 
-function StatCard({ value, label }: { value: number | string; label: string }) {
+function StatWidget({ value, label, accent, loading }: { value: number | string; label: string; accent: string; loading: boolean }) {
   return (
-    <div style={{
-      flex: 1, padding: "20px 20px 18px",
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: 10,
+    <div className="card" style={{
+      position: "relative",
+      padding: "18px 18px 16px",
+      overflow: "hidden",
     }}>
+      <span style={{
+        position: "absolute", left: 0, top: 0, bottom: 0,
+        width: 3, background: accent,
+      }} />
       <div style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: 32, fontWeight: 400,
-        color: "var(--text)", lineHeight: 1,
+        fontSize: 11, fontWeight: 600,
+        color: "var(--muted)",
+        letterSpacing: "0.04em",
         marginBottom: 8,
+      }}>{label}</div>
+      <div style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: 28, fontWeight: 700,
+        color: "var(--text)", lineHeight: 1,
+        letterSpacing: "-0.02em",
         fontVariantNumeric: "tabular-nums",
-      }}>{value}</div>
-      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</div>
+      }}>
+        {loading ? <span style={{ color: "var(--subtle)" }}>—</span> : value}
+      </div>
     </div>
   );
 }
 
-function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }) {
-  const statusColor = script.status === "review" ? "var(--warning)" : script.status === "locked" ? "var(--success)" : "var(--subtle)";
-  const statusLabel = script.status === "review" ? "In Review" : script.status === "locked" ? "Locked" : "Draft";
-  return (
-    <div onClick={onClick} className="card" style={{ padding: "14px 16px", cursor: "pointer" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 600, color: statusColor, textTransform: "uppercase", letterSpacing: "0.06em" }}>{statusLabel}</span>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>
-          {new Date(script.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </span>
-      </div>
-      <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, marginBottom: 6, color: "var(--text)" }}>{script.title}</p>
-      <p style={{
-        fontSize: 12, color: "var(--muted)", lineHeight: 1.55,
-        display: "-webkit-box", WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical", overflow: "hidden",
-      }}>"{script.hook}"</p>
-    </div>
-  );
+function statusChipClass(status?: string) {
+  if (status === "review") return "chip chip-review";
+  if (status === "locked") return "chip chip-locked";
+  return "chip chip-draft";
+}
+function statusLabel(status?: string) {
+  if (status === "review") return "Review";
+  if (status === "locked") return "Locked";
+  return "Draft";
 }
 
-function CarouselCard({ carousel, onClick }: { carousel: SavedCarousel & { _unsaved?: boolean }; onClick: () => void }) {
-  const isUnsaved = (carousel as { _unsaved?: boolean })._unsaved;
-  const minsLeft = isUnsaved
-    ? Math.max(0, Math.round((DRAFT_TTL_MS - (Date.now() - new Date(carousel.savedAt).getTime())) / 60_000))
-    : null;
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function BoardRow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <div onClick={onClick} className="card" style={{ padding: "14px 16px", cursor: "pointer" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{
-            fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 600,
-            color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em",
-          }}>{carousel.hookTone}</span>
-          {isUnsaved && (
-            <span style={{
-              fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 600,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-              color: "var(--warning)",
-              background: "rgba(196, 122, 90, 0.1)",
-              border: "1px solid rgba(196, 122, 90, 0.25)",
-              borderRadius: 3, padding: "1px 5px",
-            }}>unsaved · {minsLeft}m left</span>
-          )}
-        </div>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)" }}>
-          {new Date(carousel.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </span>
-      </div>
-      <p style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.45, marginBottom: 6, color: "var(--text)" }}>{carousel.topic}</p>
-      <p style={{
-        fontSize: 12, color: "var(--muted)", lineHeight: 1.55,
-        display: "-webkit-box", WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical", overflow: "hidden",
-      }}>{carousel.content?.hooks?.[0]?.headline ?? "—"}</p>
+    <div
+      onClick={onClick}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 110px 90px 24px",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 14px",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
+        cursor: onClick ? "pointer" : "default",
+        transition: "background 0.12s",
+        fontSize: 13,
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface-h)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
+    >
+      {children}
     </div>
   );
 }
@@ -106,15 +98,12 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
         const now = Date.now();
         const rawDrafts = localStorage.getItem("lunia:drafts");
         const drafts: Array<SavedCarousel & { _unsaved?: boolean }> = rawDrafts ? JSON.parse(rawDrafts) : [];
-        // Filter to only drafts within the 30-min TTL and not already saved
         const freshDrafts = drafts.filter((d) => {
           const age = now - new Date(d.savedAt).getTime();
           if (age > DRAFT_TTL_MS) return false;
-          // Drop if already saved (same topic + close timestamp)
           return !saved.some(sc => sc.topic === d.topic && Math.abs(new Date(sc.savedAt).getTime() - new Date(d.savedAt).getTime()) < 10_000);
         });
         saved.unshift(...freshDrafts);
-        // Prune expired drafts from storage
         const stillFresh = drafts.filter((d) => now - new Date(d.savedAt).getTime() <= DRAFT_TTL_MS);
         localStorage.setItem("lunia:drafts", JSON.stringify(stillFresh));
       } catch {}
@@ -123,120 +112,199 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
     });
   }, []);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const dateLabel = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-
   const thisWeekScripts = scripts.filter(s => {
     const d = new Date(s.savedAt);
     return d >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   }).length;
 
-  const recentScripts   = [...scripts].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 4);
-  const recentCarousels = [...carousels].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 4);
+  const recentScripts   = [...scripts].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
+  const recentCarousels = [...carousels].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "48px 48px 80px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 32px 64px" }}>
 
-      {/* ── Greeting ── */}
-      <div style={{ marginBottom: 44, paddingBottom: 36, borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: 48, fontWeight: 300,
-          color: "var(--text)", margin: 0, lineHeight: 1.1,
-          letterSpacing: "-0.01em",
-        }}>
-          {greeting},{" "}
-          <em style={{ fontStyle: "italic", color: "var(--accent)", fontWeight: 400 }}>Mathan.</em>
-        </h1>
-        <p style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 11, color: "var(--subtle)",
-          marginTop: 10, letterSpacing: "0.08em",
-        }}>
-          {dateLabel.toUpperCase()}
-        </p>
+      {/* Overview stat widgets */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: 14,
+        marginBottom: 28,
+      }}>
+        <StatWidget value={scripts.length}   label="Scripts saved"     accent="var(--mon-sky)"    loading={loading} />
+        <StatWidget value={carousels.length} label="Carousels built"   accent="var(--mon-purple)" loading={loading} />
+        <StatWidget value={thisWeekScripts}  label="Scripts this week" accent="var(--mon-green)"  loading={loading} />
+        <StatWidget value={scripts.filter(s => s.status === "review").length} label="In review" accent="var(--mon-yellow)" loading={loading} />
       </div>
 
-      {/* ── Quick actions ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 40 }}>
-        {[
-          { label: "UGC Scripter", title: "New script", desc: "Generate hooks + full UGC script", cta: "Generate →", onClick: onNewScript },
-          { label: "Carousel Builder", title: "New carousel", desc: "Build an Instagram carousel post", cta: "Build →", onClick: onNewCarousel },
-        ].map(card => (
-          <div
-            key={card.label}
-            onClick={card.onClick}
-            style={{
-              padding: "26px 28px 24px", borderRadius: 12, cursor: "pointer",
-              background: "var(--surface)", border: "1px solid var(--border)",
-              transition: "border-color 0.15s, background 0.15s",
-            }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = "var(--accent)";
-              el.style.background = "var(--surface-h)";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = "var(--border)";
-              el.style.background = "var(--surface)";
-            }}
-          >
-            <div style={{ fontFamily: "var(--font-ui)", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--accent)", marginBottom: 10 }}>{card.label}</div>
-            <div style={{ fontFamily: "var(--font-ui)", fontSize: 20, fontWeight: 500, color: "var(--text)", marginBottom: 6, lineHeight: 1.2, letterSpacing: "-0.02em" }}>{card.title}</div>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.55 }}>{card.desc}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", letterSpacing: "0.02em" }}>{card.cta}</div>
-          </div>
-        ))}
+      {/* Quick actions */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: 12,
+        marginBottom: 32,
+      }}>
+        <QuickAction
+          icon={<IconSparkles size={18} />}
+          title="New script"
+          desc="Generate hooks and a full UGC script."
+          onClick={onNewScript}
+          accent="var(--mon-sky)"
+        />
+        <QuickAction
+          icon={<IconGrid size={18} />}
+          title="New carousel"
+          desc="Build an Instagram carousel."
+          onClick={onNewCarousel}
+          accent="var(--mon-purple)"
+        />
+        <QuickAction
+          icon={<IconPencil size={18} />}
+          title="UGC briefs"
+          desc="Write ad briefs for creators."
+          onClick={onNewScript}
+          accent="var(--mon-green)"
+        />
       </div>
 
-      {/* ── Stats ── */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 48 }}>
-        <StatCard value={loading ? "—" : scripts.length}   label="Scripts saved"      />
-        <StatCard value={loading ? "—" : carousels.length} label="Carousels built"    />
-        <StatCard value={loading ? "—" : thisWeekScripts}  label="Scripts this week"  />
-        <StatCard value={loading ? "—" : scripts.filter(s => s.status === "review").length} label="In review" />
-      </div>
+      {/* Boards */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(440px, 1fr))",
+        gap: 20,
+      }}>
+        <Board
+          title="Recent scripts"
+          actionLabel="View all"
+          onAction={onNewScript}
+          loading={loading}
+          empty={recentScripts.length === 0 ? "No scripts yet." : null}
+          columns={["Title", "Status", "Saved", ""]}
+        >
+          {recentScripts.map(s => (
+            <BoardRow key={s.id} onClick={() => onOpenScript(s)}>
+              <div style={{
+                fontWeight: 500, color: "var(--text)",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>{s.title}</div>
+              <div><span className={statusChipClass(s.status)}>{statusLabel(s.status)}</span></div>
+              <div style={{ fontSize: 12, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{formatDate(s.savedAt)}</div>
+              <IconArrowRight size={14} />
+            </BoardRow>
+          ))}
+        </Board>
 
-      {/* ── Recents ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Recent Scripts</span>
-            <button onClick={onNewScript} style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: "8px 0", letterSpacing: "0.01em" }}>
-              View all →
-            </button>
-          </div>
-          {loading ? (
-            <div style={{ color: "var(--subtle)", fontSize: 13 }}>Loading…</div>
-          ) : recentScripts.length === 0 ? (
-            <div style={{ padding: "28px 0", fontFamily: "var(--font-serif)", fontSize: 16, fontStyle: "italic", color: "var(--subtle)" }}>No scripts yet.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {recentScripts.map(s => <ScriptCard key={s.id} script={s} onClick={() => onOpenScript(s)} />)}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Recent Carousels</span>
-            <button onClick={() => onOpenCarousel()} style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: "8px 0", letterSpacing: "0.01em" }}>
-              View all →
-            </button>
-          </div>
-          {loading ? (
-            <div style={{ color: "var(--subtle)", fontSize: 13 }}>Loading…</div>
-          ) : recentCarousels.length === 0 ? (
-            <div style={{ padding: "28px 0", fontFamily: "var(--font-serif)", fontSize: 16, fontStyle: "italic", color: "var(--subtle)" }}>No carousels yet.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {recentCarousels.map(c => <CarouselCard key={c.id} carousel={c} onClick={() => onOpenCarousel(c as SavedCarousel & { _unsaved?: boolean })} />)}
-            </div>
-          )}
-        </div>
+        <Board
+          title="Recent carousels"
+          actionLabel="View all"
+          onAction={() => onOpenCarousel()}
+          loading={loading}
+          empty={recentCarousels.length === 0 ? "No carousels yet." : null}
+          columns={["Topic", "Tone", "Saved", ""]}
+        >
+          {recentCarousels.map(c => {
+            const isUnsaved = (c as { _unsaved?: boolean })._unsaved;
+            return (
+              <BoardRow key={c.id} onClick={() => onOpenCarousel(c as SavedCarousel & { _unsaved?: boolean })}>
+                <div style={{
+                  fontWeight: 500, color: "var(--text)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.topic}</span>
+                  {isUnsaved && <span className="chip chip-working" style={{ flexShrink: 0 }}>Unsaved</span>}
+                </div>
+                <div><span className="chip chip-plan">{c.hookTone}</span></div>
+                <div style={{ fontSize: 12, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{formatDate(c.savedAt)}</div>
+                <IconArrowRight size={14} />
+              </BoardRow>
+            );
+          })}
+        </Board>
       </div>
+    </div>
+  );
+}
+
+function QuickAction({ icon, title, desc, onClick, accent }: {
+  icon: React.ReactNode; title: string; desc: string; onClick: () => void; accent: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="card"
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 12,
+        padding: "16px 18px",
+        textAlign: "left",
+        cursor: "pointer",
+        background: "var(--surface)",
+        fontFamily: "var(--font-ui)",
+      }}
+    >
+      <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, borderRadius: "var(--r-md)",
+        background: accent, color: "#fff",
+        flexShrink: 0,
+      }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{title}</span>
+        <span style={{ display: "block", fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>{desc}</span>
+      </span>
+    </button>
+  );
+}
+
+function Board({ title, actionLabel, onAction, loading, empty, columns, children }: {
+  title: string; actionLabel: string; onAction: () => void;
+  loading: boolean; empty: string | null;
+  columns: string[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: "var(--r-md)",
+      overflow: "hidden",
+      boxShadow: "var(--shadow-sm)",
+    }}>
+      <div style={{
+        padding: "12px 14px",
+        borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--text)" }}>{title}</h2>
+        <button
+          onClick={onAction}
+          style={{
+            background: "none", border: "none",
+            color: "var(--accent)", fontSize: 12, fontWeight: 600,
+            cursor: "pointer", padding: "4px 6px",
+            display: "inline-flex", alignItems: "center", gap: 4,
+          }}
+        >
+          {actionLabel} <IconArrowRight size={13} />
+        </button>
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 110px 90px 24px",
+        gap: 12,
+        padding: "8px 14px",
+        background: "var(--surface-r)",
+        borderBottom: "1px solid var(--border)",
+        fontSize: 10, fontWeight: 600,
+        color: "var(--subtle)",
+        textTransform: "uppercase", letterSpacing: "0.06em",
+      }}>
+        {columns.map((c, i) => <div key={i}>{c}</div>)}
+      </div>
+      {loading ? (
+        <div style={{ padding: 24, fontSize: 13, color: "var(--subtle)" }}>Loading…</div>
+      ) : empty ? (
+        <div style={{ padding: 24, fontSize: 13, color: "var(--subtle)" }}>{empty}</div>
+      ) : children}
     </div>
   );
 }
