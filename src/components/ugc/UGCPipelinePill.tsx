@@ -3,13 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { UGCPipelineStage, UGC_PIPELINE_STAGES, UGC_STAGE_LABELS } from "@/lib/types";
 
-const STAGE_STYLES: Record<UGCPipelineStage, { bg: string; border: string; text: string }> = {
-  invited:            { bg: "var(--surface-r)",  border: "var(--border)",       text: "var(--muted)"   },
-  approved:           { bg: "var(--accent-dim)", border: "var(--accent-mid)",   text: "var(--text)"    },
-  delivered:          { bg: "color-mix(in srgb, var(--accent) 20%, transparent)", border: "color-mix(in srgb, var(--accent) 50%, transparent)", text: "var(--text)" },
-  "edited-and-ready": { bg: "color-mix(in srgb, var(--success) 14%, transparent)", border: "color-mix(in srgb, var(--success) 40%, transparent)", text: "var(--success)" },
-  posted:             { bg: "var(--success)",    border: "var(--success)",      text: "#FFFFFF"        },
-  cancelled:          { bg: "var(--surface)",    border: "var(--border)",       text: "var(--subtle)"  },
+const STAGE_STYLES: Record<UGCPipelineStage, { bg: string; text: string }> = {
+  invited:            { bg: "var(--mon-grey)",   text: "#ffffff" },
+  approved:           { bg: "var(--mon-sky)",    text: "#ffffff" },
+  delivered:          { bg: "var(--mon-purple)", text: "#ffffff" },
+  "edited-and-ready": { bg: "var(--mon-yellow)", text: "#ffffff" },
+  posted:             { bg: "var(--mon-green)",  text: "#ffffff" },
+  cancelled:          { bg: "var(--mon-red)",    text: "#ffffff" },
 };
 
 const MENU_HEIGHT = 220; // approximate max height of the dropdown
@@ -71,36 +71,47 @@ export default function UGCPipelinePill({ stage, onChange }: Props) {
             top: menuPos.openUp ? undefined : menuPos.top,
             bottom: menuPos.openUp ? window.innerHeight - menuPos.top : undefined,
             left: menuPos.left,
-            background: "var(--surface-r)",
+            background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: 6,
+            borderRadius: "var(--r-md)",
             padding: 4,
             zIndex: 9999,
-            minWidth: 150,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+            minWidth: 170,
+            boxShadow: "var(--shadow-lg)",
           }}
         >
-          {UGC_PIPELINE_STAGES.map((s) => (
-            <button
-              key={s}
-              onClick={() => { onChange(s); setMenuOpen(false); }}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                padding: "6px 10px",
-                fontFamily: "var(--font-ui)",
-                fontSize: 12,
-                color: s === stage ? "var(--text)" : "var(--muted)",
-                background: s === stage ? "var(--accent-dim)" : "transparent",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-              }}
-            >
-              {UGC_STAGE_LABELS[s]}
-            </button>
-          ))}
+          {UGC_PIPELINE_STAGES.map((s) => {
+            const st = STAGE_STYLES[s];
+            const active = s === stage;
+            return (
+              <button
+                key={s}
+                onClick={() => { onChange(s); setMenuOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "6px 10px",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 13,
+                  fontWeight: active ? 600 : 400,
+                  color: "var(--text)",
+                  background: active ? "var(--surface-h)" : "transparent",
+                  border: "none",
+                  borderRadius: "var(--r-sm)",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-h)"; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                <span style={{
+                  width: 10, height: 10, borderRadius: 2,
+                  background: st.bg, flexShrink: 0,
+                }} />
+                <span>{UGC_STAGE_LABELS[s]}</span>
+              </button>
+            );
+          })}
         </div>,
         document.body,
       )
@@ -114,18 +125,21 @@ export default function UGCPipelinePill({ stage, onChange }: Props) {
         title="Click to change stage"
         style={{
           background: style.bg,
-          border: `1px solid ${style.border}`,
+          border: "none",
           color: style.text,
-          padding: "4px 10px",
-          borderRadius: 9999,
+          padding: "3px 10px",
+          minHeight: 22,
+          borderRadius: "var(--r-sm)",
           fontFamily: "var(--font-ui)",
           fontSize: 11,
-          fontWeight: 500,
-          letterSpacing: "0.04em",
+          fontWeight: 600,
+          letterSpacing: "0.02em",
           textTransform: "uppercase",
           cursor: "pointer",
-          transition: "background 0.12s, border-color 0.12s",
+          transition: "opacity 0.12s",
         }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.85"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
       >
         {UGC_STAGE_LABELS[stage] ?? stage}
       </button>

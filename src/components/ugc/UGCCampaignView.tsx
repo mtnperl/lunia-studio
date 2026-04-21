@@ -188,7 +188,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
     : null;
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 32px 80px", fontFamily: "var(--font-ui)" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 32px 64px", fontFamily: "var(--font-ui)" }}>
       {importOpen && (
         <UGCCSVImportModal
           campaignId={campaignId}
@@ -211,17 +211,29 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
         />
       )}
 
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, cursor: "pointer", padding: 0 }}>
-          ← Campaigns
-        </button>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--subtle)", letterSpacing: "0.06em" }}>
-          {Object.keys(dirty).length > 0 ? "SAVING…" : "SAVED"}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+          <button
+            onClick={onBack}
+            className="btn-ghost"
+            style={{ padding: "6px 12px", fontSize: 12 }}
+          >
+            ← Campaigns
+          </button>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {campaign.label}
+          </h1>
+          <span style={{
+            fontSize: 11, fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: "var(--r-sm)",
+            background: Object.keys(dirty).length > 0 ? "var(--mon-yellow)" : "var(--mon-green)",
+            color: "#fff",
+            letterSpacing: "0.02em",
+          }}>
+            {Object.keys(dirty).length > 0 ? "SAVING" : "SAVED"}
+          </span>
         </div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 16, marginBottom: 20, borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>{campaign.label}</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <GhostBtn onClick={() => setImportOpen(true)}>Import XLSX</GhostBtn>
           <GhostBtn onClick={exportSheet}>Export XLSX</GhostBtn>
@@ -279,7 +291,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
       )}
 
       {/* Table */}
-      <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--surface)" }}>
+      <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden", background: "var(--surface)", boxShadow: "var(--shadow-sm)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
             <tr style={{ background: "var(--surface-r)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 10, color: "var(--subtle)" }}>
@@ -582,11 +594,22 @@ const selectStyle: React.CSSProperties = {
   fontFamily: "var(--font-ui)", fontSize: 12,
 };
 
+const STAT_ACCENT: Record<string, string> = {
+  "Ready to post": "var(--mon-green)",
+  "Total spend": "var(--mon-yellow)",
+  "Cost / delivered": "var(--mon-grey)",
+  "Approved": "var(--mon-sky)",
+  "Delivered": "var(--mon-purple)",
+  "Edited & ready": "var(--mon-yellow)",
+  "Posted": "var(--mon-green)",
+};
+
 function Stat({ label, value, onClick, active, tooltip }: {
   label: string; value: string;
   onClick?: () => void; active?: boolean; tooltip?: string;
 }) {
   const clickable = !!onClick;
+  const accent = STAT_ACCENT[label] ?? "var(--accent)";
   return (
     <div
       onClick={onClick}
@@ -594,24 +617,25 @@ function Stat({ label, value, onClick, active, tooltip }: {
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
       title={tooltip}
+      className="card"
       style={{
-        padding: 14,
-        background: active ? "var(--surface-h)" : "var(--surface)",
-        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-        borderRadius: 8,
-        cursor: clickable ? "pointer" : "default",
-        transition: "background 120ms ease, border-color 120ms ease",
         position: "relative",
+        padding: "16px 16px 14px",
+        background: active ? "var(--surface-h)" : "var(--surface)",
+        borderColor: active ? "var(--accent)" : undefined,
+        cursor: clickable ? "pointer" : "default",
+        overflow: "hidden",
       }}
     >
+      <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: accent }} />
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: active ? "var(--accent)" : "var(--subtle)" }}>{label}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", color: active ? "var(--accent)" : "var(--muted)" }}>{label}</div>
         {active && <span style={{ fontSize: 10, color: "var(--accent)" }}>✓</span>}
         {tooltip && !active && (
-          <span style={{ fontSize: 10, color: "var(--subtle)", border: "1px solid var(--border)", borderRadius: 9999, width: 12, height: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>i</span>
+          <span style={{ fontSize: 10, color: "var(--subtle)", border: "1px solid var(--border)", borderRadius: 9999, width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>i</span>
         )}
       </div>
-      <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 18, color: "var(--text)", fontWeight: 500 }}>{value}</div>
+      <div style={{ fontVariantNumeric: "tabular-nums", fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1 }}>{value}</div>
     </div>
   );
 }
