@@ -149,8 +149,8 @@ export default function TopicStep({ onNext }: Props) {
               padding: "8px 20px",
               fontSize: 13,
               fontWeight: 600,
-              background: mode === m ? "var(--text)" : "var(--bg)",
-              color: mode === m ? "var(--bg)" : "var(--muted)",
+              background: mode === m ? "var(--accent)" : "var(--surface)",
+              color: mode === m ? "#fff" : "var(--muted)",
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
@@ -249,7 +249,7 @@ export default function TopicStep({ onNext }: Props) {
                   onClick={submitNewTopic}
                   style={{
                     padding: "8px 16px", fontSize: 12, fontWeight: 700,
-                    background: "var(--text)", color: "var(--bg)", border: "none",
+                    background: "var(--accent)", color: "#fff", border: "none",
                     borderRadius: 6, cursor: "pointer", fontFamily: "inherit",
                   }}
                 >

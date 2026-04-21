@@ -218,7 +218,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
           onClick={handleDownload}
           disabled={downloading}
           style={{
-            background: "var(--text)", color: "var(--bg)", border: "none", borderRadius: 8,
+            background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8,
             padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading ? "wait" : "pointer",
             fontFamily: "inherit",
           }}

@@ -291,8 +291,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
               <div key={s} style={{
                 padding: "8px 18px", fontSize: 13,
                 fontWeight: step === s ? 700 : 500,
-                color: step === s ? "var(--text)" : "var(--subtle)",
-                borderBottom: step === s ? "2px solid var(--text)" : "2px solid transparent",
+                color: step === s ? "var(--accent)" : "var(--subtle)",
+                borderBottom: step === s ? "2px solid var(--accent)" : "2px solid transparent",
                 marginBottom: -1,
                 opacity: step < s ? 0.35 : 1,
               }}>

@@ -451,8 +451,8 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
       <button
         onClick={onNext}
         style={{
-          background: "var(--text)",
-          color: "var(--bg)",
+          background: "var(--accent)",
+          color: "#fff",
           border: "none",
           borderRadius: 8,
           padding: "14px 36px",

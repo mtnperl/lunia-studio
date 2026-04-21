@@ -193,7 +193,7 @@ export default function SubjectsView() {
                     disabled={seeding}
                     style={{
                       padding: "10px 20px", fontSize: 13, fontWeight: 700,
-                      background: "var(--text)", color: "var(--bg)",
+                      background: "var(--accent)", color: "#fff",
                       border: "none", borderRadius: 7,
                       cursor: seeding ? "wait" : "pointer", fontFamily: "inherit",
                     }}

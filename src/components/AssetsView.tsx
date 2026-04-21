@@ -418,7 +418,7 @@ export default function AssetsView() {
             onClick={() => setShowTemplateForm((v) => !v)}
             style={{
               padding: "8px 16px", fontSize: 13, fontWeight: 700,
-              background: "var(--text)", color: "var(--bg)",
+              background: "var(--accent)", color: "#fff",
               border: "none", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
             }}
           >
@@ -501,7 +501,7 @@ export default function AssetsView() {
                 disabled={!templateName.trim() || templateFiles.length === 0}
                 style={{
                   padding: "10px 24px", fontSize: 14, fontWeight: 700,
-                  background: "var(--text)", color: "var(--bg)",
+                  background: "var(--accent)", color: "#fff",
                   border: "none", borderRadius: 7, cursor: "pointer",
                   fontFamily: "inherit",
                 }}

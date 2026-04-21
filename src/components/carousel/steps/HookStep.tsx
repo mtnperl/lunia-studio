@@ -297,7 +297,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
       <button
         onClick={onNext}
         style={{
-          background: "var(--text)", color: "var(--bg)",
+          background: "var(--accent)", color: "#fff",
           border: "none", borderRadius: 8,
           padding: "14px 36px", fontSize: 15, fontWeight: 700,
           fontFamily: "inherit", cursor: "pointer", letterSpacing: "-0.01em",
