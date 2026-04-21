@@ -16,13 +16,14 @@ import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
+import UGCBriefsView from "@/components/ugc/UGCBriefsView";
 import { Script, EmailSection } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "analytics";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -85,6 +86,7 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     section: "UGC",
     items: [
       { key: "ugc", product: "ugc", label: "Tracker" },
+      { key: "ugc-briefs", product: "ugc", label: "Briefs" },
     ],
   },
   {
@@ -355,6 +357,7 @@ export default function Page() {
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
         {tab === "ugc" && <UGCTrackerView />}
+        {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
         {tab === "analytics" && <DashboardView />}
       </main>
     </div>

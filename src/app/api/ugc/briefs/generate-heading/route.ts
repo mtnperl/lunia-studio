@@ -14,18 +14,19 @@ const bodySchema = z.object({
   conceptLabel: z.string().max(200).optional(),
 });
 
-const SYSTEM_PROMPT = `You write short, editorial headings for UGC video briefs at Lunia Life, a sleep supplement brand.
+const SYSTEM_PROMPT = `You write short ad-name tags for Lunia Life UGC video briefs. The tag will be pasted into an ad name, so it needs to capture the CORE idea of the ad in a few words.
 
-Heading rules (hard):
-- 4 to 8 words.
-- Title Case (capitalize principal words).
-- Describes the angle or point of view, not the outcome or result.
-- No emoji.
-- No punctuation except apostrophes. No periods, colons, dashes, quotes, question marks, exclamation marks.
-- No brand name ("Lunia"). No product names.
-- No clickbait. No superlatives ("best", "ultimate", "#1").
+Rules (hard):
+- 4 to 8 words total.
+- Does NOT need to be a grammatical phrase. Keyword-style fragments are encouraged. Example style: "best investment & coffee value", "three am wake up fix", "melatonin free sleep stack".
+- Capture the CORE of the ad — the hook, the contrast, the angle — not the outcome or result.
+- Allowed characters: letters, numbers, spaces, apostrophes, and the ampersand (&) to join two ideas.
+- No other punctuation. No periods, colons, hyphens, quotes, question marks, exclamation marks, em dashes.
+- No emoji. No hashtags.
+- No brand or product names (Lunia, Restore, etc.).
+- Lowercase is fine. Do not force title case.
 
-Output exactly the heading text. No quotes, no explanation, no trailing punctuation.`;
+Output exactly the tag text. No quotes, no explanation, no trailing punctuation.`;
 
 export async function POST(req: Request): Promise<Response> {
   const start = logEntry("/api/ugc/briefs/generate-heading", "generate");
@@ -90,14 +91,7 @@ Return the heading only.`;
 
 function sanitizeHeading(s: string): string {
   let out = s.replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim();
-  // Strip any punctuation the model may have slipped in (keep letters, numbers, spaces, apostrophes).
-  out = out.replace(/[^A-Za-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
-  // Title Case, preserving apostrophes.
-  out = out
-    .split(" ")
-    .map((w) => (w.length === 0 ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()))
-    .join(" ");
-  // Clamp to 8 words.
+  out = out.replace(/[^A-Za-z0-9'& ]+/g, " ").replace(/\s+/g, " ").trim();
   const parts = out.split(" ").slice(0, 8);
   return parts.join(" ");
 }
