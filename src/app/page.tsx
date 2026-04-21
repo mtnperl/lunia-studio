@@ -27,20 +27,20 @@ type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-l
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "analytics";
 
 const LIGHT_VARS: Record<string, string> = {
-  "--bg": "#FFFFFF", "--surface": "#F5F5F7", "--surface-r": "#EBEBED",
-  "--surface-h": "#E3E3E8", "--text": "#1D1D1F", "--muted": "#6E6E73",
-  "--subtle": "#98989D", "--accent": "#1D1D1F",
-  "--accent-dim": "rgba(0,0,0,0.06)", "--accent-mid": "rgba(0,0,0,0.16)",
-  "--border": "#D2D2D7", "--border-strong": "#BCBCC5",
-  "--success": "#1C7A3A", "--warning": "#B86040", "--error": "#C40000",
+  "--bg": "#f6f7fb", "--surface": "#ffffff", "--surface-r": "#f5f6f8",
+  "--surface-h": "#eef0f7", "--text": "#323338", "--muted": "#676879",
+  "--subtle": "#9699a6", "--accent": "#0073ea", "--accent-hover": "#0060b9",
+  "--accent-dim": "rgba(0, 115, 234, 0.10)", "--accent-mid": "rgba(0, 115, 234, 0.22)",
+  "--border": "#d0d4e4", "--border-strong": "#c3c6d4",
+  "--success": "#00c875", "--warning": "#fdab3d", "--error": "#e2445c",
 };
 const DARK_VARS: Record<string, string> = {
-  "--bg": "#0D0C0A", "--surface": "#171512", "--surface-r": "#201E1B",
-  "--surface-h": "#252219", "--text": "#EDE8DF", "--muted": "#7A7268",
-  "--subtle": "#4A4640", "--accent": "#C8A96E",
-  "--accent-dim": "rgba(200,169,110,0.12)", "--accent-mid": "rgba(200,169,110,0.30)",
-  "--border": "#2A2723", "--border-strong": "#332F2B",
-  "--success": "#5F9E75", "--warning": "#C47A5A", "--error": "#B85C5C",
+  "--bg": "#181b34", "--surface": "#1f2048", "--surface-r": "#292b50",
+  "--surface-h": "#323464", "--text": "#e7e8f5", "--muted": "#a7abc7",
+  "--subtle": "#6a6e93", "--accent": "#579bfc", "--accent-hover": "#4a88e8",
+  "--accent-dim": "rgba(87, 155, 252, 0.14)", "--accent-mid": "rgba(87, 155, 252, 0.30)",
+  "--border": "#3f4174", "--border-strong": "#50539a",
+  "--success": "#00c875", "--warning": "#fdab3d", "--error": "#e2445c",
 };
 function applyThemeVars(t: "dark" | "light") {
   const vars = t === "light" ? LIGHT_VARS : DARK_VARS;

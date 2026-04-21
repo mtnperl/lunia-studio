@@ -1,51 +1,89 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,700;1,800&family=Fira+Code:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
+/* ── Monday Studio — Light (default) ──────────────────────────────────── */
 :root {
-  /* ── Apple-Inspired Studio Light (default) ── */
-  --bg:           #FFFFFF;
-  --surface:      #F5F5F7;
-  --surface-r:    #EBEBED;
-  --surface-h:    #E3E3E8;
-  --text:         #1D1D1F;
-  --muted:        #6E6E73;
-  --subtle:       #98989D;
-  --accent:       #1D1D1F;
-  --accent-dim:   rgba(0, 0, 0, 0.06);
-  --accent-mid:   rgba(0, 0, 0, 0.16);
-  --border:       #D2D2D7;
-  --border-strong: #BCBCC5;
-  --success:      #1C7A3A;
-  --warning:      #B86040;
-  --error:        #C40000;
+  --bg:            #f6f7fb;
+  --surface:       #ffffff;
+  --surface-r:     #f5f6f8;
+  --surface-h:     #eef0f7;
+  --text:          #323338;
+  --muted:         #676879;
+  --subtle:        #9699a6;
+  --accent:        #0073ea;
+  --accent-hover:  #0060b9;
+  --accent-dim:    rgba(0, 115, 234, 0.10);
+  --accent-mid:    rgba(0, 115, 234, 0.22);
+  --border:        #d0d4e4;
+  --border-strong: #c3c6d4;
 
-  /* ── Typography ── */
-  --font-serif:  'Fraunces', Georgia, serif;
-  --font-ui:     'Inter', system-ui, sans-serif;
-  --font-mono:   'Fira Code', 'Menlo', monospace;
+  /* Monday status palette — carry meaning */
+  --mon-green:   #00c875;
+  --mon-yellow:  #fdab3d;
+  --mon-red:     #e2445c;
+  --mon-purple:  #a25ddc;
+  --mon-sky:     #579bfc;
+  --mon-pink:    #ff158a;
+  --mon-indigo:  #225091;
+  --mon-teal:    #00a09d;
+  --mon-grey:    #c4c4c4;
 
-  /* ── Legacy aliases (keep carousel builder working) ── */
+  --success: var(--mon-green);
+  --warning: var(--mon-yellow);
+  --error:   var(--mon-red);
+
+  /* Typography */
+  --font-ui:    'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Figtree', -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Radii */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(29, 30, 64, 0.06), 0 1px 3px rgba(29, 30, 64, 0.04);
+  --shadow-md: 0 4px 14px rgba(29, 30, 64, 0.08), 0 1px 3px rgba(29, 30, 64, 0.04);
+  --shadow-lg: 0 12px 32px rgba(29, 30, 64, 0.14), 0 2px 6px rgba(29, 30, 64, 0.06);
+
+  /* Legacy aliases */
   --black: #000;
   --white: #fff;
 }
 
-/* ── Apple-Inspired Studio Light ── */
 [data-theme="light"] {
-  --bg:           #FFFFFF;
-  --surface:      #F5F5F7;
-  --surface-r:    #EBEBED;
-  --surface-h:    #E3E3E8;
-  --text:         #1D1D1F;
-  --muted:        #6E6E73;
-  --subtle:       #98989D;
-  --accent:       #1D1D1F;
-  --accent-dim:   rgba(0, 0, 0, 0.06);
-  --accent-mid:   rgba(0, 0, 0, 0.16);
-  --border:       #D2D2D7;
-  --border-strong: #BCBCC5;
-  --success:      #1C7A3A;
-  --warning:      #B86040;
-  --error:        #C40000;
+  --bg:            #f6f7fb;
+  --surface:       #ffffff;
+  --surface-r:     #f5f6f8;
+  --surface-h:     #eef0f7;
+  --text:          #323338;
+  --muted:         #676879;
+  --subtle:        #9699a6;
+  --accent:        #0073ea;
+  --accent-hover:  #0060b9;
+  --accent-dim:    rgba(0, 115, 234, 0.10);
+  --accent-mid:    rgba(0, 115, 234, 0.22);
+  --border:        #d0d4e4;
+  --border-strong: #c3c6d4;
+}
+
+/* ── Monday Studio — Dark ─────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:            #181b34;
+  --surface:       #1f2048;
+  --surface-r:     #292b50;
+  --surface-h:     #323464;
+  --text:          #e7e8f5;
+  --muted:         #a7abc7;
+  --subtle:        #6a6e93;
+  --accent:        #579bfc;
+  --accent-hover:  #4a88e8;
+  --accent-dim:    rgba(87, 155, 252, 0.14);
+  --accent-mid:    rgba(87, 155, 252, 0.30);
+  --border:        #3f4174;
+  --border-strong: #50539a;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -56,46 +94,58 @@ html, body {
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
 
-/* ── Buttons ── */
+/* ── Buttons ───────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; font-size: 13px; font-weight: 600;
-  background: var(--accent); color: var(--bg);
+  padding: 8px 16px; font-size: 14px; font-weight: 500;
+  background: var(--accent); color: #ffffff;
   border: 1px solid var(--accent); cursor: pointer;
-  border-radius: 6px; transition: filter 0.15s, opacity 0.15s;
-  font-family: var(--font-ui); letter-spacing: 0.01em;
+  border-radius: var(--r-md);
+  transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+  line-height: 1.2;
+  min-height: 32px;
+  box-shadow: var(--shadow-sm);
 }
-.btn:hover { filter: brightness(1.1); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+.btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; background: var(--accent); transform: none; }
 
 .btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
   background: transparent; color: var(--text);
   border: 1px solid var(--border-strong);
-  border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+  border-radius: var(--r-md);
+  padding: 8px 16px; font-size: 14px; font-weight: 500;
   cursor: pointer; font-family: var(--font-ui);
-  transition: background 0.15s, border-color 0.15s;
-  letter-spacing: 0.01em;
+  transition: background 0.12s, border-color 0.12s;
+  line-height: 1.2;
+  min-height: 32px;
 }
 .btn-ghost:hover { background: var(--surface-h); border-color: var(--subtle); }
-.btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* ── Form elements ── */
+/* ── Form elements ─────────────────────────────────────────────────────── */
 input, textarea, select {
   font-family: var(--font-ui); font-size: 14px;
-  background: var(--surface); border: 1px solid var(--border-strong);
+  background: var(--surface); border: 1px solid var(--border);
   color: var(--text); padding: 8px 12px; outline: none;
-  border-radius: 6px; width: 100%;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  border-radius: var(--r-md); width: 100%;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  line-height: 1.4;
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
@@ -103,56 +153,74 @@ input:focus, textarea:focus, select:focus {
 }
 input::placeholder, textarea::placeholder { color: var(--subtle); }
 select { cursor: pointer; }
-select option { background: var(--surface-r); }
+select option { background: var(--surface); color: var(--text); }
 
-/* ── Cards ── */
+/* ── Cards ─────────────────────────────────────────────────────────────── */
 .card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; overflow: hidden;
-  transition: border-color 0.15s, background 0.15s;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  box-shadow: var(--shadow-sm);
 }
 .card:hover {
-  border-color: var(--border-strong); background: var(--surface-h);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
-/* ── Status chips ── */
-.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; font-family: var(--font-mono); }
-.chip-draft  { background: var(--surface-r); color: var(--muted); border: 1px solid var(--border); }
-.chip-review { background: rgba(196, 122, 90, 0.12); color: var(--warning); border: 1px solid rgba(196, 122, 90, 0.3); }
-.chip-locked { background: rgba(95, 158, 117, 0.12); color: var(--success); border: 1px solid rgba(95, 158, 117, 0.3); }
+/* ── Status chips (Monday pill system) ─────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 10px; min-height: 22px;
+  border-radius: var(--r-sm);
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.02em; text-transform: uppercase;
+  font-family: var(--font-ui);
+  color: #ffffff;
+  white-space: nowrap;
+}
+.chip-draft   { background: var(--mon-grey); color: #ffffff; }
+.chip-review  { background: var(--mon-yellow); }
+.chip-locked  { background: var(--mon-green); }
+.chip-done    { background: var(--mon-green); }
+.chip-working { background: var(--mon-yellow); }
+.chip-stuck   { background: var(--mon-red); }
+.chip-info    { background: var(--mon-sky); }
+.chip-plan    { background: var(--mon-purple); }
 
-/* ── Section label ── */
+/* ── Section label ─────────────────────────────────────────────────────── */
 .section-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--subtle); padding: 4px 0; user-select: none;
   font-family: var(--font-ui);
 }
 
-/* ── Modal ── */
+/* ── Modal ─────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(29, 30, 64, 0.50);
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
 }
 .modal-box {
-  background: var(--surface-r); border: 1px solid var(--border-strong);
-  border-radius: 10px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-  padding: 24px; width: min(480px, 90vw);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+  padding: 24px; width: min(520px, 92vw);
   max-height: 90vh; overflow-y: auto;
 }
 
-/* ── Retro loader (keep for carousel generation) ── */
+/* ── Retro loader (preserved for carousel generation) ──────────────────── */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 @keyframes hp-fill { from{width:10%} to{width:100%} }
 
 .loader-wrap {
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   padding: 24px;
   font-family: var(--font-mono);
-  border-radius: 8px;
+  border-radius: var(--r-md);
 }
 .hp-label { font-size: 10px; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; font-family: var(--font-mono); }
 .hp-track { background: var(--border); border: 1px solid var(--border-strong); height: 14px; overflow: hidden; margin-bottom: 16px; border-radius: 2px; }
@@ -166,7 +234,7 @@ select option { background: var(--surface-r); }
 .loader-log .active { color: var(--text); }
 .blink { animation: blink 1s steps(1) infinite; }
 
-/* ── Animations ── */
+/* ── Animations ────────────────────────────────────────────────────────── */
 @keyframes spin    { to { transform: rotate(360deg); } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes pulse   { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.75); } }
@@ -174,8 +242,8 @@ select option { background: var(--surface-r); }
 @keyframes fadeInDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 .skeleton-shimmer {
-  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-h) 50%, var(--surface) 100%);
+  background: linear-gradient(90deg, var(--surface-r) 0%, var(--surface-h) 50%, var(--surface-r) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
 }
