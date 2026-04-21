@@ -388,7 +388,8 @@ export async function deleteCampaignKv(id: string): Promise<void> {
 
 export async function getBriefs(): Promise<UGCBrief[]> {
   try {
-    return (await redis.get<UGCBrief[]>(UGC_BRIEFS_KEY)) ?? [];
+    const raw = (await redis.get<UGCBrief[]>(UGC_BRIEFS_KEY)) ?? [];
+    return raw.map((b) => ({ ...b, caption: b.caption ?? "" }));
   } catch {
     return [];
   }

@@ -27,6 +27,7 @@ const createSchema = z.object({
     narrative: z.string().max(8000),
     cta: z.string().max(500),
   }).optional(),
+  caption: z.string().max(2000).optional(),
   creatorName: z.string().max(200).nullable().optional(),
 });
 
@@ -53,7 +54,7 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Invalid body", issues: parsed.error.issues }, { status: 400 });
     }
 
-    const { angle, conceptId, conceptLabel, title, doc, script, creatorName } = parsed.data;
+    const { angle, conceptId, conceptLabel, title, doc, script, caption, creatorName } = parsed.data;
 
     if (angle && !findAngle(angle)) {
       logExit("/api/ugc/briefs", "create", start, 400);
@@ -74,6 +75,7 @@ export async function POST(req: Request): Promise<Response> {
       title,
       doc: doc ?? null,
       script: script ?? { videoHook: "", textHook: "", narrative: "", cta: "" },
+      caption: caption ?? "",
       complianceFlags: [],
       status: "draft",
       creatorName: creatorName ?? null,

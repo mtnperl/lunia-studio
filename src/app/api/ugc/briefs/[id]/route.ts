@@ -24,6 +24,7 @@ const patchSchema = z.object({
     narrative: z.string().max(8000),
     cta: z.string().max(500),
   }).optional(),
+  caption: z.string().max(2000).optional(),
   complianceFlags: z.array(z.object({
     severity: z.enum(["amber", "red"]),
     rule: z.string(),

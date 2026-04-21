@@ -30,6 +30,8 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const [captionBusy, setCaptionBusy] = useState<string | null>(null);
   const [flags, setFlags] = useState<Record<string, { caption1?: ComplianceResult; caption2?: ComplianceResult }>>({});
   const [outreachModal, setOutreachModal] = useState<{ creator: UGCCreator } | null>(null);
+  const [scriptModalCreatorId, setScriptModalCreatorId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"readyToPost" | "totalSpend" | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -153,12 +155,16 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   }
 
   const creators = campaign.creators;
-  const totalCost = creators.reduce((s, c) => s + (c.cost || 0), 0);
+  const hasDelivered = (c: UGCCreator) =>
+    c.stage === "delivered" || c.stage === "edited-and-ready" || c.stage === "posted";
+  const deliveredCreators = creators.filter(hasDelivered);
+  const deliveredSpend = deliveredCreators.reduce((s, c) => s + (c.cost || 0), 0);
   const approvedCount = creators.filter((c) => c.stage !== "invited" && c.stage !== "cancelled").length;
-  const delivered = creators.filter((c) => c.stage === "delivered" || c.stage === "edited-and-ready" || c.stage === "posted").length;
+  const delivered = deliveredCreators.length;
+  const readyToPostCount = creators.filter((c) => c.stage === "edited-and-ready").length;
   const editedReadyCount = creators.filter((c) => c.stage === "edited-and-ready" || c.stage === "posted").length;
   const postedCount = creators.filter((c) => c.stage === "posted").length;
-  const costPerDelivered = delivered > 0 ? totalCost / delivered : 0;
+  const costPerDelivered = delivered > 0 ? deliveredSpend / delivered : 0;
   const byAngle: Record<string, number> = {};
   for (const c of creators) {
     const a = c.angle.trim() || "(unassigned)";
@@ -166,6 +172,20 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   }
 
   const pct = (n: number) => creators.length > 0 ? Math.round((n / creators.length) * 100) : 0;
+
+  const filteredCreators =
+    filter === "readyToPost"
+      ? creators.filter((c) => c.stage === "edited-and-ready")
+      : filter === "totalSpend"
+        ? creators.filter((c) => hasDelivered(c) && (c.cost || 0) > 0)
+        : creators;
+
+  const scriptModalCreator = scriptModalCreatorId
+    ? creators.find((c) => c.id === scriptModalCreatorId) ?? null
+    : null;
+  const scriptModalBrief = scriptModalCreator?.briefId
+    ? briefs.find((b) => b.id === scriptModalCreator.briefId) ?? null
+    : null;
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 32px 80px", fontFamily: "var(--font-ui)" }}>
@@ -181,6 +201,13 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
           creator={outreachModal.creator}
           brief={briefs.find((b) => b.id === outreachModal.creator.briefId) ?? null}
           onClose={() => setOutreachModal(null)}
+        />
+      )}
+      {scriptModalCreator && (
+        <ScriptModal
+          creator={scriptModalCreator}
+          brief={scriptModalBrief}
+          onClose={() => setScriptModalCreatorId(null)}
         />
       )}
 
@@ -203,14 +230,38 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
 
       {/* Rollups */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-        <Stat label="Creators" value={String(creators.length)} />
-        <Stat label="Total spend" value={`$${totalCost.toLocaleString()}`} />
+        <Stat
+          label="Ready to post"
+          value={String(readyToPostCount)}
+          active={filter === "readyToPost"}
+          onClick={() => setFilter(filter === "readyToPost" ? null : "readyToPost")}
+        />
+        <Stat
+          label="Total spend"
+          value={`$${deliveredSpend.toLocaleString()}`}
+          tooltip="Only includes creators who have delivered at least one video."
+          active={filter === "totalSpend"}
+          onClick={() => setFilter(filter === "totalSpend" ? null : "totalSpend")}
+        />
         <Stat label="Cost / delivered" value={delivered ? `$${Math.round(costPerDelivered).toLocaleString()}` : "—"} />
         <Stat label="Approved" value={`${pct(approvedCount)}%`} />
         <Stat label="Delivered" value={`${pct(delivered)}%`} />
         <Stat label="Edited & ready" value={`${pct(editedReadyCount)}%`} />
         <Stat label="Posted" value={`${pct(postedCount)}%`} />
       </div>
+
+      {filter && (
+        <div style={{ marginBottom: 16, fontSize: 12, color: "var(--muted)" }}>
+          Filtered by <strong style={{ color: "var(--text)" }}>{filter === "readyToPost" ? "Ready to post" : "Total spend"}</strong>
+          {" "}· {filteredCreators.length} of {creators.length} creator{creators.length === 1 ? "" : "s"}
+          <button
+            onClick={() => setFilter(null)}
+            style={{ marginLeft: 10, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, padding: 0 }}
+          >
+            clear
+          </button>
+        </div>
+      )}
 
       {Object.keys(byAngle).length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
@@ -235,6 +286,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
               <Th>Name</Th>
               <Th>Angle</Th>
               <Th>Brief</Th>
+              <Th style={{ width: 60 }}>Script</Th>
               <Th>Platform</Th>
               <Th>Cost</Th>
               <Th>Shipped</Th>
@@ -244,7 +296,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
             </tr>
           </thead>
           <tbody>
-            {creators.map((c) => {
+            {filteredCreators.map((c) => {
               const isExpanded = expanded === c.id;
               return (
                 <CreatorRow
@@ -259,13 +311,16 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
                   onDelete={() => deleteCreator(c.id)}
                   onGenerate={() => generateCaptions(c)}
                   onOutreach={() => setOutreachModal({ creator: c })}
+                  onOpenScript={() => setScriptModalCreatorId(c.id)}
                 />
               );
             })}
-            {creators.length === 0 && (
+            {filteredCreators.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
-                  No creators yet. Add one below, or import a spreadsheet.
+                <td colSpan={10} style={{ padding: 32, textAlign: "center", color: "var(--muted)" }}>
+                  {creators.length === 0
+                    ? "No creators yet. Add one below, or import a spreadsheet."
+                    : "No creators match the active filter."}
                 </td>
               </tr>
             )}
@@ -284,7 +339,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
 
 function CreatorRow({
   creator: c, briefs, expanded, captionBusy, flags,
-  onToggle, onPatch, onDelete, onGenerate, onOutreach,
+  onToggle, onPatch, onDelete, onGenerate, onOutreach, onOpenScript,
 }: {
   creator: UGCCreator;
   briefs: UGCBrief[];
@@ -296,7 +351,9 @@ function CreatorRow({
   onDelete: () => void;
   onGenerate: () => void;
   onOutreach: () => void;
+  onOpenScript: () => void;
 }) {
+  const assignedBrief = c.briefId ? briefs.find((b) => b.id === c.briefId) : null;
   return (
     <>
       <tr
@@ -332,9 +389,28 @@ function CreatorRow({
           >
             <option value="">—</option>
             {briefs.filter((b) => b.status !== "archived" || b.id === c.briefId).map((b) => (
-              <option key={b.id} value={b.id}>{b.title}</option>
+              <option key={b.id} value={b.id}>{b.title?.trim() || "Untitled brief"}</option>
             ))}
           </select>
+        </Td>
+        <Td onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onOpenScript}
+            disabled={!assignedBrief}
+            title={assignedBrief ? "Open script" : "Assign a brief to view script"}
+            style={{
+              background: "none",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "3px 8px",
+              fontSize: 12,
+              color: assignedBrief ? "var(--text)" : "var(--subtle)",
+              cursor: assignedBrief ? "pointer" : "not-allowed",
+              fontFamily: "var(--font-ui)",
+            }}
+          >
+            📄
+          </button>
         </Td>
         <Td onClick={(e) => e.stopPropagation()}>
           <select
@@ -378,7 +454,7 @@ function CreatorRow({
 
       {expanded && (
         <tr style={{ background: "var(--surface-h)", borderTop: "1px solid var(--border)" }}>
-          <td colSpan={9} style={{ padding: 16 }}>
+          <td colSpan={10} style={{ padding: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <CaptionBox
                 label="Caption 1"
@@ -506,10 +582,35 @@ const selectStyle: React.CSSProperties = {
   fontFamily: "var(--font-ui)", fontSize: 12,
 };
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, onClick, active, tooltip }: {
+  label: string; value: string;
+  onClick?: () => void; active?: boolean; tooltip?: string;
+}) {
+  const clickable = !!onClick;
   return (
-    <div style={{ padding: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}>
-      <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 6 }}>{label}</div>
+    <div
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
+      title={tooltip}
+      style={{
+        padding: 14,
+        background: active ? "var(--surface-h)" : "var(--surface)",
+        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+        borderRadius: 8,
+        cursor: clickable ? "pointer" : "default",
+        transition: "background 120ms ease, border-color 120ms ease",
+        position: "relative",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: active ? "var(--accent)" : "var(--subtle)" }}>{label}</div>
+        {active && <span style={{ fontSize: 10, color: "var(--accent)" }}>✓</span>}
+        {tooltip && !active && (
+          <span style={{ fontSize: 10, color: "var(--subtle)", border: "1px solid var(--border)", borderRadius: 9999, width: 12, height: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>i</span>
+        )}
+      </div>
       <div style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 18, color: "var(--text)", fontWeight: 500 }}>{value}</div>
     </div>
   );
@@ -671,6 +772,112 @@ function OutreachModal({ creator, brief, onClose }: {
             Regenerate
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ScriptModal({ creator, brief, onClose }: {
+  creator: UGCCreator;
+  brief: UGCBrief | null;
+  onClose: () => void;
+}) {
+  const [captionCopied, setCaptionCopied] = useState(false);
+
+  async function copyCaption() {
+    if (!brief?.caption) return;
+    try {
+      await navigator.clipboard.writeText(brief.caption);
+      setCaptionCopied(true);
+      setTimeout(() => setCaptionCopied(false), 1600);
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
+        display: "flex", justifyContent: "flex-end",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 640, height: "100%",
+          background: "var(--surface-r)", borderLeft: "1px solid var(--border)",
+          padding: "24px 28px 40px", overflowY: "auto",
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 4 }}>
+              Script for {creator.name || "(unnamed creator)"}
+            </div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--text)" }}>
+              {brief?.title?.trim() || "Untitled brief"}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}
+          >×</button>
+        </div>
+
+        {!brief ? (
+          <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+            No brief is assigned to this creator. Assign one in the table to view a script.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <ScriptSection label="Video hook" value={brief.script.videoHook} />
+            <ScriptSection label="Text hook" value={brief.script.textHook} />
+            <ScriptSection label="Narrative" value={brief.script.narrative} />
+            <ScriptSection label="CTA" value={brief.script.cta} />
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)" }}>Caption</span>
+                {brief.caption ? (
+                  <button
+                    onClick={copyCaption}
+                    style={{
+                      fontSize: 11, background: "transparent",
+                      color: captionCopied ? "var(--success)" : "var(--muted)",
+                      border: `1px solid ${captionCopied ? "var(--success)" : "var(--border)"}`,
+                      borderRadius: 4, padding: "3px 9px", cursor: "pointer",
+                    }}
+                  >
+                    {captionCopied ? "Copied!" : "Copy"}
+                  </button>
+                ) : null}
+              </div>
+              <div style={{
+                whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6,
+                padding: "10px 12px", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)",
+              }}>
+                {brief.caption?.trim() || "— No caption yet. Open the brief editor to generate one."}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScriptSection({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 6 }}>{label}</div>
+      <div style={{
+        whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6,
+        padding: "10px 12px", background: "var(--surface)",
+        border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)",
+      }}>
+        {value?.trim() || "—"}
       </div>
     </div>
   );

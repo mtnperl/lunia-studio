@@ -55,21 +55,44 @@ function FlagList({ flags }: { flags: BriefComplianceFlag[] }) {
   );
 }
 
-function ScriptField({ label, value, onChange, rows = 3 }: {
+function ScriptField({ label, value, onChange, rows = 3, onRegenerate, regenerating, disabled }: {
   label: string; value: string; onChange: (v: string) => void; rows?: number;
+  onRegenerate?: () => void; regenerating?: boolean; disabled?: boolean;
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <label style={{ display: "block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{label}</label>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>{label}</label>
+        {onRegenerate && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={regenerating || disabled}
+            title={disabled ? "Fill in the script first" : "Regenerate this field"}
+            style={{
+              fontSize: 11, fontWeight: 500,
+              color: regenerating || disabled ? "var(--subtle)" : "var(--muted)",
+              background: "transparent", border: "1px solid var(--border)",
+              borderRadius: 4, padding: "3px 9px",
+              cursor: regenerating || disabled ? "default" : "pointer",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {regenerating ? "…" : "↻ Regenerate"}
+          </button>
+        )}
+      </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
+        disabled={regenerating}
         style={{
           width: "100%", padding: "10px 12px", fontSize: 14, lineHeight: 1.6,
           fontFamily: "var(--font-ui)", color: "var(--text)", background: "var(--surface)",
           border: "1px solid var(--border)", borderRadius: 6, resize: "vertical",
           outline: "none", boxSizing: "border-box",
+          opacity: regenerating ? 0.5 : 1,
         }}
         onFocus={(e) => { e.target.style.borderColor = "var(--border-strong)"; }}
         onBlur={(e) => { e.target.style.borderColor = "var(--border)"; }}
@@ -272,7 +295,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
               >
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>
-                    {brief.title ?? (brief as unknown as Record<string, unknown>)["label"] as string ?? "(untitled)"}
+                    {brief.title?.trim() || ((brief as unknown as Record<string, unknown>)["label"] as string)?.trim() || "Untitled brief"}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>{brief.conceptLabel}</div>
                   {(brief.complianceFlags?.length ?? 0) > 0 && (
@@ -359,9 +382,29 @@ function BriefEditor({
   const [doc, setDoc] = useState<UGCBriefDoc>(brief?.doc ?? EMPTY_DOC);
   const [script, setScript] = useState<BriefScript>(brief?.script ?? EMPTY_SCRIPT);
   const [flags, setFlags] = useState<BriefComplianceFlag[]>(brief?.complianceFlags ?? []);
+  const [caption, setCaption] = useState<string>(brief?.caption ?? "");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [genError, setGenError] = useState("");
+
+  // Heading generation
+  const [headingBusy, setHeadingBusy] = useState(false);
+  const [headingErr, setHeadingErr] = useState("");
+
+  // Per-field regen
+  const [regenField, setRegenField] = useState<keyof BriefScript | null>(null);
+
+  // Caption generation
+  const [captionBusy, setCaptionBusy] = useState(false);
+  const [captionErr, setCaptionErr] = useState("");
+  const [captionCopied, setCaptionCopied] = useState(false);
+
+  const scriptIsEmpty = !(
+    script.videoHook.trim() ||
+    script.textHook.trim() ||
+    script.narrative.trim() ||
+    script.cta.trim()
+  );
 
   // Suggest-angle state
   const [suggestions, setSuggestions] = useState<{ angleKey: string; reason: string }[]>([]);
@@ -456,6 +499,7 @@ function BriefEditor({
             title,
             doc,
             script,
+            caption,
             creatorName: creatorName || null,
           }),
         });
@@ -465,7 +509,7 @@ function BriefEditor({
         const res = await fetch(`/api/ugc/briefs/${brief!.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, conceptLabel, doc, script, creatorName: creatorName || null, complianceFlags: flags }),
+          body: JSON.stringify({ title, conceptLabel, doc, script, caption, creatorName: creatorName || null, complianceFlags: flags }),
         });
         if (res.ok) { onDone(); return; }
         const d = await res.json(); setGenError(d.error ?? "Save failed");
@@ -473,6 +517,107 @@ function BriefEditor({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function generateHeading() {
+    if (scriptIsEmpty || headingBusy) return;
+    setHeadingBusy(true);
+    setHeadingErr("");
+    try {
+      const res = await fetch("/api/ugc/briefs/generate-heading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script,
+          angle: angleKey ? (ANGLE_LIBRARY.find((a) => a.key === angleKey)?.label ?? angleKey) : undefined,
+          conceptLabel: conceptLabel || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setHeadingErr(d.error ?? "Heading generation failed");
+        return;
+      }
+      const data = await res.json();
+      if (data.heading) setTitle(data.heading);
+    } catch {
+      setHeadingErr("Heading generation failed");
+    } finally {
+      setHeadingBusy(false);
+    }
+  }
+
+  async function regenerateScriptField(field: keyof BriefScript) {
+    if (regenField || !angleKey) return;
+    setRegenField(field);
+    setGenError("");
+    try {
+      const res = await fetch("/api/ugc/briefs/generate-field", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field,
+          angle: angleKey,
+          conceptLabel: conceptLabel || title || "(none)",
+          title,
+          script,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setGenError(d.error ?? "Field regeneration failed");
+        return;
+      }
+      const data = await res.json();
+      if (typeof data.value === "string") {
+        setScript((s) => ({ ...s, [field]: data.value }));
+      }
+      if (Array.isArray(data.flags) && data.flags.length) {
+        setFlags((f) => [...f, ...data.flags]);
+      }
+    } catch {
+      setGenError("Field regeneration failed");
+    } finally {
+      setRegenField(null);
+    }
+  }
+
+  async function generateCaption() {
+    if (captionBusy) return;
+    setCaptionBusy(true);
+    setCaptionErr("");
+    try {
+      const res = await fetch("/api/ugc/briefs/generate-caption", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script,
+          title: title || undefined,
+          angle: angleKey ? (ANGLE_LIBRARY.find((a) => a.key === angleKey)?.label ?? angleKey) : undefined,
+          conceptLabel: conceptLabel || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setCaptionErr(d.error ?? "Caption generation failed");
+        return;
+      }
+      const data = await res.json();
+      if (typeof data.caption === "string") setCaption(data.caption);
+    } catch {
+      setCaptionErr("Caption generation failed");
+    } finally {
+      setCaptionBusy(false);
+    }
+  }
+
+  async function copyCaption() {
+    if (!caption) return;
+    try {
+      await navigator.clipboard.writeText(caption);
+      setCaptionCopied(true);
+      setTimeout(() => setCaptionCopied(false), 1800);
+    } catch { /* ignore */ }
   }
 
   const isSectionDivider = (label: string) => (
@@ -604,7 +749,42 @@ function BriefEditor({
 
           {/* Core fields always visible */}
           <Field label="Brief title">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Perimenopause — Sleep angle" style={inputStyle} />
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Perimenopause, Sleep Angle"
+                disabled={headingBusy}
+                style={{ ...inputStyle, opacity: headingBusy ? 0.5 : 1 }}
+              />
+              <button
+                type="button"
+                onClick={generateHeading}
+                disabled={scriptIsEmpty || headingBusy}
+                title={scriptIsEmpty ? "Fill in the script first, then generate a heading." : "Generate heading from the script"}
+                style={{
+                  flexShrink: 0,
+                  fontSize: 13, fontWeight: 500,
+                  color: scriptIsEmpty || headingBusy ? "var(--subtle)" : "var(--text)",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "0 14px",
+                  cursor: scriptIsEmpty || headingBusy ? "not-allowed" : "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {headingBusy ? "Generating…" : "✨ Generate"}
+              </button>
+            </div>
+            {scriptIsEmpty && (
+              <p style={{ fontSize: 11, color: "var(--subtle)", margin: "6px 0 0" }}>
+                Fill in the script first, then generate a heading.
+              </p>
+            )}
+            {headingErr && (
+              <p style={{ fontSize: 12, color: "var(--error)", margin: "6px 0 0" }}>{headingErr}</p>
+            )}
           </Field>
           <Field label="Creator name (optional)">
             <input value={creatorName} onChange={(e) => setCreatorName(e.target.value)} placeholder="e.g. Michelle M." style={inputStyle} />
@@ -635,10 +815,95 @@ function BriefEditor({
 
           {/* ── Video script ── */}
           {isSectionDivider("Video script")}
-          <ScriptField label="Video hook" value={script.videoHook} onChange={(v) => setScript((s) => ({ ...s, videoHook: v }))} rows={2} />
-          <ScriptField label="Text hook" value={script.textHook} onChange={(v) => setScript((s) => ({ ...s, textHook: v }))} rows={2} />
-          <ScriptField label="Narrative" value={script.narrative} onChange={(v) => setScript((s) => ({ ...s, narrative: v }))} rows={8} />
-          <ScriptField label="CTA" value={script.cta} onChange={(v) => setScript((s) => ({ ...s, cta: v }))} rows={2} />
+          <ScriptField
+            label="Video hook" value={script.videoHook}
+            onChange={(v) => setScript((s) => ({ ...s, videoHook: v }))} rows={2}
+            onRegenerate={() => regenerateScriptField("videoHook")}
+            regenerating={regenField === "videoHook"}
+            disabled={!angleKey || regenField !== null}
+          />
+          <ScriptField
+            label="Text hook" value={script.textHook}
+            onChange={(v) => setScript((s) => ({ ...s, textHook: v }))} rows={2}
+            onRegenerate={() => regenerateScriptField("textHook")}
+            regenerating={regenField === "textHook"}
+            disabled={!angleKey || regenField !== null}
+          />
+          <ScriptField
+            label="Narrative" value={script.narrative}
+            onChange={(v) => setScript((s) => ({ ...s, narrative: v }))} rows={8}
+            onRegenerate={() => regenerateScriptField("narrative")}
+            regenerating={regenField === "narrative"}
+            disabled={!angleKey || regenField !== null}
+          />
+          <ScriptField
+            label="CTA" value={script.cta}
+            onChange={(v) => setScript((s) => ({ ...s, cta: v }))} rows={2}
+            onRegenerate={() => regenerateScriptField("cta")}
+            regenerating={regenField === "cta"}
+            disabled={!angleKey || regenField !== null}
+          />
+
+          {/* ── Caption ── */}
+          {isSectionDivider("Caption")}
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>
+              Social caption for this script (Instagram / TikTok). Ends with a follow CTA.
+            </p>
+            {!caption && (
+              <button
+                type="button"
+                onClick={generateCaption}
+                disabled={captionBusy || scriptIsEmpty}
+                title={scriptIsEmpty ? "Fill in the script first" : "Generate caption from the script"}
+                style={{ ...ghostBtn, opacity: captionBusy || scriptIsEmpty ? 0.6 : 1, cursor: captionBusy || scriptIsEmpty ? "default" : "pointer" }}
+              >
+                {captionBusy ? "Generating…" : "✨ Generate caption"}
+              </button>
+            )}
+            {caption && (
+              <>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={7}
+                  disabled={captionBusy}
+                  style={{
+                    width: "100%", padding: "10px 12px", fontSize: 14, lineHeight: 1.6,
+                    fontFamily: "var(--font-ui)", color: "var(--text)", background: "var(--surface)",
+                    border: "1px solid var(--border)", borderRadius: 6, resize: "vertical",
+                    outline: "none", boxSizing: "border-box",
+                    opacity: captionBusy ? 0.5 : 1,
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={copyCaption}
+                    disabled={!caption || captionBusy}
+                    style={{
+                      ...ghostBtn,
+                      color: captionCopied ? "var(--success)" : "var(--text)",
+                      borderColor: captionCopied ? "var(--success)" : "var(--border)",
+                    }}
+                  >
+                    {captionCopied ? "Copied!" : "Copy"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateCaption}
+                    disabled={captionBusy || scriptIsEmpty}
+                    style={{ ...ghostBtn, opacity: captionBusy || scriptIsEmpty ? 0.6 : 1 }}
+                  >
+                    {captionBusy ? "Regenerating…" : "↻ Regenerate"}
+                  </button>
+                </div>
+              </>
+            )}
+            {captionErr && (
+              <p style={{ fontSize: 12, color: "var(--error)", margin: "8px 0 0" }}>{captionErr}</p>
+            )}
+          </div>
 
           {flags.length > 0 && (
             <div style={{ marginBottom: 20 }}>

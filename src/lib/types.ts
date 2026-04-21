@@ -688,6 +688,7 @@ export interface UGCBrief {
   title: string;                    // brief title (angle + concept by default)
   doc: UGCBriefDoc | null;          // structured brief document sections (null on old briefs)
   script: BriefScript;
+  caption: string;                  // social-media caption tied to this script (not the creator)
   complianceFlags: BriefComplianceFlag[];
   status: BriefStatus;
   creatorName: string | null;       // optional assigned creator
