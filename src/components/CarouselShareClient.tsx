@@ -368,7 +368,15 @@ export default function CarouselShareClient({ carousel }: Props) {
           setPreloadDone((n) => n + 1);
         } catch (err) {
           if (cancelled) return;
-          setPreloadError(err instanceof Error ? err.message : "Preload failed");
+          const label = SLIDE_LABELS[i] ?? `slide ${i + 1}`;
+          let msg: string;
+          if (err instanceof Error) {
+            msg = `${label}: ${err.message || err.name || "unknown"}`;
+          } else {
+            msg = `${label}: ${typeof err === "string" ? err : JSON.stringify(err) || "threw non-Error"}`;
+          }
+          if (typeof console !== "undefined") console.error("[share] preload failed", i, err);
+          setPreloadError(msg);
         }
       }
     };
