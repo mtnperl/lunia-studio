@@ -11,6 +11,9 @@ const PUBLIC_PREFIXES = [
   "/scripts/",
   "/ugc/share/",
   "/api/ugc/briefs/share/",
+  // Needed by public share pages for CORS-safe PNG export. The endpoint itself
+  // enforces a hardcoded allowlist of upstream hosts (fal.media, etc).
+  "/api/carousel/image-proxy",
 ];
 
 export const config = {
