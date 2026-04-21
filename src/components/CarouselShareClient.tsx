@@ -49,6 +49,12 @@ export default function CarouselShareClient({ carousel }: Props) {
   const [captionCopied, setCaptionCopied] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  // Per-slide blob URLs (null until preload completes for that slot).
+  // Rendering these as real <a href> links gives iOS Safari a tappable target
+  // that survives any user-activation expiry, which is the core mobile bug.
+  const [slideBlobs, setSlideBlobs] = useState<Array<{ url: string; name: string } | null>>([null, null, null, null, null]);
+  const [preloadDone, setPreloadDone] = useState(0); // count of slides preloaded (0..5)
+  const [preloadError, setPreloadError] = useState<string | null>(null);
 
   const isEngagement = carousel.format === "engagement";
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
@@ -276,15 +282,25 @@ export default function CarouselShareClient({ carousel }: Props) {
     return file;
   }
 
+  // Wrap a promise with a timeout so mobile Safari hangs on toPng / canvas
+  // surface as a visible error instead of eternal spinner.
+  function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+      p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+    });
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
-      const file = await getSlideFile(index);
+      const file = await withTimeout(getSlideFile(index), 25_000, `Slide ${index + 1} render`);
       await saveFile(file);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setExportError("Export failed — try again");
+      const msg = err instanceof Error ? err.message : "Export failed";
+      setExportError(`Export failed: ${msg}`);
     } finally {
       setDownloading(null);
     }
@@ -314,34 +330,53 @@ export default function CarouselShareClient({ carousel }: Props) {
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
-        setExportError("Export failed — try again");
+        const msg = err instanceof Error ? err.message : "Export failed";
+        setExportError(`Export failed: ${msg}`);
       }
     } finally {
       setDownloadingAll(false);
     }
   }
 
-  // Preload all 5 slide PNGs on mount (and whenever format toggles) so that a user tap
-  // on mobile can immediately call navigator.share() inside the transient-activation window.
+  // Preload all 5 slide PNGs on mount (and whenever format toggles). Sets real blob URLs
+  // on state so that the download controls can render as <a href> links — tapping a real
+  // link on iOS Safari always works, bypassing the Web Share API activation quirks.
   useEffect(() => {
     preloadedFilesRef.current = new Map();
+    setSlideBlobs([null, null, null, null, null]);
+    setPreloadDone(0);
+    setPreloadError(null);
+
+    const createdUrls: string[] = [];
     let cancelled = false;
+
     const run = async () => {
-      // Let refs attach after render
       await new Promise((r) => setTimeout(r, 150));
       for (let i = 0; i < 5; i++) {
         if (cancelled) return;
         try {
-          const file = await buildSlideFile(i);
+          const file = await withTimeout(buildSlideFile(i), 25_000, `Slide ${i + 1} render`);
           if (cancelled) return;
           preloadedFilesRef.current.set(`${reelsMode}|${i}`, file);
-        } catch {
-          // Non-fatal: on-demand path will retry when user taps
+          const url = URL.createObjectURL(file);
+          createdUrls.push(url);
+          setSlideBlobs((prev) => {
+            const next = [...prev];
+            next[i] = { url, name: file.name };
+            return next;
+          });
+          setPreloadDone((n) => n + 1);
+        } catch (err) {
+          if (cancelled) return;
+          setPreloadError(err instanceof Error ? err.message : "Preload failed");
         }
       }
     };
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      for (const u of createdUrls) URL.revokeObjectURL(u);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reelsMode]);
 
@@ -426,11 +461,12 @@ export default function CarouselShareClient({ carousel }: Props) {
             )}
             <button
               onClick={downloadAll}
-              disabled={downloadingAll}
+              disabled={downloadingAll || preloadDone < 5}
               style={{
                 background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: 7,
                 padding: "9px 18px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-                cursor: downloadingAll ? "not-allowed" : "pointer", opacity: downloadingAll ? 0.7 : 1,
+                cursor: (downloadingAll || preloadDone < 5) ? "not-allowed" : "pointer",
+                opacity: (downloadingAll || preloadDone < 5) ? 0.7 : 1,
                 display: "flex", alignItems: "center", gap: 8,
               }}
             >
@@ -438,6 +474,11 @@ export default function CarouselShareClient({ carousel }: Props) {
                 <>
                   <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
                   Exporting…
+                </>
+              ) : preloadDone < 5 ? (
+                <>
+                  <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⟳</span>
+                  Preparing… ({preloadDone}/5)
                 </>
               ) : `↓ Download all (5 PNGs)`}
             </button>
@@ -454,6 +495,21 @@ export default function CarouselShareClient({ carousel }: Props) {
         {exportError && (
           <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
             ⚠ {exportError}
+          </div>
+        )}
+        {preloadError && preloadDone < 5 && (
+          <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
+            ⚠ Preload: {preloadError}
+          </div>
+        )}
+        {preloadDone > 0 && preloadDone < 5 && !preloadError && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "var(--muted)" }}>
+            Preparing slides for download… ({preloadDone}/5)
+          </div>
+        )}
+        {preloadDone === 5 && (
+          <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, padding: "8px 14px", marginBottom: 20, fontSize: 12, color: "#15803d" }}>
+            ✓ Ready to download. On iPhone: tap ↓ PNG → image opens → long-press → Save to Photos.
           </div>
         )}
         {pdfError && (
@@ -473,19 +529,54 @@ export default function CarouselShareClient({ carousel }: Props) {
               <div style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
                 {node}
               </div>
-              <button
-                onClick={() => downloadSlide(i)}
-                disabled={downloading === i || downloadingAll}
-                style={{
-                  marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
-                  border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
-                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
-                  cursor: (downloading === i || downloadingAll) ? "not-allowed" : "pointer",
-                  opacity: (downloading === i || downloadingAll) ? 0.5 : 1,
-                }}
-              >
-                {downloading === i ? "…" : "↓ PNG"}
-              </button>
+              {slideBlobs[i] ? (
+                <a
+                  href={slideBlobs[i]!.url}
+                  download={slideBlobs[i]!.name}
+                  target="_blank"
+                  rel="noopener"
+                  onClick={(e) => {
+                    // Try Web Share API first (gets the native share sheet on iOS/Android).
+                    // If unavailable, let the <a> navigation fire — iOS opens the PNG
+                    // inline so the user can long-press → Save to Photos.
+                    const file = preloadedFilesRef.current.get(`${reelsMode}|${i}`);
+                    if (
+                      file &&
+                      typeof navigator.share === "function" &&
+                      typeof navigator.canShare === "function" &&
+                      navigator.canShare({ files: [file] })
+                    ) {
+                      e.preventDefault();
+                      navigator.share({ files: [file], title: file.name }).catch(() => {
+                        // Share rejected — fall back to opening the blob URL
+                        window.open(slideBlobs[i]!.url, "_blank");
+                      });
+                    }
+                  }}
+                  style={{
+                    display: "block", textAlign: "center",
+                    marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--text)",
+                    border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
+                    fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  ↓ PNG
+                </a>
+              ) : (
+                <button
+                  onClick={() => downloadSlide(i)}
+                  disabled={downloading === i || downloadingAll}
+                  style={{
+                    marginTop: 8, width: "100%", background: "var(--surface)", color: "var(--muted)",
+                    border: "1px solid var(--border)", borderRadius: 6, padding: "7px 0",
+                    fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                    cursor: "wait", opacity: 0.6,
+                  }}
+                >
+                  {preloadError ? "⚠ Retry" : "Preparing…"}
+                </button>
+              )}
             </div>
           ))}
         </div>
