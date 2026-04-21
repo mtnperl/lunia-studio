@@ -53,6 +53,12 @@ export default function CarouselShareClient({ carousel }: Props) {
   const isEngagement = carousel.format === "engagement";
   const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
 
+  // Pre-built PNG cache keyed by `${reelsMode}|${index}`. Filled in background on mount
+  // so that when the user taps Download on mobile, navigator.share() fires instantly —
+  // preserving the iOS Safari transient-activation token (expires ~5s after tap).
+  // Without this, toPng + canvas work eats the activation window and share silently fails.
+  const preloadedFilesRef = useRef<Map<string, File>>(new Map());
+
   // Pre-fetch the hook background as a data URL at mount so it's ready when user
   // clicks download. Canvas compositing needs it because html-to-image cannot render
   // <img> elements in SVG foreignObject — they always come out blank.
@@ -180,6 +186,8 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Any device that supports navigator.canShare({ files }) (iOS Safari, Android Chrome):
   //   Web Share API → native share sheet → "Save Image" / Downloads.
   // Desktop + browsers that don't support file sharing: blob URL download.
+  // iOS Safari last-resort: open the blob URL so the user can long-press → Save to Photos
+  //   (programmatic <a download> is ignored on iOS for blob URLs).
   async function saveFile(file: File) {
     const canShareFiles =
       typeof navigator.share === "function" &&
@@ -196,8 +204,18 @@ export default function CarouselShareClient({ carousel }: Props) {
       }
     }
 
-    // Direct download: blob URL → browser saves to Downloads folder
     const url = URL.createObjectURL(file);
+    const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS) {
+      // <a download> is a no-op on iOS Safari for blob URLs. Open in a new tab so
+      // the user can long-press → Save to Photos.
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return;
+    }
+
+    // Desktop + Android: standard blob-URL download
     const a = document.createElement("a");
     a.href = url;
     a.download = file.name;
@@ -248,11 +266,21 @@ export default function CarouselShareClient({ carousel }: Props) {
     }
   }
 
+  // Use pre-built file if available, otherwise build on demand.
+  async function getSlideFile(index: number): Promise<File> {
+    const key = `${reelsMode}|${index}`;
+    const cached = preloadedFilesRef.current.get(key);
+    if (cached) return cached;
+    const file = await buildSlideFile(index);
+    preloadedFilesRef.current.set(key, file);
+    return file;
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
     try {
-      const file = await buildSlideFile(index);
+      const file = await getSlideFile(index);
       await saveFile(file);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -266,11 +294,8 @@ export default function CarouselShareClient({ carousel }: Props) {
     setDownloadingAll(true);
     setExportError(null);
     try {
-      // Build all 5 files first, then attempt a single multi-file share.
-      // If the browser supports file sharing (iOS Safari + Android Chrome), use it.
-      // Desktop or unsupported browsers fall back to sequential blob downloads.
       const files: File[] = [];
-      for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+      for (let i = 0; i < 5; i++) files.push(await getSlideFile(i));
 
       const canShareFiles =
         typeof navigator.share === "function" &&
@@ -282,7 +307,6 @@ export default function CarouselShareClient({ carousel }: Props) {
           await navigator.share({ files, title: "Lunia carousel slides" });
         } catch (err) {
           if (err instanceof Error && err.name === "AbortError") return;
-          // Multi-file share rejected — fall back to one-by-one
           for (const f of files) await saveFile(f);
         }
       } else {
@@ -296,6 +320,30 @@ export default function CarouselShareClient({ carousel }: Props) {
       setDownloadingAll(false);
     }
   }
+
+  // Preload all 5 slide PNGs on mount (and whenever format toggles) so that a user tap
+  // on mobile can immediately call navigator.share() inside the transient-activation window.
+  useEffect(() => {
+    preloadedFilesRef.current = new Map();
+    let cancelled = false;
+    const run = async () => {
+      // Let refs attach after render
+      await new Promise((r) => setTimeout(r, 150));
+      for (let i = 0; i < 5; i++) {
+        if (cancelled) return;
+        try {
+          const file = await buildSlideFile(i);
+          if (cancelled) return;
+          preloadedFilesRef.current.set(`${reelsMode}|${i}`, file);
+        } catch {
+          // Non-fatal: on-demand path will retry when user taps
+        }
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reelsMode]);
 
   const previewNodes = [
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
