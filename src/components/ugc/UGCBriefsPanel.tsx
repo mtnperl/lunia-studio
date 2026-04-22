@@ -5,7 +5,7 @@ import { ANGLE_LIBRARY } from "@/lib/angleLibrary";
 import type { UGCBrief, BriefScript, BriefComplianceFlag, UGCBriefDoc } from "@/lib/types";
 import UGCCRTLoader from "./UGCCRTLoader";
 
-type PanelView = "list" | "create" | "edit";
+type PanelView = "list" | "create" | "edit" | "view";
 
 const DEFAULT_BRAND = `Lunia Life is a hormone-support supplement brand for women in perimenopause and menopause (ages 35-60). Our flagship product supports hormonal balance, sleep quality, energy, and mood through clinically-informed botanicals. We are a direct-to-consumer brand built on trust, education, and real women's stories — not before-and-after photos or drug claims.`;
 
@@ -131,6 +131,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   const [briefs, setBriefs] = useState<UGCBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [editTarget, setEditTarget] = useState<UGCBrief | null>(null);
+  const [viewTarget, setViewTarget] = useState<UGCBrief | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<"ai" | "manual">("ai");
@@ -155,6 +156,11 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   function openEdit(brief: UGCBrief) {
     setEditTarget(brief);
     setView("edit");
+  }
+
+  function openView(brief: UGCBrief) {
+    setViewTarget(brief);
+    setView("view");
   }
 
   async function approveBrief(id: string) {
@@ -226,6 +232,15 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
       />
     );
   }
+  if (view === "view" && viewTarget) {
+    return (
+      <BriefViewer
+        brief={viewTarget}
+        onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); setView("edit"); }}
+        onBack={() => { setViewTarget(null); setView("list"); }}
+      />
+    );
+  }
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 40px 80px", fontFamily: "var(--font-ui)" }}>
@@ -294,9 +309,19 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
               >
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>
+                  <button
+                    onClick={() => openView(brief)}
+                    title="View brief"
+                    style={{
+                      background: "none", border: "none", padding: 0, cursor: "pointer",
+                      fontSize: 14, fontWeight: 500, color: "var(--text)", marginBottom: 2,
+                      textAlign: "left", fontFamily: "inherit",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"; }}
+                  >
                     {brief.title?.trim() || ((brief as unknown as Record<string, unknown>)["label"] as string)?.trim() || "Untitled brief"}
-                  </div>
+                  </button>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>{brief.conceptLabel}</div>
                   {(brief.complianceFlags?.length ?? 0) > 0 && (
                     <div style={{ marginTop: 4, fontSize: 11, color: brief.complianceFlags?.some((f) => f.severity === "red") ? "var(--error)" : "var(--warning)" }}>
@@ -312,6 +337,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
                   {fmtDate(brief.updatedAt)}
                 </div>
                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                  <button onClick={() => openView(brief)} style={actionBtn}>View</button>
                   <button onClick={() => openEdit(brief)} style={actionBtn}>Edit</button>
                   {brief.status !== "approved" && brief.status !== "archived" && (
                     <button onClick={() => approveBrief(brief.id)} style={{ ...actionBtn, color: "var(--success)" }}>Approve</button>
@@ -351,6 +377,114 @@ const actionBtn: React.CSSProperties = {
   background: "none", border: "1px solid var(--border)",
   borderRadius: 4, padding: "4px 10px", cursor: "pointer",
 };
+
+// ─── Brief Viewer (read-only) ────────────────────────────────────────────────
+
+function BriefViewer({ brief, onEdit, onBack }: { brief: UGCBrief; onEdit: () => void; onBack: () => void }) {
+  const [captionCopied, setCaptionCopied] = useState(false);
+  const angleLabel = ANGLE_LIBRARY.find((a) => a.key === brief.angle)?.label ?? brief.angle;
+
+  async function copyCaption() {
+    if (!brief.caption) return;
+    await navigator.clipboard.writeText(brief.caption);
+    setCaptionCopied(true);
+    setTimeout(() => setCaptionCopied(false), 2000);
+  }
+
+  return (
+    <div style={{ maxWidth: 820, margin: "0 auto", padding: "40px 40px 80px", fontFamily: "var(--font-ui)" }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 12 }}>
+        ← Briefs
+      </button>
+
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 24 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>
+            {brief.title?.trim() || "Untitled brief"}
+          </h1>
+          <div style={{ marginTop: 8, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <StatusPill status={brief.status} />
+            {angleLabel && <span style={{ fontSize: 12, color: "var(--muted)" }}>{angleLabel}</span>}
+            {brief.conceptLabel && <span style={{ fontSize: 12, color: "var(--muted)" }}>· {brief.conceptLabel}</span>}
+            <span style={{ fontSize: 12, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>updated {fmtDate(brief.updatedAt)}</span>
+          </div>
+        </div>
+        <button
+          onClick={onEdit}
+          style={{
+            fontSize: 13, fontWeight: 500, color: "var(--bg)",
+            background: "var(--accent)", border: "none",
+            borderRadius: 6, padding: "8px 16px", cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          Edit
+        </button>
+      </div>
+
+      <FlagList flags={brief.complianceFlags ?? []} />
+
+      <ViewSection title="About the brand"       value={brief.doc?.aboutBrand} />
+      <ViewSection title="Who we're looking for" value={brief.doc?.whoWereLookingFor} />
+      <ViewSection title="The concept"           value={brief.doc?.theConcept} />
+      <ViewSection title="The setup"             value={brief.doc?.theSetup} />
+      <ViewSection title="Where to film"         value={brief.doc?.whereToFilm} />
+      <ViewSection title="Deliverables"          value={brief.doc?.deliverables} />
+
+      <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 14 }}>
+          Script
+        </div>
+        <ViewSection title="Video hook" value={brief.script?.videoHook} compact />
+        <ViewSection title="Text hook"  value={brief.script?.textHook}  compact />
+        <ViewSection title="Narrative"  value={brief.script?.narrative} compact />
+        <ViewSection title="CTA"        value={brief.script?.cta}       compact />
+      </div>
+
+      {brief.caption && (
+        <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Caption
+            </div>
+            <button
+              onClick={copyCaption}
+              style={{
+                ...actionBtn,
+                color: captionCopied ? "var(--success)" : "var(--muted)",
+                borderColor: captionCopied ? "var(--success)" : "var(--border)",
+              }}
+            >
+              {captionCopied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+          <div style={{
+            fontSize: 14, color: "var(--text)", lineHeight: 1.65,
+            whiteSpace: "pre-wrap",
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 6, padding: "12px 14px",
+          }}>
+            {brief.caption}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ViewSection({ title, value, compact }: { title: string; value?: string; compact?: boolean }) {
+  if (!value?.trim()) return null;
+  return (
+    <div style={{ marginTop: compact ? 14 : 24 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 // ─── Brief Editor ────────────────────────────────────────────────────────────
 

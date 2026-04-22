@@ -32,6 +32,8 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const [outreachModal, setOutreachModal] = useState<{ creator: UGCCreator } | null>(null);
   const [scriptModalCreatorId, setScriptModalCreatorId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"readyToPost" | "totalSpend" | null>(null);
+  const [bulkCaption, setBulkCaption] = useState<{ done: number; total: number; error?: string } | null>(null);
+  const [copiedBriefId, setCopiedBriefId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
@@ -146,6 +148,71 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
     window.open(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/export`, "_blank");
   }
 
+  // Generate brief-level captions for every unique brief assigned to a creator
+  // in this campaign that is missing one. One caption per brief; creators using
+  // the same brief share the caption.
+  async function generateMissingCaptions() {
+    if (!campaign) return;
+    const assignedBriefIds = new Set(
+      campaign.creators
+        .map((c) => c.briefId)
+        .filter((id): id is string => !!id),
+    );
+    const targets = briefs.filter(
+      (b) => assignedBriefIds.has(b.id) && !b.caption?.trim() && b.status !== "archived",
+    );
+    if (targets.length === 0) {
+      setBulkCaption({ done: 0, total: 0, error: "All assigned briefs already have captions." });
+      setTimeout(() => setBulkCaption(null), 3000);
+      return;
+    }
+    setBulkCaption({ done: 0, total: targets.length });
+    let done = 0;
+    for (const brief of targets) {
+      try {
+        const res = await fetch("/api/ugc/briefs/generate-caption", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            script: brief.script ?? { videoHook: "", textHook: "", narrative: "", cta: "" },
+            title: brief.title,
+            angle: brief.angle,
+            conceptLabel: brief.conceptLabel,
+          }),
+        });
+        if (!res.ok) throw new Error(`Caption API returned ${res.status}`);
+        const body = (await res.json()) as { caption: string; flags: unknown };
+        await fetch(`/api/ugc/briefs/${brief.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ caption: body.caption, complianceFlags: body.flags }),
+        });
+        done += 1;
+        setBulkCaption({ done, total: targets.length });
+      } catch (err) {
+        setBulkCaption({
+          done,
+          total: targets.length,
+          error: err instanceof Error ? err.message : "Generation failed",
+        });
+        // Stop on error — rate limit or API down
+        break;
+      }
+    }
+    // Refresh briefs so copy buttons light up
+    const fresh = await fetch("/api/ugc/briefs").then((r) => (r.ok ? r.json() : []));
+    setBriefs(Array.isArray(fresh) ? fresh : []);
+    setTimeout(() => setBulkCaption(null), 4000);
+  }
+
+  async function copyBriefCaption(briefId: string) {
+    const brief = briefs.find((b) => b.id === briefId);
+    if (!brief?.caption) return;
+    await navigator.clipboard.writeText(brief.caption);
+    setCopiedBriefId(briefId);
+    setTimeout(() => setCopiedBriefId(null), 2000);
+  }
+
   if (!campaign) {
     return (
       <div style={{ padding: 40, fontFamily: "var(--font-ui)" }}>
@@ -235,10 +302,58 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={generateMissingCaptions}
+            disabled={!!bulkCaption && !bulkCaption.error && bulkCaption.done < bulkCaption.total}
+            style={{
+              fontSize: 12, fontWeight: 600, color: "var(--bg)",
+              background: "var(--accent)", border: "none",
+              borderRadius: "var(--r-sm)", padding: "6px 12px",
+              cursor: (bulkCaption && !bulkCaption.error && bulkCaption.done < bulkCaption.total) ? "wait" : "pointer",
+              opacity: (bulkCaption && !bulkCaption.error && bulkCaption.done < bulkCaption.total) ? 0.7 : 1,
+              fontFamily: "inherit",
+            }}
+          >
+            {bulkCaption && !bulkCaption.error && bulkCaption.done < bulkCaption.total
+              ? `Generating… ${bulkCaption.done}/${bulkCaption.total}`
+              : "⚡ Generate captions"}
+          </button>
           <GhostBtn onClick={() => setImportOpen(true)}>Import XLSX</GhostBtn>
           <GhostBtn onClick={exportSheet}>Export XLSX</GhostBtn>
         </div>
       </div>
+
+      {bulkCaption && (
+        <div style={{
+          marginBottom: 16, padding: "10px 14px", borderRadius: "var(--r-sm)",
+          fontSize: 12,
+          background: bulkCaption.error
+            ? "rgba(184,92,92,0.08)"
+            : bulkCaption.done === bulkCaption.total && bulkCaption.total > 0
+              ? "rgba(34,197,94,0.08)"
+              : "var(--surface)",
+          border: `1px solid ${
+            bulkCaption.error
+              ? "rgba(184,92,92,0.3)"
+              : bulkCaption.done === bulkCaption.total && bulkCaption.total > 0
+                ? "rgba(34,197,94,0.3)"
+                : "var(--border)"
+          }`,
+          color: bulkCaption.error
+            ? "var(--error)"
+            : bulkCaption.done === bulkCaption.total && bulkCaption.total > 0
+              ? "#15803d"
+              : "var(--muted)",
+        }}>
+          {bulkCaption.error
+            ? `⚠ ${bulkCaption.error}`
+            : bulkCaption.total === 0
+              ? "All assigned briefs already have captions."
+              : bulkCaption.done === bulkCaption.total
+                ? `✓ Generated ${bulkCaption.done} caption${bulkCaption.done === 1 ? "" : "s"}.`
+                : `Generating captions… ${bulkCaption.done}/${bulkCaption.total}`}
+        </div>
+      )}
 
       {/* Rollups */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
@@ -318,12 +433,14 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
                   expanded={isExpanded}
                   captionBusy={captionBusy === c.id}
                   flags={flags[c.id]}
+                  copiedBriefCaption={!!c.briefId && copiedBriefId === c.briefId}
                   onToggle={() => setExpanded(isExpanded ? null : c.id)}
                   onPatch={(p) => patchLocal(c.id, p)}
                   onDelete={() => deleteCreator(c.id)}
                   onGenerate={() => generateCaptions(c)}
                   onOutreach={() => setOutreachModal({ creator: c })}
                   onOpenScript={() => setScriptModalCreatorId(c.id)}
+                  onCopyBriefCaption={() => c.briefId && copyBriefCaption(c.briefId)}
                 />
               );
             })}
@@ -350,22 +467,25 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
 }
 
 function CreatorRow({
-  creator: c, briefs, expanded, captionBusy, flags,
-  onToggle, onPatch, onDelete, onGenerate, onOutreach, onOpenScript,
+  creator: c, briefs, expanded, captionBusy, flags, copiedBriefCaption,
+  onToggle, onPatch, onDelete, onGenerate, onOutreach, onOpenScript, onCopyBriefCaption,
 }: {
   creator: UGCCreator;
   briefs: UGCBrief[];
   expanded: boolean;
   captionBusy: boolean;
   flags: { caption1?: ComplianceResult; caption2?: ComplianceResult } | undefined;
+  copiedBriefCaption: boolean;
   onToggle: () => void;
   onPatch: (p: Partial<UGCCreator>) => void;
   onDelete: () => void;
   onGenerate: () => void;
   onOutreach: () => void;
   onOpenScript: () => void;
+  onCopyBriefCaption: () => void;
 }) {
   const assignedBrief = c.briefId ? briefs.find((b) => b.id === c.briefId) : null;
+  const hasBriefCaption = !!assignedBrief?.caption?.trim();
   return (
     <>
       <tr
@@ -394,16 +514,41 @@ function CreatorRow({
           <InlineText value={c.angle} onChange={(v) => onPatch({ angle: v })} placeholder="–" />
         </Td>
         <Td onClick={(e) => e.stopPropagation()}>
-          <select
-            value={c.briefId ?? ""}
-            onChange={(e) => onPatch({ briefId: e.target.value || null })}
-            style={selectStyle}
-          >
-            <option value="">—</option>
-            {briefs.filter((b) => b.status !== "archived" || b.id === c.briefId).map((b) => (
-              <option key={b.id} value={b.id}>{b.title?.trim() || "Untitled brief"}</option>
-            ))}
-          </select>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <select
+              value={c.briefId ?? ""}
+              onChange={(e) => onPatch({ briefId: e.target.value || null })}
+              style={selectStyle}
+            >
+              <option value="">—</option>
+              {briefs.filter((b) => b.status !== "archived" || b.id === c.briefId).map((b) => (
+                <option key={b.id} value={b.id}>{b.title?.trim() || "Untitled brief"}</option>
+              ))}
+            </select>
+            <button
+              onClick={onCopyBriefCaption}
+              disabled={!hasBriefCaption}
+              title={hasBriefCaption ? "Copy brief caption" : "No caption yet — generate one above"}
+              style={{
+                flexShrink: 0,
+                background: "none",
+                border: "1px solid var(--border)",
+                borderRadius: 4, padding: "2px 7px",
+                fontSize: 11,
+                color: copiedBriefCaption
+                  ? "var(--success)"
+                  : hasBriefCaption
+                    ? "var(--muted)"
+                    : "var(--subtle)",
+                cursor: hasBriefCaption ? "pointer" : "not-allowed",
+                opacity: hasBriefCaption ? 1 : 0.5,
+                fontFamily: "var(--font-ui)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {copiedBriefCaption ? "✓" : "📋"}
+            </button>
+          </div>
         </Td>
         <Td onClick={(e) => e.stopPropagation()}>
           <button
