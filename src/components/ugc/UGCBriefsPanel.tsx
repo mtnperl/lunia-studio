@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ANGLE_LIBRARY } from "@/lib/angleLibrary";
-import type { UGCBrief, BriefScript, BriefComplianceFlag, UGCBriefDoc } from "@/lib/types";
+import type { UGCBrief, BriefScript, BriefComplianceFlag, UGCBriefDoc, BriefAdPack, MetaCtaType } from "@/lib/types";
 import UGCCRTLoader from "./UGCCRTLoader";
 
 type PanelView = "list" | "create" | "edit" | "view";
@@ -380,7 +380,8 @@ const actionBtn: React.CSSProperties = {
 
 // ─── Brief Viewer (read-only) ────────────────────────────────────────────────
 
-function BriefViewer({ brief, onEdit, onBack }: { brief: UGCBrief; onEdit: () => void; onBack: () => void }) {
+function BriefViewer({ brief: initialBrief, onEdit, onBack }: { brief: UGCBrief; onEdit: () => void; onBack: () => void }) {
+  const [brief, setBrief] = useState<UGCBrief>(initialBrief);
   const [captionCopied, setCaptionCopied] = useState(false);
   const angleLabel = ANGLE_LIBRARY.find((a) => a.key === brief.angle)?.label ?? brief.angle;
 
@@ -468,6 +469,272 @@ function BriefViewer({ brief, onEdit, onBack }: { brief: UGCBrief; onEdit: () =>
           </div>
         </div>
       )}
+
+      <AdPackSection brief={brief} onBriefUpdate={setBrief} />
+    </div>
+  );
+}
+
+// ─── Ad Pack Section (reusable) ─────────────────────────────────────────────
+
+export function AdPackSection({
+  brief,
+  onBriefUpdate,
+}: {
+  brief: UGCBrief;
+  onBriefUpdate: (b: UGCBrief) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const scriptEmpty = !(
+    brief.script?.videoHook?.trim() ||
+    brief.script?.textHook?.trim() ||
+    brief.script?.narrative?.trim() ||
+    brief.script?.cta?.trim()
+  );
+
+  async function copy(key: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1800);
+    } catch { /* ignore */ }
+  }
+
+  async function generate() {
+    if (busy || scriptEmpty) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const genRes = await fetch("/api/ugc/briefs/generate-ad-pack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          script: brief.script,
+          title: brief.title || undefined,
+          angle: brief.angle ? (ANGLE_LIBRARY.find((a) => a.key === brief.angle)?.label ?? brief.angle) : undefined,
+          conceptLabel: brief.conceptLabel || undefined,
+        }),
+      });
+      if (!genRes.ok) {
+        const d = await genRes.json().catch(() => ({}));
+        setErr(d.error ?? "Ad pack generation failed");
+        return;
+      }
+      const data = await genRes.json();
+      const nextPack: BriefAdPack = {
+        primaryTexts: data.primaryTexts ?? [],
+        headlines: data.headlines ?? [],
+        descriptions: data.descriptions ?? [],
+        cta: (data.cta ?? "SHOP_NOW") as MetaCtaType,
+        complianceFlags: data.complianceFlags ?? [],
+        generatedAt: data.generatedAt ?? Date.now(),
+      };
+      const patchRes = await fetch(`/api/ugc/briefs/${brief.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adPack: nextPack }),
+      });
+      if (patchRes.ok) {
+        const saved = await patchRes.json();
+        onBriefUpdate(saved);
+      } else {
+        onBriefUpdate({ ...brief, adPack: nextPack });
+      }
+    } catch {
+      setErr("Ad pack generation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+            Ad copy pack
+          </div>
+          <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 2 }}>
+            Paste directly into Meta Ads Manager after uploading the video.
+          </div>
+        </div>
+        {brief.adPack && (
+          <button
+            type="button"
+            onClick={generate}
+            disabled={busy || scriptEmpty}
+            title={scriptEmpty ? "Fill in the script first" : "Regenerate ad pack"}
+            style={{
+              ...actionBtn,
+              opacity: busy || scriptEmpty ? 0.6 : 1,
+              cursor: busy || scriptEmpty ? "default" : "pointer",
+            }}
+          >
+            {busy ? "Regenerating…" : "↻ Regenerate"}
+          </button>
+        )}
+      </div>
+
+      {!brief.adPack && (
+        <div>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={busy || scriptEmpty}
+            title={scriptEmpty ? "Fill in the script first" : "Generate Meta ad copy pack"}
+            style={{
+              fontSize: 13, fontWeight: 500,
+              color: busy || scriptEmpty ? "var(--subtle)" : "var(--bg)",
+              background: busy || scriptEmpty ? "var(--surface)" : "var(--accent)",
+              border: "1px solid var(--border)", borderRadius: 6,
+              padding: "9px 16px",
+              cursor: busy || scriptEmpty ? "not-allowed" : "pointer",
+            }}
+          >
+            {busy ? "Generating…" : "📤 Generate ad pack"}
+          </button>
+          {scriptEmpty && (
+            <p style={{ fontSize: 11, color: "var(--subtle)", margin: "6px 0 0" }}>
+              This brief has no script yet — fill it in before generating an ad pack.
+            </p>
+          )}
+        </div>
+      )}
+
+      {err && (
+        <p style={{ fontSize: 12, color: "var(--error)", margin: "8px 0 0" }}>{err}</p>
+      )}
+
+      {brief.adPack && (
+        <div style={{ marginTop: 14 }}>
+          <AdPackGroup
+            label="Primary text"
+            hint="125–200 chars. Meta truncates at ~125 on mobile feed — first line must hook."
+            items={brief.adPack.primaryTexts}
+            keyPrefix="pt"
+            copiedKey={copiedKey}
+            onCopy={copy}
+            lines={4}
+          />
+          <AdPackGroup
+            label="Headlines"
+            hint="Under 40 chars. Punchy, value-forward, no period."
+            items={brief.adPack.headlines}
+            keyPrefix="hl"
+            copiedKey={copiedKey}
+            onCopy={copy}
+            lines={1}
+          />
+          <AdPackGroup
+            label="Descriptions"
+            hint="Under 30 chars. Supporting line under the headline, no period."
+            items={brief.adPack.descriptions}
+            keyPrefix="ds"
+            copiedKey={copiedKey}
+            onCopy={copy}
+            lines={1}
+          />
+          <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+              CTA button
+            </div>
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: "var(--text)",
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 999, padding: "3px 10px", letterSpacing: "0.04em",
+            }}>
+              {brief.adPack.cta.replace(/_/g, " ")}
+            </span>
+          </div>
+          {brief.adPack.complianceFlags && brief.adPack.complianceFlags.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 4 }}>
+                Ad pack compliance flags
+              </div>
+              <FlagList flags={brief.adPack.complianceFlags} />
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 14, fontFamily: "var(--font-mono)" }}>
+            generated {new Date(brief.adPack.generatedAt).toLocaleString()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdPackGroup({
+  label, hint, items, keyPrefix, copiedKey, onCopy, lines,
+}: {
+  label: string;
+  hint: string;
+  items: string[];
+  keyPrefix: string;
+  copiedKey: string | null;
+  onCopy: (key: string, text: string) => void;
+  lines: number;
+}) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)" }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--subtle)" }}>{hint}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((text, i) => {
+          const k = `${keyPrefix}-${i}`;
+          const copied = copiedKey === k;
+          return (
+            <div
+              key={k}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "24px 1fr auto auto",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 10px",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ fontSize: 11, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
+                {String(i + 1).padStart(2, "0")}
+              </div>
+              <div style={{
+                fontSize: 13, color: "var(--text)", lineHeight: 1.5,
+                whiteSpace: "pre-wrap",
+                display: "-webkit-box",
+                WebkitLineClamp: lines,
+                WebkitBoxOrient: "vertical" as const,
+                overflow: "hidden",
+              }}>
+                {text}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
+                {text.length}c
+              </div>
+              <button
+                type="button"
+                onClick={() => onCopy(k, text)}
+                style={{
+                  ...actionBtn,
+                  color: copied ? "var(--success)" : "var(--muted)",
+                  borderColor: copied ? "var(--success)" : "var(--border)",
+                }}
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 import UGCPipelinePill from "./UGCPipelinePill";
 import UGCCSVImportModal from "./UGCCSVImportModal";
 import UGCCRTLoader from "./UGCCRTLoader";
+import { AdPackSection } from "./UGCBriefsPanel";
 import type { ComplianceLevel, ComplianceResult, ComplianceViolation } from "@/lib/compliance";
 
 type Props = {
@@ -31,6 +32,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const [flags, setFlags] = useState<Record<string, { caption1?: ComplianceResult; caption2?: ComplianceResult }>>({});
   const [outreachModal, setOutreachModal] = useState<{ creator: UGCCreator } | null>(null);
   const [scriptModalCreatorId, setScriptModalCreatorId] = useState<string | null>(null);
+  const [scriptModalFocus, setScriptModalFocus] = useState<"script" | "adPack">("script");
   const [filter, setFilter] = useState<"readyToPost" | "totalSpend" | null>(null);
   const [bulkCaption, setBulkCaption] = useState<{ done: number; total: number; error?: string } | null>(null);
   const [copiedBriefId, setCopiedBriefId] = useState<string | null>(null);
@@ -274,6 +276,8 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
         <ScriptModal
           creator={scriptModalCreator}
           brief={scriptModalBrief}
+          initialFocus={scriptModalFocus}
+          onBriefUpdate={(updated) => setBriefs((list) => list.map((b) => (b.id === updated.id ? updated : b)))}
           onClose={() => setScriptModalCreatorId(null)}
         />
       )}
@@ -439,7 +443,8 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
                   onDelete={() => deleteCreator(c.id)}
                   onGenerate={() => generateCaptions(c)}
                   onOutreach={() => setOutreachModal({ creator: c })}
-                  onOpenScript={() => setScriptModalCreatorId(c.id)}
+                  onOpenScript={() => { setScriptModalFocus("script"); setScriptModalCreatorId(c.id); }}
+                  onOpenAdPack={() => { setScriptModalFocus("adPack"); setScriptModalCreatorId(c.id); }}
                   onCopyBriefCaption={() => c.briefId && copyBriefCaption(c.briefId)}
                 />
               );
@@ -468,7 +473,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
 
 function CreatorRow({
   creator: c, briefs, expanded, captionBusy, flags, copiedBriefCaption,
-  onToggle, onPatch, onDelete, onGenerate, onOutreach, onOpenScript, onCopyBriefCaption,
+  onToggle, onPatch, onDelete, onGenerate, onOutreach, onOpenScript, onOpenAdPack, onCopyBriefCaption,
 }: {
   creator: UGCCreator;
   briefs: UGCBrief[];
@@ -482,6 +487,7 @@ function CreatorRow({
   onGenerate: () => void;
   onOutreach: () => void;
   onOpenScript: () => void;
+  onOpenAdPack: () => void;
   onCopyBriefCaption: () => void;
 }) {
   const assignedBrief = c.briefId ? briefs.find((b) => b.id === c.briefId) : null;
@@ -547,6 +553,25 @@ function CreatorRow({
               }}
             >
               {copiedBriefCaption ? "✓" : "📋"}
+            </button>
+            <button
+              onClick={onOpenAdPack}
+              disabled={!assignedBrief}
+              title={assignedBrief ? "View / generate Meta ad copy pack" : "Assign a brief first"}
+              style={{
+                flexShrink: 0,
+                background: "none",
+                border: "1px solid var(--border)",
+                borderRadius: 4, padding: "2px 7px",
+                fontSize: 11,
+                color: assignedBrief ? "var(--muted)" : "var(--subtle)",
+                cursor: assignedBrief ? "pointer" : "not-allowed",
+                opacity: assignedBrief ? 1 : 0.5,
+                fontFamily: "var(--font-ui)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              📤
             </button>
           </div>
         </Td>
@@ -946,12 +971,24 @@ function OutreachModal({ creator, brief, onClose }: {
   );
 }
 
-function ScriptModal({ creator, brief, onClose }: {
+function ScriptModal({ creator, brief, initialFocus = "script", onBriefUpdate, onClose }: {
   creator: UGCCreator;
   brief: UGCBrief | null;
+  initialFocus?: "script" | "adPack";
+  onBriefUpdate?: (b: UGCBrief) => void;
   onClose: () => void;
 }) {
   const [captionCopied, setCaptionCopied] = useState(false);
+  const adPackRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (initialFocus === "adPack" && adPackRef.current) {
+      // Wait a frame so the modal is fully mounted before scrolling.
+      requestAnimationFrame(() => {
+        adPackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [initialFocus]);
 
   async function copyCaption() {
     if (!brief?.caption) return;
@@ -1029,6 +1066,12 @@ function ScriptModal({ creator, brief, onClose }: {
               }}>
                 {brief.caption?.trim() || "— No caption yet. Open the brief editor to generate one."}
               </div>
+            </div>
+            <div ref={adPackRef}>
+              <AdPackSection
+                brief={brief}
+                onBriefUpdate={(updated) => onBriefUpdate?.(updated)}
+              />
             </div>
           </div>
         )}

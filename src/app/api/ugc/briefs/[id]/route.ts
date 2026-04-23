@@ -30,6 +30,18 @@ const patchSchema = z.object({
     rule: z.string(),
     match: z.string(),
   })).optional(),
+  adPack: z.object({
+    primaryTexts: z.array(z.string().max(500)).max(5),
+    headlines: z.array(z.string().max(100)).max(5),
+    descriptions: z.array(z.string().max(100)).max(5),
+    cta: z.enum(["SHOP_NOW", "LEARN_MORE", "SIGN_UP", "SUBSCRIBE", "GET_OFFER", "ORDER_NOW", "SEE_MORE"]),
+    complianceFlags: z.array(z.object({
+      severity: z.enum(["amber", "red"]),
+      rule: z.string(),
+      match: z.string(),
+    })).optional(),
+    generatedAt: z.number(),
+  }).nullable().optional(),
   sharedAt: z.number().nullable().optional(),
 });
 

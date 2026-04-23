@@ -679,6 +679,28 @@ export interface BriefComplianceFlag {
   match: string;
 }
 
+// Meta Ads Manager CTA list — subset we support for Lunia's direct-response ads.
+// Full list is long; these are the ones that make sense for a supplement DTC brand.
+export type MetaCtaType =
+  | "SHOP_NOW"
+  | "LEARN_MORE"
+  | "SIGN_UP"
+  | "SUBSCRIBE"
+  | "GET_OFFER"
+  | "ORDER_NOW"
+  | "SEE_MORE";
+
+// Ad-copy pack for Meta Ads Manager. Per-brief: same concept → same copy set,
+// shared across every creator delivering that brief.
+export interface BriefAdPack {
+  primaryTexts: string[];                     // up to 5 body-text variants (125–200 chars)
+  headlines: string[];                        // up to 5 headlines (<40 chars)
+  descriptions: string[];                     // up to 5 descriptions (<30 chars)
+  cta: MetaCtaType;                           // suggested CTA button
+  complianceFlags?: BriefComplianceFlag[];    // worst-case flags across the whole pack
+  generatedAt: number;
+}
+
 export interface UGCBrief {
   id: string;
   publicBriefId: string;            // nanoid; used in public share URL
@@ -688,7 +710,8 @@ export interface UGCBrief {
   title: string;                    // brief title (angle + concept by default)
   doc: UGCBriefDoc | null;          // structured brief document sections (null on old briefs)
   script: BriefScript;
-  caption: string;                  // social-media caption tied to this script (not the creator)
+  caption: string;                  // social-media caption for the creator's own organic post
+  adPack?: BriefAdPack | null;      // Meta Ads Manager copy pack (optional; generated on demand)
   complianceFlags: BriefComplianceFlag[];
   status: BriefStatus;
   creatorName: string | null;       // optional assigned creator
