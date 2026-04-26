@@ -54,6 +54,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [darkBackground, setDarkBackground] = useState(false);
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(true);
   const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
+  const [textScale, setTextScale] = useState(1);
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
@@ -62,6 +63,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
   const [iconPickerCategory, setIconPickerCategory] = useState<IconCategory>("sleep");
   const [iconPickerLayout, setIconPickerLayout] = useState<"row" | "column" | "grid" | "scattered">("row");
+
+  // Text editor state (content slides 1–3, i.e. slideIndex 0–2)
+  const [textEditOpen, setTextEditOpen] = useState<number | null>(null);
+
+  function updateSlideField(slideIndex: number, field: "headline" | "body", value: string) {
+    const slides = [...content.slides];
+    slides[slideIndex] = { ...slides[slideIndex], [field]: value };
+    onContentChange({ ...config, content: { ...content, slides } });
+  }
 
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
@@ -634,9 +644,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
@@ -648,9 +658,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} textScale={textScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
@@ -842,8 +852,85 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               );
             })}
           </div>
+          {/* Text size — scales headline + body on content slides */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Text size</span>
+            {([0.85, 1, 1.15, 1.3] as const).map((s, idx) => {
+              const labels = ["S", "M", "L", "XL"];
+              return (
+                <button key={s} onClick={() => setTextScale(s)} style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                  background: textScale === s ? "var(--text)" : "var(--surface)",
+                  color: textScale === s ? "var(--bg)" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>{labels[idx]}</button>
+              );
+            })}
+          </div>
+          {/* Edit slide text — opens editor for content slides 2/3/4 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Edit text</span>
+            {[0, 1, 2].map((slideIdx) => {
+              const active = textEditOpen === slideIdx;
+              const label = `${slideIdx + 2}`;
+              return (
+                <button key={slideIdx} onClick={() => setTextEditOpen(active ? null : slideIdx)} style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                  background: active ? "var(--accent)" : "var(--surface)",
+                  color: active ? "var(--bg)" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>{label}</button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Text editor panel — active content slide's headline + body */}
+      {textEditOpen !== null && (
+        <div style={{ marginBottom: 14, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Edit slide {textEditOpen + 2} text
+            </span>
+            <button onClick={() => setTextEditOpen(null)} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
+          </div>
+          <div style={{ padding: "12px", background: "var(--bg)" }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              Headline
+            </label>
+            <input
+              type="text"
+              value={content.slides[textEditOpen].headline}
+              onChange={(e) => updateSlideField(textEditOpen!, "headline", e.target.value)}
+              style={{
+                width: "100%", fontSize: 13, lineHeight: 1.4,
+                fontFamily: "inherit", color: "var(--text)",
+                padding: "7px 10px", borderRadius: 5,
+                border: "1px solid var(--border)", background: "var(--surface)",
+                marginBottom: 12,
+              }}
+            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              Main text
+            </label>
+            <textarea
+              value={content.slides[textEditOpen].body}
+              onChange={(e) => updateSlideField(textEditOpen!, "body", e.target.value)}
+              rows={4}
+              style={{
+                width: "100%", fontSize: 13, lineHeight: 1.5,
+                resize: "vertical", fontFamily: "inherit",
+                color: "var(--text)",
+                padding: "7px 10px", borderRadius: 5,
+                border: "1px solid var(--border)", background: "var(--surface)",
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Reels image aspect notice — shown when hook image aspect doesn't match current format */}
       {(imgs[0] ?? hookImageUrl) && hookImageAspect !== (reelsMode ? "9:16" : "4:5") && (

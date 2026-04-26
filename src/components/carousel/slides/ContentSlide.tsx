@@ -176,6 +176,7 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   citationFontSize?: number;        // override the default 18px citation size
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
+  textScale?: number;               // multiplier on auto-sized headline + body (default 1)
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -196,6 +197,7 @@ export default function ContentSlide({
   showLuniaLifeWatermark = false,
   citationFontSize = 18,
   reels = false,
+  textScale = 1,
 }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
@@ -255,8 +257,8 @@ export default function ContentSlide({
     ? Math.floor(contentH * 0.35)             // ≈ 416 px
     : undefined;
 
-  const bodyFontSize = bodySize(body.length, hasInlineGraphic || hasLegacyGraphic);
-  const headlineFontSize = headlineSize(headline.length);
+  const bodyFontSize = Math.round(bodySize(body.length, hasInlineGraphic || hasLegacyGraphic) * textScale);
+  const headlineFontSize = Math.round(headlineSize(headline.length) * textScale);
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
