@@ -872,8 +872,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           {/* Body size — scales the body text on content slides */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Body size</span>
-            {([0.85, 1, 1.15, 1.3] as const).map((s, idx) => {
-              const labels = ["S", "M", "L", "XL"];
+            {([0.85, 1, 1.2, 1.5, 1.85, 2.25] as const).map((s, idx) => {
+              const labels = ["S", "M", "L", "XL", "2XL", "3XL"];
               return (
                 <button key={s} onClick={() => setBodyScale(s)} style={{
                   padding: "3px 8px", fontSize: 11, fontWeight: 700,
