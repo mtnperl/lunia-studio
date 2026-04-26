@@ -651,15 +651,47 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const [error, setError] = useState<string | null>(null);
   const [captionCopied, setCaptionCopied] = useState(false);
 
-  async function downloadOne(node: HTMLElement | null, filename: string) {
-    if (!node) return;
+  async function buildFile(node: HTMLElement | null, filename: string): Promise<File | null> {
+    if (!node) return null;
     const dataUrl = await toPng(node, {
       width: 1080, height: 1350, pixelRatio: 1, cacheBust: true,
       style: { transform: "scale(1)", transformOrigin: "top left" },
     });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
+  async function saveFile(file: File) {
+    const canShareFiles =
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] });
+
+    if (canShareFiles) {
+      try {
+        await navigator.share({ files: [file], title: file.name });
+        return;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") throw err;
+      }
+    }
+
+    const url = URL.createObjectURL(file);
+    const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    if (isIOS) {
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      return;
+    }
+
     const a = document.createElement("a");
-    a.href = dataUrl; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
   async function downloadAll() {
@@ -667,9 +699,28 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
     try {
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      await downloadOne(slide1Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-1.png`);
-      await downloadOne(slide2Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-2.png`);
+      const f1 = await buildFile(slide1Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-1.png`);
+      const f2 = await buildFile(slide2Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-2.png`);
+      const files = [f1, f2].filter((f): f is File => f !== null);
+      if (files.length === 0) { setError("Nothing to download."); return; }
+
+      const canShareFiles =
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files });
+
+      if (canShareFiles) {
+        try {
+          await navigator.share({ files, title: "Lunia · Did You Know" });
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
+        }
+      }
+
+      for (const f of files) await saveFile(f);
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
       console.error(e); setError("Download failed.");
     } finally {
       setDownloading(false);
