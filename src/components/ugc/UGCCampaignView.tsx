@@ -230,7 +230,9 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   const deliveredSpend = deliveredCreators.reduce((s, c) => s + (c.cost || 0), 0);
   const approvedCount = creators.filter((c) => c.stage !== "invited" && c.stage !== "cancelled").length;
   const delivered = deliveredCreators.length;
-  const readyToPostCount = creators.filter((c) => c.stage === "edited-and-ready").length;
+  const readyToPostCount = creators
+    .filter((c) => c.stage === "edited-and-ready")
+    .reduce((sum, c) => sum + Math.max(c.versionsDelivered || 0, 1), 0);
   const editedReadyCount = creators.filter((c) => c.stage === "edited-and-ready" || c.stage === "posted").length;
   const postedCount = creators.filter((c) => c.stage === "posted").length;
   const costPerDelivered = delivered > 0 ? deliveredSpend / delivered : 0;
