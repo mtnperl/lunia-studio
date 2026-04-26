@@ -252,11 +252,13 @@ export default function ContentSlide({
     return 48;
   }
 
-  // When a graphic is present, cap the body zone so the graphic zone gets at
-  // least ~55 % of the content area for proper vertical centering.
+  // When a graphic is present, cap the body zone so the graphic still has
+  // breathing room. Cap scales up with bodyScale so larger body text gets
+  // a bigger zone before it starts clipping.
   const contentH = slideH - py * 2;           // 1350 − 160 = 1190
+  const bodyZoneFraction = Math.min(0.78, 0.5 + Math.max(0, bodyScale - 1) * 0.35);
   const bodyMaxH = (hasInlineGraphic || hasLegacyGraphic)
-    ? Math.floor(contentH * 0.35)             // ≈ 416 px
+    ? Math.floor(contentH * bodyZoneFraction)
     : undefined;
 
   const bodyFontSize = Math.round(bodySize(body.length, hasInlineGraphic || hasLegacyGraphic) * bodyScale);
