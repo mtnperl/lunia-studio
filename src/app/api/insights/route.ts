@@ -115,6 +115,7 @@ Return ONLY the JSON array. No preamble, no markdown fences, no explanation outs
     ].join('\n');
   }
 
+  let raw: string;
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -122,14 +123,39 @@ Return ONLY the JSON array. No preamble, no markdown fences, no explanation outs
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
+    raw = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+  } catch (err) {
+    const status = (err as { status?: number })?.status;
+    console.error('[api/insights] Anthropic API error', { status, err });
+    if (status === 401 || status === 403) {
+      return Response.json({ error: 'Anthropic API key invalid or revoked' }, { status: 401 });
+    }
+    if (status === 429) {
+      return Response.json({ error: 'Anthropic rate limited — try again in a moment' }, { status: 429 });
+    }
+    if (status && status >= 500) {
+      return Response.json({ error: `Anthropic service error (${status}) — try again` }, { status: 502 });
+    }
+    return Response.json({ error: `Insights call failed${status ? ` (${status})` : ''}` }, { status: 502 });
+  }
 
-    const raw = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
-    const cleaned = raw.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-    const insights: Insight[] = JSON.parse(cleaned);
+  try {
+    const insights = parseInsights(raw);
     return Response.json(insights);
   } catch (err) {
-    console.error('[api/insights] parse or API error', err);
-    const fallback: Insight[] = [{ type: 'neutral', title: 'Analysis unavailable', body: 'Unable to parse insights — check your API key.' }];
-    return Response.json(fallback);
+    console.error('[api/insights] JSON parse failed', { err, raw });
+    return Response.json({ error: 'Claude returned malformed JSON — try again' }, { status: 502 });
+  }
+}
+
+function parseInsights(raw: string): Insight[] {
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned) as Insight[];
+  } catch {
+    // Tolerant fallback: extract first [...] array even if the model added prose around it.
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]) as Insight[];
+    throw new Error('No JSON array found in response');
   }
 }

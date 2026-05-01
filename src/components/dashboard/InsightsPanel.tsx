@@ -140,8 +140,32 @@ export default function InsightsPanel({
           borderRadius: "0 6px 6px 0",
           fontSize: 13,
           color: "var(--warning)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
         }}>
-          {error}
+          <span>{error}</span>
+          <button
+            onClick={handleGetInsights}
+            disabled={analysisLoading}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 5,
+              border: "1px solid var(--warning)",
+              background: "transparent",
+              color: "var(--warning)",
+              fontFamily: "var(--font-ui)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              cursor: analysisLoading ? "not-allowed" : "pointer",
+              opacity: analysisLoading ? 0.6 : 1,
+              flexShrink: 0,
+            }}
+          >
+            {analysisLoading ? "Retrying…" : "Try again"}
+          </button>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
