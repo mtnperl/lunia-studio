@@ -363,6 +363,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           format: carouselFormat,
           reelsMode,
           citationFontSize,
+          headlineScale,
+          bodyScale,
         }),
       });
       if (!res.ok) return;

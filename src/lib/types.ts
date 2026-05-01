@@ -333,6 +333,8 @@ export type SavedCarousel = {
   didYouKnowContent?: DidYouKnowContent; // present iff format === "did_you_know"
   reelsMode?: boolean;     // true = 9:16 Reels format
   citationFontSize?: number;
+  headlineScale?: number;
+  bodyScale?: number;
   savedAt: string;
 };
 

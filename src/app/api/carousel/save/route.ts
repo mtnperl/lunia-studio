@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
+      headlineScale, bodyScale,
       format, engagementSubType, didYouKnowContent,
     } = body;
 
@@ -99,6 +100,8 @@ export async function POST(req: Request) {
       didYouKnowContent: validatedDyk ?? undefined,
       reelsMode: reelsMode ?? undefined,
       citationFontSize: citationFontSize ?? undefined,
+      headlineScale: headlineScale ?? undefined,
+      bodyScale: bodyScale ?? undefined,
       savedAt: new Date().toISOString(),
     };
 
