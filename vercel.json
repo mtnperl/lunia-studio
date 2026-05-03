@@ -4,7 +4,7 @@
       "maxDuration": 60
     },
     "src/app/api/carousel/generate/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 90
     },
     "src/app/api/carousel/regenerate-slide/route.ts": {
       "maxDuration": 60

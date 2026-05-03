@@ -5,6 +5,21 @@ import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
 import { CarouselContent, CarouselFormat, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
+// Convert any failure (Anthropic SDK error, JSON parse, Zod validation) into a
+// human-readable label that's safe to surface to the user. Keeps the raw error
+// in console for server-side debugging.
+function describeGenerateError(err: unknown, context: string): string {
+  const status = (err as { status?: number })?.status;
+  const message = err instanceof Error ? err.message : String(err);
+  if (status === 401 || status === 403) return "Anthropic API key invalid or revoked";
+  if (status === 429) return "Anthropic rate limited — wait a moment and try again";
+  if (status === 404) return "Anthropic model unavailable — check model access";
+  if (status && status >= 500) return `Anthropic service error (${status}) — try again`;
+  if (message.startsWith("Invalid response shape")) return `${context}: ${message}`;
+  if (message.includes("JSON")) return `${context}: model returned malformed JSON — try again`;
+  return `${context}: ${message.slice(0, 160)}`;
+}
+
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -78,6 +93,7 @@ export async function POST(req: Request) {
 
     const messages: MessageParam[] = [{ role: "user", content: userContent }];
 
+    let firstError: unknown = null;
     const results = await Promise.all(
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
         try {
@@ -100,6 +116,7 @@ export async function POST(req: Request) {
           }
           return parsed;
         } catch (err) {
+          if (firstError === null) firstError = err;
           console.error("[generate] variant failed:", err instanceof Error ? err.message : err);
           return null;
         }
@@ -108,7 +125,8 @@ export async function POST(req: Request) {
 
     const variants = results.filter((v): v is CarouselContent => v !== null);
     if (variants.length === 0) {
-      return Response.json({ error: "Failed to generate content. Please try again." }, { status: 500 });
+      const reason = firstError ? describeGenerateError(firstError, "Generation") : "Failed to generate content. Please try again.";
+      return Response.json({ error: reason }, { status: 500 });
     }
 
     const warning =
@@ -125,7 +143,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error("[api/carousel/generate]", err);
-    return Response.json({ error: "Failed to generate content" }, { status: 500 });
+    return Response.json({ error: describeGenerateError(err, "Generation") }, { status: 500 });
   }
 }
 
@@ -154,7 +172,7 @@ async function generateDidYouKnow(topic: string, count: number): Promise<Respons
     variants = await callDidYouKnow(topic, variantCount);
   } catch (err) {
     console.error("[generate/did_you_know] first attempt failed:", err instanceof Error ? err.message : err);
-    return Response.json({ error: "Failed to generate. Please try again." }, { status: 500 });
+    return Response.json({ error: describeGenerateError(err, "Did-you-know generation") }, { status: 500 });
   }
 
   // Per-variant compliance lint with single reprompt — run reprompts in parallel
