@@ -22,7 +22,16 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
   const [fontScale, setFontScale] = useState(1);
+
+  function handleCopyShareLink() {
+    if (!savedId) return;
+    navigator.clipboard.writeText(`${window.location.origin}/carousels/${savedId}`).then(() => {
+      setLinkCopyLabel("Copied!");
+      setTimeout(() => setLinkCopyLabel("Copy link"), 2000);
+    }).catch(() => setError("Clipboard unavailable"));
+  }
 
   const variant = variants[selected];
   if (!variant) return null;
@@ -226,20 +235,38 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         >
           {downloading ? "Downloading..." : "Download PNGs"}
         </button>
-        <button
-          onClick={handleSave}
-          disabled={saving || !!savedId}
-          style={{
-            background: savedId ? "rgba(95,158,117,0.15)" : "var(--surface)",
-            color: savedId ? "var(--success)" : "var(--text)",
-            border: `1.5px solid ${savedId ? "rgba(95,158,117,0.4)" : "var(--border)"}`,
-            borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
-            cursor: saving ? "wait" : savedId ? "default" : "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          {savedId ? "✓ Saved" : saving ? "Saving..." : "Save to library"}
-        </button>
+        {savedId ? (
+          <button
+            onClick={handleCopyShareLink}
+            style={{
+              background: "var(--surface)",
+              color: "var(--text)",
+              border: "1.5px solid var(--border)",
+              borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            {linkCopyLabel}
+          </button>
+        ) : (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              background: "var(--surface)",
+              color: "var(--text)",
+              border: "1.5px solid var(--border)",
+              borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
+              cursor: saving ? "wait" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {saving ? "Saving..." : "Save to library"}
+          </button>
+        )}
+        {savedId && (
+          <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>✓ Saved</span>
+        )}
         {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
       </div>
     </div>
