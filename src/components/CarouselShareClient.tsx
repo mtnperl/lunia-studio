@@ -646,8 +646,8 @@ export default function CarouselShareClient({ carousel }: Props) {
 // ── Did You Know share view ───────────────────────────────────────────────────
 function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const dyk = carousel.didYouKnowContent!;
-  const slide1Ref = useRef<HTMLDivElement>(null);
-  const slide2Ref = useRef<HTMLDivElement>(null);
+  const exportSlide1Ref = useRef<HTMLDivElement>(null);
+  const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captionCopied, setCaptionCopied] = useState(false);
@@ -656,7 +656,6 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
     if (!node) return null;
     const dataUrl = await toPng(node, {
       width: 1080, height: 1350, pixelRatio: 1, cacheBust: true,
-      style: { transform: "scale(1)", transformOrigin: "top left" },
     });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
@@ -700,8 +699,8 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
     try {
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      const f1 = await buildFile(slide1Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-1.png`);
-      const f2 = await buildFile(slide2Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safe}-2.png`);
+      const f1 = await buildFile(exportSlide1Ref.current, `dyk-${safe}-1.png`);
+      const f2 = await buildFile(exportSlide2Ref.current, `dyk-${safe}-2.png`);
       const files = [f1, f2].filter((f): f is File => f !== null);
       if (files.length === 0) { setError("Nothing to download."); return; }
 
@@ -743,8 +742,18 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
         </div>
       </div>
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-        <div ref={slide1Ref}><div data-dyk-slide><DidYouKnowSlide slide={dyk.slide1} scale={0.5} /></div></div>
-        <div ref={slide2Ref}><div data-dyk-slide><DidYouKnowSlide slide={dyk.slide2} scale={0.5} /></div></div>
+        <DidYouKnowSlide slide={dyk.slide1} scale={0.5} />
+        <DidYouKnowSlide slide={dyk.slide2} scale={0.5} />
+      </div>
+
+      {/* Hidden full-size slides for accurate PNG export */}
+      <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
+        <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
+          <DidYouKnowSlide slide={dyk.slide1} scale={1} />
+        </div>
+        <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>
+          <DidYouKnowSlide slide={dyk.slide2} scale={1} />
+        </div>
       </div>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>

@@ -15,8 +15,8 @@ type Props = {
 };
 
 export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved }: Props) {
-  const slide1Ref = useRef<HTMLDivElement>(null);
-  const slide2Ref = useRef<HTMLDivElement>(null);
+  const exportSlide1Ref = useRef<HTMLDivElement>(null);
+  const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -34,7 +34,6 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       height: 1350,
       pixelRatio: 1,
       cacheBust: true,
-      style: { transform: "scale(1)", transformOrigin: "top left" },
     });
     const a = document.createElement("a");
     a.href = dataUrl;
@@ -51,8 +50,8 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       // Load fonts before snapshotting
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const safeTopic = (variant.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      await downloadSlide(slide1Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safeTopic}-1.png`);
-      await downloadSlide(slide2Ref.current?.querySelector("[data-dyk-slide]") as HTMLElement | null, `dyk-${safeTopic}-2.png`);
+      await downloadSlide(exportSlide1Ref.current, `dyk-${safeTopic}-1.png`);
+      await downloadSlide(exportSlide2Ref.current, `dyk-${safeTopic}-2.png`);
     } catch (err) {
       console.error(err);
       setError("Download failed. Try again.");
@@ -183,15 +182,17 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
 
       {/* Slides preview */}
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-        <div ref={slide1Ref}>
-          <div data-dyk-slide>
-            <DidYouKnowSlide slide={variant.slide1} scale={PREVIEW_SCALE} fontScale={fontScale} />
-          </div>
+        <DidYouKnowSlide slide={variant.slide1} scale={PREVIEW_SCALE} fontScale={fontScale} />
+        <DidYouKnowSlide slide={variant.slide2} scale={PREVIEW_SCALE} fontScale={fontScale} />
+      </div>
+
+      {/* Hidden full-size slides for accurate PNG export — bypasses the inner transform: scale() on the visible preview. */}
+      <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
+        <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
+          <DidYouKnowSlide slide={variant.slide1} scale={1} fontScale={fontScale} />
         </div>
-        <div ref={slide2Ref}>
-          <div data-dyk-slide>
-            <DidYouKnowSlide slide={variant.slide2} scale={PREVIEW_SCALE} fontScale={fontScale} />
-          </div>
+        <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>
+          <DidYouKnowSlide slide={variant.slide2} scale={1} fontScale={fontScale} />
         </div>
       </div>
 
