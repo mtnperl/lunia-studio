@@ -8,8 +8,23 @@ import CampaignTable from "./dashboard/CampaignTable";
 import InsightsPanel from "./dashboard/InsightsPanel";
 import RefreshButton from "./dashboard/RefreshButton";
 import PasswordGate from "./dashboard/PasswordGate";
+import DateRangePicker, { type DateRange } from "./dashboard/DateRangePicker";
 
-type Days = 7 | 14 | 30;
+function defaultRange(): DateRange {
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const since = new Date(today.getTime() - 29 * 86_400_000);
+  return {
+    since: since.toISOString().slice(0, 10),
+    until: today.toISOString().slice(0, 10),
+  };
+}
+
+function rangeToDays(r: DateRange): number {
+  return Math.round(
+    (Date.parse(r.until + "T00:00:00Z") - Date.parse(r.since + "T00:00:00Z")) / 86_400_000
+  ) + 1;
+}
 
 type ChartColors = {
   accentColor: string;
@@ -83,7 +98,7 @@ export default function DashboardView() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [shopifyError, setShopifyError] = useState<string | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [days, setDays] = useState<Days>(30);
+  const [range, setRange] = useState<DateRange>(defaultRange);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [chartColors, setChartColors] = useState<ChartColors | null>(null);
   const [mtdData, setMtdData] = useState<ShopifyMtdData | null>(null);
@@ -125,18 +140,20 @@ export default function DashboardView() {
     }
   }, []);
 
-  const fetchAll = useCallback(async (d: Days, bust = false) => {
+  const fetchAll = useCallback(async (r: DateRange, bust = false) => {
     setMetaLoading(true);
     setShopifyLoading(true);
     setMetaError(null);
     setShopifyError(null);
     setInsightsError(null);
 
-    const bustParam = bust ? "&bust=1" : "";
+    const qs = `since=${r.since}&until=${r.until}${bust ? "&bust=1" : ""}`;
     const [metaResult, shopifyResult] = await Promise.allSettled([
-      fetch(`/api/meta?days=${d}${bustParam}`).then(r => r.json()),
-      fetch(`/api/shopify?days=${d}${bustParam}`).then(r => r.json()),
+      fetch(`/api/meta?${qs}`).then(rr => rr.json()),
+      fetch(`/api/shopify?${qs}`).then(rr => rr.json()),
     ]);
+
+    const d = rangeToDays(r);
 
     let meta: MetaData | null = null;
     let shopify: ShopifyData | null = null;
@@ -200,7 +217,7 @@ export default function DashboardView() {
         body: JSON.stringify({
           meta: metaData,
           shopify: shopifyData,
-          days,
+          days: rangeToDays(range),
           campaigns: metaData.campaigns,
           ads: metaData.ads ?? [],
           ...params,
@@ -217,12 +234,12 @@ export default function DashboardView() {
     } finally {
       setInsightsLoading(false);
     }
-  }, [metaData, shopifyData, days]);
+  }, [metaData, shopifyData, range]);
 
   useEffect(() => {
     if (!unlocked) return;
-    fetchAll(days);
-  }, [days, unlocked, fetchAll]);
+    fetchAll(range);
+  }, [range, unlocked, fetchAll]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -336,41 +353,39 @@ export default function DashboardView() {
         </h1>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          {/* Days pills */}
-          <div style={{ display: "flex", gap: 4 }}>
-            {([7, 14, 30] as Days[]).map(d => (
-              <button
-                key={d}
-                onClick={() => setDays(d)}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: 6,
-                  border: "1px solid",
-                  borderColor: days === d ? "var(--accent)" : "var(--border)",
-                  background: days === d ? "var(--accent-dim)" : "transparent",
-                  color: days === d ? "var(--accent)" : "var(--muted)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  fontWeight: days === d ? 600 : 400,
-                }}
-              >
-                {d}d
-              </button>
-            ))}
-          </div>
+          <DateRangePicker value={range} onChange={setRange} />
 
           <RefreshButton
             loading={metaLoading || shopifyLoading}
             onClick={() => {
               setChartColors(resolveChartColors());
-              fetchAll(days, true);
+              fetchAll(range, true);
               fetchMtd(true);
             }}
             lastRefreshed={lastRefreshed ?? undefined}
           />
         </div>
       </div>
+
+      {(metaData?.truncated || shopifyData?.truncated) && (
+        <div style={{
+          borderLeft: "3px solid var(--warning)",
+          background: "var(--surface-r)",
+          padding: "10px 14px",
+          borderRadius: "0 6px 6px 0",
+          fontSize: 12,
+          color: "var(--warning)",
+          fontFamily: "var(--font-ui)",
+          marginBottom: 16,
+        }}>
+          Range too large — pagination cap hit.{" "}
+          {[
+            metaData?.truncated && "Meta totals",
+            shopifyData?.truncated && "Shopify totals",
+          ].filter(Boolean).join(" and ")}{" "}
+          may be understated. Try a shorter range.
+        </div>
+      )}
 
       {/* MTD row */}
       <div style={{ marginBottom: 24 }}>

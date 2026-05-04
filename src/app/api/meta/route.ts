@@ -1,5 +1,5 @@
 import { kv } from '@/lib/kv';
-import { calcROAS, computeDateRange } from '@/lib/analytics-utils';
+import { calcROAS, resolveRangeParams } from '@/lib/analytics-utils';
 import type { MetaData, MetaCampaign, MetaAdInsight, MetaAd } from '@/lib/types';
 
 export const maxDuration = 30;
@@ -48,12 +48,11 @@ function buildMockData(days: number): MetaData {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const daysParam = url.searchParams.get('days') ?? '30';
-  const days = parseInt(daysParam, 10);
-
-  if (![7, 14, 30].includes(days)) {
-    return Response.json({ error: 'days must be 7, 14, or 30' }, { status: 400 });
+  const resolved = resolveRangeParams(url, { defaultDays: 30, maxDays: 400 });
+  if ('error' in resolved) {
+    return Response.json({ error: resolved.error }, { status: 400 });
   }
+  const { since, until, days } = resolved;
 
   const isMock = url.searchParams.get('mock') === 'true';
   if (isMock) {
@@ -66,7 +65,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Meta credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:meta:v2:${days}`;
+  const cacheKey = `analytics:meta:v3:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -77,7 +76,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { start, end } = computeDateRange(days);
+    const start = since;
+    const end = until;
+    let truncated = false;
 
     const graphBase = `https://graph.facebook.com/v21.0`;
 
@@ -181,6 +182,11 @@ export async function GET(req: Request) {
       }
 
       nextUrl = json.paging?.next ?? null;
+      if (pages === 3 && nextUrl) {
+        truncated = true;
+        console.warn('[api/meta] insights pagination cap reached at 3 pages — totals may be understated');
+        nextUrl = null;
+      }
     }
 
     // Build response — join objectives from the separate campaigns call
@@ -263,9 +269,11 @@ export async function GET(req: Request) {
       campaigns,
       ads,
       by_day,
+      truncated,
     };
 
-    console.log('[api/meta] days=%d spend=%f roas=%f pages=%d', days, totalSpend, data.summary.roas, pages);
+    console.log('[api/meta] since=%s until=%s spend=%f roas=%f pages=%d truncated=%s',
+      since, until, totalSpend, data.summary.roas, pages, truncated);
 
     try {
       await kv.set(cacheKey, data, { ex: 7200 });

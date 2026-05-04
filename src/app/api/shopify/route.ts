@@ -1,5 +1,5 @@
 import { kv } from '@/lib/kv';
-import { calcAOV } from '@/lib/analytics-utils';
+import { calcAOV, resolveRangeParams } from '@/lib/analytics-utils';
 import type { ShopifyData, ShopifyDayRow, ShopifyProduct } from '@/lib/types';
 
 export const maxDuration = 30;
@@ -54,12 +54,11 @@ function buildMockData(days: number): ShopifyData {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const daysParam = url.searchParams.get('days') ?? '30';
-  const days = parseInt(daysParam, 10);
-
-  if (![7, 14, 30].includes(days)) {
-    return Response.json({ error: 'days must be 7, 14, or 30' }, { status: 400 });
+  const resolved = resolveRangeParams(url, { defaultDays: 30, maxDays: 400 });
+  if ('error' in resolved) {
+    return Response.json({ error: resolved.error }, { status: 400 });
   }
+  const { since, until, days } = resolved;
 
   const isMock = url.searchParams.get('mock') === 'true';
   if (isMock) {
@@ -72,7 +71,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify:${days}`;
+  const cacheKey = `analytics:shopify:v2:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -83,13 +82,17 @@ export async function GET(req: Request) {
   }
 
   try {
-    const created_at_min = new Date(Date.now() - days * 86_400_000).toISOString();
+    const created_at_min = new Date(`${since}T00:00:00Z`).toISOString();
+    // Shopify's created_at_max is exclusive at the moment provided, so add 1 day to make `until` inclusive.
+    const created_at_max = new Date(`${until}T00:00:00Z`);
+    created_at_max.setUTCDate(created_at_max.getUTCDate() + 1);
+    const created_at_max_iso = created_at_max.toISOString();
 
     type ShopifyLineItem = { product_title: string; variant_title?: string; quantity: number; price: string; selling_plan_allocation?: { selling_plan_id: number } | null };
     type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; line_items: ShopifyLineItem[]; customer?: { id: number } | null };
 
     const allOrders: ShopifyOrder[] = [];
-    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,created_at,total_price,financial_status,line_items,customer`;
+    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,financial_status,line_items,customer`;
     let pages = 0;
     let truncated = false;
 
@@ -189,18 +192,17 @@ export async function GET(req: Request) {
       },
       by_day,
       products,
+      truncated,
     };
 
-    console.log('[api/shopify] days=%d orders=%d revenue=%f pages=%d', days, totalOrders, totalRevenue, pages);
+    console.log('[api/shopify] since=%s until=%s orders=%d revenue=%f pages=%d truncated=%s',
+      since, until, totalOrders, totalRevenue, pages, truncated);
 
     try {
       await kv.set(cacheKey, data, { ex: 7200 });
     } catch { /* silently skip cache write */ }
 
-    const headers: Record<string, string> = {};
-    if (truncated) headers['X-Truncated'] = 'true';
-
-    return Response.json(data, { headers });
+    return Response.json(data);
   } catch (err) {
     console.error('[api/shopify] error', err);
     return Response.json({ error: 'Shopify data unavailable — try refreshing' }, { status: 502 });

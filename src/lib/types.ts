@@ -429,6 +429,7 @@ export type MetaData = {
   campaigns: MetaCampaign[];
   ads: MetaAd[];
   by_day: MetaAdInsight[];
+  truncated?: boolean;  // true if pagination cap was hit and totals may be understated
 };
 
 export type ShopifyDayRow = {
@@ -456,6 +457,7 @@ export type ShopifyData = {
   };
   by_day: ShopifyDayRow[];
   products: ShopifyProduct[];  // top products by revenue
+  truncated?: boolean;         // true if pagination cap was hit and totals may be understated
 };
 
 export type ShopifyLTVData = {
