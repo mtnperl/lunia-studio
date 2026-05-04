@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { CONTENT_MODEL, CONTENT_THINKING_BUDGET, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 
 // ─── Request shape ────────────────────────────────────────────────────────────
 
@@ -102,8 +103,9 @@ async function generateGuide(data: PDFRequest): Promise<GeneratedGuide> {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
-      max_tokens: 2048,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: { type: "enabled", budget_tokens: CONTENT_THINKING_BUDGET },
       messages: [{ role: "user", content: buildPrompt(data) }],
     }),
   });
@@ -114,10 +116,11 @@ async function generateGuide(data: PDFRequest): Promise<GeneratedGuide> {
   }
 
   interface AnthropicResponse {
-    content: Array<{ type: string; text: string }>;
+    content: Array<{ type: string; text?: string }>;
   }
   const json = await res.json() as AnthropicResponse;
-  const raw = json.content[0]?.type === "text" ? json.content[0].text : "";
+  const textBlock = json.content.find((b) => b.type === "text");
+  const raw = textBlock?.text ?? "";
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
   return JSON.parse(cleaned) as GeneratedGuide;
 }
@@ -453,4 +456,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export const maxDuration = 60;
+export const maxDuration = 300;

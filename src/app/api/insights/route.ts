@@ -1,7 +1,7 @@
-import { anthropic } from '@/lib/anthropic';
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from '@/lib/anthropic';
 import type { MetaData, ShopifyData, Insight, MetaCampaign, MetaAd } from '@/lib/types';
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const SYSTEM_PROMPT = `You are a DTC performance marketing analyst for Lunia Life, a sleep supplement brand.
 You have deep expertise in Meta advertising and Shopify analytics.
@@ -118,12 +118,13 @@ Return ONLY the JSON array. No preamble, no markdown fences, no explanation outs
   let raw: string;
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
-    raw = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+    raw = extractText(message).trim();
   } catch (err) {
     const status = (err as { status?: number })?.status;
     console.error('[api/insights] Anthropic API error', { status, err });

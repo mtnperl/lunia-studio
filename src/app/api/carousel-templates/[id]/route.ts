@@ -1,8 +1,8 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { deleteCarouselTemplate, getCarouselTemplates, saveCarouselTemplate } from "@/lib/kv";
 import { BrandStyle, CarouselTemplate, CarouselTemplateImage } from "@/lib/types";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -42,11 +42,12 @@ async function extractBrandStyle(images: CarouselTemplateImage[]): Promise<Brand
       { type: "text", text: PALETTE_PROMPT },
     ];
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 300,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       messages: [{ role: "user", content }],
     });
-    const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+    const raw = extractText(msg);
     const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     return JSON.parse(text) as BrandStyle;
   } catch (e) {

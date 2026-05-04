@@ -1,6 +1,8 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { SUGGESTIONS_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const ip =
@@ -17,11 +19,12 @@ export async function POST(req: Request) {
 
   try {
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 512,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       messages: [{ role: "user", content: SUGGESTIONS_PROMPT }],
     });
-    const text = msg.content[0].type === "text" ? msg.content[0].text : "";
+    const text = extractText(msg);
     let suggestions;
     try {
       suggestions = JSON.parse(text);

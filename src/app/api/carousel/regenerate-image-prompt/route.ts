@@ -1,7 +1,7 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
-export const maxDuration = 30;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const ip =
@@ -55,13 +55,14 @@ Rules (hard):
     ].filter(Boolean).join("\n");
 
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 600,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const raw = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
+    const raw = extractText(msg).trim();
     if (!raw) {
       return Response.json({ error: "Failed to generate prompts" }, { status: 500 });
     }

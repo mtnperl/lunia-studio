@@ -1,5 +1,7 @@
-import { anthropic as client } from "@/lib/anthropic";
+import { anthropic as client, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
+
+export const maxDuration = 300;
 
 const SYSTEM_PROMPT = `You are a UGC scriptwriter for Lunia Life, a sleep supplement brand.
 
@@ -68,8 +70,9 @@ export async function POST(req: Request) {
       .join("\n");
 
     const stream = await client.messages.stream({
-      model: "claude-sonnet-4-5",
-      max_tokens: 1000,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });

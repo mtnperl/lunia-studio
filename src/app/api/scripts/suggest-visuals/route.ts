@@ -1,4 +1,6 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
@@ -34,12 +36,13 @@ Respond with ONLY this JSON (no markdown, no explanation):
 }`;
 
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 200,
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text.trim() : "{}";
+    const text = extractText(message).trim() || "{}";
     const json = JSON.parse(text);
 
     return Response.json({ setting: json.setting ?? "", energy: json.energy ?? "", broll: json.broll ?? "" });

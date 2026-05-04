@@ -1,9 +1,11 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
 import { CarouselContent, CarouselFormat, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+
+export const maxDuration = 300;
 
 // Convert any failure (Anthropic SDK error, JSON parse, Zod validation) into a
 // human-readable label that's safe to surface to the user. Keeps the raw error
@@ -98,11 +100,12 @@ export async function POST(req: Request) {
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
         try {
           const msg = await anthropic.messages.create({
-            model: "claude-sonnet-4-5",
-            max_tokens: 4096,
+            model: CONTENT_MODEL,
+            max_tokens: CONTENT_MAX_TOKENS_LONG,
+            thinking: CONTENT_THINKING,
             messages,
           });
-          const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+          const raw = extractText(msg);
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           const parsed = JSON.parse(text) as CarouselContent;
           // Ensure every hook has a sourceNote (trust liner) — LLM sometimes omits it
@@ -150,11 +153,12 @@ export async function POST(req: Request) {
 async function callDidYouKnow(topic: string, variantCount: number, violations?: string[]): Promise<DidYouKnowContent[]> {
   const prompt = GENERATE_DID_YOU_KNOW_PROMPT(topic, variantCount, violations);
   const msg = await anthropic.messages.create({
-    model: "claude-opus-4-7",
-    max_tokens: 4096,
+    model: CONTENT_MODEL,
+    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    thinking: CONTENT_THINKING,
     messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
   });
-  const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+  const raw = extractText(msg);
   const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   const json = JSON.parse(text);
   const result = DidYouKnowVariantsResponseSchema.safeParse(json);
