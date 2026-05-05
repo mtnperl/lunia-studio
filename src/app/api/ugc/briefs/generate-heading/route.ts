@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
 
@@ -70,7 +70,7 @@ CTA: ${script.cta}
 
 Return the heading only.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: 60,
       system: SYSTEM_PROMPT,

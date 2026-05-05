@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -71,7 +71,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code fences):
   "imagePrompt": "..."
 }`;
 
-    const response = await anthropic.messages.create({
+    const response = await createContentMessage({
       model: "claude-opus-4-6",
       max_tokens: 600,
       messages: [{ role: "user", content: prompt }],

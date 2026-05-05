@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdSceneType } from "@/lib/types";
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const systemPrompt = (IMAGE_STYLE_INSTRUCTIONS[imageStyle] ?? IMAGE_STYLE_INSTRUCTIONS.realistic)
       + (currentPrompt ? "\n- This is a regeneration — produce a distinctly different visual direction" : "");
 
-    const msg = await anthropic.messages.create({
+    const msg = await createContentMessage({
       model: "claude-sonnet-4-5",
       max_tokens: 200,
       system: systemPrompt,

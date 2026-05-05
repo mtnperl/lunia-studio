@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import {
   clientIp,
@@ -55,7 +55,7 @@ Brief: ${briefLabel || "(not specified)"}
 
 Write two distinct captions for this creator's UGC post. Vary the hook between the two.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: 400,
       system: SYSTEM_PROMPT,

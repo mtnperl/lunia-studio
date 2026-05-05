@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { postProcess } from "@/lib/compliance";
 import { clientIp, incrComplianceMetric, logEntry, logExit } from "@/lib/ugc-api";
@@ -67,7 +67,7 @@ CTA: ${script.cta}
 
 Return the caption only. Remember to end with the follow line exactly.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: 500,
       system: SYSTEM_PROMPT,

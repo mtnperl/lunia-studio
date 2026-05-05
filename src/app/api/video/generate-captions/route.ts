@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const message = await anthropic.messages.create({
+        const message = await createContentMessage({
           model: "claude-sonnet-4-5",
           max_tokens: 512,
           system: attempt === 1 ? SYSTEM_PROMPT : SYSTEM_PROMPT + "\n\nCRITICAL: Output ONLY the JSON object.",

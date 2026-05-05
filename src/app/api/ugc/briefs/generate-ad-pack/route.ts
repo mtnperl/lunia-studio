@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { postProcess } from "@/lib/compliance";
 import { clientIp, incrComplianceMetric, logEntry, logExit } from "@/lib/ugc-api";
@@ -112,7 +112,7 @@ CTA: ${script.cta}
 Return exactly the JSON shape defined in the system prompt. Exactly 5 primary texts,
 5 headlines, 5 descriptions, and 1 cta value from the allowed list.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: 2000,
       system: SYSTEM_PROMPT,

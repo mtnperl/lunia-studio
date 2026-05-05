@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 30;
@@ -41,7 +41,7 @@ Rewrite this ${guidance} in Lunia voice. Keep the core intent. Make it sharper, 
 
 Return ONLY the rewritten text. No explanation, no quotes, no markdown.`;
 
-    const response = await anthropic.messages.create({
+    const response = await createContentMessage({
       model: "claude-opus-4-6",
       max_tokens: 250,
       messages: [{ role: "user", content: prompt }],

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { findAngle, findConcept } from "@/lib/angleLibrary";
 import { buildScriptUserPrompt, UGC_SCRIPT_SYSTEM_PROMPT } from "@/lib/ugc-prompts";
@@ -56,7 +56,7 @@ export async function POST(req: Request): Promise<Response> {
       extraNotes,
     });
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: 2048,
       system: UGC_SCRIPT_SYSTEM_PROMPT,

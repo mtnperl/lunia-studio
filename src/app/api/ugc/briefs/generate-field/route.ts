@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { findAngle } from "@/lib/angleLibrary";
 import { UGC_SCRIPT_SYSTEM_PROMPT } from "@/lib/ugc-prompts";
@@ -78,7 +78,7 @@ ${FIELD_GUIDE[field]}
 
 Return the new value for this field as a plain string. No JSON, no labels, no quotes around it, no preamble.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: "claude-opus-4-7",
       max_tokens: field === "narrative" ? 1200 : 300,
       system: UGC_SCRIPT_SYSTEM_PROMPT,

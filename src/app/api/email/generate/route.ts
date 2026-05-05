@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { EmailAnatomy, EmailSection, StylePreset } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -131,7 +131,7 @@ Generate 3 to 5 sections. Each section must have an imagePrompt (or empty string
     }
     messageContent.push({ type: "text", text: analysisPrompt });
 
-    const response = await anthropic.messages.create({
+    const response = await createContentMessage({
       model: "claude-opus-4-6",
       max_tokens: 3000,
       messages: [{ role: "user", content: messageContent }],
