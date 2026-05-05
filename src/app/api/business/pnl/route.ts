@@ -29,11 +29,16 @@ export async function GET(req: Request) {
   const bust = url.searchParams.get("bust") === "1";
   const includePrior = url.searchParams.get("prior") !== "0";
 
+  // Forward the user's auth cookie so the internal /api/meta + /api/shopify
+  // fetches pass the auth middleware (the standalone dashboard works because
+  // the browser sends the cookie; server-side fetch starts cold without it).
+  const cookie = req.headers.get("cookie") ?? "";
+
   // ── Pull every input in parallel ────────────────────────────────────────
   const [assumptions, current, prior, recurringWindow] = await Promise.all([
     loadAssumptions(),
-    loadAll({ origin, since, until, bust }),
-    includePrior ? loadAll({ origin, since: priorRange.since, until: priorRange.until, bust: false }) : Promise.resolve(null),
+    loadAll({ origin, since, until, bust, cookie }),
+    includePrior ? loadAll({ origin, since: priorRange.since, until: priorRange.until, bust: false, cookie }) : Promise.resolve(null),
     loadRecurringWindow(),
   ]);
 
@@ -110,22 +115,23 @@ async function loadAll(opts: {
   since: string;
   until: string;
   bust: boolean;
+  cookie: string;
 }): Promise<Bundle> {
-  const { origin, since, until, bust } = opts;
+  const { origin, since, until, bust, cookie } = opts;
   const qs = `since=${since}&until=${until}${bust ? "&bust=1" : ""}`;
 
   const [meta, shopify, simplefin] = await Promise.all([
-    fetchJson<MetaData>(`${origin}/api/meta?${qs}`),
-    fetchJson<ShopifyData>(`${origin}/api/shopify?${qs}`),
+    fetchJson<MetaData>(`${origin}/api/meta?${qs}`, cookie),
+    fetchJson<ShopifyData>(`${origin}/api/shopify?${qs}`, cookie),
     loadSimpleFin(since, until),
   ]);
 
   return { meta, shopify, simplefin };
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+async function fetchJson<T>(url: string, cookie = ""): Promise<T | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, cookie ? { headers: { cookie } } : undefined);
     if (!res.ok) return null;
     const body = await res.json();
     if (body && typeof body === "object" && "error" in body) return null;

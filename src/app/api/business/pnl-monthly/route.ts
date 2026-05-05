@@ -39,11 +39,15 @@ export async function GET(req: Request) {
   const origin = `${url.protocol}//${url.host}`;
   const qs = `since=${fullSince}&until=${fullUntil}${bust ? "&bust=1" : ""}`;
 
+  // Forward the user's auth cookie so the internal /api/meta + /api/shopify
+  // fetches survive the auth middleware in production.
+  const cookie = req.headers.get("cookie") ?? "";
+
   // Pull everything once over the whole window.
   const [assumptions, meta, shopify, simplefin, recurringWindow] = await Promise.all([
     loadAssumptions(),
-    fetchJson<MetaData>(`${origin}/api/meta?${qs}`),
-    fetchJson<ShopifyData>(`${origin}/api/shopify?${qs}`),
+    fetchJson<MetaData>(`${origin}/api/meta?${qs}`, cookie),
+    fetchJson<ShopifyData>(`${origin}/api/shopify?${qs}`, cookie),
     loadSimpleFin(fullSince, fullUntil),
     loadRecurringWindow(),
   ]);
@@ -197,9 +201,9 @@ async function loadAssumptions(): Promise<BusinessAssumptions> {
   }
 }
 
-async function fetchJson<T extends { truncated?: boolean }>(url: string): Promise<T | null> {
+async function fetchJson<T extends { truncated?: boolean }>(url: string, cookie = ""): Promise<T | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, cookie ? { headers: { cookie } } : undefined);
     if (!res.ok) return null;
     const body = await res.json();
     if (body && typeof body === "object" && "error" in body) return null;
