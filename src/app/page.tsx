@@ -8,7 +8,7 @@ import BatchView from "@/components/BatchView";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
-import DashboardView from "@/components/DashboardView";
+import BusinessView from "@/components/business/BusinessView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
@@ -29,8 +29,8 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "analytics";
-type Product = "home" | "script" | "carousel" | "ugc" | "video" | "analytics";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
   "--bg": "#f6f7fb", "--surface": "#ffffff", "--surface-r": "#f5f6f8",
@@ -71,7 +71,11 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "video-assets": IconImage,
   ugc: IconBoard,
   "ugc-briefs": IconDocument,
-  analytics: IconTrendingUp,
+  "business-overview": IconTrendingUp,
+  "business-pnl": IconDocument,
+  "business-unit-economics": IconStack,
+  "business-cash": IconBoard,
+  "business-assumptions": IconHash,
 };
 
 const TAB_TITLES: Record<string, string> = {
@@ -91,7 +95,11 @@ const TAB_TITLES: Record<string, string> = {
   "video-assets": "Video assets",
   ugc: "UGC tracker",
   "ugc-briefs": "UGC briefs",
-  analytics: "Analytics",
+  "business-overview": "Business — Overview",
+  "business-pnl": "Business — P&L",
+  "business-unit-economics": "Business — Unit Economics",
+  "business-cash": "Business — Cash & Expenses",
+  "business-assumptions": "Business — Assumptions",
 };
 
 const NAV: { section: string; items: { key: Tab; product: Product; label: string }[] }[] = [
@@ -136,9 +144,13 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     ],
   },
   {
-    section: "Analytics",
+    section: "Business",
     items: [
-      { key: "analytics", product: "analytics", label: "Dashboard" },
+      { key: "business-overview",        product: "business", label: "Overview"        },
+      { key: "business-pnl",             product: "business", label: "P&L"             },
+      { key: "business-unit-economics",  product: "business", label: "Unit Economics"  },
+      { key: "business-cash",            product: "business", label: "Cash & Expenses" },
+      { key: "business-assumptions",     product: "business", label: "Assumptions"     },
     ],
   },
 ];
@@ -484,7 +496,11 @@ export default function Page() {
         {tab === "video-assets"  && <VideoAssetsView />}
         {tab === "ugc" && <UGCTrackerView />}
         {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
-        {tab === "analytics" && <DashboardView />}
+        {tab === "business-overview"       && <BusinessView active="overview" />}
+        {tab === "business-pnl"            && <BusinessView active="pnl" />}
+        {tab === "business-unit-economics" && <BusinessView active="unit-economics" />}
+        {tab === "business-cash"           && <BusinessView active="cash" />}
+        {tab === "business-assumptions"    && <BusinessView active="assumptions" />}
         </div>
       </main>
     </div>

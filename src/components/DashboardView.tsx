@@ -87,8 +87,13 @@ function SectionHeader({ title, children }: { title: string; children?: React.Re
   );
 }
 
-export default function DashboardView() {
-  const [unlocked, setUnlocked] = useState(false);
+type DashboardViewProps = {
+  /** When true, skip the password gate (parent has already gated). */
+  skipGate?: boolean;
+};
+
+export default function DashboardView({ skipGate = false }: DashboardViewProps = {}) {
+  const [unlocked, setUnlocked] = useState(skipGate);
   const [metaData, setMetaData] = useState<MetaData | null>(null);
   const [shopifyData, setShopifyData] = useState<ShopifyData | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -113,9 +118,10 @@ export default function DashboardView() {
   const [selectedObjectives, setSelectedObjectives] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (skipGate) return;
     const stored = localStorage.getItem("lunia:analytics:unlocked");
     if (stored === "1") setUnlocked(true);
-  }, []);
+  }, [skipGate]);
 
   useEffect(() => {
     if (!unlocked) return;
