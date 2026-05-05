@@ -178,6 +178,29 @@ export default function Page() {
 
   useEffect(() => { getLibrary().catch(() => {}); }, [tab]);
 
+  // Deep-link: `?openScript=<id>` from the share page lands here. Pull that
+  // script and drop the user straight into the editor for it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const scriptId = params.get("openScript");
+    if (!scriptId) return;
+    fetch(`/api/scripts/${scriptId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: Script | null) => {
+        if (!s) return;
+        setActiveScript(s);
+        setTab("editor");
+      })
+      .catch(() => {})
+      .finally(() => {
+        // Drop the query param so a refresh doesn't reload the same script
+        const url = new URL(window.location.href);
+        url.searchParams.delete("openScript");
+        window.history.replaceState({}, "", url.toString());
+      });
+  }, []);
+
   function openEditor(script: Script) {
     setActiveScript(script);
     setTab("editor");

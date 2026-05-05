@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import { Script, Suggestion } from "@/lib/types";
 import { saveScript, generateId } from "@/lib/storage";
+import { applySuggestionAccept } from "@/lib/suggestions";
 
 // ─── StatusChip ───────────────────────────────────────────────────────────────
 function StatusChip({ status }: { status: Script["status"] }) {
@@ -394,48 +395,13 @@ export default function EditorView({
 
   function acceptSuggestion(id: string) {
     if (!script) return;
-    const suggestion = (script.suggestions ?? []).find((s) => s.id === id);
-    if (!suggestion) return;
-    const { startLine, endLine, text } = suggestion;
-    const replacementLines = text.split("\n");
-    const removed = endLine - startLine + 1;
-    const delta = replacementLines.length - removed;
-
-    const newLines = [...script.lines];
-    newLines.splice(startLine, removed, ...replacementLines);
-
-    const shift = (idx: number): number | null => {
-      if (idx < startLine) return idx;
-      if (idx > endLine) return idx + delta;
-      return null; // dropped — was inside the replaced range
-    };
-
-    const newComments: Script["comments"] = {};
-    Object.entries(script.comments).forEach(([k, v]) => {
-      const ki = shift(Number(k));
-      if (ki !== null) newComments[ki] = v;
-    });
-
-    const newFilmingNotes: Script["filmingNotes"] = {};
-    Object.entries(script.filmingNotes).forEach(([k, v]) => {
-      const ki = shift(Number(k));
-      if (ki !== null) newFilmingNotes[ki] = v;
-    });
-
-    const remainingSuggestions = (script.suggestions ?? [])
-      .filter((s) => s.id !== id)
-      .map((s) => {
-        if (s.endLine < startLine) return s;
-        if (s.startLine > endLine) return { ...s, startLine: s.startLine + delta, endLine: s.endLine + delta };
-        return null; // overlapping suggestion is invalidated
-      })
-      .filter((s): s is Suggestion => s !== null);
-
+    const next = applySuggestionAccept(script, id);
+    if (!next) return;
     update({
-      lines: newLines,
-      comments: newComments,
-      filmingNotes: newFilmingNotes,
-      suggestions: remainingSuggestions,
+      lines: next.lines,
+      comments: next.comments,
+      filmingNotes: next.filmingNotes,
+      suggestions: next.suggestions,
     });
     setSelectedLine(null);
     setSelectionEndLine(null);

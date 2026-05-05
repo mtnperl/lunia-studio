@@ -1,6 +1,7 @@
 import { getScriptById } from "@/lib/kv";
 import { notFound } from "next/navigation";
 import type { Suggestion } from "@/lib/types";
+import ApproveSuggestionButton from "./ApproveSuggestionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +40,24 @@ export default async function ScriptSharePage({
   return (
     <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", background: "#fafafa", minHeight: "100vh" }}>
       {/* Header */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "14px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ width: 28, height: 28, background: "#000", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>L</span>
         </div>
         <span style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>Lunia Script Studio</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: statusColor, marginLeft: "auto", letterSpacing: ".02em" }}>{statusLabel}</span>
+        <a
+          href={`/?openScript=${script.id}`}
+          style={{
+            fontSize: 13, fontWeight: 600, padding: "7px 16px",
+            background: "#111", color: "#fff", borderRadius: 6,
+            textDecoration: "none", letterSpacing: ".01em",
+            display: "inline-flex", alignItems: "center", gap: 6,
+          }}
+        >
+          Open in editor
+          <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+        </a>
       </div>
 
       {/* Collaborator banner — only when not locked AND there's anything to review */}
@@ -184,6 +197,7 @@ export default async function ScriptSharePage({
                     <div style={{ fontSize: 14, lineHeight: 1.6, color: "#1f2937", whiteSpace: "pre-wrap" }}>
                       {endingSuggestion.text}
                     </div>
+                    <ApproveSuggestionButton scriptId={script.id} suggestionId={endingSuggestion.id} />
                   </div>
                 )}
               </div>
