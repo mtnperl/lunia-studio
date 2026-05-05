@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { CONTENT_MODEL, CONTENT_THINKING_BUDGET, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 
 // ─── Request shape ────────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ async function generateGuide(data: PDFRequest): Promise<GeneratedGuide> {
     body: JSON.stringify({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
-      thinking: { type: "enabled", budget_tokens: CONTENT_THINKING_BUDGET },
+      thinking: CONTENT_THINKING,
       messages: [{ role: "user", content: buildPrompt(data) }],
     }),
   });

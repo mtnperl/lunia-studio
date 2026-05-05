@@ -7,12 +7,8 @@ export const anthropic = new Anthropic({
 
 /**
  * Create a Message via the streaming API and return the final assembled Message.
- *
- * The SDK refuses `messages.create()` when it estimates the request may exceed
- * 10 minutes — which our Opus 4.7 + 16K-thinking + 20–24K-max-tokens config
- * routinely trips. Streaming is required, but most callers don't actually want
- * incremental output; they want the same `Message` shape back. This helper
- * does that.
+ * Streaming is required because long Opus generations can exceed the SDK's
+ * 10-minute non-streaming estimate.
  */
 export async function createContentMessage(params: MessageCreateParamsNonStreaming): Promise<Message> {
   return anthropic.messages.stream(params).finalMessage();
@@ -21,8 +17,7 @@ export async function createContentMessage(params: MessageCreateParamsNonStreami
 // Centralized model + thinking config for content-generation routes.
 // Bumping the version here flips every route at once.
 export const CONTENT_MODEL = "claude-opus-4-7";
-export const CONTENT_THINKING_BUDGET = 16_000;
-export const CONTENT_THINKING = { type: "enabled" as const, budget_tokens: CONTENT_THINKING_BUDGET };
+export const CONTENT_THINKING = { type: "adaptive" as const };
 
 // max_tokens must exceed the thinking budget. Use these defaults so the
 // caller never has to do the math.
