@@ -8,6 +8,7 @@ import {
   DEFAULT_ASSUMPTIONS,
   type BusinessAssumptions,
   type Categorization,
+  type CustomerCohort,
   type SimpleFinTxn,
 } from "@/lib/business-types";
 import type { MetaData, ShopifyData } from "@/lib/types";
@@ -35,11 +36,12 @@ export async function GET(req: Request) {
   const cookie = req.headers.get("cookie") ?? "";
 
   // ── Pull every input in parallel ────────────────────────────────────────
-  const [assumptions, current, prior, recurringWindow] = await Promise.all([
+  const [assumptions, current, prior, recurringWindow, cohort] = await Promise.all([
     loadAssumptions(),
     loadAll({ origin, since, until, bust, cookie }),
     includePrior ? loadAll({ origin, since: priorRange.since, until: priorRange.until, bust: false, cookie }) : Promise.resolve(null),
     loadRecurringWindow(),
+    loadCohort({ origin, since, until, bust, cookie }),
   ]);
 
   // Merge categorizations for current + prior windows. We need to look up
@@ -69,6 +71,7 @@ export async function GET(req: Request) {
     categorizations: currentCategorizations,
     recurringTxnIds,
     recurringMonthlyRunRate,
+    cohort,
     assumptions,
     prior: prior
       ? {
@@ -151,6 +154,22 @@ async function loadSimpleFin(since: string, until: string): Promise<{ transactio
     console.warn("[api/business/pnl] simplefin fetch failed", err);
     return null;
   }
+}
+
+/**
+ * Pull the 365d Shopify customer cohort, scoped to the current period for the
+ * new-customer count. Cookie forwarded so the call survives auth middleware.
+ */
+async function loadCohort(opts: {
+  origin: string;
+  since: string;
+  until: string;
+  bust: boolean;
+  cookie: string;
+}): Promise<CustomerCohort | null> {
+  const { origin, since, until, bust, cookie } = opts;
+  const qs = `since=${since}&until=${until}${bust ? "&bust=1" : ""}`;
+  return fetchJson<CustomerCohort>(`${origin}/api/shopify/customer-cohort?${qs}`, cookie);
 }
 
 /**

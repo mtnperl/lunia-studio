@@ -120,6 +120,42 @@ export type Categorization = {
   override?: boolean;     // true if user manually set the category
 };
 
+// ── Customer Cohort ──────────────────────────────────────────────────────
+// 365d Shopify rollup that backs the Unit Economics tab. Computes real LTV /
+// repeat rate / sub mix from observed customer behavior instead of leaning on
+// the assumption form. Range-aware new-customer counts let the consumer pick
+// their CAC window.
+
+export type CustomerCohort = {
+  /** Always 365 — the trailing-twelve-months window the LTV calc is based on. */
+  windowDays: number;
+  /** Total unique customers observed in the 365d window. Excludes guest checkouts (no customer.id). */
+  totalCustomers: number;
+  /** Customers whose order history includes at least one subscription line item. */
+  subCustomers: number;
+  /** Customers whose order history is exclusively one-time purchases. */
+  otpCustomers: number;
+  /** Mean lifetime revenue per customer over the 365d window — gross of margin. */
+  avgLifetimeRevenue: { blended: number; sub: number; otp: number };
+  /** Mean order count per customer over the 365d window. */
+  avgOrdersPerCustomer: { blended: number; sub: number; otp: number };
+  /** Share of orders (not customers) that are subscriptions. */
+  subMixPct: number;
+  /** Share of customers with more than one order in the window. */
+  repeatRatePct: number;
+  /** New customers in the requested range (driven by the since/until query params). */
+  newCustomersInRange: number;
+  /** Convenience windows. */
+  newCustomersLast30d: number;
+  newCustomersLast90d: number;
+  /** Range-aware request echo so the consumer can verify what was scoped. */
+  range: { since: string; until: string };
+  /** True when Shopify pagination capped — totals may be understated. */
+  truncated: boolean;
+  /** ISO timestamp the rollup was computed at. */
+  computedAt: string;
+};
+
 // ── P&L (Phase 5) ────────────────────────────────────────────────────────
 // Composed shape returned by /api/business/pnl.
 
@@ -169,6 +205,21 @@ export type PnL = {
     otpLtv: number;
     ltvToCac: number;
     paybackMonths: number;
+    /**
+     * "shopify-cohort" = computed from real 12-month customer data (preferred).
+     * "assumptions"    = derived from the static assumption form (fallback).
+     */
+    source: "shopify-cohort" | "assumptions";
+    /** Real customer-level signal when source = shopify-cohort. */
+    cohort?: {
+      totalCustomers: number;
+      subCustomers: number;
+      otpCustomers: number;
+      newCustomersInRange: number;
+      subMixActualPct: number;
+      repeatRatePct: number;
+      avgOrdersPerCustomer: number;
+    };
   };
   /** Sources that failed or are unconnected — UI surfaces a warning per item. */
   missing: string[];

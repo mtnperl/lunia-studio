@@ -3,6 +3,7 @@ import {
   EXPENSE_CATEGORIES,
   type BusinessAssumptions,
   type Categorization,
+  type CustomerCohort,
   type ExpenseCategory,
   type PnL,
   type PnLLine,
@@ -35,6 +36,8 @@ export function composePnL(input: {
   recurringTxnIds?: Set<string>;
   /** Steady-state monthly run-rate of all recurring vendors. Period-independent. */
   recurringMonthlyRunRate?: number;
+  /** When provided, unit economics are derived from real customer behaviour over the past 365d. */
+  cohort?: CustomerCohort | null;
   assumptions: BusinessAssumptions;
   prior?: {
     meta?: MetaData | null;
@@ -45,7 +48,7 @@ export function composePnL(input: {
 }): PnL {
   const {
     range, priorRange, meta, shopify, simplefin, categorizations, recurringTxnIds,
-    recurringMonthlyRunRate = 0, assumptions, prior,
+    recurringMonthlyRunRate = 0, cohort, assumptions, prior,
   } = input;
 
   const missing: string[] = [];
@@ -54,7 +57,7 @@ export function composePnL(input: {
   if (!simplefin) missing.push("simplefin");
 
   const current = computeStatement({
-    meta, shopify, simplefin, categorizations, recurringTxnIds, assumptions,
+    meta, shopify, simplefin, categorizations, recurringTxnIds, cohort, assumptions,
   });
 
   const priorStatement = prior
@@ -115,6 +118,8 @@ export function composePnL(input: {
       otpLtv:        current.otpLtv,
       ltvToCac:      current.ltvToCac,
       paybackMonths: current.paybackMonths,
+      source:        current.unitEconomicsSource,
+      cohort:        current.cohortSummary,
     },
     missing,
   };
@@ -147,6 +152,16 @@ type Statement = {
   otpLtv: number;
   ltvToCac: number;
   paybackMonths: number;
+  unitEconomicsSource: "shopify-cohort" | "assumptions";
+  cohortSummary?: {
+    totalCustomers: number;
+    subCustomers: number;
+    otpCustomers: number;
+    newCustomersInRange: number;
+    subMixActualPct: number;
+    repeatRatePct: number;
+    avgOrdersPerCustomer: number;
+  };
 };
 
 // Categories already covered by other lines — exclude from "Fixed expenses".
@@ -162,9 +177,10 @@ function computeStatement(input: {
   simplefin?: { transactions: SimpleFinTxn[] } | null;
   categorizations?: Map<string, Categorization>;
   recurringTxnIds?: Set<string>;
+  cohort?: CustomerCohort | null;
   assumptions: BusinessAssumptions;
 }): Statement {
-  const { meta, shopify, simplefin, categorizations, recurringTxnIds, assumptions } = input;
+  const { meta, shopify, simplefin, categorizations, recurringTxnIds, cohort, assumptions } = input;
 
   // ── Revenue ─────────────────────────────────────────────────────────────
   const grossRevenue = shopify?.summary.revenue ?? 0;
@@ -223,34 +239,73 @@ function computeStatement(input: {
   const netMarginPct = netRevenue === 0 ? 0 : (netIncome / netRevenue) * 100;
 
   // ── Unit economics ──────────────────────────────────────────────────────
-  // Approximation: orders ≈ customers acquired (subs + OTP), so CAC = adSpend / orders.
-  // For a single-user founder dashboard this is "good enough" until Shopify's
-  // new-vs-returning split is wired in.
-  const cac = orders > 0 ? adSpend / orders : 0;
+  // Two paths:
+  //  • Cohort-backed (preferred): CAC from real new-customer acquisition,
+  //    LTV from observed 12-month per-customer revenue × current gross margin.
+  //  • Assumption-backed (fallback): static math from the Assumptions form.
+  let cac: number;
+  let subLtv: number;
+  let otpLtv: number;
+  let blendedLtv: number;
+  let ltvToCac: number;
+  let paybackMonths: number;
+  let unitEconomicsSource: "shopify-cohort" | "assumptions";
+  let cohortSummary: Statement["cohortSummary"];
 
-  // Average order values (post-discount).
-  const subAovDiscounted = assumptions.subPriceUsd * (1 - assumptions.subDiscountPct / 100);
-  const otpAov = assumptions.otpPriceUsd;
+  const grossMarginRatio = netRevenue > 0 ? grossProfit / netRevenue : 0;
 
-  // Per-order contribution = average order value - per-unit COGS - fulfilment - processing fees.
-  // (Use a per-order processing approximation: pct of AOV + flat.)
-  const procPerSubOrder = subAovDiscounted * (assumptions.paymentProcessingPct / 100) + assumptions.paymentProcessingFlat;
-  const procPerOtpOrder = otpAov * (assumptions.paymentProcessingPct / 100) + assumptions.paymentProcessingFlat;
-  const subContribPerOrder = subAovDiscounted - assumptions.cogsPerUnit - assumptions.fulfilmentPerOrder - procPerSubOrder;
-  const otpContribPerOrder = otpAov - assumptions.cogsPerUnit - assumptions.fulfilmentPerOrder - procPerOtpOrder;
+  if (cohort && cohort.totalCustomers > 0) {
+    unitEconomicsSource = "shopify-cohort";
 
-  // Sub LTV ≈ per-order contribution × avg lifetime months × 1 order/month.
-  const subLtv = subContribPerOrder * assumptions.avgSubLifetimeMonths;
-  // OTP LTV ≈ per-order contribution × (1 + repeat-rate-as-multiplier).
-  const otpLtv = otpContribPerOrder * (1 + assumptions.otpRepeatRatePct / 100);
+    // CAC = ad spend in this period / new customers acquired in this period.
+    cac = cohort.newCustomersInRange > 0 ? adSpend / cohort.newCustomersInRange : 0;
 
-  const subShare = assumptions.subMixPct / 100;
-  const blendedLtv = subShare * subLtv + (1 - subShare) * otpLtv;
+    // Convert revenue LTV to contribution LTV using the period's gross margin.
+    subLtv     = cohort.avgLifetimeRevenue.sub     * grossMarginRatio;
+    otpLtv     = cohort.avgLifetimeRevenue.otp     * grossMarginRatio;
+    blendedLtv = cohort.avgLifetimeRevenue.blended * grossMarginRatio;
 
-  const ltvToCac = cac > 0 ? blendedLtv / cac : 0;
-  // Payback months: months of contribution to recover CAC. Use blended monthly contribution.
-  const blendedMonthlyContrib = subShare * subContribPerOrder + (1 - subShare) * (otpContribPerOrder / Math.max(1, assumptions.avgSubLifetimeMonths));
-  const paybackMonths = blendedMonthlyContrib > 0 ? cac / blendedMonthlyContrib : 0;
+    ltvToCac = cac > 0 ? blendedLtv / cac : 0;
+
+    // Monthly contribution per customer = (lifetime contribution) ÷ (observed months).
+    // Bound observed months to >=1 to avoid divide-by-zero, capped at 12 (the window).
+    const monthsObserved = 12;
+    const monthlyContribPerCustomer = blendedLtv / monthsObserved;
+    paybackMonths = monthlyContribPerCustomer > 0 ? cac / monthlyContribPerCustomer : 0;
+
+    cohortSummary = {
+      totalCustomers: cohort.totalCustomers,
+      subCustomers: cohort.subCustomers,
+      otpCustomers: cohort.otpCustomers,
+      newCustomersInRange: cohort.newCustomersInRange,
+      subMixActualPct: cohort.subMixPct,
+      repeatRatePct: cohort.repeatRatePct,
+      avgOrdersPerCustomer: cohort.avgOrdersPerCustomer.blended,
+    };
+  } else {
+    unitEconomicsSource = "assumptions";
+
+    // Assumption-backed fallback (preserved from v1).
+    cac = orders > 0 ? adSpend / orders : 0;
+
+    const subAovDiscounted = assumptions.subPriceUsd * (1 - assumptions.subDiscountPct / 100);
+    const otpAov = assumptions.otpPriceUsd;
+
+    const procPerSubOrder = subAovDiscounted * (assumptions.paymentProcessingPct / 100) + assumptions.paymentProcessingFlat;
+    const procPerOtpOrder = otpAov * (assumptions.paymentProcessingPct / 100) + assumptions.paymentProcessingFlat;
+    const subContribPerOrder = subAovDiscounted - assumptions.cogsPerUnit - assumptions.fulfilmentPerOrder - procPerSubOrder;
+    const otpContribPerOrder = otpAov - assumptions.cogsPerUnit - assumptions.fulfilmentPerOrder - procPerOtpOrder;
+
+    subLtv = subContribPerOrder * assumptions.avgSubLifetimeMonths;
+    otpLtv = otpContribPerOrder * (1 + assumptions.otpRepeatRatePct / 100);
+
+    const subShare = assumptions.subMixPct / 100;
+    blendedLtv = subShare * subLtv + (1 - subShare) * otpLtv;
+
+    ltvToCac = cac > 0 ? blendedLtv / cac : 0;
+    const blendedMonthlyContrib = subShare * subContribPerOrder + (1 - subShare) * (otpContribPerOrder / Math.max(1, assumptions.avgSubLifetimeMonths));
+    paybackMonths = blendedMonthlyContrib > 0 ? cac / blendedMonthlyContrib : 0;
+  }
 
   return {
     grossRevenue, refunds, netRevenue,
@@ -259,5 +314,6 @@ function computeStatement(input: {
     adSpend, fixedExpenses, recurringFixed, variableOpex, fixedByCategory, opexTotal,
     contributionMargin, netIncome, netMarginPct,
     cac, blendedLtv, subLtv, otpLtv, ltvToCac, paybackMonths,
+    unitEconomicsSource, cohortSummary,
   };
 }
