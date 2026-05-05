@@ -83,7 +83,22 @@ export async function fetchSimpleFin(
     throw new SimpleFinError(res.status, `Malformed JSON: ${bodyText.slice(0, 200)}`);
   }
 
-  const accounts: SimpleFinAccount[] = (json.accounts ?? []).map((a) => ({
+  // Optional account filter — comma-separated last-4 suffixes via SIMPLEFIN_ACCOUNT_SUFFIXES.
+  // SimpleFIN account names typically embed the masked last-4 in parens (e.g. "BUS COMPLETE CHK (3877)").
+  // If unset, every connected account flows through.
+  const suffixFilter = (process.env.SIMPLEFIN_ACCOUNT_SUFFIXES ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const matchesFilter = (a: WireAccount): boolean => {
+    if (suffixFilter.length === 0) return true;
+    return suffixFilter.some((suffix) => a.name.includes(suffix) || a.id.endsWith(suffix));
+  };
+
+  const filteredWireAccounts = (json.accounts ?? []).filter(matchesFilter);
+
+  const accounts: SimpleFinAccount[] = filteredWireAccounts.map((a) => ({
     id: a.id,
     name: a.name,
     currency: a.currency,
@@ -93,7 +108,7 @@ export async function fetchSimpleFin(
     org: { name: a.org?.name ?? "Unknown", domain: a.org?.domain },
   }));
 
-  const transactions: SimpleFinTxn[] = (json.accounts ?? []).flatMap((a) =>
+  const transactions: SimpleFinTxn[] = filteredWireAccounts.flatMap((a) =>
     (a.transactions ?? []).map((t) => ({
       id: t.id,
       accountId: a.id,

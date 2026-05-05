@@ -157,21 +157,23 @@ export default function CashExpensesSubview() {
     if (data) fetchCategorizations(data.transactions);
   }, [data, fetchCategorizations]);
 
-  const totalCash = data
-    ? data.accounts.reduce((s, a) => s + (a.balance || 0), 0)
+  // Split positive balances (cash on hand) from negative balances (owed on credit
+  // cards / lines of credit). Net position is the sum — what actually matters
+  // for runway, but the components are what you act on.
+  const cashOnHand = data
+    ? data.accounts.filter((a) => a.balance >= 0).reduce((s, a) => s + a.balance, 0)
     : 0;
+  const owed = data
+    ? Math.abs(data.accounts.filter((a) => a.balance < 0).reduce((s, a) => s + a.balance, 0))
+    : 0;
+  const netPosition = cashOnHand - owed;
+  const hasCredit = data?.accounts.some((a) => a.balance < 0) ?? false;
 
   // Money OUT of the account = negative amounts. Show as positive in "spent".
   const spent = data
     ? data.transactions
         .filter((t) => t.amount < 0)
         .reduce((s, t) => s + Math.abs(t.amount), 0)
-    : 0;
-
-  const incoming = data
-    ? data.transactions
-        .filter((t) => t.amount > 0)
-        .reduce((s, t) => s + t.amount, 0)
     : 0;
 
   // Per-category spend (money out only).
@@ -281,12 +283,20 @@ export default function CashExpensesSubview() {
       {/* Top totals */}
       <div className="kpi-grid" style={{
         display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateColumns: hasCredit ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
         gap: 12,
         marginBottom: 24,
       }}>
-        <SimpleStat label="Total Cash" value={fmtUsd(totalCash, 0)} loading={loading && !data} />
-        <SimpleStat label="Money In (period)" value={fmtUsd(incoming, 0)} loading={loading && !data} />
+        <SimpleStat label="Cash on Hand" value={fmtUsd(cashOnHand, 0)} loading={loading && !data} />
+        {hasCredit && (
+          <SimpleStat label="Owed (Credit)" value={fmtUsd(owed, 0)} loading={loading && !data} negative />
+        )}
+        <SimpleStat
+          label="Net Position"
+          value={fmtUsd(netPosition, 0)}
+          loading={loading && !data}
+          negative={netPosition < 0}
+        />
         <SimpleStat label="Money Out (period)" value={fmtUsd(spent, 0)} loading={loading && !data} />
       </div>
 
@@ -496,7 +506,14 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function SimpleStat({ label, value, loading }: { label: string; value: string; loading: boolean }) {
+function SimpleStat({
+  label, value, loading, negative,
+}: {
+  label: string;
+  value: string;
+  loading: boolean;
+  negative?: boolean;
+}) {
   return (
     <div style={{
       background: "var(--surface)",
@@ -519,7 +536,7 @@ function SimpleStat({ label, value, loading }: { label: string; value: string; l
         fontFamily: "var(--font-mono)",
         fontVariantNumeric: "tabular-nums",
         fontSize: 22,
-        color: "var(--text)",
+        color: negative ? "var(--error)" : "var(--text)",
         fontWeight: 600,
         opacity: loading ? 0.4 : 1,
       }}>

@@ -20,13 +20,19 @@ You'll get back a long URL like `https://username:password@beta-bridge.simplefin
 
 ## 3. Add to environment
 
-Set in your local `.env` (and Vercel project env if deployed):
+Set in your local `.env.local` (and Vercel project env if deployed):
 
 ```
 SIMPLEFIN_ACCESS_URL=https://username:password@beta-bridge.simplefin.org/simplefin
+
+# Optional — filter to specific accounts by last-4 of the account number.
+# Comma-separated. Match runs against account name (typically embeds last-4 in
+# parens) or the SimpleFIN id suffix. Leave unset to include every connected
+# account.
+SIMPLEFIN_ACCOUNT_SUFFIXES=3877,6844
 ```
 
-The app reads it server-side only. It is never sent to the browser.
+The app reads both server-side only. They are never sent to the browser.
 
 ## 4. Verify
 
