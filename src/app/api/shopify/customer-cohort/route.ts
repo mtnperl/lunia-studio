@@ -7,7 +7,7 @@ const WINDOW_DAYS = 365;
 const PAGE_CAP = 100;         // 100 × 250 = 25,000 orders. Plenty of headroom for a year of DTC orders.
 const PAGE_SIZE = 250;
 const REVENUE_STATUSES = new Set(["paid", "authorized", "partially_paid"]);
-const MIN_ORDER_VALUE = 5;    // exclude $0/test orders, matches /api/shopify
+const MIN_ORDER_VALUE = 1;    // count any order strictly above $1 — excludes $0/$1 test orders only
 
 type ShopifyLineItem = {
   product_title: string;
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
   const windowSince = new Date(todayUtc.getTime() - (WINDOW_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
   const windowUntil = todayUtc.toISOString().slice(0, 10);
 
-  const cacheKey = `shopify:cohort:v1:${windowSince}_${windowUntil}`;
+  const cacheKey = `shopify:cohort:v2:${windowSince}_${windowUntil}`;
 
   let full: CachedFullWindow | null = null;
 
@@ -213,7 +213,7 @@ async function pullAndAggregate(
   for (const order of allOrders) {
     if (!REVENUE_STATUSES.has(order.financial_status)) continue;
     const total = parseFloat(order.total_price ?? "0");
-    if (total < MIN_ORDER_VALUE) continue;
+    if (total <= MIN_ORDER_VALUE) continue;
 
     totalOrders++;
 
