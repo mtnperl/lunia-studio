@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer } from "recharts";
 import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
 import RefreshButton from "../dashboard/RefreshButton";
@@ -307,12 +307,13 @@ export default function CashExpensesSubview() {
         </div>
       )}
 
-      {/* Top totals */}
+      {/* ── 1. Position: how much cash do we have, what do we owe ───────── */}
+      <SectionLabel title="Position" subtitle="What we have, what we owe, what moved out this period." />
       <div className="kpi-grid" style={{
         display: "grid",
         gridTemplateColumns: hasCredit ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
         gap: 12,
-        marginBottom: 24,
+        marginBottom: 32,
       }}>
         <SimpleStat label="Cash on Hand" value={fmtUsd(cashOnHand, 0)} loading={loading && !data} />
         {hasCredit && (
@@ -330,84 +331,49 @@ export default function CashExpensesSubview() {
       <style>{`
         @media (max-width: 700px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .acct-grid { grid-template-columns: 1fr !important; }
+          .acct-row { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
-      {/* Per-account balances */}
-      {data && data.accounts.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <SectionHeader title="Accounts" />
-          <div className="acct-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 12,
+      {/* ── 2. Recurring: answers "what are my operating expenses?" ─────── */}
+      {recurring && recurring.recurring.length > 0 && (
+        <>
+          <SectionLabel
+            title="Recurring Operating Expenses"
+            subtitle="Subscriptions, payroll, and anything else with a regular cadence — your locked-in monthly cost base."
+          />
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: 20,
+            marginBottom: 32,
           }}>
-            {data.accounts.map((a) => (
-              <div
-                key={a.id}
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: 16,
-                }}
-              >
-                <div style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 11,
-                  color: "var(--subtle)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: 6,
-                }}>
-                  {a.org.name}
-                </div>
-                <div style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 14,
-                  color: "var(--text)",
-                  fontWeight: 500,
-                  marginBottom: 8,
-                }}>
-                  {a.name}
-                </div>
-                <div style={{
-                  fontFamily: "var(--font-mono)",
-                  fontVariantNumeric: "tabular-nums",
-                  fontSize: 22,
-                  color: a.balance < 0 ? "var(--error)" : "var(--text)",
-                  fontWeight: 600,
-                }}>
-                  {fmtUsd(a.balance)}
-                </div>
-                {a.availableBalance != null && a.availableBalance !== a.balance && (
-                  <div style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 11,
-                    color: "var(--muted)",
-                    marginTop: 4,
-                  }}>
-                    Available {fmtUsd(a.availableBalance)}
-                  </div>
-                )}
-              </div>
-            ))}
+            <SectionHeader
+              title={`${recurring.recurring.length} vendors`}
+              trailing={`Monthly run-rate ${fmtUsd(recurring.monthlyTotal, 0)} · Annualized ${fmtUsd(recurring.monthlyTotal * 12, 0)}`}
+            />
+            <RecurringTable items={recurring.recurring} />
           </div>
-        </div>
+        </>
       )}
 
-      {/* Category breakdown — donut + table */}
+      {/* ── 3. Expense breakdown: what we spent on, this period ─────────── */}
       {data && donutData.length > 0 && (
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 20,
-          marginBottom: 24,
-        }}>
-          <SectionHeader title={`Expense Categories${categorizing ? " · categorizing…" : ""}`} />
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) 1.2fr", gap: 24, alignItems: "center" }}>
+        <>
+          <SectionLabel
+            title="Spending Breakdown"
+            subtitle="Where your bank-side outflows landed this period. Click any category in the table below to override."
+          />
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: 20,
+            marginBottom: 32,
+          }}>
+            <SectionHeader title={`Expense Categories${categorizing ? " · categorizing…" : ""}`} />
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) 1.2fr", gap: 24, alignItems: "center" }}>
             <div style={{ height: 240 }}>
               <ResponsiveContainer>
                 <PieChart>
@@ -478,25 +444,72 @@ export default function CashExpensesSubview() {
             </div>
           </div>
         </div>
+        </>
       )}
 
-      {/* Recurring */}
-      {recurring && recurring.recurring.length > 0 && (
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: 20,
-          marginBottom: 24,
-        }}>
-          <SectionHeader
-            title={`Recurring (${recurring.recurring.length})`}
-            trailing={`Monthly run-rate ${fmtUsd(recurring.monthlyTotal, 0)} · Annualized ${fmtUsd(recurring.monthlyTotal * 12, 0)}`}
-          />
-          <RecurringTable items={recurring.recurring} />
-        </div>
+      {/* ── 4. Accounts: where the cash sits — compact row ──────────────── */}
+      {data && data.accounts.length > 0 && (
+        <>
+          <SectionLabel title="Accounts" subtitle="Connected via SimpleFIN — read-only balance + transaction stream." />
+          <div className="acct-row" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 12,
+            marginBottom: 32,
+          }}>
+            {data.accounts.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "12px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 13,
+                    color: "var(--text)",
+                    fontWeight: 500,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {a.name}
+                  </div>
+                  <div style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 11,
+                    color: "var(--subtle)",
+                    marginTop: 2,
+                  }}>
+                    {a.org.name}
+                  </div>
+                </div>
+                <div style={{
+                  fontFamily: "var(--font-mono)",
+                  fontVariantNumeric: "tabular-nums",
+                  fontSize: 18,
+                  color: a.balance < 0 ? "var(--error)" : "var(--text)",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                }}>
+                  {fmtUsd(a.balance)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
+      {/* ── 5. Transactions: drilldown ──────────────────────────────────── */}
+      <SectionLabel title="Transactions" subtitle="Every outflow and deposit. Click any category pill to override the AI's call." />
       {/* Transactions */}
       <div style={{
         background: "var(--surface)",
@@ -522,6 +535,39 @@ export default function CashExpensesSubview() {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Top-level section label — sits above a card and tells the user what
+ * question this block answers. Helps the page scan as: Position → Recurring
+ * OpEx → Spending → Accounts → Transactions.
+ */
+function SectionLabel({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <h2 style={{
+        fontFamily: "var(--font-ui)",
+        fontSize: 14,
+        fontWeight: 600,
+        color: "var(--text)",
+        margin: 0,
+        letterSpacing: "-0.01em",
+      }}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 12,
+          color: "var(--muted)",
+          margin: "4px 0 0",
+          lineHeight: 1.5,
+        }}>
+          {subtitle}
+        </p>
+      )}
     </div>
   );
 }
@@ -793,6 +839,63 @@ function CategoryPill({
   categorization: Categorization | undefined;
   onChange: (cat: ExpenseCategory) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Close on outside click / Escape
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (popoverRef.current?.contains(t)) return;
+      if (triggerRef.current?.contains(t)) return;
+      setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Position the popover under the trigger using fixed positioning so it
+  // escapes any parent overflow:hidden.
+  useEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const POP_WIDTH = 240;
+      const VIEWPORT_PAD = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let left = rect.left;
+      if (left + POP_WIDTH > vw - VIEWPORT_PAD) left = vw - POP_WIDTH - VIEWPORT_PAD;
+      if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+      let top = rect.bottom + 4;
+      // If the popover would clip the viewport bottom, flip above the trigger.
+      const POP_HEIGHT_ESTIMATE = Math.min(EXPENSE_CATEGORIES.length * 32 + 16, vh - 40);
+      if (top + POP_HEIGHT_ESTIMATE > vh - VIEWPORT_PAD) {
+        top = Math.max(VIEWPORT_PAD, rect.top - POP_HEIGHT_ESTIMATE - 4);
+      }
+      setPos({ top, left });
+    }
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [open]);
+
   if (!categorization) {
     return (
       <span style={{
@@ -809,16 +912,17 @@ function CategoryPill({
   const isLow = categorization.confidence < 0.6;
 
   return (
-    <span
-      title={`${(categorization.confidence * 100).toFixed(0)}% confidence — ${categorization.reasoning}`}
-      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-    >
-      <select
-        value={categorization.category}
-        onChange={(e) => onChange(e.target.value as ExpenseCategory)}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title={`${(categorization.confidence * 100).toFixed(0)}% confidence — ${categorization.reasoning} · click to change`}
         style={{
-          appearance: "none",
-          padding: "3px 22px 3px 10px",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "3px 10px",
           borderRadius: 999,
           border: `1px solid ${color}`,
           background: `${color}1a`,
@@ -827,19 +931,14 @@ function CategoryPill({
           fontSize: 11,
           fontWeight: 500,
           cursor: "pointer",
-          backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'><path d='M4 6L0 0h8z' fill='${encodeURIComponent(color)}'/></svg>")`,
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 8px center",
         }}
       >
-        {EXPENSE_CATEGORIES.map((c) => (
-          <option key={c} value={c}>
-            {EXPENSE_CATEGORY_LABELS[c]}
-          </option>
-        ))}
-      </select>
+        {EXPENSE_CATEGORY_LABELS[categorization.category]}
+        <span aria-hidden style={{ fontSize: 9 }}>▾</span>
+      </button>
+
       {isLow && !categorization.override && (
-        <span title="Low confidence" style={{
+        <span title="Low confidence — review the suggestion" style={{
           fontSize: 10,
           color: "var(--warning)",
           fontWeight: 600,
@@ -851,6 +950,79 @@ function CategoryPill({
         <span title="Manually set" style={{ fontSize: 10, color: "var(--subtle)" }}>
           ✓
         </span>
+      )}
+
+      {open && pos && (
+        <div
+          ref={popoverRef}
+          role="menu"
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: 240,
+            zIndex: 1000,
+            background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: 6,
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.18)",
+            maxHeight: "min(70vh, 520px)",
+            overflowY: "auto",
+            fontFamily: "var(--font-ui)",
+          }}
+        >
+          {EXPENSE_CATEGORIES.map((c) => {
+            const itemColor = CATEGORY_COLORS[c];
+            const active = c === categorization.category;
+            return (
+              <button
+                key={c}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  onChange(c);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: active ? "var(--accent-dim)" : "transparent",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "var(--text)",
+                  fontWeight: active ? 600 : 400,
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-h)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }}
+              >
+                <span style={{
+                  display: "inline-block",
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: itemColor,
+                  flexShrink: 0,
+                }} />
+                <span style={{ flex: 1 }}>{EXPENSE_CATEGORY_LABELS[c]}</span>
+                {active && (
+                  <span aria-hidden style={{ color: "var(--accent)", fontSize: 11 }}>✓</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       )}
     </span>
   );
