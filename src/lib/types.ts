@@ -11,6 +11,15 @@ export type FilmingNotes = {
   director: string;
 };
 
+export type Suggestion = {
+  id: string;
+  startLine: number;       // inclusive index into Script.lines
+  endLine: number;         // inclusive
+  text: string;            // user-authored replacement; \n separates new lines
+  author: string;
+  createdAt: string;       // ISO
+};
+
 export type Script = {
   id: string;
   title: string;
@@ -27,6 +36,7 @@ export type Script = {
   subjectNotes?: string;   // background info on the subject
   instructions?: string;   // specific creative directives
   reviewEmails?: string[];
+  suggestions?: Suggestion[];
 };
 
 // ─── Carousel types ───────────────────────────────────────────────────────────

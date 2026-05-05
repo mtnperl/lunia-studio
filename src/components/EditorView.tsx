@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Script } from "@/lib/types";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+import { Script, Suggestion } from "@/lib/types";
 import { saveScript, generateId } from "@/lib/storage";
 
 // ─── StatusChip ───────────────────────────────────────────────────────────────
@@ -47,6 +47,41 @@ function AddCommentForm({ onAdd }: { onAdd: (author: string, text: string) => vo
         onClick={() => { if (author.trim() && text.trim()) { onAdd(author.trim(), text.trim()); setText(""); } }}
       >
         Add comment
+      </button>
+    </div>
+  );
+}
+
+// ─── AddSuggestionForm ────────────────────────────────────────────────────────
+function AddSuggestionForm({
+  rangeLabel,
+  onAdd,
+}: {
+  rangeLabel: string;
+  onAdd: (author: string, text: string) => void;
+}) {
+  const [author, setAuthor] = useState("");
+  const [text, setText] = useState("");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <p style={{ fontSize: 11, color: "var(--muted)", margin: 0, fontFamily: "var(--font-mono)" }}>{rangeLabel}</p>
+      <input type="text" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" style={{ fontSize: 13 }} />
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Type your replacement text. New lines split into separate script lines."
+        rows={4}
+        style={{ fontSize: 13, resize: "vertical", lineHeight: 1.5 }}
+      />
+      <button
+        className="btn"
+        style={{
+          alignSelf: "flex-end", fontSize: 12, padding: "5px 14px",
+          background: "var(--warning)", color: "#fff", borderColor: "var(--warning)",
+        }}
+        onClick={() => { if (author.trim() && text.trim()) { onAdd(author.trim(), text.trim()); setText(""); } }}
+      >
+        Save suggestion
       </button>
     </div>
   );
@@ -217,6 +252,7 @@ export default function EditorView({
   const [isDirty, setIsDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
+  const [selectionEndLine, setSelectionEndLine] = useState<number | null>(null);
   const [lockModal, setLockModal] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -224,6 +260,7 @@ export default function EditorView({
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"edit" | "shot">("edit");
   const [rightPanelHasMore, setRightPanelHasMore] = useState(false);
+  const [suggestionMode, setSuggestionMode] = useState(false);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -231,6 +268,8 @@ export default function EditorView({
     setScript(initialScript);
     setIsDirty(false);
     setSelectedLine(null);
+    setSelectionEndLine(null);
+    setSuggestionMode(false);
     setViewMode("edit");
   }, [initialScript]);
 
@@ -330,6 +369,77 @@ export default function EditorView({
         [lineIdx]: [...existing, { author, text, time: new Date().toLocaleTimeString() }],
       },
     });
+  }
+
+  // ── Suggestions (range-based human rewrites) ──────────────────────────────
+  function addSuggestion(startLine: number, endLine: number, author: string, text: string) {
+    if (!script) return;
+    const lo = Math.min(startLine, endLine);
+    const hi = Math.max(startLine, endLine);
+    const next: Suggestion = {
+      id: generateId(),
+      startLine: lo,
+      endLine: hi,
+      text,
+      author,
+      createdAt: new Date().toISOString(),
+    };
+    update({ suggestions: [...(script.suggestions ?? []), next] });
+  }
+
+  function dismissSuggestion(id: string) {
+    if (!script) return;
+    update({ suggestions: (script.suggestions ?? []).filter((s) => s.id !== id) });
+  }
+
+  function acceptSuggestion(id: string) {
+    if (!script) return;
+    const suggestion = (script.suggestions ?? []).find((s) => s.id === id);
+    if (!suggestion) return;
+    const { startLine, endLine, text } = suggestion;
+    const replacementLines = text.split("\n");
+    const removed = endLine - startLine + 1;
+    const delta = replacementLines.length - removed;
+
+    const newLines = [...script.lines];
+    newLines.splice(startLine, removed, ...replacementLines);
+
+    const shift = (idx: number): number | null => {
+      if (idx < startLine) return idx;
+      if (idx > endLine) return idx + delta;
+      return null; // dropped — was inside the replaced range
+    };
+
+    const newComments: Script["comments"] = {};
+    Object.entries(script.comments).forEach(([k, v]) => {
+      const ki = shift(Number(k));
+      if (ki !== null) newComments[ki] = v;
+    });
+
+    const newFilmingNotes: Script["filmingNotes"] = {};
+    Object.entries(script.filmingNotes).forEach(([k, v]) => {
+      const ki = shift(Number(k));
+      if (ki !== null) newFilmingNotes[ki] = v;
+    });
+
+    const remainingSuggestions = (script.suggestions ?? [])
+      .filter((s) => s.id !== id)
+      .map((s) => {
+        if (s.endLine < startLine) return s;
+        if (s.startLine > endLine) return { ...s, startLine: s.startLine + delta, endLine: s.endLine + delta };
+        return null; // overlapping suggestion is invalidated
+      })
+      .filter((s): s is Suggestion => s !== null);
+
+    update({
+      lines: newLines,
+      comments: newComments,
+      filmingNotes: newFilmingNotes,
+      suggestions: remainingSuggestions,
+    });
+    setSelectedLine(null);
+    setSelectionEndLine(null);
+    setSuggestionMode(false);
   }
 
   function handleLock(title: string) {
@@ -591,12 +701,25 @@ export default function EditorView({
           </div>
 
           {/* Script lines */}
-          {script.lines.map((line, i) => {
+          {(() => {
+            const allSuggestions = script.suggestions ?? [];
+            const suggestionByLine = new Map<number, Suggestion>();
+            const suggestionEndsAt = new Map<number, Suggestion>();
+            allSuggestions.forEach((s) => {
+              for (let k = s.startLine; k <= s.endLine; k++) suggestionByLine.set(k, s);
+              suggestionEndsAt.set(s.endLine, s);
+            });
+            const rLo = selectedLine === null ? null : Math.min(selectedLine, selectionEndLine ?? selectedLine);
+            const rHi = selectedLine === null ? null : Math.max(selectedLine, selectionEndLine ?? selectedLine);
+            return script.lines.map((line, i) => {
             const isSection = /^\[(HOOK|BODY|CTA)\]$/.test(line);
             const hasComments = (script.comments[i]?.length ?? 0) > 0;
             const hasFilmingNotes = Object.values(script.filmingNotes[i] ?? {}).some(Boolean);
-            const isSelected = selectedLine === i;
+            const inRange = rLo !== null && rHi !== null && i >= rLo && i <= rHi;
+            const isSelected = selectedLine === i || inRange;
             const isHovered = hoveredLine === i;
+            const coveringSuggestion = suggestionByLine.get(i);
+            const endingSuggestion = suggestionEndsAt.get(i);
 
             if (isSection) {
               const sectionName = line.replace(/[[\]]/g, "") as "HOOK" | "BODY" | "CTA";
@@ -618,19 +741,30 @@ export default function EditorView({
               );
             }
 
+            const handleLineClick = () => {
+              if (viewMode !== "edit") return;
+              if (suggestionMode && selectedLine !== null) {
+                setSelectionEndLine(i);
+                return;
+              }
+              setSelectedLine(selectedLine === i ? null : i);
+              setSelectionEndLine(null);
+            };
+
             return (
+              <Fragment key={i}>
               <div
-                key={i}
-                onClick={() => viewMode === "edit" && setSelectedLine(isSelected ? null : i)}
+                onClick={handleLineClick}
                 onMouseEnter={() => setHoveredLine(i)}
                 onMouseLeave={() => setHoveredLine(null)}
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 8,
                   marginBottom: 2, cursor: viewMode === "edit" ? "pointer" : "default", borderRadius: 6,
-                  background: isSelected ? "var(--accent-dim)" : "transparent",
+                  background: coveringSuggestion ? "var(--surface-h)" : isSelected ? "var(--accent-dim)" : "transparent",
                   border: `1px solid ${isSelected ? "var(--accent-mid)" : "transparent"}`,
                   transition: "background .1s, border-color .1s",
                   position: "relative",
+                  opacity: coveringSuggestion ? 0.55 : 1,
                 }}
               >
                 {/* Line number */}
@@ -648,6 +782,7 @@ export default function EditorView({
                   <p style={{
                     flex: 1, fontSize: 14, padding: "6px 8px", lineHeight: 1.6,
                     margin: 0, color: "var(--text)", userSelect: "none",
+                    textDecoration: coveringSuggestion ? "line-through" : "none",
                   }}>
                     {line || <span style={{ color: "var(--subtle)" }}>Empty line</span>}
                   </p>
@@ -655,9 +790,12 @@ export default function EditorView({
                   <textarea
                     ref={autoResize}
                     value={line}
-                    readOnly={isLocked}
+                    readOnly={isLocked || !!coveringSuggestion || suggestionMode}
                     className="script-line-textarea"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      if (suggestionMode) { e.preventDefault(); handleLineClick(); return; }
+                      e.stopPropagation();
+                    }}
                     onChange={(e) => {
                       const newLines = [...script.lines];
                       newLines[i] = e.target.value;
@@ -665,13 +803,14 @@ export default function EditorView({
                       e.target.style.height = "auto";
                       e.target.style.height = e.target.scrollHeight + "px";
                     }}
-                    onFocus={() => setSelectedLine(i)}
+                    onFocus={() => { if (!suggestionMode) setSelectedLine(i); }}
                     rows={1}
                     style={{
                       flex: 1, fontSize: 14, resize: "none", overflow: "hidden",
                       background: "transparent", border: "none", outline: "none",
                       padding: "6px 8px", lineHeight: 1.6, minHeight: 34,
-                      cursor: isLocked ? "default" : "text",
+                      cursor: isLocked || suggestionMode ? "pointer" : "text",
+                      textDecoration: coveringSuggestion ? "line-through" : "none",
                     }}
                     onInput={(e) => {
                       const t = e.target as HTMLTextAreaElement;
@@ -692,7 +831,7 @@ export default function EditorView({
                       title="Has filming notes" />
                   )}
                   {/* + and × buttons on hover (edit mode only) */}
-                  {!isLocked && viewMode === "edit" && isHovered && (
+                  {!isLocked && viewMode === "edit" && isHovered && !coveringSuggestion && (
                     <>
                       <button
                         onClick={(e) => { e.stopPropagation(); addLineAfter(i); }}
@@ -718,8 +857,55 @@ export default function EditorView({
                   )}
                 </div>
               </div>
+
+              {/* Suggestion callout — appears below the LAST line of any pending suggestion range */}
+              {endingSuggestion && !isLocked && (
+                <div style={{
+                  marginLeft: 36, marginTop: 6, marginBottom: 14,
+                  border: "1px solid var(--warning)",
+                  borderLeft: "4px solid var(--warning)",
+                  borderRadius: 6,
+                  background: "color-mix(in srgb, var(--warning) 8%, var(--bg))",
+                  padding: "10px 14px",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: ".08em",
+                      textTransform: "uppercase" as const, color: "var(--warning)",
+                    }}>
+                      Suggested rewrite · {endingSuggestion.author}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
+                      lines {endingSuggestion.startLine + 1}–{endingSuggestion.endLine + 1}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text)", whiteSpace: "pre-wrap", marginBottom: 10 }}>
+                    {endingSuggestion.text}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); acceptSuggestion(endingSuggestion.id); }}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "5px 14px",
+                        background: "var(--warning)", color: "#fff",
+                        border: "1px solid var(--warning)", borderRadius: 5, cursor: "pointer",
+                      }}
+                    >Accept</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); dismissSuggestion(endingSuggestion.id); }}
+                      style={{
+                        fontSize: 12, fontWeight: 600, padding: "5px 14px",
+                        background: "transparent", color: "var(--muted)",
+                        border: "1px solid var(--border-strong)", borderRadius: 5, cursor: "pointer",
+                      }}
+                    >Dismiss</button>
+                  </div>
+                </div>
+              )}
+              </Fragment>
             );
-          })}
+          });
+          })()}
 
           {/* Global add line + AI expand buttons */}
           {!isLocked && viewMode === "edit" && (
@@ -766,13 +952,74 @@ export default function EditorView({
           <div ref={rightPanelRef} onScroll={handleRightPanelScroll} style={{ overflowY: "auto", height: "100%", display: "flex", flexDirection: "column" }}>
             {selectedLine !== null ? (
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                {/* Selected line preview */}
+                {/* Selected line(s) preview */}
                 <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--border)" }}>
-                  <p className="section-label" style={{ marginBottom: 6 }}>Line {selectedLine + 1}</p>
-                  <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px" }}>
-                    {script.lines[selectedLine] || <span style={{ color: "var(--subtle)" }}>Empty line</span>}
-                  </p>
+                  {(() => {
+                    const lo = Math.min(selectedLine, selectionEndLine ?? selectedLine);
+                    const hi = Math.max(selectedLine, selectionEndLine ?? selectedLine);
+                    const isRange = lo !== hi;
+                    return (
+                      <>
+                        <p className="section-label" style={{ marginBottom: 6 }}>
+                          {isRange ? `Lines ${lo + 1}–${hi + 1}` : `Line ${selectedLine + 1}`}
+                        </p>
+                        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.6, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", whiteSpace: "pre-wrap" }}>
+                          {isRange
+                            ? script.lines.slice(lo, hi + 1).join("\n") || <span style={{ color: "var(--subtle)" }}>Empty</span>
+                            : (script.lines[selectedLine] || <span style={{ color: "var(--subtle)" }}>Empty line</span>)}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
+
+                {/* Suggest a rewrite */}
+                {!isLocked && (
+                  <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: suggestionMode ? 10 : 0 }}>
+                      <p className="section-label" style={{ margin: 0 }}>Suggest a rewrite</p>
+                      {!suggestionMode ? (
+                        <button
+                          onClick={() => { setSuggestionMode(true); setSelectionEndLine(selectedLine); }}
+                          style={{
+                            fontSize: 11, fontWeight: 600, padding: "4px 10px",
+                            background: "color-mix(in srgb, var(--warning) 14%, var(--bg))",
+                            color: "var(--warning)",
+                            border: "1px solid var(--warning)",
+                            borderRadius: 5, cursor: "pointer", letterSpacing: ".02em",
+                          }}
+                        >
+                          + Rewrite
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { setSuggestionMode(false); setSelectionEndLine(null); }}
+                          style={{
+                            fontSize: 11, fontWeight: 600, padding: "4px 10px",
+                            background: "transparent", color: "var(--muted)",
+                            border: "1px solid var(--border-strong)",
+                            borderRadius: 5, cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                    {suggestionMode && (() => {
+                      const lo = Math.min(selectedLine, selectionEndLine ?? selectedLine);
+                      const hi = Math.max(selectedLine, selectionEndLine ?? selectedLine);
+                      const rangeLabel = lo === hi
+                        ? `Replacing line ${lo + 1} · click another line to extend`
+                        : `Replacing lines ${lo + 1}–${hi + 1}`;
+                      return (
+                        <AddSuggestionForm
+                          rangeLabel={rangeLabel}
+                          onAdd={(a, t) => { addSuggestion(lo, hi, a, t); setSuggestionMode(false); setSelectionEndLine(null); }}
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {/* Comments */}
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
@@ -794,7 +1041,7 @@ export default function EditorView({
                       ))}
                     </div>
                   )}
-                  {!isLocked && <AddCommentForm onAdd={(a, t) => addComment(selectedLine, a, t)} />}
+                  {!isLocked && !suggestionMode && <AddCommentForm onAdd={(a, t) => addComment(selectedLine, a, t)} />}
                 </div>
 
                 {/* Filming notes */}
@@ -828,12 +1075,15 @@ export default function EditorView({
                   <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
                     Click any line to add comments and filming notes.
                   </p>
-                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)" }}>
+                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)", flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} /> Comments
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <span style={{ width: 6, height: 6, borderRadius: 1, background: "var(--warning)", display: "inline-block" }} /> Filming notes
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 10, height: 6, borderRadius: 1, background: "var(--warning)", display: "inline-block", opacity: 0.4 }} /> Suggestions
                     </span>
                   </div>
                 </div>
