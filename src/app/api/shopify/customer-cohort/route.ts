@@ -1,10 +1,10 @@
 import { kv } from "@/lib/kv";
 import type { CustomerCohort } from "@/lib/business-types";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const WINDOW_DAYS = 365;
-const PAGE_CAP = 50;          // 50 × 250 = 12,500 orders. Bump if you need more.
+const PAGE_CAP = 100;         // 100 × 250 = 25,000 orders. Plenty of headroom for a year of DTC orders.
 const PAGE_SIZE = 250;
 const REVENUE_STATUSES = new Set(["paid", "authorized", "partially_paid"]);
 const MIN_ORDER_VALUE = 5;    // exclude $0/test orders, matches /api/shopify
@@ -22,11 +22,12 @@ type ShopifyOrder = {
   total_price: string;
   financial_status: string;
   line_items: ShopifyLineItem[];
-  customer?: { id: number } | null;
+  customer?: { id: number; email?: string } | null;
+  email?: string;
 };
 
 type CustomerRollup = {
-  id: number;
+  key: string;
   totalRevenue: number;
   orderCount: number;
   hasSubscriptionOrder: boolean;
@@ -35,6 +36,7 @@ type CustomerRollup = {
 
 type CachedFullWindow = {
   windowDays: number;
+  windowOrders: number;
   totalCustomers: number;
   subCustomers: number;
   otpCustomers: number;
@@ -105,6 +107,7 @@ export async function GET(req: Request) {
 
   const out: CustomerCohort = {
     windowDays: full.windowDays,
+    windowOrders: full.windowOrders,
     totalCustomers: full.totalCustomers,
     subCustomers: full.subCustomers,
     otpCustomers: full.otpCustomers,
@@ -141,38 +144,69 @@ async function pullAndAggregate(
     `&created_at_min=${encodeURIComponent(created_at_min)}` +
     `&created_at_max=${encodeURIComponent(created_at_max_iso)}` +
     `&limit=${PAGE_SIZE}` +
-    `&fields=id,created_at,total_price,financial_status,line_items,customer`;
+    `&fields=id,created_at,total_price,financial_status,line_items,customer,email`;
 
   const allOrders: ShopifyOrder[] = [];
   let pages = 0;
   let truncated = false;
 
   while (nextUrl && pages < PAGE_CAP) {
-    const res: Response = await fetch(nextUrl, {
-      headers: { "X-Shopify-Access-Token": accessToken },
-    });
-    pages++;
-
-    if (!res.ok) {
-      throw new Error(`Shopify API error ${res.status}`);
+    let res: Response | null = null;
+    let attempt = 0;
+    // Up to 3 attempts per page to absorb a transient 429 / 5xx without losing the whole window.
+    while (attempt < 3) {
+      attempt++;
+      try {
+        res = await fetch(nextUrl, {
+          headers: { "X-Shopify-Access-Token": accessToken },
+        });
+      } catch (err) {
+        console.warn("[customer-cohort] network error on page %d attempt %d", pages, attempt, err);
+        if (attempt >= 3) {
+          truncated = true;
+          nextUrl = null;
+          break;
+        }
+        await sleep(500 * attempt);
+        continue;
+      }
+      if (res.status === 429 || res.status >= 500) {
+        const retryAfterHeader = res.headers.get("retry-after");
+        const wait = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : 1000 * attempt;
+        console.warn("[customer-cohort] %d on page %d — retrying in %dms", res.status, pages, wait);
+        await sleep(wait);
+        continue;
+      }
+      break;
     }
 
-    const json = (await res.json()) as { orders: ShopifyOrder[] };
+    if (!res || !res.ok) {
+      // Don't throw — return what we have and flag truncated. Partial data is more useful than no data.
+      console.warn("[customer-cohort] giving up at page %d, status %s — returning partial", pages, res?.status);
+      truncated = true;
+      break;
+    }
+
+    pages++;
+    const okRes: Response = res;
+    const json = (await okRes.json()) as { orders: ShopifyOrder[] };
     allOrders.push(...json.orders);
 
-    const linkHeader = res.headers.get("link") ?? "";
-    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    const linkHeader: string = okRes.headers.get("link") ?? "";
+    const nextMatch: RegExpMatchArray | null = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
     nextUrl = nextMatch ? nextMatch[1] : null;
 
     if (pages === PAGE_CAP && nextUrl) {
       truncated = true;
-      console.warn("[customer-cohort] pagination cap reached — totals may be understated");
+      console.warn("[customer-cohort] pagination cap reached at %d pages — totals may be understated", PAGE_CAP);
       nextUrl = null;
     }
   }
 
   // Filter to revenue orders + roll up per customer.
-  const customerMap = new Map<number, CustomerRollup>();
+  // Customer key uses customer.id when present, falling back to email for guest checkouts so
+  // repeat-but-unlinked buyers still aggregate correctly.
+  const customerMap = new Map<string, CustomerRollup>();
   let subOrders = 0;
   let totalOrders = 0;
 
@@ -180,23 +214,23 @@ async function pullAndAggregate(
     if (!REVENUE_STATUSES.has(order.financial_status)) continue;
     const total = parseFloat(order.total_price ?? "0");
     if (total < MIN_ORDER_VALUE) continue;
-    if (!order.customer?.id) continue; // guest checkout — exclude from cohort math
 
     totalOrders++;
+
     const isSubOrder = order.line_items.some((li) => li.selling_plan_allocation != null);
     if (isSubOrder) subOrders++;
 
-    const cid = order.customer.id;
+    const customerKey = customerKeyFor(order);
     const orderDate = order.created_at.slice(0, 10);
-    const existing = customerMap.get(cid);
+    const existing = customerMap.get(customerKey);
     if (existing) {
       existing.totalRevenue += total;
       existing.orderCount += 1;
       if (isSubOrder) existing.hasSubscriptionOrder = true;
       if (orderDate < existing.firstOrderDate) existing.firstOrderDate = orderDate;
     } else {
-      customerMap.set(cid, {
-        id: cid,
+      customerMap.set(customerKey, {
+        key: customerKey,
         totalRevenue: total,
         orderCount: 1,
         hasSubscriptionOrder: isSubOrder,
@@ -238,12 +272,13 @@ async function pullAndAggregate(
   }
 
   console.log(
-    "[customer-cohort] window=%s..%s pages=%d orders=%d customers=%d sub=%d truncated=%s",
-    windowSince, windowUntil, pages, allOrders.length, totalCustomers, subCustomers.length, truncated,
+    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d sub=%d truncated=%s",
+    windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers, subCustomers.length, truncated,
   );
 
   return {
     windowDays: WINDOW_DAYS,
+    windowOrders: totalOrders,
     totalCustomers,
     subCustomers: subCustomers.length,
     otpCustomers: otpCustomers.length,
@@ -257,6 +292,19 @@ async function pullAndAggregate(
     windowSince,
     windowUntil,
   };
+}
+
+function customerKeyFor(order: ShopifyOrder): string {
+  if (order.customer?.id) return `id:${order.customer.id}`;
+  const email = (order.customer?.email ?? order.email ?? "").trim().toLowerCase();
+  if (email) return `email:${email}`;
+  // No identifier — fall back to a per-order key so the order still counts but doesn't
+  // wrongly link with anything else.
+  return `order:${order.id}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sumNewCustomers(byDate: Record<string, number>, since: string, until: string): number {

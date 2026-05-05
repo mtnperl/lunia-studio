@@ -607,101 +607,181 @@ function SectionHeader({ title, trailing }: { title: string; trailing?: string }
   );
 }
 
+const FLAG_ORDER: Record<NonNullable<RecurringExpense["flag"]> | "unflagged", number> = {
+  cuttable: 0,
+  review: 1,
+  essential: 2,
+  unflagged: 3,
+};
+
+const FLAG_STYLE: Record<NonNullable<RecurringExpense["flag"]>, { bg: string; border: string; color: string; label: string }> = {
+  cuttable:  { bg: "rgba(220, 38, 38, 0.10)",  border: "var(--error)",   color: "var(--error)",   label: "CUT?" },
+  review:    { bg: "rgba(245, 158, 11, 0.10)", border: "var(--warning)", color: "var(--warning)", label: "REVIEW" },
+  essential: { bg: "rgba(16, 185, 129, 0.10)", border: "var(--success)", color: "var(--success)", label: "ESSENTIAL" },
+};
+
 function RecurringTable({ items }: { items: RecurringExpense[] }) {
+  // Sort: cuttable first (so it grabs the eye), then review, then essential.
+  const sorted = [...items].sort((a, b) => {
+    const aRank = FLAG_ORDER[a.flag ?? "unflagged"];
+    const bRank = FLAG_ORDER[b.flag ?? "unflagged"];
+    if (aRank !== bRank) return aRank - bRank;
+    return b.monthlyImpact - a.monthlyImpact;
+  });
+
+  const cuttableMonthly = sorted
+    .filter((r) => r.flag === "cuttable")
+    .reduce((s, r) => s + r.monthlyImpact, 0);
+
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{
-        width: "100%",
-        borderCollapse: "collapse",
-        fontFamily: "var(--font-ui)",
-        fontSize: 13,
-      }}>
-        <thead>
-          <tr style={{ textAlign: "left" }}>
-            <Th>Vendor</Th>
-            <Th>Category</Th>
-            <Th>Cadence</Th>
-            <Th align="right">Avg</Th>
-            <Th align="right">Monthly</Th>
-            <Th align="right">Annualized</Th>
-            <Th align="right">Last seen</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((r) => {
-            const color = CATEGORY_COLORS[r.category];
-            return (
-              <tr key={r.payeeKey} style={{ borderTop: "1px solid var(--border)" }}>
-                <Td>
-                  <span style={{ color: "var(--text)", fontWeight: 500 }}>{r.payeeLabel}</span>
-                  <span style={{ display: "block", color: "var(--subtle)", fontSize: 11, marginTop: 2 }}>
-                    {r.occurrences} charges · stability {(r.amountStability * 100).toFixed(0)}%
-                  </span>
-                </Td>
-                <Td>
-                  <span style={{
-                    display: "inline-block",
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    border: `1px solid ${color}`,
-                    background: `${color}1a`,
-                    color,
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 11,
-                    fontWeight: 500,
-                  }}>
-                    {EXPENSE_CATEGORY_LABELS[r.category]}
-                  </span>
-                </Td>
-                <Td>
-                  <span style={{ color: "var(--muted)", fontSize: 12, textTransform: "capitalize" }}>
-                    {r.cadence}
-                  </span>
-                </Td>
-                <Td align="right">
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--text)",
-                  }}>
-                    {fmtUsd(r.avgAmount)}
-                  </span>
-                </Td>
-                <Td align="right">
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--text)",
-                    fontWeight: 500,
-                  }}>
-                    {fmtUsd(r.monthlyImpact)}
-                  </span>
-                </Td>
-                <Td align="right">
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--muted)",
-                  }}>
-                    {fmtUsd(r.monthlyImpact * 12, 0)}
-                  </span>
-                </Td>
-                <Td align="right">
-                  <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--muted)",
-                    fontSize: 12,
-                  }}>
-                    {fmtDate(r.lastSeen)}
-                  </span>
-                </Td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {cuttableMonthly > 0 && (
+        <div style={{
+          marginBottom: 12,
+          padding: "8px 12px",
+          borderLeft: "3px solid var(--error)",
+          background: "rgba(220, 38, 38, 0.06)",
+          borderRadius: "0 6px 6px 0",
+          fontFamily: "var(--font-ui)",
+          fontSize: 12,
+          color: "var(--text)",
+        }}>
+          <strong style={{ color: "var(--error)" }}>{fmtUsd(cuttableMonthly, 0)}/mo</strong>
+          {" "}flagged as candidates to cut · {fmtUsd(cuttableMonthly * 12, 0)} annualized
+        </div>
+      )}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontFamily: "var(--font-ui)",
+          fontSize: 13,
+        }}>
+          <thead>
+            <tr style={{ textAlign: "left" }}>
+              <Th>Vendor</Th>
+              <Th>Flag</Th>
+              <Th>Category</Th>
+              <Th>Cadence</Th>
+              <Th align="right">Avg</Th>
+              <Th align="right">Monthly</Th>
+              <Th align="right">Annualized</Th>
+              <Th align="right">Last seen</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r) => {
+              const color = CATEGORY_COLORS[r.category];
+              const flag = r.flag;
+              const flagStyle = flag ? FLAG_STYLE[flag] : null;
+              return (
+                <tr key={r.payeeKey} style={{ borderTop: "1px solid var(--border)" }}>
+                  <Td>
+                    <span style={{ color: "var(--text)", fontWeight: 500 }}>{r.payeeLabel}</span>
+                    <span style={{ display: "block", color: "var(--subtle)", fontSize: 11, marginTop: 2 }}>
+                      {r.occurrences} charges · stability {(r.amountStability * 100).toFixed(0)}%
+                    </span>
+                  </Td>
+                  <Td>
+                    {flagStyle ? (
+                      <span
+                        title={r.flagReason ?? ""}
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          borderRadius: 4,
+                          border: `1px solid ${flagStyle.border}`,
+                          background: flagStyle.bg,
+                          color: flagStyle.color,
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {flagStyle.label}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--subtle)", fontSize: 11 }}>—</span>
+                    )}
+                    {r.flagReason && (
+                      <span style={{
+                        display: "block",
+                        color: "var(--subtle)",
+                        fontSize: 11,
+                        marginTop: 4,
+                        maxWidth: 280,
+                        lineHeight: 1.4,
+                      }}>
+                        {r.flagReason}
+                      </span>
+                    )}
+                  </Td>
+                  <Td>
+                    <span style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      border: `1px solid ${color}`,
+                      background: `${color}1a`,
+                      color,
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 11,
+                      fontWeight: 500,
+                    }}>
+                      {EXPENSE_CATEGORY_LABELS[r.category]}
+                    </span>
+                  </Td>
+                  <Td>
+                    <span style={{ color: "var(--muted)", fontSize: 12, textTransform: "capitalize" }}>
+                      {r.cadence}
+                    </span>
+                  </Td>
+                  <Td align="right">
+                    <span style={{
+                      fontFamily: "var(--font-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--text)",
+                    }}>
+                      {fmtUsd(r.avgAmount)}
+                    </span>
+                  </Td>
+                  <Td align="right">
+                    <span style={{
+                      fontFamily: "var(--font-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--text)",
+                      fontWeight: 500,
+                    }}>
+                      {fmtUsd(r.monthlyImpact)}
+                    </span>
+                  </Td>
+                  <Td align="right">
+                    <span style={{
+                      fontFamily: "var(--font-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--muted)",
+                    }}>
+                      {fmtUsd(r.monthlyImpact * 12, 0)}
+                    </span>
+                  </Td>
+                  <Td align="right">
+                    <span style={{
+                      fontFamily: "var(--font-mono)",
+                      fontVariantNumeric: "tabular-nums",
+                      color: "var(--muted)",
+                      fontSize: 12,
+                    }}>
+                      {fmtDate(r.lastSeen)}
+                    </span>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

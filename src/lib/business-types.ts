@@ -129,7 +129,9 @@ export type Categorization = {
 export type CustomerCohort = {
   /** Always 365 — the trailing-twelve-months window the LTV calc is based on. */
   windowDays: number;
-  /** Total unique customers observed in the 365d window. Excludes guest checkouts (no customer.id). */
+  /** Total paid orders processed. Useful as a sanity check vs the existing dashboard. */
+  windowOrders: number;
+  /** Total unique customers observed in the 365d window. Email is used as fallback when customer.id is missing (guest checkouts). */
   totalCustomers: number;
   /** Customers whose order history includes at least one subscription line item. */
   subCustomers: number;

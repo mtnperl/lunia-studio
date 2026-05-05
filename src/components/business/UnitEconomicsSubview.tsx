@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
 import RefreshButton from "../dashboard/RefreshButton";
 import KPICard from "../dashboard/KPICard";
-import type { PnL } from "@/lib/business-types";
+import type { CustomerCohort, PnL } from "@/lib/business-types";
 
 function defaultRange(): DateRange {
   const now = new Date();
@@ -18,36 +18,60 @@ function defaultRange(): DateRange {
 export default function UnitEconomicsSubview() {
   const [range, setRange] = useState<DateRange>(defaultRange);
   const [pnl, setPnl] = useState<PnL | null>(null);
+  const [cohortRaw, setCohortRaw] = useState<CustomerCohort | null>(null);
+  const [cohortError, setCohortError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-  const fetchPnl = useCallback(async (r: DateRange, bust = false) => {
+  const fetchAll = useCallback(async (r: DateRange, bust = false) => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`/api/business/pnl?since=${r.since}&until=${r.until}${bust ? "&bust=1" : ""}&prior=0`);
-      const body = await res.json();
-      if (!res.ok) {
-        setError(body.error ?? "Could not load");
-      } else {
-        setPnl(body as PnL);
-        setLastRefreshed(new Date());
-      }
-    } catch {
+    setCohortError(null);
+
+    const bustParam = bust ? "&bust=1" : "";
+    const [pnlResult, cohortResult] = await Promise.allSettled([
+      fetch(`/api/business/pnl?since=${r.since}&until=${r.until}${bustParam}&prior=0`).then(async (res) => ({
+        ok: res.ok,
+        body: await res.json(),
+      })),
+      fetch(`/api/shopify/customer-cohort?since=${r.since}&until=${r.until}${bustParam}`).then(async (res) => ({
+        ok: res.ok,
+        body: await res.json(),
+      })),
+    ]);
+
+    if (pnlResult.status === "fulfilled") {
+      if (pnlResult.value.ok) setPnl(pnlResult.value.body as PnL);
+      else setError(pnlResult.value.body?.error ?? "Could not load P&L");
+    } else {
       setError("Could not reach the P&L endpoint");
-    } finally {
-      setLoading(false);
     }
+
+    if (cohortResult.status === "fulfilled") {
+      if (cohortResult.value.ok) {
+        setCohortRaw(cohortResult.value.body as CustomerCohort);
+      } else {
+        setCohortError(cohortResult.value.body?.error ?? "Cohort unavailable");
+      }
+    } else {
+      setCohortError("Could not reach the cohort endpoint");
+    }
+
+    setLastRefreshed(new Date());
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchPnl(range);
-  }, [range, fetchPnl]);
+    fetchAll(range);
+  }, [range, fetchAll]);
 
+  // Direct cohort fetch is the source of truth for the customer-base panel
+  // (it surfaces windowOrders + truncated flags). PnL composer's cohort is
+  // for the CAC / LTV numbers themselves.
+  const cohort = cohortRaw;
   const ue = pnl?.unitEconomics;
-  const cohort = ue?.cohort;
-  const isReal = ue?.source === "shopify-cohort";
+  const isReal = !!cohort && cohort.totalCustomers > 0;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 80px" }}>
@@ -87,7 +111,7 @@ export default function UnitEconomicsSubview() {
           <DateRangePicker value={range} onChange={setRange} />
           <RefreshButton
             loading={loading}
-            onClick={() => fetchPnl(range, true)}
+            onClick={() => fetchAll(range, true)}
             lastRefreshed={lastRefreshed ?? undefined}
           />
         </div>
@@ -108,9 +132,15 @@ export default function UnitEconomicsSubview() {
         </div>
       )}
 
-      {/* Source badge */}
-      {ue && (
-        <div style={{
+      {/* Source badge — explicit about what loaded so you can tell at a glance whether numbers are real */}
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 8,
+        alignItems: "center",
+        marginBottom: 20,
+      }}>
+        <span style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 8,
@@ -122,7 +152,6 @@ export default function UnitEconomicsSubview() {
           fontSize: 11,
           fontWeight: 500,
           color: isReal ? "var(--accent)" : "var(--muted)",
-          marginBottom: 20,
         }}>
           <span style={{
             display: "inline-block",
@@ -132,10 +161,42 @@ export default function UnitEconomicsSubview() {
             background: isReal ? "var(--accent)" : "var(--muted)",
           }} />
           {isReal
-            ? `Real data · ${cohort?.totalCustomers.toLocaleString() ?? 0} customers · 365d window`
-            : "Assumption-based"}
-        </div>
-      )}
+            ? `Real data · ${cohort.windowOrders.toLocaleString()} orders · ${cohort.totalCustomers.toLocaleString()} customers · 365d window`
+            : "Assumption-based — cohort not loaded"}
+        </span>
+        {cohort?.truncated && (
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 12px",
+            borderRadius: 999,
+            background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 11,
+            color: "var(--warning)",
+          }}>
+            ⚠ Pagination capped — counts may understate
+          </span>
+        )}
+        {cohortError && (
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 12px",
+            borderRadius: 999,
+            background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 11,
+            color: "var(--error)",
+          }}>
+            Cohort fetch: {cohortError}
+          </span>
+        )}
+      </div>
 
       <style>{`
         @media (max-width: 700px) {
@@ -245,23 +306,34 @@ export default function UnitEconomicsSubview() {
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: 16,
+            marginBottom: 16,
           }}>
-            <Stat label="Total customers" value={cohort.totalCustomers.toLocaleString()} />
+            <Stat label="Total orders" value={cohort.windowOrders.toLocaleString()} hint="paid, ≥$5" />
+            <Stat
+              label="Unique customers"
+              value={cohort.totalCustomers.toLocaleString()}
+              hint={`${cohort.subCustomers.toLocaleString()} sub · ${cohort.otpCustomers.toLocaleString()} OTP`}
+            />
             <Stat
               label="New (this period)"
               value={cohort.newCustomersInRange.toLocaleString()}
               hint={`${range.since} → ${range.until}`}
             />
             <Stat
-              label="Sub mix (actual)"
-              value={`${cohort.subMixActualPct.toFixed(1)}%`}
-              hint={`${cohort.subCustomers.toLocaleString()} sub customers`}
-            />
-            <Stat
               label="Repeat rate"
               value={`${cohort.repeatRatePct.toFixed(1)}%`}
-              hint={`${cohort.avgOrdersPerCustomer.toFixed(1)} orders / customer`}
+              hint={`${cohort.avgOrdersPerCustomer.blended.toFixed(1)} orders / customer`}
             />
+          </div>
+          <div className="ue-cust-grid" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 16,
+          }}>
+            <Stat label="Sub mix (orders)" value={`${cohort.subMixPct.toFixed(1)}%`} hint="of paid orders" />
+            <Stat label="Avg sub order count" value={cohort.avgOrdersPerCustomer.sub.toFixed(2)} hint="per sub customer" />
+            <Stat label="Avg OTP order count" value={cohort.avgOrdersPerCustomer.otp.toFixed(2)} hint="per OTP customer" />
+            <Stat label="New (last 30 days)" value={cohort.newCustomersLast30d.toLocaleString()} hint="for CAC reference" />
           </div>
         </div>
       )}

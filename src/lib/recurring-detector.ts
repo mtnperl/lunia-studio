@@ -2,6 +2,8 @@ import type { Categorization, ExpenseCategory, SimpleFinTxn } from "./business-t
 
 export type RecurringCadence = "weekly" | "monthly" | "quarterly" | "annual" | "irregular";
 
+export type RecurringFlag = "essential" | "review" | "cuttable";
+
 export type RecurringExpense = {
   payeeKey: string;            // canonical key used for grouping
   payeeLabel: string;          // human-readable label (the most common original payee string)
@@ -15,6 +17,10 @@ export type RecurringExpense = {
   lastSeen: number;            // unix seconds
   nextExpected?: number;       // unix seconds (estimate)
   txnIds: string[];
+  /** AI assessment when /api/business/recurring has been enriched with flags. */
+  flag?: RecurringFlag;
+  /** 1-line reasoning for the flag. */
+  flagReason?: string;
 };
 
 const MIN_OCCURRENCES = 3;

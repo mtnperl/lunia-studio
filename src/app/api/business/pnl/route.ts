@@ -13,7 +13,7 @@ import {
 } from "@/lib/business-types";
 import type { MetaData, ShopifyData } from "@/lib/types";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
