@@ -30,23 +30,32 @@ const BodySchema = z.object({
 
 type IncomingTxn = z.infer<typeof TxnSchema>;
 
-const SYSTEM_PROMPT = `You categorize business bank transactions for Lunia Life, a DTC sleep supplement brand.
+const SYSTEM_PROMPT = `You categorize business bank transactions for Lunia Life, a DTC sleep supplement brand (capsules, oral products, e-commerce on Shopify).
 
-Categorize each transaction into ONE of these categories:
-- saas         — software subscriptions (Shopify, Klaviyo, AWS, Notion, Figma, Zoom, Vercel, GitHub, Adobe, etc.)
-- inventory    — raw materials, packaging, ingredients, contract manufacturing for the supplement product itself
-- fulfilment   — outbound shipping, 3PLs, freight, postage, ShipStation, fulfilment centers, courier services
-- payroll      — wages, contractors, freelancers, agencies-as-staff, payroll providers (Gusto, Justworks)
-- marketing    — paid ads (Meta, Google, TikTok), influencer payments, agencies, PR, paid email lists, sponsorships
-- office       — rent, utilities, internet, office supplies, coworking memberships
-- travel       — hotels, flights, rideshare during travel, meals while traveling
-- professional — accounting, legal, tax, financial services, consulting fees
-- other        — bank fees, interest, transfers, refunds, anything legitimately none of the above
+Categorize each transaction into ONE of these categories. Rank rules apply: pick the most SPECIFIC match.
 
-Rules:
+- saas         — software subscriptions: Shopify, Klaviyo, Recharge/Skio, Notion, Figma, Zoom, Vercel, GitHub, AWS, Adobe, Postscript, Triple Whale, analytics tools, helpdesks (Gorgias, Zendesk).
+- inventory    — raw ingredients, actives, capsules, contract manufacturing, formulators, finished-product runs from a co-packer or CDMO. Anything that becomes the bottle the customer holds.
+- packaging    — boxes, mailers, custom inserts, labels, bottle/cap suppliers, dunnage, branded shipping supplies. Distinct from inventory.
+- lab-testing  — third-party lab testing, COA, regulatory compliance, certifications (NSF, USP), GMP audits, FDA filings.
+- fulfilment   — outbound shipping, 3PL fees, freight, postage, ShipStation/ShipBob, fulfilment centers, courier services, return shipping.
+- payroll      — W2 wages, contractors, agencies-as-staff, payroll providers (Gusto, Justworks, ADP, Rippling), benefits.
+- marketing    — paid media: Meta Ads, Google Ads, TikTok Ads, paid email lists, retargeting platforms, ad agencies (paid-media agencies specifically).
+- influencer   — UGC creators, paid partnerships, affiliate payouts, ambassador programs, creator marketplace fees (Whalar, Aspire, Insense, GRIN).
+- content      — photography, videography, copywriting agencies, content production studios, stock media, asset libraries, brand designers.
+- events       — trade shows, conferences, sponsorships, sampling/PR events, expo booths, swag/giveaways for events.
+- office       — rent, utilities, internet, office supplies, coworking memberships.
+- travel       — hotels, flights, rideshare during travel, meals while traveling.
+- professional — accounting, legal, tax filings, business insurance, consulting, fractional execs.
+- other        — bank fees, interest, intra-account transfers, refunds, anything legitimately none of the above.
+
+Disambiguation rules:
+- Klaviyo / Postscript → saas (NOT marketing). Marketing is paid media to acquire customers.
+- A co-packer invoice → inventory. A bottle/label vendor → packaging.
+- Paid creator deals → influencer. The agency that runs Meta ads → marketing. A photo studio → content.
 - If the payee is missing/cryptic and confidence < 0.6, return "other" with low confidence — do NOT guess wildly.
 - Inbound deposits (positive amounts) are usually customer revenue or transfers — those are "other" with a note in reasoning.
-- Reasoning must be ONE short sentence (under 100 chars), explaining the choice.
+- Reasoning must be ONE short sentence (under 100 chars).
 
 Return STRICT JSON only — no markdown, no preamble:
 {
@@ -96,7 +105,7 @@ export async function POST(req: Request) {
 
   // 1) Pull cached overrides + cached AI results from KV.
   for (const txn of transactions) {
-    const key = `simplefin:cat:v1:${txn.id}`;
+    const key = `simplefin:cat:v2:${txn.id}`;
     if (forceRefresh) {
       toClassify.push(txn);
       continue;
@@ -125,7 +134,7 @@ export async function POST(req: Request) {
       };
       out.set(t.id, cat);
       try {
-        await kv.set(`simplefin:cat:v1:${t.id}`, cat);
+        await kv.set(`simplefin:cat:v2:${t.id}`, cat);
       } catch {
         /* skip cache */
       }
@@ -148,7 +157,7 @@ export async function POST(req: Request) {
         };
         out.set(r.id, cat);
         try {
-          await kv.set(`simplefin:cat:v1:${r.id}`, cat);
+          await kv.set(`simplefin:cat:v2:${r.id}`, cat);
         } catch {
           /* skip cache */
         }
@@ -213,7 +222,7 @@ export async function PUT(req: Request) {
     override: true,
   };
   try {
-    await kv.set(`simplefin:cat:v1:${parsed.data.txnId}`, cat);
+    await kv.set(`simplefin:cat:v2:${parsed.data.txnId}`, cat);
     return Response.json(cat);
   } catch {
     return Response.json({ error: "Could not save override" }, { status: 503 });

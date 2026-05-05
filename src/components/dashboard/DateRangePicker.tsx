@@ -124,6 +124,7 @@ export default function DateRangePicker({ value, onChange }: Props) {
   const [viewMonth, setViewMonth] = useState(() => fromIso(value.since).getUTCMonth());
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Reset draft each time the popover opens
   useEffect(() => {
@@ -135,6 +136,34 @@ export default function DateRangePicker({ value, onChange }: Props) {
       setViewMonth(since.getUTCMonth());
     }
   }, [open, value]);
+
+  // Position the popover on open / scroll / resize. Fixed positioning escapes
+  // any parent overflow:hidden (which was clipping us before). We anchor to the
+  // trigger and clamp to the viewport so the popover never spills off-screen.
+  useEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const POPOVER_WIDTH = 720;
+      const VIEWPORT_PAD = 12;
+      const vw = window.innerWidth;
+      const width = Math.min(POPOVER_WIDTH, vw - VIEWPORT_PAD * 2);
+      // Right-align to trigger by default, then clamp left-edge to >= viewport-pad.
+      let left = rect.right - width;
+      if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
+      const top = rect.bottom + 6;
+      setPos({ top, left, width });
+    }
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [open]);
 
   // Close on outside click / Escape
   useEffect(() => {
@@ -233,24 +262,24 @@ export default function DateRangePicker({ value, onChange }: Props) {
         <span aria-hidden style={{ color: "var(--muted)", fontSize: 9 }}>▾</span>
       </button>
 
-      {open && (
+      {open && pos && (
         <div
           ref={popoverRef}
           role="dialog"
           aria-label="Date range picker"
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            right: 0,
-            zIndex: 50,
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
+            zIndex: 1000,
             display: "flex",
             background: "var(--surface-r)",
             border: "1px solid var(--border)",
             borderRadius: 10,
             overflow: "hidden",
-            minWidth: 720,
-            maxWidth: "min(90vw, 820px)",
             color: "var(--text)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.18)",
           }}
         >
           {/* Preset rail */}

@@ -137,7 +137,7 @@ async function loadCategorizations(txns: SimpleFinTxn[]): Promise<Map<string, Ca
   await Promise.all(
     txns.map(async (t) => {
       try {
-        const cat = await kv.get<Categorization>(`simplefin:cat:v1:${t.id}`);
+        const cat = await kv.get<Categorization>(`simplefin:cat:v2:${t.id}`);
         if (cat) out.set(t.id, cat);
       } catch {
         /* ignore — txn stays uncategorized */
