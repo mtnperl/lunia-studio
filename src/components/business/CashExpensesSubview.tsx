@@ -11,6 +11,7 @@ import {
   type SimpleFinAccount,
   type SimpleFinTxn,
 } from "@/lib/business-types";
+import type { RecurringExpense } from "@/lib/recurring-detector";
 
 type FetchResult = {
   accounts: SimpleFinAccount[];
@@ -72,6 +73,7 @@ export default function CashExpensesSubview() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [categorizations, setCategorizations] = useState<Map<string, Categorization>>(new Map());
   const [categorizing, setCategorizing] = useState(false);
+  const [recurring, setRecurring] = useState<{ recurring: RecurringExpense[]; monthlyTotal: number } | null>(null);
 
   const fetchData = useCallback(async (r: DateRange, bust = false) => {
     setLoading(true);
@@ -161,6 +163,26 @@ export default function CashExpensesSubview() {
   useEffect(() => {
     if (data) fetchCategorizations(data.transactions);
   }, [data, fetchCategorizations]);
+
+  // Recurring detection runs server-side over a 180d window — independent of
+  // the visible date range. Refetch only on mount and on explicit refresh.
+  const fetchRecurring = useCallback(async (bust = false) => {
+    try {
+      const res = await fetch(`/api/business/recurring${bust ? "?bust=1" : ""}`);
+      if (!res.ok) return;
+      const body = await res.json();
+      setRecurring({
+        recurring: (body.recurring ?? []) as RecurringExpense[],
+        monthlyTotal: body.monthlyTotal ?? 0,
+      });
+    } catch (err) {
+      console.warn("[CashExpensesSubview] recurring fetch failed", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecurring();
+  }, [fetchRecurring]);
 
   // Split positive balances (cash on hand) from negative balances (owed on credit
   // cards / lines of credit). Net position is the sum — what actually matters
@@ -458,6 +480,23 @@ export default function CashExpensesSubview() {
         </div>
       )}
 
+      {/* Recurring */}
+      {recurring && recurring.recurring.length > 0 && (
+        <div style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          padding: 20,
+          marginBottom: 24,
+        }}>
+          <SectionHeader
+            title={`Recurring (${recurring.recurring.length})`}
+            trailing={`Monthly run-rate ${fmtUsd(recurring.monthlyTotal, 0)} · Annualized ${fmtUsd(recurring.monthlyTotal * 12, 0)}`}
+          />
+          <RecurringTable items={recurring.recurring} />
+        </div>
+      )}
+
       {/* Transactions */}
       <div style={{
         background: "var(--surface)",
@@ -487,7 +526,7 @@ export default function CashExpensesSubview() {
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, trailing }: { title: string; trailing?: string }) {
   return (
     <div style={{
       display: "flex",
@@ -496,6 +535,8 @@ function SectionHeader({ title }: { title: string }) {
       marginBottom: 14,
       paddingBottom: 10,
       borderBottom: "1px solid var(--border)",
+      gap: 12,
+      flexWrap: "wrap",
     }}>
       <span style={{
         fontFamily: "var(--font-ui)",
@@ -507,6 +548,113 @@ function SectionHeader({ title }: { title: string }) {
       }}>
         {title}
       </span>
+      {trailing && (
+        <span style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: 11,
+          color: "var(--subtle)",
+        }}>
+          {trailing}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function RecurringTable({ items }: { items: RecurringExpense[] }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        fontFamily: "var(--font-ui)",
+        fontSize: 13,
+      }}>
+        <thead>
+          <tr style={{ textAlign: "left" }}>
+            <Th>Vendor</Th>
+            <Th>Category</Th>
+            <Th>Cadence</Th>
+            <Th align="right">Avg</Th>
+            <Th align="right">Monthly</Th>
+            <Th align="right">Annualized</Th>
+            <Th align="right">Last seen</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((r) => {
+            const color = CATEGORY_COLORS[r.category];
+            return (
+              <tr key={r.payeeKey} style={{ borderTop: "1px solid var(--border)" }}>
+                <Td>
+                  <span style={{ color: "var(--text)", fontWeight: 500 }}>{r.payeeLabel}</span>
+                  <span style={{ display: "block", color: "var(--subtle)", fontSize: 11, marginTop: 2 }}>
+                    {r.occurrences} charges · stability {(r.amountStability * 100).toFixed(0)}%
+                  </span>
+                </Td>
+                <Td>
+                  <span style={{
+                    display: "inline-block",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    border: `1px solid ${color}`,
+                    background: `${color}1a`,
+                    color,
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 11,
+                    fontWeight: 500,
+                  }}>
+                    {EXPENSE_CATEGORY_LABELS[r.category]}
+                  </span>
+                </Td>
+                <Td>
+                  <span style={{ color: "var(--muted)", fontSize: 12, textTransform: "capitalize" }}>
+                    {r.cadence}
+                  </span>
+                </Td>
+                <Td align="right">
+                  <span style={{
+                    fontFamily: "var(--font-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--text)",
+                  }}>
+                    {fmtUsd(r.avgAmount)}
+                  </span>
+                </Td>
+                <Td align="right">
+                  <span style={{
+                    fontFamily: "var(--font-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--text)",
+                    fontWeight: 500,
+                  }}>
+                    {fmtUsd(r.monthlyImpact)}
+                  </span>
+                </Td>
+                <Td align="right">
+                  <span style={{
+                    fontFamily: "var(--font-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--muted)",
+                  }}>
+                    {fmtUsd(r.monthlyImpact * 12, 0)}
+                  </span>
+                </Td>
+                <Td align="right">
+                  <span style={{
+                    fontFamily: "var(--font-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--muted)",
+                    fontSize: 12,
+                  }}>
+                    {fmtDate(r.lastSeen)}
+                  </span>
+                </Td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

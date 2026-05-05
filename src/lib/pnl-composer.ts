@@ -31,6 +31,10 @@ export function composePnL(input: {
   shopify?: ShopifyData | null;
   simplefin?: { transactions: SimpleFinTxn[] } | null;
   categorizations?: Map<string, Categorization>;
+  /** Txn ids belonging to detected recurring vendors. Used to split Fixed Expenses. */
+  recurringTxnIds?: Set<string>;
+  /** Steady-state monthly run-rate of all recurring vendors. Period-independent. */
+  recurringMonthlyRunRate?: number;
   assumptions: BusinessAssumptions;
   prior?: {
     meta?: MetaData | null;
@@ -40,7 +44,8 @@ export function composePnL(input: {
   };
 }): PnL {
   const {
-    range, priorRange, meta, shopify, simplefin, categorizations, assumptions, prior,
+    range, priorRange, meta, shopify, simplefin, categorizations, recurringTxnIds,
+    recurringMonthlyRunRate = 0, assumptions, prior,
   } = input;
 
   const missing: string[] = [];
@@ -49,13 +54,16 @@ export function composePnL(input: {
   if (!simplefin) missing.push("simplefin");
 
   const current = computeStatement({
-    meta, shopify, simplefin, categorizations, assumptions,
+    meta, shopify, simplefin, categorizations, recurringTxnIds, assumptions,
   });
 
   const priorStatement = prior
     ? computeStatement({
         meta: prior.meta, shopify: prior.shopify, simplefin: prior.simplefin,
-        categorizations: prior.categorizations, assumptions,
+        categorizations: prior.categorizations,
+        // Use the same recurringTxnIds set — recurring vendors are stable across the prior window too.
+        recurringTxnIds,
+        assumptions,
       })
     : null;
 
@@ -90,9 +98,12 @@ export function composePnL(input: {
     grossMarginPct: current.grossMarginPct,
     opex: {
       adSpend:        lineWithDelta("Ad spend (Meta)", "adSpend"),
-      fixedExpenses:  lineWithDelta("Fixed expenses",  "fixedExpenses", "from SimpleFIN, excludes marketing/inventory/fulfilment"),
+      fixedExpenses:  lineWithDelta("Fixed expenses",  "fixedExpenses", "all categorized non-COGS, non-marketing spend"),
+      recurringFixed: lineWithDelta("Recurring fixed", "recurringFixed", "subscriptions, payroll, rent — stable monthly costs"),
+      variableOpex:   lineWithDelta("Variable / one-off", "variableOpex", "everything else not on a regular cadence"),
       fixedByCategory,
       total:          lineWithDelta("Total OpEx",      "opexTotal"),
+      recurringMonthlyRunRate,
     },
     contributionMargin: lineWithDelta("Contribution margin", "contributionMargin"),
     netIncome:          lineWithDelta("Net income",          "netIncome"),
@@ -123,6 +134,8 @@ type Statement = {
   grossMarginPct: number;
   adSpend: number;
   fixedExpenses: number;
+  recurringFixed: number;
+  variableOpex: number;
   fixedByCategory: Partial<Record<ExpenseCategory, number>>;
   opexTotal: number;
   contributionMargin: number;
@@ -148,9 +161,10 @@ function computeStatement(input: {
   shopify?: ShopifyData | null;
   simplefin?: { transactions: SimpleFinTxn[] } | null;
   categorizations?: Map<string, Categorization>;
+  recurringTxnIds?: Set<string>;
   assumptions: BusinessAssumptions;
 }): Statement {
-  const { meta, shopify, simplefin, categorizations, assumptions } = input;
+  const { meta, shopify, simplefin, categorizations, recurringTxnIds, assumptions } = input;
 
   // ── Revenue ─────────────────────────────────────────────────────────────
   const grossRevenue = shopify?.summary.revenue ?? 0;
@@ -177,6 +191,8 @@ function computeStatement(input: {
 
   const fixedByCategory: Partial<Record<ExpenseCategory, number>> = {};
   let fixedExpenses = 0;
+  let recurringFixed = 0;
+  let variableOpex = 0;
   if (simplefin && categorizations) {
     for (const t of simplefin.transactions) {
       if (t.amount >= 0) continue; // skip inbound
@@ -185,8 +201,19 @@ function computeStatement(input: {
       fixedByCategory[cat] = (fixedByCategory[cat] ?? 0) + abs;
       if (!EXCLUDED_FROM_FIXED.has(cat)) {
         fixedExpenses += abs;
+        if (recurringTxnIds && recurringTxnIds.has(t.id)) {
+          recurringFixed += abs;
+        } else {
+          variableOpex += abs;
+        }
       }
     }
+  }
+  // If detection wasn't run, leave the split unset (recurring=0, variable=fixed) so
+  // the UI can fall back to the simpler single-line presentation.
+  if (!recurringTxnIds) {
+    recurringFixed = 0;
+    variableOpex = fixedExpenses;
   }
   const opexTotal = adSpend + fixedExpenses;
 
@@ -229,7 +256,7 @@ function computeStatement(input: {
     grossRevenue, refunds, netRevenue,
     cogsProduct, cogsFulfilment, cogsPayments, cogsTotal,
     grossProfit, grossMarginPct,
-    adSpend, fixedExpenses, fixedByCategory, opexTotal,
+    adSpend, fixedExpenses, recurringFixed, variableOpex, fixedByCategory, opexTotal,
     contributionMargin, netIncome, netMarginPct,
     cac, blendedLtv, subLtv, otpLtv, ltvToCac, paybackMonths,
   };

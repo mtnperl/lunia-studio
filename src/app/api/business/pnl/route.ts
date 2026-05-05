@@ -2,6 +2,7 @@ import { kv } from "@/lib/kv";
 import { resolveRangeParams } from "@/lib/analytics-utils";
 import { fetchSimpleFin } from "@/lib/simplefin-client";
 import { composePnL } from "@/lib/pnl-composer";
+import { detectRecurring, recurringTxnIdSet, totalMonthlyRecurring } from "@/lib/recurring-detector";
 import {
   ASSUMPTIONS_KV_KEY,
   DEFAULT_ASSUMPTIONS,
@@ -29,10 +30,11 @@ export async function GET(req: Request) {
   const includePrior = url.searchParams.get("prior") !== "0";
 
   // ── Pull every input in parallel ────────────────────────────────────────
-  const [assumptions, current, prior] = await Promise.all([
+  const [assumptions, current, prior, recurringWindow] = await Promise.all([
     loadAssumptions(),
     loadAll({ origin, since, until, bust }),
     includePrior ? loadAll({ origin, since: priorRange.since, until: priorRange.until, bust: false }) : Promise.resolve(null),
+    loadRecurringWindow(),
   ]);
 
   // Merge categorizations for current + prior windows. We need to look up
@@ -42,6 +44,17 @@ export async function GET(req: Request) {
     ? await loadCategorizations(prior.simplefin.transactions)
     : undefined;
 
+  // Detect recurring vendors over the 180d window. The set of ids covers any
+  // matching txn we encounter in the current OR prior window.
+  let recurringTxnIds: Set<string> | undefined;
+  let recurringMonthlyRunRate = 0;
+  if (recurringWindow) {
+    const recurringCats = await loadCategorizations(recurringWindow.transactions);
+    const detected = detectRecurring(recurringWindow.transactions, recurringCats);
+    recurringTxnIds = recurringTxnIdSet(detected);
+    recurringMonthlyRunRate = totalMonthlyRecurring(detected);
+  }
+
   const pnl = composePnL({
     range: { since, until },
     priorRange: includePrior ? priorRange : undefined,
@@ -49,6 +62,8 @@ export async function GET(req: Request) {
     shopify: current.shopify,
     simplefin: current.simplefin,
     categorizations: currentCategorizations,
+    recurringTxnIds,
+    recurringMonthlyRunRate,
     assumptions,
     prior: prior
       ? {
@@ -128,6 +143,28 @@ async function loadSimpleFin(since: string, until: string): Promise<{ transactio
     return { transactions: data.transactions };
   } catch (err) {
     console.warn("[api/business/pnl] simplefin fetch failed", err);
+    return null;
+  }
+}
+
+/**
+ * Pull a 180d window of SimpleFIN txns purely to feed the recurring detector.
+ * Recurring patterns need a longer lookback than any single P&L period.
+ */
+async function loadRecurringWindow(): Promise<{ transactions: SimpleFinTxn[] } | null> {
+  const accessUrl = process.env.SIMPLEFIN_ACCESS_URL;
+  if (!accessUrl) return null;
+
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const since = new Date(todayUtc.getTime() - 179 * 86_400_000).toISOString().slice(0, 10);
+  const until = todayUtc.toISOString().slice(0, 10);
+
+  try {
+    const data = await fetchSimpleFin(accessUrl, since, until);
+    return { transactions: data.transactions };
+  } catch (err) {
+    console.warn("[api/business/pnl] recurring window fetch failed", err);
     return null;
   }
 }

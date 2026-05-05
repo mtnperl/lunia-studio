@@ -148,9 +148,16 @@ export type PnL = {
   grossMarginPct: number;
   opex: {
     adSpend: PnLLine;
+    /** All non-COGS, non-marketing categorized SimpleFIN spend. Sum of recurring + variable. */
     fixedExpenses: PnLLine;
+    /** The portion of fixedExpenses that comes from detected recurring vendors (subscriptions, payroll, rent, etc). */
+    recurringFixed: PnLLine;
+    /** The remainder — one-off, irregular, or below the recurrence-detection threshold. */
+    variableOpex: PnLLine;
     fixedByCategory: Record<ExpenseCategory, number>;
     total: PnLLine;
+    /** Monthly run-rate of all detected recurring vendors. Stable across periods, useful for runway math. */
+    recurringMonthlyRunRate: number;
   };
   contributionMargin: PnLLine;
   netIncome: PnLLine;
