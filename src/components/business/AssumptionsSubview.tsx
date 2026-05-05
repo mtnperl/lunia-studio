@@ -182,6 +182,12 @@ export default function AssumptionsSubview() {
         </div>
       </div>
 
+      <style>{`
+        @media (max-width: 700px) {
+          .assumptions-fields { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
       {loading ? (
         <div style={{ fontFamily: "var(--font-ui)", color: "var(--muted)", fontSize: 13 }}>
           Loading…
@@ -211,7 +217,7 @@ export default function AssumptionsSubview() {
               }}>
                 {group.title}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+              <div className="assumptions-fields" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
                 {group.fields.map((f) => (
                   <FieldRow
                     key={f.key}

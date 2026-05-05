@@ -158,7 +158,7 @@ function Statement({ pnl }: { pnl: PnL }) {
       border: "1px solid var(--border)",
       borderRadius: 8,
       padding: "8px 0",
-      overflow: "hidden",
+      overflowX: "auto",
     }}>
       <table style={{
         width: "100%",
