@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
@@ -99,7 +99,7 @@ export async function POST(req: Request) {
     const results = await Promise.all(
       Array.from({ length: count }, async (): Promise<CarouselContent | null> => {
         try {
-          const msg = await anthropic.messages.create({
+          const msg = await createContentMessage({
             model: CONTENT_MODEL,
             max_tokens: CONTENT_MAX_TOKENS_LONG,
             thinking: CONTENT_THINKING,
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
 
 async function callDidYouKnow(topic: string, variantCount: number, violations?: string[]): Promise<DidYouKnowContent[]> {
   const prompt = GENERATE_DID_YOU_KNOW_PROMPT(topic, variantCount, violations);
-  const msg = await anthropic.messages.create({
+  const msg = await createContentMessage({
     model: CONTENT_MODEL,
     max_tokens: CONTENT_MAX_TOKENS_LONG,
     thinking: CONTENT_THINKING,

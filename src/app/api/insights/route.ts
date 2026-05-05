@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from '@/lib/anthropic';
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from '@/lib/anthropic';
 import type { MetaData, ShopifyData, Insight, MetaCampaign, MetaAd } from '@/lib/types';
 
 export const maxDuration = 300;
@@ -117,7 +117,7 @@ Return ONLY the JSON array. No preamble, no markdown fences, no explanation outs
 
   let raw: string;
   try {
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,

@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { REGENERATE_GRAPHIC_PROMPT, REGENERATE_VECTOR_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody, attempt)
       : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents);
 
-    const msg = await anthropic.messages.create({
+    const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,

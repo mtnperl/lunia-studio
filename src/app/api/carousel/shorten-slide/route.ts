@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 
 export const maxDuration = 300;
 
@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const { body: slideBody } = await req.json();
     if (!slideBody) return Response.json({ error: "body required" }, { status: 400 });
-    const msg = await anthropic.messages.create({
+    const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,

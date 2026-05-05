@@ -1,9 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Message, TextBlock } from "@anthropic-ai/sdk/resources/messages";
+import type { Message, MessageCreateParamsNonStreaming, TextBlock } from "@anthropic-ai/sdk/resources/messages";
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+/**
+ * Create a Message via the streaming API and return the final assembled Message.
+ *
+ * The SDK refuses `messages.create()` when it estimates the request may exceed
+ * 10 minutes — which our Opus 4.7 + 16K-thinking + 20–24K-max-tokens config
+ * routinely trips. Streaming is required, but most callers don't actually want
+ * incremental output; they want the same `Message` shape back. This helper
+ * does that.
+ */
+export async function createContentMessage(params: MessageCreateParamsNonStreaming): Promise<Message> {
+  return anthropic.messages.stream(params).finalMessage();
+}
 
 // Centralized model + thinking config for content-generation routes.
 // Bumping the version here flips every route at once.

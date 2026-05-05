@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { deleteCarouselTemplate, getCarouselTemplates, saveCarouselTemplate } from "@/lib/kv";
 import { BrandStyle, CarouselTemplate, CarouselTemplateImage } from "@/lib/types";
 
@@ -41,7 +41,7 @@ async function extractBrandStyle(images: CarouselTemplateImage[]): Promise<Brand
       })),
       { type: "text", text: PALETTE_PROMPT },
     ];
-    const msg = await anthropic.messages.create({
+    const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,

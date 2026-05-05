@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 300;
@@ -54,7 +54,7 @@ Rules (hard):
       `\nWrite 3 distinct Recraft V3 image prompts for this hook slide, returned as a JSON array.`,
     ].filter(Boolean).join("\n");
 
-    const msg = await anthropic.messages.create({
+    const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,

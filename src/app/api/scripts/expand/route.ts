@@ -1,4 +1,4 @@
-import { anthropic, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 
 export const maxDuration = 300;
 
@@ -41,7 +41,7 @@ Generate 3–4 additional BODY lines that expand on the existing content. Requir
 
 Respond with ONLY the new lines, one per line. No labels, no numbers, no explanation.`;
 
-    const message = await anthropic.messages.create({
+    const message = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
