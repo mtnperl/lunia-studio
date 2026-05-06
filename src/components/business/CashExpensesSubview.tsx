@@ -353,7 +353,20 @@ export default function CashExpensesSubview() {
               title={`${recurring.recurring.length} vendors`}
               trailing={`Monthly run-rate ${fmtUsd(recurring.monthlyTotal, 0)} · Annualized ${fmtUsd(recurring.monthlyTotal * 12, 0)}`}
             />
-            <RecurringTable items={recurring.recurring} />
+            <RecurringTable
+              items={recurring.recurring}
+              onSaveNote={(payeeKey, note) => {
+                setRecurring((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    recurring: prev.recurring.map((r) =>
+                      r.payeeKey === payeeKey ? { ...r, note: note || undefined } : r,
+                    ),
+                  };
+                });
+              }}
+            />
           </div>
         </>
       )}
@@ -620,7 +633,13 @@ const FLAG_STYLE: Record<NonNullable<RecurringExpense["flag"]>, { bg: string; bo
   essential: { bg: "rgba(16, 185, 129, 0.10)", border: "var(--success)", color: "var(--success)", label: "ESSENTIAL" },
 };
 
-function RecurringTable({ items }: { items: RecurringExpense[] }) {
+function RecurringTable({
+  items,
+  onSaveNote,
+}: {
+  items: RecurringExpense[];
+  onSaveNote: (payeeKey: string, note: string) => void;
+}) {
   // Sort: cuttable first (so it grabs the eye), then review, then essential.
   const sorted = [...items].sort((a, b) => {
     const aRank = FLAG_ORDER[a.flag ?? "unflagged"];
@@ -667,6 +686,7 @@ function RecurringTable({ items }: { items: RecurringExpense[] }) {
               <Th align="right">Monthly</Th>
               <Th align="right">Annualized</Th>
               <Th align="right">Last seen</Th>
+              <Th>Note</Th>
             </tr>
           </thead>
           <tbody>
@@ -775,6 +795,9 @@ function RecurringTable({ items }: { items: RecurringExpense[] }) {
                       {fmtDate(r.lastSeen)}
                     </span>
                   </Td>
+                  <Td>
+                    <NoteCell payeeKey={r.payeeKey} initial={r.note ?? ""} onSave={onSaveNote} />
+                  </Td>
                 </tr>
               );
             })}
@@ -782,6 +805,104 @@ function RecurringTable({ items }: { items: RecurringExpense[] }) {
         </table>
       </div>
     </>
+  );
+}
+
+function NoteCell({
+  payeeKey,
+  initial,
+  onSave,
+}: {
+  payeeKey: string;
+  initial: string;
+  onSave: (payeeKey: string, note: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Sync if a fresh fetch returned a different note.
+  useEffect(() => {
+    if (!editing) setValue(initial);
+  }, [initial, editing]);
+
+  async function commit() {
+    if (value === initial) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/business/recurring", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payeeKey, note: value }),
+      });
+      if (res.ok) onSave(payeeKey, value.trim());
+    } catch {
+      /* swallow — user can retry */
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <textarea
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setValue(initial);
+            setEditing(false);
+          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            commit();
+          }
+        }}
+        placeholder="Why we keep this · when to revisit…"
+        rows={2}
+        style={{
+          width: 220,
+          minHeight: 44,
+          padding: "6px 8px",
+          fontSize: 12,
+          fontFamily: "var(--font-ui)",
+          background: "var(--bg)",
+          color: "var(--text)",
+          border: "1px solid var(--accent-mid)",
+          borderRadius: 6,
+          resize: "vertical",
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      disabled={saving}
+      style={{
+        width: 220,
+        textAlign: "left",
+        padding: "4px 8px",
+        fontFamily: "var(--font-ui)",
+        fontSize: 12,
+        background: value ? "transparent" : "var(--surface-r)",
+        color: value ? "var(--text)" : "var(--subtle)",
+        border: "1px dashed var(--border)",
+        borderRadius: 6,
+        cursor: saving ? "wait" : "pointer",
+        whiteSpace: "normal",
+        lineHeight: 1.4,
+        minHeight: 30,
+      }}
+    >
+      {saving ? "Saving…" : (value || "Add note…")}
+    </button>
   );
 }
 

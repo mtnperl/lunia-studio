@@ -7,8 +7,10 @@ const WINDOW_DAYS = 365;
 const PAGE_CAP = 100;         // 100 × 250 = 25,000 orders. Plenty of headroom for a year of DTC orders.
 const PAGE_SIZE = 250;
 const REVENUE_STATUSES = new Set(["paid", "authorized", "partially_paid"]);
-// No price floor — match Shopify admin "Orders" reporting which counts $0 promo/comp
-// orders. Those are real customer acquisitions for unit-economics math.
+// No price floor on raw counts — match Shopify admin "Orders" reporting which
+// counts $0 promo/comp orders.
+// LTV / CAC math uses a separate $5 floor so freebies don't dilute averages.
+const MIN_ORDER_VALUE_FOR_LTV = 5;
 
 type ShopifyLineItem = {
   product_title: string;
@@ -32,24 +34,36 @@ type CustomerRollup = {
   email?: string;
   firstName?: string;
   lastName?: string;
-  totalRevenue: number;
+  // Raw — every order
   orderCount: number;
+  totalRevenue: number;
+  // Qualified — orders ≥ MIN_ORDER_VALUE_FOR_LTV only
+  qualifiedOrderCount: number;
+  qualifiedRevenue: number;
   hasSubscriptionOrder: boolean;
-  firstOrderDate: string; // YYYY-MM-DD
-  lastOrderDate: string;  // YYYY-MM-DD
+  firstOrderDate: string;          // any order
+  lastOrderDate: string;           // any order
+  firstQualifiedOrderDate: string; // first $5+ order, or "" if none
 };
 
 type CachedFullWindow = {
   windowDays: number;
+  minOrderValueForLtv: number;
+  // Raw
   windowOrders: number;
   totalCustomers: number;
+  // Qualified
+  qualifiedOrders: number;
+  qualifiedCustomers: number;
   repeatCustomers: number;
   oneTimeCustomers: number;
+  trialOnlyCustomers: number;
   subscriptionProductCustomers: number;
   avgLifetimeRevenue: { blended: number; repeat: number; oneTime: number };
   avgOrdersPerCustomer: { blended: number; repeat: number; oneTime: number };
   subscriptionProductOrderMixPct: number;
   repeatRatePct: number;
+  /** First-qualified-order histogram, used for range-aware CAC math. */
   newCustomersByDate: Record<string, number>;
   truncated: boolean;
   computedAt: string;
@@ -77,7 +91,7 @@ export async function GET(req: Request) {
   const windowSince = new Date(todayUtc.getTime() - (WINDOW_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
   const windowUntil = todayUtc.toISOString().slice(0, 10);
 
-  const cacheKey = `shopify:cohort:v3:${windowSince}_${windowUntil}`;
+  const cacheKey = `shopify:cohort:v4:${windowSince}_${windowUntil}`;
 
   let full: CachedFullWindow | null = null;
 
@@ -114,10 +128,14 @@ export async function GET(req: Request) {
 
   const out: CustomerCohort = {
     windowDays: full.windowDays,
+    minOrderValueForLtv: full.minOrderValueForLtv,
     windowOrders: full.windowOrders,
     totalCustomers: full.totalCustomers,
+    qualifiedOrders: full.qualifiedOrders,
+    qualifiedCustomers: full.qualifiedCustomers,
     repeatCustomers: full.repeatCustomers,
     oneTimeCustomers: full.oneTimeCustomers,
+    trialOnlyCustomers: full.trialOnlyCustomers,
     subscriptionProductCustomers: full.subscriptionProductCustomers,
     avgLifetimeRevenue: full.avgLifetimeRevenue,
     avgOrdersPerCustomer: full.avgOrdersPerCustomer,
@@ -230,10 +248,18 @@ async function pullAndAggregate(
 
     const customerKey = customerKeyFor(order);
     const orderDate = order.created_at.slice(0, 10);
+    const isQualified = total >= MIN_ORDER_VALUE_FOR_LTV;
     const existing = customerMap.get(customerKey);
     if (existing) {
       existing.totalRevenue += total;
       existing.orderCount += 1;
+      if (isQualified) {
+        existing.qualifiedOrderCount += 1;
+        existing.qualifiedRevenue += total;
+        if (!existing.firstQualifiedOrderDate || orderDate < existing.firstQualifiedOrderDate) {
+          existing.firstQualifiedOrderDate = orderDate;
+        }
+      }
       if (isSubOrder) existing.hasSubscriptionOrder = true;
       if (orderDate < existing.firstOrderDate) existing.firstOrderDate = orderDate;
       if (orderDate > existing.lastOrderDate) existing.lastOrderDate = orderDate;
@@ -249,45 +275,63 @@ async function pullAndAggregate(
         email: (order.customer?.email ?? order.email ?? "").toLowerCase() || undefined,
         firstName: order.customer?.first_name,
         lastName: order.customer?.last_name,
-        totalRevenue: total,
         orderCount: 1,
+        totalRevenue: total,
+        qualifiedOrderCount: isQualified ? 1 : 0,
+        qualifiedRevenue: isQualified ? total : 0,
         hasSubscriptionOrder: isSubOrder,
         firstOrderDate: orderDate,
         lastOrderDate: orderDate,
+        firstQualifiedOrderDate: isQualified ? orderDate : "",
       });
     }
   }
 
   const customers = [...customerMap.values()];
   const totalCustomers = customers.length;
-  // NEW DEFINITION: "subscriber" = repeat customer (>1 orders).
-  const repeatRollups   = customers.filter((c) => c.orderCount > 1);
-  const oneTimeRollups  = customers.filter((c) => c.orderCount === 1);
+
+  // ── Qualified ($5+) rollups for unit economics ──────────────────────────
+  // A qualified customer has at least one order ≥ $5. Subscriber = ≥ 2.
+  const qualifiedAll  = customers.filter((c) => c.qualifiedOrderCount >= 1);
+  const repeatRollups = customers.filter((c) => c.qualifiedOrderCount > 1);
+  const oneTimeRollups = customers.filter((c) => c.qualifiedOrderCount === 1);
+  const trialOnlyCustomers = totalCustomers - qualifiedAll.length;
+  const qualifiedOrders = customers.reduce((s, c) => s + c.qualifiedOrderCount, 0);
+  const qualifiedSubOrders = customers
+    .filter((c) => c.hasSubscriptionOrder)
+    .reduce((s, c) => s + c.qualifiedOrderCount, 0); // approximation — sub-flag is per-customer
   const subscriptionProductCustomers = customers.filter((c) => c.hasSubscriptionOrder).length;
 
-  const sumRevenue = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.totalRevenue, 0);
-  const sumOrders  = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.orderCount, 0);
+  const sumQualifiedRevenue = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.qualifiedRevenue, 0);
+  const sumQualifiedOrders  = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.qualifiedOrderCount, 0);
   const avg = (sum: number, count: number) => (count > 0 ? sum / count : 0);
 
   const avgLifetimeRevenue = {
-    blended: avg(sumRevenue(customers), totalCustomers),
-    repeat:  avg(sumRevenue(repeatRollups),  repeatRollups.length),
-    oneTime: avg(sumRevenue(oneTimeRollups), oneTimeRollups.length),
+    blended: avg(sumQualifiedRevenue(qualifiedAll),  qualifiedAll.length),
+    repeat:  avg(sumQualifiedRevenue(repeatRollups), repeatRollups.length),
+    oneTime: avg(sumQualifiedRevenue(oneTimeRollups), oneTimeRollups.length),
   };
 
   const avgOrdersPerCustomer = {
-    blended: avg(sumOrders(customers), totalCustomers),
-    repeat:  avg(sumOrders(repeatRollups),  repeatRollups.length),
-    oneTime: avg(sumOrders(oneTimeRollups), oneTimeRollups.length),
+    blended: avg(sumQualifiedOrders(qualifiedAll),  qualifiedAll.length),
+    repeat:  avg(sumQualifiedOrders(repeatRollups), repeatRollups.length),
+    oneTime: avg(sumQualifiedOrders(oneTimeRollups), oneTimeRollups.length),
   };
 
-  const subscriptionProductOrderMixPct = totalOrders > 0 ? (subOrders / totalOrders) * 100 : 0;
-  const repeatRatePct = totalCustomers > 0 ? (repeatRollups.length / totalCustomers) * 100 : 0;
+  const subscriptionProductOrderMixPct = qualifiedOrders > 0
+    ? (qualifiedSubOrders / qualifiedOrders) * 100
+    : 0;
+  const repeatRatePct = qualifiedAll.length > 0
+    ? (repeatRollups.length / qualifiedAll.length) * 100
+    : 0;
 
-  // Build per-day new-customer histogram so range-aware lookups are cheap.
+  // Per-day new-customer histogram uses the FIRST QUALIFIED order date, so CAC
+  // math counts paying acquisitions only.
   const newCustomersByDate: Record<string, number> = {};
   for (const c of customers) {
-    newCustomersByDate[c.firstOrderDate] = (newCustomersByDate[c.firstOrderDate] ?? 0) + 1;
+    if (!c.firstQualifiedOrderDate) continue; // trial-only, never qualified
+    newCustomersByDate[c.firstQualifiedOrderDate] =
+      (newCustomersByDate[c.firstQualifiedOrderDate] ?? 0) + 1;
   }
 
   // Sort customer summaries by total revenue descending — UI default.
@@ -299,24 +343,33 @@ async function pullAndAggregate(
       lastName: c.lastName,
       firstOrderDate: c.firstOrderDate,
       lastOrderDate: c.lastOrderDate,
+      firstQualifiedOrderDate: c.firstQualifiedOrderDate,
       orderCount: c.orderCount,
       totalRevenue: c.totalRevenue,
+      qualifiedOrderCount: c.qualifiedOrderCount,
+      qualifiedRevenue: c.qualifiedRevenue,
       hasSubscriptionOrder: c.hasSubscriptionOrder,
-      isRepeatCustomer: c.orderCount > 1,
+      isRepeatCustomer: c.qualifiedOrderCount > 1,
+      trialOnly: c.qualifiedOrderCount === 0,
     }))
     .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
   console.log(
-    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d repeat=%d sub_product=%d truncated=%s",
-    windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers, repeatRollups.length, subscriptionProductCustomers, truncated,
+    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d qualified=%d repeat=%d trial_only=%d truncated=%s",
+    windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers,
+    qualifiedAll.length, repeatRollups.length, trialOnlyCustomers, truncated,
   );
 
   return {
     windowDays: WINDOW_DAYS,
+    minOrderValueForLtv: MIN_ORDER_VALUE_FOR_LTV,
     windowOrders: totalOrders,
     totalCustomers,
+    qualifiedOrders,
+    qualifiedCustomers: qualifiedAll.length,
     repeatCustomers: repeatRollups.length,
     oneTimeCustomers: oneTimeRollups.length,
+    trialOnlyCustomers,
     subscriptionProductCustomers,
     avgLifetimeRevenue,
     avgOrdersPerCustomer,

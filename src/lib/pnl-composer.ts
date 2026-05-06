@@ -155,11 +155,14 @@ type Statement = {
   unitEconomicsSource: "shopify-cohort" | "assumptions";
   cohortSummary?: {
     totalCustomers: number;
+    qualifiedCustomers: number;
     repeatCustomers: number;
     oneTimeCustomers: number;
+    trialOnlyCustomers: number;
     newCustomersInRange: number;
     repeatRatePct: number;
     avgOrdersPerCustomer: number;
+    minOrderValueForLtv: number;
   };
 };
 
@@ -253,14 +256,16 @@ function computeStatement(input: {
 
   const grossMarginRatio = netRevenue > 0 ? grossProfit / netRevenue : 0;
 
-  if (cohort && cohort.totalCustomers > 0) {
+  // Use cohort math only when we have qualified ($5+) customers — otherwise the
+  // averages are meaningless or zero and the assumption-based fallback is more honest.
+  if (cohort && cohort.qualifiedCustomers > 0) {
     unitEconomicsSource = "shopify-cohort";
 
-    // CAC = ad spend in this period / new customers acquired in this period.
+    // CAC = ad spend in this period / new QUALIFIED customers acquired in this period.
     cac = cohort.newCustomersInRange > 0 ? adSpend / cohort.newCustomersInRange : 0;
 
     // Convert revenue LTV to contribution LTV using the period's gross margin.
-    // sub/otp slot now maps to repeat/one-time under the new "subscriber = repeat" definition.
+    // Subscriber LTV = mean revenue per repeat customer ($5+ orders only) × margin.
     subLtv     = cohort.avgLifetimeRevenue.repeat  * grossMarginRatio;
     otpLtv     = cohort.avgLifetimeRevenue.oneTime * grossMarginRatio;
     blendedLtv = cohort.avgLifetimeRevenue.blended * grossMarginRatio;
@@ -268,18 +273,20 @@ function computeStatement(input: {
     ltvToCac = cac > 0 ? blendedLtv / cac : 0;
 
     // Monthly contribution per customer = (lifetime contribution) ÷ (observed months).
-    // Bound observed months to >=1 to avoid divide-by-zero, capped at 12 (the window).
     const monthsObserved = 12;
     const monthlyContribPerCustomer = blendedLtv / monthsObserved;
     paybackMonths = monthlyContribPerCustomer > 0 ? cac / monthlyContribPerCustomer : 0;
 
     cohortSummary = {
       totalCustomers: cohort.totalCustomers,
+      qualifiedCustomers: cohort.qualifiedCustomers,
       repeatCustomers: cohort.repeatCustomers,
       oneTimeCustomers: cohort.oneTimeCustomers,
+      trialOnlyCustomers: cohort.trialOnlyCustomers,
       newCustomersInRange: cohort.newCustomersInRange,
       repeatRatePct: cohort.repeatRatePct,
       avgOrdersPerCustomer: cohort.avgOrdersPerCustomer.blended,
+      minOrderValueForLtv: cohort.minOrderValueForLtv,
     };
   } else {
     unitEconomicsSource = "assumptions";

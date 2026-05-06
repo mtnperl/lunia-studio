@@ -77,7 +77,12 @@ export async function GET(req: Request) {
         windowDays: number;
         computedAt: string;
       }>(cacheKey);
-      if (cached) return Response.json(cached);
+      if (cached) {
+        // Merge fresh notes onto the cached payload — note edits should never
+        // wait an hour for the cache to roll over.
+        const recurring = await mergeNotes(cached.recurring);
+        return Response.json({ ...cached, recurring });
+      }
     } catch {
       /* KV unavailable — fall through */
     }
@@ -120,6 +125,13 @@ export async function GET(req: Request) {
       /* skip cache write */
     }
 
+    // Always merge user-authored notes onto the response — kept out of the cache so
+    // edits show up immediately without busting flags or detection.
+    const withNotes = {
+      ...payload,
+      recurring: await mergeNotes(payload.recurring),
+    };
+
     console.log(
       "[api/business/recurring] window=%dd txns=%d detected=%d monthly_total=$%.0f cuttable=%d",
       WINDOW_DAYS,
@@ -129,7 +141,7 @@ export async function GET(req: Request) {
       enriched.filter((r) => r.flag === "cuttable").length,
     );
 
-    return Response.json(payload);
+    return Response.json(withNotes);
   } catch (err) {
     console.error("[api/business/recurring] error", err);
     return Response.json(
@@ -208,4 +220,54 @@ async function classifyFlags(items: RecurringExpense[]): Promise<Array<{ payeeKe
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   const parsed = FlagSchema.parse(JSON.parse(cleaned));
   return parsed.results;
+}
+
+// ── Manual notes ─────────────────────────────────────────────────────────
+
+const NoteSchema = z.object({
+  payeeKey: z.string().min(1),
+  note: z.string().max(500),
+});
+
+const NOTE_KEY = (payeeKey: string) => `business:recurring:note:v1:${payeeKey}`;
+
+async function mergeNotes(items: RecurringExpense[]): Promise<RecurringExpense[]> {
+  if (items.length === 0) return items;
+  const notes = await Promise.all(
+    items.map(async (r) => {
+      try {
+        return await kv.get<string>(NOTE_KEY(r.payeeKey));
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return items.map((r, i) => (notes[i] ? { ...r, note: notes[i] ?? undefined } : r));
+}
+
+/** PUT { payeeKey, note } — save or clear (empty string clears) the note for one vendor. */
+export async function PUT(req: Request) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = NoteSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: "payeeKey + note required (note ≤ 500 chars)" }, { status: 400 });
+  }
+  const { payeeKey, note } = parsed.data;
+  try {
+    if (note.trim().length === 0) {
+      // Empty = clear. Set to empty string with no TTL — KV will eventually expire if unused.
+      await kv.set(NOTE_KEY(payeeKey), "");
+    } else {
+      await kv.set(NOTE_KEY(payeeKey), note.trim());
+    }
+    return Response.json({ ok: true, payeeKey, note: note.trim() });
+  } catch (err) {
+    console.error("[api/business/recurring PUT note]", err);
+    return Response.json({ error: "Could not save note" }, { status: 503 });
+  }
 }

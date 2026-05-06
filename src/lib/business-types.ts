@@ -130,6 +130,12 @@ export type Categorization = {
  * Per-customer summary used by the Existing Customers tab. One row per
  * unique customer observed in the 365d window (email-deduped for guest
  * checkouts).
+ *
+ * Two parallel order-count + revenue numbers are tracked:
+ *  - `orderCount` / `totalRevenue` — every order, including $0 promo/comp
+ *    orders. Matches the Shopify admin dashboard.
+ *  - `qualifiedOrderCount` / `qualifiedRevenue` — only orders ≥ $5. Used for
+ *    LTV / CAC / payback math so $0 freebies don't dilute averages.
  */
 export type CustomerSummary = {
   /** Stable key — `id:<shopify-id>` when available, else `email:<lowercased>`, else `order:<id>`. */
@@ -137,52 +143,63 @@ export type CustomerSummary = {
   email?: string;
   firstName?: string;
   lastName?: string;
-  firstOrderDate: string; // YYYY-MM-DD
-  lastOrderDate: string;  // YYYY-MM-DD
+  firstOrderDate: string;       // YYYY-MM-DD (any order)
+  lastOrderDate: string;        // YYYY-MM-DD (any order)
+  /** First date the customer placed an order ≥ $5. Empty string if none. */
+  firstQualifiedOrderDate: string;
   orderCount: number;
   totalRevenue: number;
+  qualifiedOrderCount: number;
+  qualifiedRevenue: number;
   /** Has at least one Shopify Subscription product order (selling_plan_allocation). */
   hasSubscriptionOrder: boolean;
-  /** Repeat-customer flag — the new "subscriber" definition: ordered more than once. */
+  /** Subscriber = ≥ 2 qualified orders. The user-facing definition for the Existing Customers tab. */
   isRepeatCustomer: boolean;
+  /** True when this customer's full history is $0 / sub-$5 — excluded from LTV math. */
+  trialOnly: boolean;
 };
 
 export type CustomerCohort = {
   /** Always 365 — the trailing-twelve-months window the LTV calc is based on. */
   windowDays: number;
-  /** Total paid orders processed. Useful as a sanity check vs the existing dashboard. */
+  /** Minimum order value used to qualify orders into LTV/CAC math. */
+  minOrderValueForLtv: number;
+
+  // ── Raw — every order, matches Shopify admin reporting ─────────────────
+  /** Total paid orders processed (incl. $0 promo/comp). Sanity-check vs Shopify dash. */
   windowOrders: number;
-  /** Total unique customers observed in the 365d window. Email is used as fallback when customer.id is missing (guest checkouts). */
+  /** Total unique customers observed (incl. trial-only). */
   totalCustomers: number;
-  /**
-   * Customers with > 1 orders in the window — the user-facing "Subscribers" definition.
-   * Distinct from `subscriptionProductCustomers` below which tracks Shopify Subscriptions specifically.
-   */
+
+  // ── Qualified ($5+ only) — basis for unit economics ────────────────────
+  /** Orders with total_price ≥ minOrderValueForLtv. */
+  qualifiedOrders: number;
+  /** Customers with at least 1 qualified order. */
+  qualifiedCustomers: number;
+  /** Customers with > 1 qualified order — "Subscribers" under the new definition. */
   repeatCustomers: number;
-  /** Customers with exactly 1 order in the window. */
+  /** Customers with exactly 1 qualified order. */
   oneTimeCustomers: number;
-  /** Customers with at least one Shopify Subscription product order (selling_plan_allocation). Tracked separately from the new repeat-customer definition. */
-  subscriptionProductCustomers: number;
-  /** Mean lifetime revenue per customer over the 365d window — gross of margin. */
+  /** Customers with 0 qualified orders (trial / $0-only). Excluded from LTV math. */
+  trialOnlyCustomers: number;
+  /** Mean qualified revenue per qualified customer — gross of margin. */
   avgLifetimeRevenue: { blended: number; repeat: number; oneTime: number };
-  /** Mean order count per customer over the 365d window. */
+  /** Mean qualified-order count per qualified customer. */
   avgOrdersPerCustomer: { blended: number; repeat: number; oneTime: number };
-  /** Share of orders (not customers) that are subscription-product orders. */
+  /** % of qualified orders that include a Shopify Subscription line item. */
   subscriptionProductOrderMixPct: number;
-  /** Share of customers with more than one order in the window — same as repeatCustomers / totalCustomers. */
+  /** Subscribers (≥2 qualified orders) ÷ qualified customers. */
   repeatRatePct: number;
-  /** New customers in the requested range (driven by the since/until query params). */
+  /** New customers (first qualified order) in the requested range. Used for CAC. */
   newCustomersInRange: number;
-  /** Convenience windows. */
   newCustomersLast30d: number;
   newCustomersLast90d: number;
-  /** Range-aware request echo so the consumer can verify what was scoped. */
+
+  /** Customers with at least one Shopify Subscription product order (selling_plan_allocation). */
+  subscriptionProductCustomers: number;
   range: { since: string; until: string };
-  /** True when Shopify pagination capped — totals may be understated. */
   truncated: boolean;
-  /** ISO timestamp the rollup was computed at. */
   computedAt: string;
-  /** Per-customer summaries for the Existing Customers tab. Sorted by totalRevenue desc. */
   customers: CustomerSummary[];
 };
 
@@ -242,12 +259,23 @@ export type PnL = {
     source: "shopify-cohort" | "assumptions";
     /** Real customer-level signal when source = shopify-cohort. */
     cohort?: {
+      /** All customers in the 365d window (incl. $0 trial-only). */
       totalCustomers: number;
+      /** Customers with ≥1 qualified ($5+) order — basis for LTV. */
+      qualifiedCustomers: number;
+      /** ≥2 qualified orders. */
       repeatCustomers: number;
       oneTimeCustomers: number;
+      /** Excluded from LTV math. */
+      trialOnlyCustomers: number;
+      /** New qualified customers in the request range — basis for CAC. */
       newCustomersInRange: number;
+      /** Subscribers / qualified customers. */
       repeatRatePct: number;
+      /** Mean qualified orders per qualified customer. */
       avgOrdersPerCustomer: number;
+      /** Min order value used to qualify orders into LTV math. */
+      minOrderValueForLtv: number;
     };
   };
   /** Sources that failed or are unconnected — UI surfaces a warning per item. */

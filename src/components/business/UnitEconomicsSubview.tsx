@@ -71,7 +71,7 @@ export default function UnitEconomicsSubview() {
   // for the CAC / LTV numbers themselves.
   const cohort = cohortRaw;
   const ue = pnl?.unitEconomics;
-  const isReal = !!cohort && cohort.totalCustomers > 0;
+  const isReal = !!cohort && cohort.qualifiedCustomers > 0;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 80px" }}>
@@ -102,8 +102,8 @@ export default function UnitEconomicsSubview() {
             color: "var(--muted)",
             margin: "6px 0 0",
           }}>
-            {isReal
-              ? "CAC and LTV computed from real customer data — last 365 days of Shopify orders, current-period gross margin."
+            {isReal && cohort
+              ? `CAC and LTV computed from real customer data — last 365 days of Shopify orders ≥ $${cohort.minOrderValueForLtv} (excludes $0 promo / sub-$${cohort.minOrderValueForLtv} freebies so they don't dilute averages), current-period gross margin.`
               : "CAC and LTV derived from your assumption form. Connect Shopify or update the assumptions to see real numbers."}
           </p>
         </div>
@@ -160,8 +160,8 @@ export default function UnitEconomicsSubview() {
             borderRadius: "50%",
             background: isReal ? "var(--accent)" : "var(--muted)",
           }} />
-          {isReal
-            ? `Real data · ${cohort.windowOrders.toLocaleString()} orders · ${cohort.totalCustomers.toLocaleString()} customers · 365d window`
+          {isReal && cohort
+            ? `Real data · ${cohort.windowOrders.toLocaleString()} total orders · ${cohort.qualifiedOrders.toLocaleString()} qualified ($${cohort.minOrderValueForLtv}+) · ${cohort.qualifiedCustomers.toLocaleString()} qualified customers · 365d window`
             : "Assumption-based — cohort not loaded"}
         </span>
         {cohort?.truncated && (
@@ -308,21 +308,25 @@ export default function UnitEconomicsSubview() {
             gap: 16,
             marginBottom: 16,
           }}>
-            <Stat label="Total orders" value={cohort.windowOrders.toLocaleString()} hint="paid, all amounts" />
             <Stat
-              label="Unique customers"
-              value={cohort.totalCustomers.toLocaleString()}
+              label="Qualified customers"
+              value={cohort.qualifiedCustomers.toLocaleString()}
               hint={`${cohort.repeatCustomers.toLocaleString()} subscriber · ${cohort.oneTimeCustomers.toLocaleString()} one-time`}
+            />
+            <Stat
+              label="Trial-only"
+              value={cohort.trialOnlyCustomers.toLocaleString()}
+              hint={`Free / sub-$${cohort.minOrderValueForLtv} only · excluded from LTV math`}
             />
             <Stat
               label="New (this period)"
               value={cohort.newCustomersInRange.toLocaleString()}
-              hint={`${range.since} → ${range.until}`}
+              hint={`${range.since} → ${range.until} · qualified acquisitions`}
             />
             <Stat
               label="Subscriber rate"
               value={`${cohort.repeatRatePct.toFixed(1)}%`}
-              hint={`${cohort.avgOrdersPerCustomer.blended.toFixed(1)} orders / customer`}
+              hint={`${cohort.avgOrdersPerCustomer.blended.toFixed(1)} qualified orders / customer`}
             />
           </div>
           <div className="ue-cust-grid" style={{
@@ -330,9 +334,9 @@ export default function UnitEconomicsSubview() {
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: 16,
           }}>
-            <Stat label="Subscription-product mix" value={`${cohort.subscriptionProductOrderMixPct.toFixed(1)}%`} hint="orders w/ Shopify Subscription line item" />
-            <Stat label="Avg subscriber order count" value={cohort.avgOrdersPerCustomer.repeat.toFixed(2)} hint="per repeat customer" />
-            <Stat label="Avg one-time order count" value={cohort.avgOrdersPerCustomer.oneTime.toFixed(2)} hint="per one-time customer" />
+            <Stat label="Subscription-product mix" value={`${cohort.subscriptionProductOrderMixPct.toFixed(1)}%`} hint="of qualified orders w/ Shopify Subscription line item" />
+            <Stat label="Avg subscriber orders" value={cohort.avgOrdersPerCustomer.repeat.toFixed(2)} hint="per repeat customer" />
+            <Stat label="Avg one-time orders" value={cohort.avgOrdersPerCustomer.oneTime.toFixed(2)} hint="per one-time customer" />
             <Stat label="New (last 30 days)" value={cohort.newCustomersLast30d.toLocaleString()} hint="for CAC reference" />
           </div>
         </div>

@@ -21,6 +21,8 @@ export type RecurringExpense = {
   flag?: RecurringFlag;
   /** 1-line reasoning for the flag. */
   flagReason?: string;
+  /** Founder-authored note — what is this for, why we keep it, when to revisit. KV-backed per payeeKey. */
+  note?: string;
 };
 
 const MIN_OCCURRENCES = 3;

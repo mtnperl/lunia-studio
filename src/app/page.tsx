@@ -29,7 +29,7 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-existing" | "business-assumptions";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -75,7 +75,6 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "business-pnl": IconDocument,
   "business-unit-economics": IconStack,
   "business-cash": IconBoard,
-  "business-existing": IconFolder,
   "business-assumptions": IconHash,
 };
 
@@ -100,7 +99,6 @@ const TAB_TITLES: Record<string, string> = {
   "business-pnl": "Business — P&L",
   "business-unit-economics": "Business — Unit Economics",
   "business-cash": "Business — Cash & Expenses",
-  "business-existing": "Business — Existing Customers",
   "business-assumptions": "Business — Assumptions",
 };
 
@@ -148,12 +146,11 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Business",
     items: [
-      { key: "business-overview",        product: "business", label: "Overview"           },
-      { key: "business-pnl",             product: "business", label: "P&L"                },
-      { key: "business-unit-economics",  product: "business", label: "Unit Economics"     },
-      { key: "business-cash",            product: "business", label: "Cash & Expenses"    },
-      { key: "business-existing",        product: "business", label: "Existing Customers" },
-      { key: "business-assumptions",     product: "business", label: "Assumptions"        },
+      { key: "business-overview",        product: "business", label: "Overview"        },
+      { key: "business-pnl",             product: "business", label: "P&L"             },
+      { key: "business-unit-economics",  product: "business", label: "Unit Economics"  },
+      { key: "business-cash",            product: "business", label: "Cash & Expenses" },
+      { key: "business-assumptions",     product: "business", label: "Assumptions"     },
     ],
   },
 ];
@@ -526,7 +523,6 @@ export default function Page() {
         {tab === "business-pnl"            && <BusinessView active="pnl" />}
         {tab === "business-unit-economics" && <BusinessView active="unit-economics" />}
         {tab === "business-cash"           && <BusinessView active="cash" />}
-        {tab === "business-existing"       && <BusinessView active="existing" />}
         {tab === "business-assumptions"    && <BusinessView active="assumptions" />}
         </div>
       </main>
