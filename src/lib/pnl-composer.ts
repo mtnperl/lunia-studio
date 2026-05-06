@@ -155,10 +155,9 @@ type Statement = {
   unitEconomicsSource: "shopify-cohort" | "assumptions";
   cohortSummary?: {
     totalCustomers: number;
-    subCustomers: number;
-    otpCustomers: number;
+    repeatCustomers: number;
+    oneTimeCustomers: number;
     newCustomersInRange: number;
-    subMixActualPct: number;
     repeatRatePct: number;
     avgOrdersPerCustomer: number;
   };
@@ -261,8 +260,9 @@ function computeStatement(input: {
     cac = cohort.newCustomersInRange > 0 ? adSpend / cohort.newCustomersInRange : 0;
 
     // Convert revenue LTV to contribution LTV using the period's gross margin.
-    subLtv     = cohort.avgLifetimeRevenue.sub     * grossMarginRatio;
-    otpLtv     = cohort.avgLifetimeRevenue.otp     * grossMarginRatio;
+    // sub/otp slot now maps to repeat/one-time under the new "subscriber = repeat" definition.
+    subLtv     = cohort.avgLifetimeRevenue.repeat  * grossMarginRatio;
+    otpLtv     = cohort.avgLifetimeRevenue.oneTime * grossMarginRatio;
     blendedLtv = cohort.avgLifetimeRevenue.blended * grossMarginRatio;
 
     ltvToCac = cac > 0 ? blendedLtv / cac : 0;
@@ -275,10 +275,9 @@ function computeStatement(input: {
 
     cohortSummary = {
       totalCustomers: cohort.totalCustomers,
-      subCustomers: cohort.subCustomers,
-      otpCustomers: cohort.otpCustomers,
+      repeatCustomers: cohort.repeatCustomers,
+      oneTimeCustomers: cohort.oneTimeCustomers,
       newCustomersInRange: cohort.newCustomersInRange,
-      subMixActualPct: cohort.subMixPct,
       repeatRatePct: cohort.repeatRatePct,
       avgOrdersPerCustomer: cohort.avgOrdersPerCustomer.blended,
     };

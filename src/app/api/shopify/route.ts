@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify:v3:${since}_${until}`;
+  const cacheKey = `analytics:shopify:v4:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -126,13 +126,12 @@ export async function GET(req: Request) {
       }
     }
 
-    // Filter to confirmed revenue orders (matching Shopify admin reporting):
-    // 'paid' = captured, 'authorized' = approved but not yet captured, 'partially_paid' = partial capture
-    // Exclude orders at or below $1 (test orders, $0 discount orders, etc.).
+    // Match Shopify admin "Orders" reporting — count every revenue order regardless of
+    // dollar amount. $0 promo/comp orders ARE customer acquisitions and need to be
+    // counted (e.g. influencer comps, free trial, 100% discount codes).
     const REVENUE_STATUSES = new Set(['paid', 'authorized', 'partially_paid']);
     const paidOrders = allOrders.filter(o =>
-      REVENUE_STATUSES.has(o.financial_status) &&
-      parseFloat(o.total_price ?? '0') > 1
+      REVENUE_STATUSES.has(o.financial_status)
     );
 
     // Aggregate by day

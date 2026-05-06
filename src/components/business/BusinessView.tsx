@@ -6,8 +6,9 @@ import PnLSubview from "./PnLSubview";
 import UnitEconomicsSubview from "./UnitEconomicsSubview";
 import CashExpensesSubview from "./CashExpensesSubview";
 import AssumptionsSubview from "./AssumptionsSubview";
+import ExistingCustomersSubview from "./ExistingCustomersSubview";
 
-export type BusinessTab = "overview" | "pnl" | "unit-economics" | "cash" | "assumptions";
+export type BusinessTab = "overview" | "pnl" | "unit-economics" | "cash" | "existing" | "assumptions";
 
 type Props = { active: BusinessTab };
 
@@ -38,6 +39,7 @@ export default function BusinessView({ active }: Props) {
       {active === "pnl" && <PnLSubview />}
       {active === "unit-economics" && <UnitEconomicsSubview />}
       {active === "cash" && <CashExpensesSubview />}
+      {active === "existing" && <ExistingCustomersSubview />}
       {active === "assumptions" && <AssumptionsSubview />}
     </>
   );

@@ -251,7 +251,7 @@ export default function UnitEconomicsSubview() {
         />
       </div>
 
-      {/* LTV breakdown — sub vs OTP */}
+      {/* LTV breakdown — subscriber (repeat) vs one-time */}
       <div className="ue-grid-2" style={{
         display: "grid",
         gridTemplateColumns: "repeat(2, 1fr)",
@@ -259,23 +259,23 @@ export default function UnitEconomicsSubview() {
         marginBottom: cohort ? 24 : 0,
       }}>
         <KPICard
-          label="Sub LTV"
+          label="Subscriber LTV"
           value={ue?.subLtv ?? 0}
           prefix="$"
           decimals={0}
           loading={loading}
           tooltip={isReal
-            ? "Mean 12-month revenue per subscription customer × current gross margin"
+            ? "Mean 12-month revenue per repeat customer (>1 orders) × current gross margin"
             : "Per-order contribution × avg sub lifetime months"}
         />
         <KPICard
-          label="OTP LTV"
+          label="One-time LTV"
           value={ue?.otpLtv ?? 0}
           prefix="$"
           decimals={0}
           loading={loading}
           tooltip={isReal
-            ? "Mean 12-month revenue per one-time-purchase customer × current gross margin"
+            ? "Mean 12-month revenue per one-time customer (1 order) × current gross margin"
             : "Per-order contribution × (1 + OTP repeat rate)"}
         />
       </div>
@@ -308,11 +308,11 @@ export default function UnitEconomicsSubview() {
             gap: 16,
             marginBottom: 16,
           }}>
-            <Stat label="Total orders" value={cohort.windowOrders.toLocaleString()} hint="paid, ≥$5" />
+            <Stat label="Total orders" value={cohort.windowOrders.toLocaleString()} hint="paid, all amounts" />
             <Stat
               label="Unique customers"
               value={cohort.totalCustomers.toLocaleString()}
-              hint={`${cohort.subCustomers.toLocaleString()} sub · ${cohort.otpCustomers.toLocaleString()} OTP`}
+              hint={`${cohort.repeatCustomers.toLocaleString()} subscriber · ${cohort.oneTimeCustomers.toLocaleString()} one-time`}
             />
             <Stat
               label="New (this period)"
@@ -320,7 +320,7 @@ export default function UnitEconomicsSubview() {
               hint={`${range.since} → ${range.until}`}
             />
             <Stat
-              label="Repeat rate"
+              label="Subscriber rate"
               value={`${cohort.repeatRatePct.toFixed(1)}%`}
               hint={`${cohort.avgOrdersPerCustomer.blended.toFixed(1)} orders / customer`}
             />
@@ -330,9 +330,9 @@ export default function UnitEconomicsSubview() {
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: 16,
           }}>
-            <Stat label="Sub mix (orders)" value={`${cohort.subMixPct.toFixed(1)}%`} hint="of paid orders" />
-            <Stat label="Avg sub order count" value={cohort.avgOrdersPerCustomer.sub.toFixed(2)} hint="per sub customer" />
-            <Stat label="Avg OTP order count" value={cohort.avgOrdersPerCustomer.otp.toFixed(2)} hint="per OTP customer" />
+            <Stat label="Subscription-product mix" value={`${cohort.subscriptionProductOrderMixPct.toFixed(1)}%`} hint="orders w/ Shopify Subscription line item" />
+            <Stat label="Avg subscriber order count" value={cohort.avgOrdersPerCustomer.repeat.toFixed(2)} hint="per repeat customer" />
+            <Stat label="Avg one-time order count" value={cohort.avgOrdersPerCustomer.oneTime.toFixed(2)} hint="per one-time customer" />
             <Stat label="New (last 30 days)" value={cohort.newCustomersLast30d.toLocaleString()} hint="for CAC reference" />
           </div>
         </div>

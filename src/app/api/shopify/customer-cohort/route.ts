@@ -7,7 +7,8 @@ const WINDOW_DAYS = 365;
 const PAGE_CAP = 100;         // 100 × 250 = 25,000 orders. Plenty of headroom for a year of DTC orders.
 const PAGE_SIZE = 250;
 const REVENUE_STATUSES = new Set(["paid", "authorized", "partially_paid"]);
-const MIN_ORDER_VALUE = 1;    // count any order strictly above $1 — excludes $0/$1 test orders only
+// No price floor — match Shopify admin "Orders" reporting which counts $0 promo/comp
+// orders. Those are real customer acquisitions for unit-economics math.
 
 type ShopifyLineItem = {
   product_title: string;
@@ -22,33 +23,39 @@ type ShopifyOrder = {
   total_price: string;
   financial_status: string;
   line_items: ShopifyLineItem[];
-  customer?: { id: number; email?: string } | null;
+  customer?: { id: number; email?: string; first_name?: string; last_name?: string } | null;
   email?: string;
 };
 
 type CustomerRollup = {
   key: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   totalRevenue: number;
   orderCount: number;
   hasSubscriptionOrder: boolean;
   firstOrderDate: string; // YYYY-MM-DD
+  lastOrderDate: string;  // YYYY-MM-DD
 };
 
 type CachedFullWindow = {
   windowDays: number;
   windowOrders: number;
   totalCustomers: number;
-  subCustomers: number;
-  otpCustomers: number;
-  avgLifetimeRevenue: { blended: number; sub: number; otp: number };
-  avgOrdersPerCustomer: { blended: number; sub: number; otp: number };
-  subMixPct: number;
+  repeatCustomers: number;
+  oneTimeCustomers: number;
+  subscriptionProductCustomers: number;
+  avgLifetimeRevenue: { blended: number; repeat: number; oneTime: number };
+  avgOrdersPerCustomer: { blended: number; repeat: number; oneTime: number };
+  subscriptionProductOrderMixPct: number;
   repeatRatePct: number;
   newCustomersByDate: Record<string, number>;
   truncated: boolean;
   computedAt: string;
   windowSince: string;
   windowUntil: string;
+  customers: import("@/lib/business-types").CustomerSummary[];
 };
 
 export async function GET(req: Request) {
@@ -70,7 +77,7 @@ export async function GET(req: Request) {
   const windowSince = new Date(todayUtc.getTime() - (WINDOW_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
   const windowUntil = todayUtc.toISOString().slice(0, 10);
 
-  const cacheKey = `shopify:cohort:v2:${windowSince}_${windowUntil}`;
+  const cacheKey = `shopify:cohort:v3:${windowSince}_${windowUntil}`;
 
   let full: CachedFullWindow | null = null;
 
@@ -109,11 +116,12 @@ export async function GET(req: Request) {
     windowDays: full.windowDays,
     windowOrders: full.windowOrders,
     totalCustomers: full.totalCustomers,
-    subCustomers: full.subCustomers,
-    otpCustomers: full.otpCustomers,
+    repeatCustomers: full.repeatCustomers,
+    oneTimeCustomers: full.oneTimeCustomers,
+    subscriptionProductCustomers: full.subscriptionProductCustomers,
     avgLifetimeRevenue: full.avgLifetimeRevenue,
     avgOrdersPerCustomer: full.avgOrdersPerCustomer,
-    subMixPct: full.subMixPct,
+    subscriptionProductOrderMixPct: full.subscriptionProductOrderMixPct,
     repeatRatePct: full.repeatRatePct,
     newCustomersInRange,
     newCustomersLast30d: last30,
@@ -121,6 +129,7 @@ export async function GET(req: Request) {
     range: { since: rangeSince, until: rangeUntil },
     truncated: full.truncated,
     computedAt: full.computedAt,
+    customers: full.customers,
   };
 
   return Response.json(out);
@@ -145,6 +154,7 @@ async function pullAndAggregate(
     `&created_at_max=${encodeURIComponent(created_at_max_iso)}` +
     `&limit=${PAGE_SIZE}` +
     `&fields=id,created_at,total_price,financial_status,line_items,customer,email`;
+  // Note: requesting full customer obj — Shopify includes first_name/last_name when accessible.
 
   const allOrders: ShopifyOrder[] = [];
   let pages = 0;
@@ -213,8 +223,6 @@ async function pullAndAggregate(
   for (const order of allOrders) {
     if (!REVENUE_STATUSES.has(order.financial_status)) continue;
     const total = parseFloat(order.total_price ?? "0");
-    if (total <= MIN_ORDER_VALUE) continue;
-
     totalOrders++;
 
     const isSubOrder = order.line_items.some((li) => li.selling_plan_allocation != null);
@@ -228,42 +236,53 @@ async function pullAndAggregate(
       existing.orderCount += 1;
       if (isSubOrder) existing.hasSubscriptionOrder = true;
       if (orderDate < existing.firstOrderDate) existing.firstOrderDate = orderDate;
+      if (orderDate > existing.lastOrderDate) existing.lastOrderDate = orderDate;
+      // Backfill name/email if a later order has the data and the first didn't (rare but possible).
+      if (!existing.email && (order.customer?.email || order.email)) {
+        existing.email = (order.customer?.email ?? order.email)?.toLowerCase();
+      }
+      if (!existing.firstName && order.customer?.first_name) existing.firstName = order.customer.first_name;
+      if (!existing.lastName && order.customer?.last_name) existing.lastName = order.customer.last_name;
     } else {
       customerMap.set(customerKey, {
         key: customerKey,
+        email: (order.customer?.email ?? order.email ?? "").toLowerCase() || undefined,
+        firstName: order.customer?.first_name,
+        lastName: order.customer?.last_name,
         totalRevenue: total,
         orderCount: 1,
         hasSubscriptionOrder: isSubOrder,
         firstOrderDate: orderDate,
+        lastOrderDate: orderDate,
       });
     }
   }
 
   const customers = [...customerMap.values()];
-  const subCustomers = customers.filter((c) => c.hasSubscriptionOrder);
-  const otpCustomers = customers.filter((c) => !c.hasSubscriptionOrder);
-
   const totalCustomers = customers.length;
-  const repeatCustomers = customers.filter((c) => c.orderCount > 1).length;
+  // NEW DEFINITION: "subscriber" = repeat customer (>1 orders).
+  const repeatRollups   = customers.filter((c) => c.orderCount > 1);
+  const oneTimeRollups  = customers.filter((c) => c.orderCount === 1);
+  const subscriptionProductCustomers = customers.filter((c) => c.hasSubscriptionOrder).length;
 
   const sumRevenue = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.totalRevenue, 0);
-  const sumOrders = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.orderCount, 0);
+  const sumOrders  = (xs: CustomerRollup[]) => xs.reduce((s, c) => s + c.orderCount, 0);
   const avg = (sum: number, count: number) => (count > 0 ? sum / count : 0);
 
   const avgLifetimeRevenue = {
     blended: avg(sumRevenue(customers), totalCustomers),
-    sub: avg(sumRevenue(subCustomers), subCustomers.length),
-    otp: avg(sumRevenue(otpCustomers), otpCustomers.length),
+    repeat:  avg(sumRevenue(repeatRollups),  repeatRollups.length),
+    oneTime: avg(sumRevenue(oneTimeRollups), oneTimeRollups.length),
   };
 
   const avgOrdersPerCustomer = {
     blended: avg(sumOrders(customers), totalCustomers),
-    sub: avg(sumOrders(subCustomers), subCustomers.length),
-    otp: avg(sumOrders(otpCustomers), otpCustomers.length),
+    repeat:  avg(sumOrders(repeatRollups),  repeatRollups.length),
+    oneTime: avg(sumOrders(oneTimeRollups), oneTimeRollups.length),
   };
 
-  const subMixPct = totalOrders > 0 ? (subOrders / totalOrders) * 100 : 0;
-  const repeatRatePct = totalCustomers > 0 ? (repeatCustomers / totalCustomers) * 100 : 0;
+  const subscriptionProductOrderMixPct = totalOrders > 0 ? (subOrders / totalOrders) * 100 : 0;
+  const repeatRatePct = totalCustomers > 0 ? (repeatRollups.length / totalCustomers) * 100 : 0;
 
   // Build per-day new-customer histogram so range-aware lookups are cheap.
   const newCustomersByDate: Record<string, number> = {};
@@ -271,26 +290,44 @@ async function pullAndAggregate(
     newCustomersByDate[c.firstOrderDate] = (newCustomersByDate[c.firstOrderDate] ?? 0) + 1;
   }
 
+  // Sort customer summaries by total revenue descending — UI default.
+  const customerSummaries = customers
+    .map((c) => ({
+      key: c.key,
+      email: c.email,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      firstOrderDate: c.firstOrderDate,
+      lastOrderDate: c.lastOrderDate,
+      orderCount: c.orderCount,
+      totalRevenue: c.totalRevenue,
+      hasSubscriptionOrder: c.hasSubscriptionOrder,
+      isRepeatCustomer: c.orderCount > 1,
+    }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
   console.log(
-    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d sub=%d truncated=%s",
-    windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers, subCustomers.length, truncated,
+    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d repeat=%d sub_product=%d truncated=%s",
+    windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers, repeatRollups.length, subscriptionProductCustomers, truncated,
   );
 
   return {
     windowDays: WINDOW_DAYS,
     windowOrders: totalOrders,
     totalCustomers,
-    subCustomers: subCustomers.length,
-    otpCustomers: otpCustomers.length,
+    repeatCustomers: repeatRollups.length,
+    oneTimeCustomers: oneTimeRollups.length,
+    subscriptionProductCustomers,
     avgLifetimeRevenue,
     avgOrdersPerCustomer,
-    subMixPct,
+    subscriptionProductOrderMixPct,
     repeatRatePct,
     newCustomersByDate,
     truncated,
     computedAt: new Date().toISOString(),
     windowSince,
     windowUntil,
+    customers: customerSummaries,
   };
 }
 

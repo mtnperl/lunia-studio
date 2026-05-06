@@ -126,6 +126,27 @@ export type Categorization = {
 // the assumption form. Range-aware new-customer counts let the consumer pick
 // their CAC window.
 
+/**
+ * Per-customer summary used by the Existing Customers tab. One row per
+ * unique customer observed in the 365d window (email-deduped for guest
+ * checkouts).
+ */
+export type CustomerSummary = {
+  /** Stable key — `id:<shopify-id>` when available, else `email:<lowercased>`, else `order:<id>`. */
+  key: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  firstOrderDate: string; // YYYY-MM-DD
+  lastOrderDate: string;  // YYYY-MM-DD
+  orderCount: number;
+  totalRevenue: number;
+  /** Has at least one Shopify Subscription product order (selling_plan_allocation). */
+  hasSubscriptionOrder: boolean;
+  /** Repeat-customer flag — the new "subscriber" definition: ordered more than once. */
+  isRepeatCustomer: boolean;
+};
+
 export type CustomerCohort = {
   /** Always 365 — the trailing-twelve-months window the LTV calc is based on. */
   windowDays: number;
@@ -133,17 +154,22 @@ export type CustomerCohort = {
   windowOrders: number;
   /** Total unique customers observed in the 365d window. Email is used as fallback when customer.id is missing (guest checkouts). */
   totalCustomers: number;
-  /** Customers whose order history includes at least one subscription line item. */
-  subCustomers: number;
-  /** Customers whose order history is exclusively one-time purchases. */
-  otpCustomers: number;
+  /**
+   * Customers with > 1 orders in the window — the user-facing "Subscribers" definition.
+   * Distinct from `subscriptionProductCustomers` below which tracks Shopify Subscriptions specifically.
+   */
+  repeatCustomers: number;
+  /** Customers with exactly 1 order in the window. */
+  oneTimeCustomers: number;
+  /** Customers with at least one Shopify Subscription product order (selling_plan_allocation). Tracked separately from the new repeat-customer definition. */
+  subscriptionProductCustomers: number;
   /** Mean lifetime revenue per customer over the 365d window — gross of margin. */
-  avgLifetimeRevenue: { blended: number; sub: number; otp: number };
+  avgLifetimeRevenue: { blended: number; repeat: number; oneTime: number };
   /** Mean order count per customer over the 365d window. */
-  avgOrdersPerCustomer: { blended: number; sub: number; otp: number };
-  /** Share of orders (not customers) that are subscriptions. */
-  subMixPct: number;
-  /** Share of customers with more than one order in the window. */
+  avgOrdersPerCustomer: { blended: number; repeat: number; oneTime: number };
+  /** Share of orders (not customers) that are subscription-product orders. */
+  subscriptionProductOrderMixPct: number;
+  /** Share of customers with more than one order in the window — same as repeatCustomers / totalCustomers. */
   repeatRatePct: number;
   /** New customers in the requested range (driven by the since/until query params). */
   newCustomersInRange: number;
@@ -156,6 +182,8 @@ export type CustomerCohort = {
   truncated: boolean;
   /** ISO timestamp the rollup was computed at. */
   computedAt: string;
+  /** Per-customer summaries for the Existing Customers tab. Sorted by totalRevenue desc. */
+  customers: CustomerSummary[];
 };
 
 // ── P&L (Phase 5) ────────────────────────────────────────────────────────
@@ -215,10 +243,9 @@ export type PnL = {
     /** Real customer-level signal when source = shopify-cohort. */
     cohort?: {
       totalCustomers: number;
-      subCustomers: number;
-      otpCustomers: number;
+      repeatCustomers: number;
+      oneTimeCustomers: number;
       newCustomersInRange: number;
-      subMixActualPct: number;
       repeatRatePct: number;
       avgOrdersPerCustomer: number;
     };
