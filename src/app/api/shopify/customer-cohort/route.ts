@@ -30,6 +30,7 @@ type ShopifyOrder = {
   id: number;
   created_at: string;
   total_price: string;
+  total_line_items_price?: string; // line_items × qty pre-discount — matches Shopify "Gross sales"
   financial_status: string;
   cancelled_at: string | null;
   line_items: ShopifyLineItem[];
@@ -99,7 +100,7 @@ export async function GET(req: Request) {
   const windowSince = new Date(todayUtc.getTime() - (WINDOW_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
   const windowUntil = todayUtc.toISOString().slice(0, 10);
 
-  const cacheKey = `shopify:cohort:v5:${windowSince}_${windowUntil}`;
+  const cacheKey = `shopify:cohort:v6:${windowSince}_${windowUntil}`;
 
   let full: CachedFullWindow | null = null;
 
@@ -179,7 +180,7 @@ async function pullAndAggregate(
     `&created_at_min=${encodeURIComponent(created_at_min)}` +
     `&created_at_max=${encodeURIComponent(created_at_max_iso)}` +
     `&limit=${PAGE_SIZE}` +
-    `&fields=id,created_at,total_price,financial_status,cancelled_at,line_items,customer,email`;
+    `&fields=id,created_at,total_price,total_line_items_price,financial_status,cancelled_at,line_items,customer,email`;
   // Note: requesting full customer obj — Shopify includes first_name/last_name when accessible.
 
   const allOrders: ShopifyOrder[] = [];
@@ -253,7 +254,12 @@ async function pullAndAggregate(
     // customer engagement (they paid; the refund came later).
     if (!ORDER_COUNT_STATUSES.has(order.financial_status)) continue;
 
-    const total = parseFloat(order.total_price ?? "0");
+    // Use gross-sales view (line items × qty before discounts) so every revenue
+    // number across the dashboard reconciles to Shopify's "Gross sales".
+    const directLineTotal = parseFloat(order.total_line_items_price ?? "");
+    const total = Number.isFinite(directLineTotal) && directLineTotal > 0
+      ? directLineTotal
+      : order.line_items.reduce((s, li) => s + parseFloat(li.price ?? "0") * (li.quantity ?? 0), 0);
     totalOrders++;
 
     const isSubOrder = order.line_items.some((li) => li.selling_plan_allocation != null);

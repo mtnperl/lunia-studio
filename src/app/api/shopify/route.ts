@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify:v5:${since}_${until}`;
+  const cacheKey = `analytics:shopify:v6:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -89,10 +89,19 @@ export async function GET(req: Request) {
     const created_at_max_iso = created_at_max.toISOString();
 
     type ShopifyLineItem = { product_title: string; variant_title?: string; quantity: number; price: string; selling_plan_allocation?: { selling_plan_id: number } | null };
-    type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; cancelled_at: string | null; line_items: ShopifyLineItem[]; customer?: { id: number } | null };
+    type ShopifyOrder = {
+      id: number;
+      created_at: string;
+      total_price: string;
+      total_line_items_price?: string; // line_items × qty (BEFORE discounts) — matches Shopify "Gross sales"
+      financial_status: string;
+      cancelled_at: string | null;
+      line_items: ShopifyLineItem[];
+      customer?: { id: number } | null;
+    };
 
     const allOrders: ShopifyOrder[] = [];
-    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,financial_status,cancelled_at,line_items,customer`;
+    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,total_line_items_price,financial_status,cancelled_at,line_items,customer`;
     let pages = 0;
     let truncated = false;
 
@@ -137,22 +146,32 @@ export async function GET(req: Request) {
     const countableOrders = allOrders.filter(o => !o.cancelled_at && ORDER_COUNT_STATUSES.has(o.financial_status));
     const paidOrders = countableOrders.filter(o => REVENUE_STATUSES.has(o.financial_status));
 
+    // Helper: gross sales line — match Shopify dashboard's "Gross sales" metric
+    // exactly. That's line_items × quantity BEFORE discounts (and excludes
+    // shipping + tax). total_line_items_price holds it directly.
+    const orderGrossSales = (o: ShopifyOrder): number => {
+      const direct = parseFloat(o.total_line_items_price ?? '');
+      if (Number.isFinite(direct) && direct > 0) return direct;
+      // Fallback when total_line_items_price is missing — sum line items manually.
+      return o.line_items.reduce((s, li) => s + parseFloat(li.price ?? '0') * (li.quantity ?? 0), 0);
+    };
+
     // Aggregate by day. Orders count from countableOrders (matches Shopify dash);
-    // revenue from paidOrders only (refunded $ never made it to the bank).
+    // revenue uses gross sales for the same reason — the user reconciles this
+    // panel against the Shopify analytics dash directly.
     const dayMap = new Map<string, { orders: number; revenue: number }>();
     for (const order of countableOrders) {
       const date = order.created_at.slice(0, 10);
       const existing = dayMap.get(date) ?? { orders: 0, revenue: 0 };
       existing.orders += 1;
-      if (REVENUE_STATUSES.has(order.financial_status)) {
-        existing.revenue += parseFloat(order.total_price ?? '0');
-      }
+      existing.revenue += orderGrossSales(order);
       dayMap.set(date, existing);
     }
 
-    // Aggregate products
+    // Aggregate products — line items × qty across countable orders so revenue
+    // here is also gross-sales-flavored (matches Shopify reporting).
     const productMap = new Map<string, { orders: number; revenue: number }>();
-    for (const order of paidOrders) {
+    for (const order of countableOrders) {
       for (const item of order.line_items) {
         const key = item.product_title + (item.variant_title ? ` · ${item.variant_title}` : '');
         const existing = productMap.get(key) ?? { orders: 0, revenue: 0 };
@@ -176,16 +195,17 @@ export async function GET(req: Request) {
 
     // Match Shopify admin "Orders" metric: every non-cancelled order including refunded.
     const totalOrders  = countableOrders.length;
-    // Revenue stays narrow — refunded $ shouldn't inflate the number.
-    const totalRevenue = paidOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+    // Revenue matches Shopify "Gross sales" exactly — line items × quantity before
+    // discounts/tax/shipping, summed across countable orders.
+    const totalRevenue = countableOrders.reduce((s, o) => s + orderGrossSales(o), 0);
 
-    // Subscription vs one-time split — a subscription order has at least one line item with selling_plan_allocation
-    const isSubscription = (o: (typeof paidOrders)[0]) =>
+    // Subscription vs one-time split — same gross-sales view applied across countable orders.
+    const isSubscription = (o: ShopifyOrder) =>
       o.line_items.some(li => li.selling_plan_allocation != null);
-    const subOrders      = paidOrders.filter(isSubscription);
-    const onetimeOrders  = paidOrders.filter(o => !isSubscription(o));
-    const subRevenue     = subOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
-    const onetimeRevenue = onetimeOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+    const subOrders      = countableOrders.filter(isSubscription);
+    const onetimeOrders  = countableOrders.filter(o => !isSubscription(o));
+    const subRevenue     = subOrders.reduce((s, o) => s + orderGrossSales(o), 0);
+    const onetimeRevenue = onetimeOrders.reduce((s, o) => s + orderGrossSales(o), 0);
 
     const data: ShopifyData = {
       summary: {

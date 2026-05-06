@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify-mtd:v4:${new Date().toISOString().slice(0, 10)}`;
+  const cacheKey = `analytics:shopify-mtd:v5:${new Date().toISOString().slice(0, 10)}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -70,26 +70,31 @@ export async function GET(req: Request) {
 
   const { created_at_min } = mtdRange();
 
-  // ── 1. Paid orders (excl. $0) ─────────────────────────────────────────────
+  // ── 1. Paid orders ───────────────────────────────────────────────────────
   type ShopifyOrder = {
     id: number;
     financial_status: string;
     total_price?: string;
+    total_line_items_price?: string; // line_items × qty pre-discount — matches Shopify "Gross sales"
     customer?: { orders_count?: number };
   };
 
   const allOrders = await paginatedFetch<ShopifyOrder>(
     SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
-    `/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price,customer`,
+    `/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price,total_line_items_price,customer`,
     'orders',
   );
 
-  const paidOrders = allOrders.filter(
-    o => o.financial_status === 'paid' && parseFloat(o.total_price ?? '0') > 1,
-  );
+  const paidOrders = allOrders.filter(o => o.financial_status === 'paid');
 
   const orders = paidOrders.length;
-  const revenue = paidOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
+  // Revenue matches Shopify dashboard "Gross sales" — line items × qty before
+  // discounts/tax/shipping. Falls back to total_price if missing.
+  const revenue = paidOrders.reduce((s, o) => {
+    const direct = parseFloat(o.total_line_items_price ?? '');
+    if (Number.isFinite(direct) && direct > 0) return s + direct;
+    return s + parseFloat(o.total_price ?? '0');
+  }, 0);
 
   // Returning customers = those whose customer.orders_count > 1 at time of order
   const returningOrders = paidOrders.filter(o => (o.customer?.orders_count ?? 1) > 1).length;
