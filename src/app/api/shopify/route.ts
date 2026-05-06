@@ -71,7 +71,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify:v4:${since}_${until}`;
+  const cacheKey = `analytics:shopify:v5:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -89,10 +89,10 @@ export async function GET(req: Request) {
     const created_at_max_iso = created_at_max.toISOString();
 
     type ShopifyLineItem = { product_title: string; variant_title?: string; quantity: number; price: string; selling_plan_allocation?: { selling_plan_id: number } | null };
-    type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; line_items: ShopifyLineItem[]; customer?: { id: number } | null };
+    type ShopifyOrder = { id: number; created_at: string; total_price: string; financial_status: string; cancelled_at: string | null; line_items: ShopifyLineItem[]; customer?: { id: number } | null };
 
     const allOrders: ShopifyOrder[] = [];
-    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,financial_status,line_items,customer`;
+    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,financial_status,cancelled_at,line_items,customer`;
     let pages = 0;
     let truncated = false;
 
@@ -126,21 +126,27 @@ export async function GET(req: Request) {
       }
     }
 
-    // Match Shopify admin "Orders" reporting — count every revenue order regardless of
-    // dollar amount. $0 promo/comp orders ARE customer acquisitions and need to be
-    // counted (e.g. influencer comps, free trial, 100% discount codes).
+    // Two-tier filter so the dashboard order count matches Shopify admin while
+    // revenue/AOV math stays clean of refunded money:
+    //   ORDER_COUNT_STATUSES — broad. Includes refunded orders (the customer DID
+    //   place + pay; refund came later). Excludes cancelled orders.
+    //   REVENUE_STATUSES — narrow. Used for revenue + AOV (refunded $ shouldn't
+    //   inflate revenue).
+    const ORDER_COUNT_STATUSES = new Set(['paid', 'authorized', 'partially_paid', 'refunded', 'partially_refunded']);
     const REVENUE_STATUSES = new Set(['paid', 'authorized', 'partially_paid']);
-    const paidOrders = allOrders.filter(o =>
-      REVENUE_STATUSES.has(o.financial_status)
-    );
+    const countableOrders = allOrders.filter(o => !o.cancelled_at && ORDER_COUNT_STATUSES.has(o.financial_status));
+    const paidOrders = countableOrders.filter(o => REVENUE_STATUSES.has(o.financial_status));
 
-    // Aggregate by day
+    // Aggregate by day. Orders count from countableOrders (matches Shopify dash);
+    // revenue from paidOrders only (refunded $ never made it to the bank).
     const dayMap = new Map<string, { orders: number; revenue: number }>();
-    for (const order of paidOrders) {
+    for (const order of countableOrders) {
       const date = order.created_at.slice(0, 10);
       const existing = dayMap.get(date) ?? { orders: 0, revenue: 0 };
       existing.orders += 1;
-      existing.revenue += parseFloat(order.total_price ?? '0');
+      if (REVENUE_STATUSES.has(order.financial_status)) {
+        existing.revenue += parseFloat(order.total_price ?? '0');
+      }
       dayMap.set(date, existing);
     }
 
@@ -168,7 +174,9 @@ export async function GET(req: Request) {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 20);
 
-    const totalOrders  = paidOrders.length;
+    // Match Shopify admin "Orders" metric: every non-cancelled order including refunded.
+    const totalOrders  = countableOrders.length;
+    // Revenue stays narrow — refunded $ shouldn't inflate the number.
     const totalRevenue = paidOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
 
     // Subscription vs one-time split — a subscription order has at least one line item with selling_plan_allocation

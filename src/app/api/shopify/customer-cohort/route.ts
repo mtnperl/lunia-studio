@@ -6,10 +6,17 @@ export const maxDuration = 300;
 const WINDOW_DAYS = 365;
 const PAGE_CAP = 100;         // 100 × 250 = 25,000 orders. Plenty of headroom for a year of DTC orders.
 const PAGE_SIZE = 250;
+// Two-tier status filter:
+//   ORDER_COUNT_STATUSES — broad. Used for windowOrders + customer counting.
+//   Matches what the Shopify admin "Orders" metric counts (paid orders that
+//   may later have been refunded — the customer DID engage and pay).
+//   REVENUE_STATUSES — narrow. Used for qualified revenue / LTV math. Refunded
+//   money never made it to the P&L, so it shouldn't pump up LTV.
+const ORDER_COUNT_STATUSES = new Set([
+  "paid", "authorized", "partially_paid", "refunded", "partially_refunded",
+]);
 const REVENUE_STATUSES = new Set(["paid", "authorized", "partially_paid"]);
-// No price floor on raw counts — match Shopify admin "Orders" reporting which
-// counts $0 promo/comp orders.
-// LTV / CAC math uses a separate $5 floor so freebies don't dilute averages.
+// No price floor on raw counts. LTV / CAC math uses MIN_ORDER_VALUE_FOR_LTV.
 const MIN_ORDER_VALUE_FOR_LTV = 5;
 
 type ShopifyLineItem = {
@@ -24,6 +31,7 @@ type ShopifyOrder = {
   created_at: string;
   total_price: string;
   financial_status: string;
+  cancelled_at: string | null;
   line_items: ShopifyLineItem[];
   customer?: { id: number; email?: string; first_name?: string; last_name?: string } | null;
   email?: string;
@@ -91,7 +99,7 @@ export async function GET(req: Request) {
   const windowSince = new Date(todayUtc.getTime() - (WINDOW_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
   const windowUntil = todayUtc.toISOString().slice(0, 10);
 
-  const cacheKey = `shopify:cohort:v4:${windowSince}_${windowUntil}`;
+  const cacheKey = `shopify:cohort:v5:${windowSince}_${windowUntil}`;
 
   let full: CachedFullWindow | null = null;
 
@@ -171,7 +179,7 @@ async function pullAndAggregate(
     `&created_at_min=${encodeURIComponent(created_at_min)}` +
     `&created_at_max=${encodeURIComponent(created_at_max_iso)}` +
     `&limit=${PAGE_SIZE}` +
-    `&fields=id,created_at,total_price,financial_status,line_items,customer,email`;
+    `&fields=id,created_at,total_price,financial_status,cancelled_at,line_items,customer,email`;
   // Note: requesting full customer obj — Shopify includes first_name/last_name when accessible.
 
   const allOrders: ShopifyOrder[] = [];
@@ -239,7 +247,12 @@ async function pullAndAggregate(
   let totalOrders = 0;
 
   for (const order of allOrders) {
-    if (!REVENUE_STATUSES.has(order.financial_status)) continue;
+    // Skip cancelled orders entirely — Shopify dash doesn't count those either.
+    if (order.cancelled_at) continue;
+    // Use the broad ORDER_COUNT_STATUSES so refunded orders DO get counted as
+    // customer engagement (they paid; the refund came later).
+    if (!ORDER_COUNT_STATUSES.has(order.financial_status)) continue;
+
     const total = parseFloat(order.total_price ?? "0");
     totalOrders++;
 
@@ -248,7 +261,10 @@ async function pullAndAggregate(
 
     const customerKey = customerKeyFor(order);
     const orderDate = order.created_at.slice(0, 10);
-    const isQualified = total >= MIN_ORDER_VALUE_FOR_LTV;
+    // "Qualified" for LTV math = REVENUE status (refunded excluded) AND ≥ $5.
+    // Refunded orders contribute to customer count but NOT to revenue/LTV.
+    const isQualified =
+      REVENUE_STATUSES.has(order.financial_status) && total >= MIN_ORDER_VALUE_FOR_LTV;
     const existing = customerMap.get(customerKey);
     if (existing) {
       existing.totalRevenue += total;
@@ -354,10 +370,20 @@ async function pullAndAggregate(
     }))
     .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
+  // Per-status breakdown — useful when reconciling against Shopify admin.
+  const statusBreakdown = new Map<string, number>();
+  for (const o of allOrders) {
+    if (o.cancelled_at) {
+      statusBreakdown.set("(cancelled)", (statusBreakdown.get("(cancelled)") ?? 0) + 1);
+      continue;
+    }
+    statusBreakdown.set(o.financial_status, (statusBreakdown.get(o.financial_status) ?? 0) + 1);
+  }
   console.log(
-    "[customer-cohort] window=%s..%s pages=%d raw_orders=%d revenue_orders=%d customers=%d qualified=%d repeat=%d trial_only=%d truncated=%s",
+    "[customer-cohort] window=%s..%s pages=%d fetched=%d counted=%d customers=%d qualified=%d repeat=%d trial_only=%d truncated=%s status=%o",
     windowSince, windowUntil, pages, allOrders.length, totalOrders, totalCustomers,
     qualifiedAll.length, repeatRollups.length, trialOnlyCustomers, truncated,
+    Object.fromEntries(statusBreakdown),
   );
 
   return {
