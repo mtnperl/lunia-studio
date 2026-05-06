@@ -1,11 +1,12 @@
 import { Subject } from "./types";
 import { randomUUID } from "crypto";
+import { DEFAULT_RESEARCHERS } from "./default-researchers";
 
 function s(text: string, category: string): Subject {
   return { id: randomUUID(), text, category };
 }
 
-export const DEFAULT_SUBJECTS: Subject[] = [
+const SLEEP_TOPICS: Subject[] = [
   // Sleep Science
   s("How magnesium glycinate improves deep sleep", "Sleep Science"),
   s("What is sleep architecture and why it matters", "Sleep Science"),
@@ -382,3 +383,5 @@ export const DEFAULT_SUBJECTS: Subject[] = [
   s("The brain produces less melatonin with age", "Did You Know"),
   s("Sleep is the strongest non-negotiable lever for longevity", "Did You Know"),
 ];
+
+export const DEFAULT_SUBJECTS: Subject[] = [...SLEEP_TOPICS, ...DEFAULT_RESEARCHERS];

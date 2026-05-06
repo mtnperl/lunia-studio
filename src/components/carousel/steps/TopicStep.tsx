@@ -40,6 +40,8 @@ const CATEGORIES = [
   "Lifestyle & Productivity",
   "Longevity & Sleep Research",
   "Did You Know",
+  "Latest Research",
+  "Sleep Researchers",
 ];
 
 type Props = {

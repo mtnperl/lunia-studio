@@ -15,12 +15,18 @@ const CATEGORIES = [
   "Lunia Ingredients",
   "Sleep Disorders",
   "Lifestyle & Productivity",
+  "Longevity & Sleep Research",
+  "Did You Know",
+  "Latest Research",
+  "Sleep Researchers",
 ];
 
 export default function SubjectsView() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [pullingResearch, setPullingResearch] = useState(false);
+  const [pullStatus, setPullStatus] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,6 +54,32 @@ export default function SubjectsView() {
       await loadSubjects();
     } finally {
       setSeeding(false);
+    }
+  }
+
+  async function handlePullLatestResearch() {
+    setPullingResearch(true);
+    setPullStatus(null);
+    try {
+      const res = await fetch("/api/subjects/latest-research", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPullStatus(data.error ?? `Failed (${res.status})`);
+        return;
+      }
+      const { added = 0, skipped = 0 } = data as { added?: number; skipped?: number };
+      if (added > 0) {
+        setPullStatus(`+${added} added${skipped ? `, ${skipped} already in library` : ""}`);
+        setCategory("Latest Research");
+        await loadSubjects();
+      } else {
+        setPullStatus(`No new findings (${skipped} already in library)`);
+      }
+    } catch (err) {
+      setPullStatus(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setPullingResearch(false);
+      setTimeout(() => setPullStatus(null), 6000);
     }
   }
 
@@ -106,19 +138,40 @@ export default function SubjectsView() {
             {subjects.length} subjects · {usedCount} used · {subjects.length - usedCount} remaining
           </p>
         </div>
-        <button
-          onClick={handleSeed}
-          disabled={seeding}
-          style={{
-            padding: "8px 16px", fontSize: 13, fontWeight: 600,
-            background: "var(--surface)", color: "var(--text)",
-            border: "1px solid var(--border)", borderRadius: 7,
-            cursor: seeding ? "wait" : "pointer", fontFamily: "inherit",
-            opacity: seeding ? 0.6 : 1,
-          }}
-        >
-          {seeding ? "Seeding…" : "↺ Restore 150 subjects"}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {pullStatus && (
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{pullStatus}</span>
+          )}
+          <button
+            onClick={handlePullLatestResearch}
+            disabled={pullingResearch}
+            title="Search the web for recent sleep research and add findings to the library"
+            style={{
+              padding: "8px 16px", fontSize: 13, fontWeight: 600,
+              background: pullingResearch ? "var(--surface)" : "var(--accent)",
+              color: pullingResearch ? "var(--muted)" : "#fff",
+              border: pullingResearch ? "1px solid var(--border)" : "1px solid var(--accent)",
+              borderRadius: 7,
+              cursor: pullingResearch ? "wait" : "pointer", fontFamily: "inherit",
+              opacity: pullingResearch ? 0.7 : 1,
+            }}
+          >
+            {pullingResearch ? "Searching the web…" : "↻ Pull latest research"}
+          </button>
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            style={{
+              padding: "8px 16px", fontSize: 13, fontWeight: 600,
+              background: "var(--surface)", color: "var(--text)",
+              border: "1px solid var(--border)", borderRadius: 7,
+              cursor: seeding ? "wait" : "pointer", fontFamily: "inherit",
+              opacity: seeding ? 0.6 : 1,
+            }}
+          >
+            {seeding ? "Seeding…" : "↺ Restore defaults"}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -258,9 +311,32 @@ export default function SubjectsView() {
                         fontWeight: used ? 600 : 400,
                         cursor: "text",
                         lineHeight: 1.4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
                       }}
                     >
-                      {s.text}
+                      <span>{s.text}</span>
+                      {s.sourceUrl && (
+                        <a
+                          href={s.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          onClick={(e) => e.stopPropagation()}
+                          title={s.sourceUrl}
+                          style={{
+                            fontSize: 11,
+                            color: "var(--muted)",
+                            textDecoration: "none",
+                            border: "1px solid var(--border)",
+                            borderRadius: 4,
+                            padding: "1px 5px",
+                            flexShrink: 0,
+                          }}
+                        >
+                          source ↗
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>

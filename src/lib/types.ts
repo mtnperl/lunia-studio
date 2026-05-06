@@ -369,7 +369,8 @@ export type Subject = {
   id: string;
   text: string;
   category: string;
-  usedAt?: string; // ISO date when last used for a carousel
+  usedAt?: string;     // ISO date when last used for a carousel
+  sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
 };
 
 export type AssetType = "logo" | "carousel-style" | "product-image" | "other";
