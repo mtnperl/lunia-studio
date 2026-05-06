@@ -21,9 +21,33 @@ async function fetchAsDataUrl(url: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
+    // Reject with a real Error so callers don't get a raw DOM Event ({isTrusted:true}).
+    reader.onerror = () => reject(new Error(`FileReader failed reading blob from ${url} (${blob.size} bytes, ${blob.type})`));
     reader.readAsDataURL(blob);
   });
+}
+
+// Convert anything thrown (Error, DOM Event, plain object, string) into a useful single-line message.
+// Critical for mobile Safari where toPng / image decode failures often reject with a raw Event whose
+// JSON.stringify reduces to "{isTrusted:true}".
+function describeRejection(err: unknown): string {
+  if (err instanceof Error) return err.message || err.name || "unknown error";
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    const e = err as { type?: string; target?: { src?: string; tagName?: string }; message?: string };
+    if (typeof e.message === "string" && e.message) return e.message;
+    if (typeof e.type === "string" && e.type) {
+      const src = e.target?.src ? ` (${e.target.src.split("/").pop()?.slice(0, 60) ?? ""})` : "";
+      const tag = e.target?.tagName ? `<${e.target.tagName.toLowerCase()}> ` : "";
+      return `${tag}${e.type}${src}`;
+    }
+    try {
+      const json = JSON.stringify(err);
+      if (json && json !== "{}" && json !== '{"isTrusted":true}') return json;
+    } catch { /* ignore */ }
+    return "non-Error rejection (likely image decode or canvas failure)";
+  }
+  return "unknown error";
 }
 
 export default function CarouselShareClient({ carousel }: Props) {
@@ -175,15 +199,22 @@ export default function CarouselShareClient({ carousel }: Props) {
         : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
     ));
 
-    // Hook slide: canvas compositing required (html-to-image drops <img> contents)
+    // Hook slide: canvas compositing required (html-to-image drops <img> contents).
+    // On mobile Safari this path can reject with a raw Event when image decode fails;
+    // fall back to direct toPng so the user still gets a slide (without the photo bg).
     if (index === 0 && (imgs[0] ?? hookImageUrl)) {
       const bgDataUrl = await getHookBgDataUrl();
       if (bgDataUrl) {
-        return compositeHookSlide(el, bgDataUrl, filename, exportH);
+        try {
+          return await compositeHookSlide(el, bgDataUrl, filename, exportH);
+        } catch (compErr) {
+          console.warn("[share] hook composite failed, falling back to plain toPng", describeRejection(compErr));
+          // fall through
+        }
       }
     }
 
-    // All other slides + hook with no image: standard html-to-image
+    // All other slides + hook fallback: standard html-to-image
     const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
@@ -370,12 +401,7 @@ export default function CarouselShareClient({ carousel }: Props) {
         } catch (err) {
           if (cancelled) return;
           const label = SLIDE_LABELS[i] ?? `slide ${i + 1}`;
-          let msg: string;
-          if (err instanceof Error) {
-            msg = `${label}: ${err.message || err.name || "unknown"}`;
-          } else {
-            msg = `${label}: ${typeof err === "string" ? err : JSON.stringify(err) || "threw non-Error"}`;
-          }
+          const msg = `${label}: ${describeRejection(err)}`;
           if (typeof console !== "undefined") console.error("[share] preload failed", i, err);
           setPreloadError(msg);
         }
