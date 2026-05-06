@@ -12,31 +12,13 @@ type FieldGroup = {
 
 const GROUPS: FieldGroup[] = [
   {
-    title: "Product & Pricing",
-    fields: [
-      { key: "servingsPerBottle", label: "Servings per bottle", step: 1 },
-      { key: "otpPriceUsd", label: "OTP price", suffix: "USD", step: 1 },
-      { key: "subPriceUsd", label: "Subscription price", suffix: "USD", step: 1 },
-      { key: "subDiscountPct", label: "Subscription discount", suffix: "%", step: 1 },
-    ],
-  },
-  {
     title: "Cost of Goods",
     fields: [
-      { key: "cogsPerUnit", label: "COGS per unit", suffix: "USD", step: 0.5 },
-      { key: "fulfilmentPerOrder", label: "Fulfilment per order", suffix: "USD", step: 0.5 },
-      { key: "paymentProcessingPct", label: "Payment processing", suffix: "%", step: 0.1 },
-      { key: "paymentProcessingFlat", label: "Payment processing flat", suffix: "USD", step: 0.05 },
-      { key: "returnsRate", label: "Returns / refunds rate", suffix: "%", step: 0.5 },
-    ],
-  },
-  {
-    title: "Customer Mix & Retention",
-    fields: [
-      { key: "subMixPct", label: "Subscription mix", suffix: "%", step: 1, help: "Share of orders that are subscriptions" },
-      { key: "monthlySubChurnPct", label: "Monthly sub churn", suffix: "%", step: 0.5 },
-      { key: "avgSubLifetimeMonths", label: "Avg sub lifetime", suffix: "months", step: 1 },
-      { key: "otpRepeatRatePct", label: "OTP repeat rate", suffix: "%", step: 1 },
+      { key: "cogsPerUnit", label: "COGS per unit", suffix: "USD", step: 0.5, help: "Per-bottle landed cost (ingredients + manufacturing)" },
+      { key: "fulfilmentPerOrder", label: "Fulfilment per order", suffix: "USD", step: 0.5, help: "Pick + pack + outbound shipping per order" },
+      { key: "paymentProcessingPct", label: "Payment processing", suffix: "%", step: 0.1, help: "% of order value (Stripe/Shop Pay rate)" },
+      { key: "paymentProcessingFlat", label: "Payment processing flat", suffix: "USD", step: 0.05, help: "Per-transaction flat fee" },
+      { key: "returnsRate", label: "Returns / refunds rate", suffix: "%", step: 0.5, help: "Used for the Refunds line on the P&L" },
     ],
   },
 ];
@@ -130,7 +112,7 @@ export default function AssumptionsSubview() {
             color: "var(--muted)",
             margin: "6px 0 0",
           }}>
-            Inputs feeding the live P&amp;L. Update when reality changes — pricing, COGS, churn, etc.
+            Cost inputs only. Customer economics (LTV, sub mix, repeat rate) come from real Shopify data — no longer assumptions. Update when COGS or fees change.
           </p>
         </div>
 

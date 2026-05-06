@@ -103,8 +103,8 @@ export default function UnitEconomicsSubview() {
             margin: "6px 0 0",
           }}>
             {isReal && cohort
-              ? `CAC and LTV computed from real customer data — last 365 days of Shopify orders ≥ $${cohort.minOrderValueForLtv} (excludes $0 promo / sub-$${cohort.minOrderValueForLtv} freebies so they don't dilute averages), current-period gross margin.`
-              : "CAC and LTV derived from your assumption form. Connect Shopify or update the assumptions to see real numbers."}
+              ? `LTV = revenue ÷ customers (gross of margin). CAC = Meta ad spend ÷ new qualified customers. ROAS = total revenue ÷ ad spend. Customers and revenue based on Shopify orders ≥ $${cohort.minOrderValueForLtv} (excludes $0 promo / sub-$${cohort.minOrderValueForLtv} freebies).`
+              : "Connect Shopify cohort to see real CAC, LTV and ROAS."}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -200,16 +200,16 @@ export default function UnitEconomicsSubview() {
 
       <style>{`
         @media (max-width: 700px) {
-          .ue-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+          .ue-grid-3 { grid-template-columns: 1fr !important; }
           .ue-grid-2 { grid-template-columns: 1fr !important; }
           .ue-cust-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
-      {/* Headline tiles */}
-      <div className="ue-grid-4" style={{
+      {/* Headline tiles — CAC / LTV / ROAS */}
+      <div className="ue-grid-3" style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateColumns: "repeat(3, 1fr)",
         gap: 12,
         marginBottom: 24,
       }}>
@@ -220,34 +220,24 @@ export default function UnitEconomicsSubview() {
           decimals={2}
           loading={loading}
           tooltip={isReal
-            ? "Customer Acquisition Cost = Meta ad spend ÷ NEW customers acquired in this period (from Shopify)"
-            : "CAC = Meta ad spend ÷ orders. Connect Shopify cohort for real new-customer math."}
+            ? "Meta ad spend ÷ new qualified customers in this period"
+            : "Connect Shopify cohort for real CAC"}
         />
         <KPICard
-          label="Blended LTV"
+          label="LTV"
           value={ue?.blendedLtv ?? 0}
           prefix="$"
           decimals={0}
           loading={loading}
-          tooltip={isReal
-            ? "Mean 12-month revenue per customer × current gross margin"
-            : "Weighted Sub LTV + OTP LTV based on subscription mix assumption"}
+          tooltip="Total qualified revenue ÷ total qualified customers (last 365 days, gross of margin)"
         />
         <KPICard
-          label="LTV : CAC"
-          value={ue?.ltvToCac ?? 0}
+          label="ROAS"
+          value={ue?.roas ?? 0}
           suffix="x"
           decimals={2}
           loading={loading}
-          tooltip="Healthy DTC benchmark is 3x or higher"
-        />
-        <KPICard
-          label="Payback"
-          value={ue?.paybackMonths ?? 0}
-          suffix=" mo"
-          decimals={1}
-          loading={loading}
-          tooltip="Months of contribution margin to recover CAC"
+          tooltip="Period-blended Return on Ad Spend = total Shopify revenue ÷ Meta ad spend (this period)"
         />
       </div>
 
@@ -264,9 +254,7 @@ export default function UnitEconomicsSubview() {
           prefix="$"
           decimals={0}
           loading={loading}
-          tooltip={isReal
-            ? "Mean 12-month revenue per repeat customer (>1 orders) × current gross margin"
-            : "Per-order contribution × avg sub lifetime months"}
+          tooltip="Subscriber qualified revenue ÷ subscriber count (last 365 days)"
         />
         <KPICard
           label="One-time LTV"
@@ -274,9 +262,7 @@ export default function UnitEconomicsSubview() {
           prefix="$"
           decimals={0}
           loading={loading}
-          tooltip={isReal
-            ? "Mean 12-month revenue per one-time customer (1 order) × current gross margin"
-            : "Per-order contribution × (1 + OTP repeat rate)"}
+          tooltip="One-time qualified revenue ÷ one-time customer count (last 365 days)"
         />
       </div>
 

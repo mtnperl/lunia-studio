@@ -108,11 +108,10 @@ function formatPnlForPrompt(pnl: PnL): string {
   lines.push(`Net income: ${fmt(pnl.netIncome.amount)}${deltaStr(pnl.netIncome)} — net margin ${pnl.netMarginPct.toFixed(1)}%`);
   lines.push("");
 
-  lines.push(`Unit economics:`);
+  lines.push(`Unit economics (gross-revenue LTV per customer):`);
   lines.push(`  CAC: ${fmt(pnl.unitEconomics.cac)}`);
-  lines.push(`  Blended LTV: ${fmt(pnl.unitEconomics.blendedLtv)}  (sub ${fmt(pnl.unitEconomics.subLtv)} / OTP ${fmt(pnl.unitEconomics.otpLtv)})`);
-  lines.push(`  LTV:CAC: ${pnl.unitEconomics.ltvToCac.toFixed(2)}x`);
-  lines.push(`  Payback: ${pnl.unitEconomics.paybackMonths.toFixed(1)} months`);
+  lines.push(`  LTV blended: ${fmt(pnl.unitEconomics.blendedLtv)}  (subscriber ${fmt(pnl.unitEconomics.subLtv)} / one-time ${fmt(pnl.unitEconomics.otpLtv)})`);
+  lines.push(`  ROAS (period-blended): ${pnl.unitEconomics.roas.toFixed(2)}x`);
 
   return lines.join("\n");
 }

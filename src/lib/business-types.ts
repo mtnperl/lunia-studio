@@ -5,45 +5,25 @@ import { z } from "zod";
 // Sections C (Unit Economics), E (LTV), and F (Acquisition Economics) are
 // DERIVED from these inputs + live Meta/Shopify data, so they aren't stored.
 
+// Cost-side inputs only. Customer economics (price, sub mix, churn, repeat) used
+// to live here too, but are now derived from real Shopify data via the cohort
+// endpoint, so those fields have been removed.
 export const BusinessAssumptionsSchema = z.object({
-  // A — Product & Pricing
-  servingsPerBottle: z.number().min(1).max(500),
-  otpPriceUsd: z.number().min(0),
-  subPriceUsd: z.number().min(0),
-  subDiscountPct: z.number().min(0).max(100),
-
-  // B — Cost of Goods
   cogsPerUnit: z.number().min(0),
   fulfilmentPerOrder: z.number().min(0),
   paymentProcessingPct: z.number().min(0).max(100),
   paymentProcessingFlat: z.number().min(0),
   returnsRate: z.number().min(0).max(100),
-
-  // D — Customer Mix & Retention
-  subMixPct: z.number().min(0).max(100),
-  monthlySubChurnPct: z.number().min(0).max(100),
-  avgSubLifetimeMonths: z.number().min(0),
-  otpRepeatRatePct: z.number().min(0).max(100),
 });
 
 export type BusinessAssumptions = z.infer<typeof BusinessAssumptionsSchema>;
 
 export const DEFAULT_ASSUMPTIONS: BusinessAssumptions = {
-  servingsPerBottle: 30,
-  otpPriceUsd: 39,
-  subPriceUsd: 33,
-  subDiscountPct: 15,
-
   cogsPerUnit: 8,
   fulfilmentPerOrder: 5,
   paymentProcessingPct: 2.9,
   paymentProcessingFlat: 0.3,
   returnsRate: 4,
-
-  subMixPct: 40,
-  monthlySubChurnPct: 6,
-  avgSubLifetimeMonths: 8,
-  otpRepeatRatePct: 25,
 };
 
 export const ASSUMPTIONS_KV_KEY = "business:assumptions:v1";
@@ -247,16 +227,19 @@ export type PnL = {
   netMarginPct: number;
   unitEconomics: {
     cac: number;
+    /** Total qualified revenue ÷ qualified customers (gross of margin). */
     blendedLtv: number;
+    /** Subscriber qualified revenue ÷ subscriber count. */
     subLtv: number;
+    /** One-time qualified revenue ÷ one-time customer count. */
     otpLtv: number;
-    ltvToCac: number;
-    paybackMonths: number;
+    /** Period-blended ROAS = total Shopify revenue ÷ Meta ad spend (this period). */
+    roas: number;
     /**
-     * "shopify-cohort" = computed from real 12-month customer data (preferred).
-     * "assumptions"    = derived from the static assumption form (fallback).
+     * "shopify-cohort" = computed from real 12-month customer data.
+     * "unavailable"    = no cohort loaded — UE values are 0/null and the UI hides them.
      */
-    source: "shopify-cohort" | "assumptions";
+    source: "shopify-cohort" | "unavailable";
     /** Real customer-level signal when source = shopify-cohort. */
     cohort?: {
       /** All customers in the 365d window (incl. $0 trial-only). */
