@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify-mtd:v5:${new Date().toISOString().slice(0, 10)}`;
+  const cacheKey = `analytics:shopify-mtd:v6:${new Date().toISOString().slice(0, 10)}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -76,39 +76,50 @@ export async function GET(req: Request) {
     financial_status: string;
     total_price?: string;
     total_line_items_price?: string; // line_items × qty pre-discount — matches Shopify "Gross sales"
+    total_discounts?: string;        // matches Shopify "Discounts"
+    current_total_price?: string;    // total_price minus refunds
     customer?: { orders_count?: number };
   };
 
   const allOrders = await paginatedFetch<ShopifyOrder>(
     SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
-    `/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price,total_line_items_price,customer`,
+    `/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price,total_line_items_price,total_discounts,current_total_price,customer`,
     'orders',
   );
 
-  const paidOrders = allOrders.filter(o => o.financial_status === 'paid');
+  // Match Shopify dash "Orders" — paid + refunded (refunded orders DID engage).
+  const REVENUE_STATUSES = new Set(['paid', 'authorized', 'partially_paid', 'refunded', 'partially_refunded']);
+  const countableOrders = allOrders.filter(o => REVENUE_STATUSES.has(o.financial_status));
 
-  const orders = paidOrders.length;
-  // Revenue matches Shopify dashboard "Gross sales" — line items × qty before
-  // discounts/tax/shipping. Falls back to total_price if missing.
-  const revenue = paidOrders.reduce((s, o) => {
+  const orders = countableOrders.length;
+  // Gross sales = Σ total_line_items_price across countable orders.
+  const revenue = countableOrders.reduce((s, o) => {
     const direct = parseFloat(o.total_line_items_price ?? '');
     if (Number.isFinite(direct) && direct > 0) return s + direct;
     return s + parseFloat(o.total_price ?? '0');
   }, 0);
+  // Discounts and returns mirror Shopify "Total sales breakdown".
+  const discounts = countableOrders.reduce((s, o) => s + parseFloat(o.total_discounts ?? '0'), 0);
+  const refundedRevenue = countableOrders.reduce((s, o) => {
+    const totalP = parseFloat(o.total_price ?? '0');
+    const currStr = o.current_total_price ?? o.total_price ?? '0';
+    const currP = parseFloat(currStr);
+    const refunded = totalP - currP;
+    return refunded > 0 ? s + refunded : s;
+  }, 0);
+  const netRevenue = revenue - discounts - refundedRevenue;
 
   // Returning customers = those whose customer.orders_count > 1 at time of order
-  const returningOrders = paidOrders.filter(o => (o.customer?.orders_count ?? 1) > 1).length;
+  const returningOrders = countableOrders.filter(o => (o.customer?.orders_count ?? 1) > 1).length;
   const returningRate = orders > 0 ? (returningOrders / orders) * 100 : 0;
 
-  // ── 2. Refunded orders ────────────────────────────────────────────────────
-  const refundedOrders = await paginatedFetch<ShopifyOrder>(
-    SHOPIFY_STORE_DOMAIN, SHOPIFY_ACCESS_TOKEN,
-    `/orders.json?status=any&financial_status=refunded&created_at_min=${encodeURIComponent(created_at_min)}&limit=250&fields=id,financial_status,total_price`,
-    'orders',
-  );
-  const refundedRevenue = refundedOrders.reduce((s, o) => s + parseFloat(o.total_price ?? '0'), 0);
-  const netRevenue = revenue - refundedRevenue;
-  const refundRate = orders > 0 ? (refundedOrders.length / orders) * 100 : 0;
+  // Refund rate by count — number of orders with any refund / orders.
+  const refundedOrderCount = countableOrders.filter(o => {
+    const totalP = parseFloat(o.total_price ?? '0');
+    const currStr = o.current_total_price ?? o.total_price ?? '0';
+    return totalP - parseFloat(currStr) > 0;
+  }).length;
+  const refundRate = orders > 0 ? (refundedOrderCount / orders) * 100 : 0;
 
   // ── 3. Abandoned checkouts (read_checkouts) ───────────────────────────────
   type ShopifyCheckout = { id: string; total_price?: string };
@@ -194,6 +205,7 @@ export async function GET(req: Request) {
   const data: ShopifyMtdData = {
     orders,
     revenue,
+    discounts,
     sessions,
     cvr,
     sessionsAvailable,
@@ -208,8 +220,8 @@ export async function GET(req: Request) {
     refundRate,
   };
 
-  console.log('[api/shopify-mtd] orders=%d revenue=%f abandoned=%d checkoutCvr=%f%% refunds=%d netRevenue=%f',
-    orders, revenue, abandonedCheckouts, checkoutCvr, refundedOrders.length, netRevenue);
+  console.log('[api/shopify-mtd] orders=%d revenue=%f discounts=%f refunds=%f netRevenue=%f abandoned=%d checkoutCvr=%f%%',
+    orders, revenue, discounts, refundedRevenue, netRevenue, abandonedCheckouts, checkoutCvr);
 
   try {
     await kv.set(cacheKey, data, { ex: 3600 }); // 1h cache

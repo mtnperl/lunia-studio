@@ -367,6 +367,7 @@ function PeriodStatement({ pnl }: { pnl: PnL }) {
         <tbody>
           <SectionRow label="Revenue" />
           <Row line={pnl.revenue.gross} />
+          <Row line={pnl.revenue.discounts} negative />
           <Row line={pnl.revenue.refunds} negative />
           <Row line={pnl.revenue.net} subtotal />
 
@@ -459,6 +460,7 @@ function sumPnls(list: PnL[]): PnL {
     return { label: key(first).label, amount: total };
   };
   const grossRevenue = list.reduce((s, p) => s + p.revenue.gross.amount, 0);
+  const discounts = list.reduce((s, p) => s + p.revenue.discounts.amount, 0);
   const refunds = list.reduce((s, p) => s + p.revenue.refunds.amount, 0);
   const netRevenue = list.reduce((s, p) => s + p.revenue.net.amount, 0);
   const cogsTotal = list.reduce((s, p) => s + p.cogs.total.amount, 0);
@@ -474,9 +476,10 @@ function sumPnls(list: PnL[]): PnL {
   return {
     range: { since: list[0].range.since, until: list[list.length - 1].range.until },
     revenue: {
-      gross: { label: "Gross revenue", amount: grossRevenue },
-      refunds: { label: "Refunds", amount: refunds },
-      net: { label: "Net revenue", amount: netRevenue },
+      gross:     { label: "Gross sales", amount: grossRevenue },
+      discounts: { label: "Discounts",   amount: discounts },
+      refunds:   { label: "Returns",     amount: refunds },
+      net:       { label: "Net sales",   amount: netRevenue },
     },
     cogs: {
       product:           sumLine((p) => p.cogs.product),
@@ -514,9 +517,10 @@ function Matrix({ cols, totals }: { cols: MatrixCol[]; totals: PnL }) {
 
   const rows: RowDef[] = [
     { label: "Revenue", kind: "section", pick: () => 0 },
-    { label: "Gross revenue",            kind: "line",     pick: (p) => p.revenue.gross.amount },
-    { label: "Refunds",                  kind: "line",     pick: (p) => -p.revenue.refunds.amount },
-    { label: "Net revenue",              kind: "subtotal", pick: (p) => p.revenue.net.amount },
+    { label: "Gross sales",              kind: "line",     pick: (p) => p.revenue.gross.amount },
+    { label: "Discounts",                kind: "line",     pick: (p) => -p.revenue.discounts.amount },
+    { label: "Returns",                  kind: "line",     pick: (p) => -p.revenue.refunds.amount },
+    { label: "Net sales",                kind: "subtotal", pick: (p) => p.revenue.net.amount },
 
     { label: "Cost of Goods", kind: "section", pick: () => 0 },
     { label: "Product cost",             kind: "line",     pick: (p) => -p.cogs.product.amount },

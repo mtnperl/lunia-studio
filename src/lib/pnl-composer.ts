@@ -87,9 +87,10 @@ export function composePnL(input: {
     range,
     priorRange,
     revenue: {
-      gross:   lineWithDelta("Gross revenue",    "grossRevenue"),
-      refunds: lineWithDelta("Refunds",          "refunds"),
-      net:     lineWithDelta("Net revenue",      "netRevenue"),
+      gross:     lineWithDelta("Gross sales",  "grossRevenue"),
+      discounts: lineWithDelta("Discounts",    "discounts"),
+      refunds:   lineWithDelta("Returns",      "refunds"),
+      net:       lineWithDelta("Net sales",    "netRevenue"),
     },
     cogs: {
       product:           lineWithDelta("Product cost",       "cogsProduct", "orders × COGS/unit"),
@@ -128,6 +129,7 @@ export function composePnL(input: {
 
 type Statement = {
   grossRevenue: number;
+  discounts: number;
   refunds: number;
   netRevenue: number;
   cogsProduct: number;
@@ -183,12 +185,12 @@ function computeStatement(input: {
   const { meta, shopify, simplefin, categorizations, recurringTxnIds, cohort, assumptions } = input;
 
   // ── Revenue ─────────────────────────────────────────────────────────────
+  // Mirrors Shopify "Total sales breakdown": Gross sales − Discounts − Returns = Net sales.
+  // Real numbers from the Shopify endpoint, no assumption-based estimates.
   const grossRevenue = shopify?.summary.revenue ?? 0;
-  // Shopify route already excludes refunded orders, so the gross is "post-refund"
-  // for orders that exist. We estimate refund $ via assumption to surface it as
-  // a line item on the P&L.
-  const refunds = grossRevenue * (assumptions.returnsRate / 100);
-  const netRevenue = grossRevenue - refunds;
+  const discounts = shopify?.summary.discounts ?? 0;
+  const refunds = shopify?.summary.returns ?? 0;
+  const netRevenue = shopify?.summary.netRevenue ?? (grossRevenue - discounts - refunds);
   const orders = shopify?.summary.orders ?? 0;
 
   // ── COGS ────────────────────────────────────────────────────────────────
@@ -276,7 +278,7 @@ function computeStatement(input: {
   }
 
   return {
-    grossRevenue, refunds, netRevenue,
+    grossRevenue, discounts, refunds, netRevenue,
     cogsProduct, cogsFulfilment, cogsPayments, cogsTotal,
     grossProfit, grossMarginPct,
     adSpend, fixedExpenses, recurringFixed, variableOpex, fixedByCategory, opexTotal,

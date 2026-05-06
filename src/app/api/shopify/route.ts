@@ -35,10 +35,16 @@ function buildMockData(days: number): ShopifyData {
     by_day.push({ date, orders: dayOrders, revenue: dayRevenue });
   }
 
+  // Mock breakdown roughly mirroring Shopify "Total sales breakdown" ratios.
+  const mockDiscounts = totalRevenue * 0.21; // ~21% of gross
+  const mockReturns   = totalRevenue * 0.06; // ~6% returned
   return {
     summary: {
       orders: totalOrders,
       revenue: totalRevenue,
+      discounts: mockDiscounts,
+      returns: mockReturns,
+      netRevenue: totalRevenue - mockDiscounts - mockReturns,
       aov: calcAOV(totalOrders, totalRevenue),
       subscriptionRevenue,
       onetimeRevenue,
@@ -71,7 +77,7 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Shopify credentials not configured' }, { status: 503 });
   }
 
-  const cacheKey = `analytics:shopify:v6:${since}_${until}`;
+  const cacheKey = `analytics:shopify:v7:${since}_${until}`;
   const bust = url.searchParams.get('bust') === '1';
 
   if (!bust) {
@@ -94,6 +100,8 @@ export async function GET(req: Request) {
       created_at: string;
       total_price: string;
       total_line_items_price?: string; // line_items × qty (BEFORE discounts) — matches Shopify "Gross sales"
+      total_discounts?: string;        // matches Shopify "Discounts"
+      current_total_price?: string;    // total_price minus refunds — used to derive Returns
       financial_status: string;
       cancelled_at: string | null;
       line_items: ShopifyLineItem[];
@@ -101,7 +109,7 @@ export async function GET(req: Request) {
     };
 
     const allOrders: ShopifyOrder[] = [];
-    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,total_line_items_price,financial_status,cancelled_at,line_items,customer`;
+    let nextUrl: string | null = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/orders.json?status=any&created_at_min=${encodeURIComponent(created_at_min)}&created_at_max=${encodeURIComponent(created_at_max_iso)}&limit=250&fields=id,created_at,total_price,total_line_items_price,total_discounts,current_total_price,financial_status,cancelled_at,line_items,customer`;
     let pages = 0;
     let truncated = false;
 
@@ -198,6 +206,19 @@ export async function GET(req: Request) {
     // Revenue matches Shopify "Gross sales" exactly — line items × quantity before
     // discounts/tax/shipping, summed across countable orders.
     const totalRevenue = countableOrders.reduce((s, o) => s + orderGrossSales(o), 0);
+    // Discounts and returns mirror Shopify's "Total sales breakdown" panel.
+    const totalDiscounts = countableOrders.reduce(
+      (s, o) => s + parseFloat(o.total_discounts ?? '0'),
+      0,
+    );
+    const totalReturns = countableOrders.reduce((s, o) => {
+      const totalP = parseFloat(o.total_price ?? '0');
+      const currStr = o.current_total_price ?? o.total_price ?? '0';
+      const currP = parseFloat(currStr);
+      const refunded = totalP - currP;
+      return refunded > 0 ? s + refunded : s;
+    }, 0);
+    const netRevenue = totalRevenue - totalDiscounts - totalReturns;
 
     // Subscription vs one-time split — same gross-sales view applied across countable orders.
     const isSubscription = (o: ShopifyOrder) =>
@@ -211,6 +232,9 @@ export async function GET(req: Request) {
       summary: {
         orders: totalOrders,
         revenue: totalRevenue,
+        discounts: totalDiscounts,
+        returns: totalReturns,
+        netRevenue,
         aov: calcAOV(totalOrders, totalRevenue),
         subscriptionRevenue: subRevenue,
         onetimeRevenue,

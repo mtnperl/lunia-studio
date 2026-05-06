@@ -459,7 +459,14 @@ export type ShopifyProduct = {
 export type ShopifyData = {
   summary: {
     orders: number;
+    /** Gross sales — line items × quantity BEFORE discounts. Matches Shopify "Gross sales". */
     revenue: number;
+    /** Total discounts applied across countable orders. Matches Shopify "Discounts". */
+    discounts: number;
+    /** Refunded amount across countable orders (total_price − current_total_price). Matches Shopify "Returns" + return-related fees. */
+    returns: number;
+    /** revenue − discounts − returns. Matches Shopify "Net sales". */
+    netRevenue: number;
     aov: number;                  // 0 if orders === 0 (guard against div/0)
     subscriptionRevenue: number;  // revenue from subscription orders
     onetimeRevenue: number;       // revenue from one-time purchase orders
@@ -479,8 +486,9 @@ export type ShopifyLTVData = {
 };
 
 export type ShopifyMtdData = {
-  orders: number;              // paid orders since 1st of month (excl. $0)
-  revenue: number;             // gross revenue from paid orders
+  orders: number;              // countable orders since 1st of month (paid + refunded statuses)
+  revenue: number;             // Gross sales — line items × qty BEFORE discounts (matches Shopify "Gross sales")
+  discounts: number;           // Σ total_discounts (matches Shopify "Discounts")
   sessions: number;            // website sessions (0 if unavailable)
   cvr: number;                 // orders / sessions, 0 if sessions === 0
   sessionsAvailable: boolean;  // false if ShopifyQL not available on plan
@@ -493,9 +501,9 @@ export type ShopifyMtdData = {
   returningOrders: number;     // orders from repeat customers
   returningRate: number;       // returningOrders / orders * 100
   // Refunds (from read_all_orders)
-  refundedRevenue: number;     // total value of refunded orders this month
-  netRevenue: number;          // revenue - refundedRevenue
-  refundRate: number;          // refundedOrders / orders * 100
+  refundedRevenue: number;     // Σ refunded amount per order (total_price − current_total_price)
+  netRevenue: number;          // revenue − discounts − refundedRevenue (matches Shopify "Net sales")
+  refundRate: number;          // % of orders with any refund
 };
 
 export type CombinedDayRow = {

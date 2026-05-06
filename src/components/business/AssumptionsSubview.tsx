@@ -18,7 +18,6 @@ const GROUPS: FieldGroup[] = [
       { key: "fulfilmentPerOrder", label: "Fulfilment per order", suffix: "USD", step: 0.5, help: "Pick + pack + outbound shipping per order" },
       { key: "paymentProcessingPct", label: "Payment processing", suffix: "%", step: 0.1, help: "% of order value (Stripe/Shop Pay rate)" },
       { key: "paymentProcessingFlat", label: "Payment processing flat", suffix: "USD", step: 0.05, help: "Per-transaction flat fee" },
-      { key: "returnsRate", label: "Returns / refunds rate", suffix: "%", step: 0.5, help: "Used for the Refunds line on the P&L" },
     ],
   },
 ];

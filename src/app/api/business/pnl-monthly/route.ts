@@ -171,10 +171,18 @@ function sliceShopify(full: ShopifyData | null, since: string, until: string): S
   const days = full.by_day.filter((d) => isoWithinRange(d.date, since, until));
   const orders = days.reduce((s, d) => s + d.orders, 0);
   const revenue = days.reduce((s, d) => s + d.revenue, 0);
+  // Prorate discounts/returns by this month's share of the full-window revenue.
+  // by_day doesn't carry per-day breakdowns, so this is the cleanest approximation.
+  const ratio = full.summary.revenue > 0 ? revenue / full.summary.revenue : 0;
+  const discounts = (full.summary.discounts ?? 0) * ratio;
+  const returns = (full.summary.returns ?? 0) * ratio;
   return {
     summary: {
       orders,
       revenue,
+      discounts,
+      returns,
+      netRevenue: revenue - discounts - returns,
       aov: calcAOV(orders, revenue),
       subscriptionRevenue: 0,
       onetimeRevenue: 0,
