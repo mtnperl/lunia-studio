@@ -1,4 +1,4 @@
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { SUGGESTIONS_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 
@@ -19,9 +19,8 @@ export async function POST(req: Request) {
 
   try {
     const msg = await createContentMessage({
-      model: CONTENT_MODEL,
-      max_tokens: CONTENT_MAX_TOKENS_SHORT,
-      thinking: CONTENT_THINKING,
+      model: DRAFT_MODEL,
+      max_tokens: DRAFT_MAX_TOKENS_SHORT,
       messages: [{ role: "user", content: SUGGESTIONS_PROMPT }],
     });
     const text = extractText(msg);

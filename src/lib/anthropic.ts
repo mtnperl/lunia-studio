@@ -24,6 +24,14 @@ export const CONTENT_THINKING = { type: "adaptive" as const };
 export const CONTENT_MAX_TOKENS_SHORT = 20_000;   // tight one-shot output (≤4k visible)
 export const CONTENT_MAX_TOKENS_LONG  = 24_000;   // full-carousel / multi-section JSON (≤8k visible)
 
+// ─── Draft tier (carousel-v2) ─────────────────────────────────────────────
+// Haiku 4.5 is ~2× faster and ~5× cheaper than Sonnet 4.6. v2 routes use it
+// for hook variants, slide rewrites, and image-prompt drafting. Final-pass
+// generation stays on Opus 4.7 with adaptive thinking.
+export const DRAFT_MODEL = "claude-haiku-4-5-20251001";
+export const DRAFT_MAX_TOKENS_SHORT = 4_000;
+export const DRAFT_MAX_TOKENS_MED   = 8_000;
+
 /**
  * Pull the visible text from a Message. With extended thinking enabled the
  * first content block is a `thinking` block, so callers must not read

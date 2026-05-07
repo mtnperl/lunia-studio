@@ -1,4 +1,4 @@
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 300;
@@ -55,9 +55,8 @@ Rules (hard):
     ].filter(Boolean).join("\n");
 
     const msg = await createContentMessage({
-      model: CONTENT_MODEL,
-      max_tokens: CONTENT_MAX_TOKENS_SHORT,
-      thinking: CONTENT_THINKING,
+      model: DRAFT_MODEL,
+      max_tokens: DRAFT_MAX_TOKENS_SHORT,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
