@@ -4,6 +4,7 @@ import GenerateView from "@/components/GenerateView";
 import EditorView from "@/components/EditorView";
 import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
+import CarouselViewV2 from "@/components/CarouselViewV2";
 import BatchView from "@/components/BatchView";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
@@ -29,7 +30,7 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -60,6 +61,7 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   editor: IconPencil,
   library: IconFolder,
   carousel: IconGrid,
+  "carousel-v2": IconSparkles,
   batch: IconStack,
   subjects: IconHash,
   "carousel-library": IconFolder,
@@ -84,6 +86,7 @@ const TAB_TITLES: Record<string, string> = {
   editor: "Script editor",
   library: "Script library",
   carousel: "Carousel builder",
+  "carousel-v2": "Carousel builder · v2 (beta)",
   batch: "Batch carousels",
   subjects: "Subjects",
   "carousel-library": "Carousel library",
@@ -114,8 +117,9 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Carousel",
     items: [
-      { key: "carousel",  product: "carousel", label: "Builder"  },
-      { key: "batch",     product: "carousel", label: "Batch"    },
+      { key: "carousel",    product: "carousel", label: "Builder"  },
+      { key: "carousel-v2", product: "carousel", label: "Builder v2 (beta)" },
+      { key: "batch",       product: "carousel", label: "Batch"    },
       { key: "subjects",          product: "carousel", label: "Subjects" },
       { key: "carousel-library", product: "carousel", label: "Library"  },
     ],
@@ -501,6 +505,7 @@ export default function Page() {
         {tab === "editor"    && <EditorView script={activeScript} onUpdate={handleScriptUpdate} onOpenEditor={openEditor} />}
         {tab === "library"   && <LibraryView onOpen={(s) => { setActiveScript(s); setTab("editor"); }} />}
         {tab === "carousel"  && <CarouselView initialCarousel={pendingCarousel} onCarouselLoaded={() => setPendingCarousel(null)} />}
+        {tab === "carousel-v2" && <CarouselViewV2 initialCarousel={pendingCarousel} onCarouselLoaded={() => setPendingCarousel(null)} />}
         {tab === "batch"     && <BatchView />}
         {tab === "subjects"  && <SubjectsView />}
         {tab === "carousel-library" && (

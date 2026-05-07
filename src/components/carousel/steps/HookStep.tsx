@@ -3,6 +3,7 @@ import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import { BrandStyle, CarouselContent } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
+import { useCarouselApi } from "@/components/carousel/api-context";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange }: Props) {
+  const apiBase = useCarouselApi();
   const [promptOpen, setPromptOpen] = useState(false);
   const [guidelines, setGuidelines] = useState("");
   const [regenerating, setRegenerating] = useState(false);
@@ -38,7 +40,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
     setRegenError(null);
     setAlternatives([]);
     try {
-      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+      const res = await fetch(`${apiBase}/regenerate-image-prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

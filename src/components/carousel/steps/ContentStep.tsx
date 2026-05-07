@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { CarouselContent, CarouselFormat, HookTone } from "@/lib/types";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
+import { useCarouselApi } from "@/components/carousel/api-context";
 
 type Props = {
   content: CarouselContent;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function ContentStep({ content, topic, hookTone, onChange, onNext, carouselFormat = "standard" }: Props) {
+  const apiBase = useCarouselApi();
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [shorteningSlide, setShorteningSlide] = useState<number | null>(null);
   const [originalBodies, setOriginalBodies] = useState<Record<number, string>>({});
@@ -74,7 +76,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     setShorteningSlide(slideIndex);
     setOriginalBodies(prev => ({ ...prev, [slideIndex]: content.slides[slideIndex].body }));
     try {
-      const res = await fetch("/api/carousel/shorten-slide", {
+      const res = await fetch(`${apiBase}/shorten-slide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: content.slides[slideIndex].body }),
@@ -94,7 +96,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
   async function handleRegenerate(slideIndex: number) {
     setRegenerating(slideIndex);
     try {
-      const res = await fetch("/api/carousel/regenerate-slide", {
+      const res = await fetch(`${apiBase}/regenerate-slide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, hookTone, slideIndex }),

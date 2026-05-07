@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import type { DidYouKnowContent } from "@/lib/types";
+import { useCarouselApi } from "@/components/carousel/api-context";
 
 const PREVIEW_SCALE = 0.48;
 
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved }: Props) {
+  const apiBase = useCarouselApi();
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -73,7 +75,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/carousel/save", {
+      const res = await fetch(`${apiBase}/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

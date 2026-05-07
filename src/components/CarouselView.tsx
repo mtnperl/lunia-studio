@@ -7,6 +7,7 @@ import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
+import { useCarouselApi } from "@/components/carousel/api-context";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -46,7 +47,8 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView({ initialCarousel, onCarouselLoaded }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void }) {
+export default function CarouselView({ initialCarousel, onCarouselLoaded, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; version?: "v1" | "v2" }) {
+  const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
     let loaded = 0;
     let failed = 0;
     FAL_SLIDE_INDICES.forEach((i) => {
-      fetch('/api/carousel/generate-image', {
+      fetch(`${apiBase}/generate-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt, imageStyle: currentImageStyle }),
@@ -164,7 +166,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
       }).catch(() => {});
     }
     try {
-      const res = await fetch("/api/carousel/generate", {
+      const res = await fetch(`${apiBase}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -265,8 +267,27 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded }: { in
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em" }}>Carousel builder</h1>
-          <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>Generate a 5-slide Instagram carousel for Lunia Life.</p>
+          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
+            Carousel builder
+            {version === "v2" && (
+              <span style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                padding: "3px 8px",
+                borderRadius: 5,
+                background: "var(--accent-dim)",
+                color: "var(--accent)",
+                border: "1px solid var(--accent-mid)",
+              }}>v2 · beta</span>
+            )}
+          </h1>
+          <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
+            {version === "v2"
+              ? "Experimental flow — Ideogram, Haiku drafts, and infographic regeneration. Saves into the same library."
+              : "Generate a 5-slide Instagram carousel for Lunia Life."}
+          </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* fal.ai status badge */}

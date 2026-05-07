@@ -8,6 +8,7 @@ import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import { BrandStyle, CarouselConfig, CarouselFormat, HookTone } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
+import { useCarouselApi } from "@/components/carousel/api-context";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -32,6 +33,7 @@ const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
 
 export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, carouselFormat = "standard" }: Props) {
+  const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,7 +106,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
     if (url.startsWith('/')) return url; // already local
-    return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
+    return `${apiBase}/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
   const imgs = slideImages ?? [null, null, null, null, null];
@@ -119,7 +121,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   useEffect(() => {
     const rawUrl = imgs[0] ?? hookImageUrl ?? null;
     if (!rawUrl) return;
-    const proxied = rawUrl.startsWith("/") ? rawUrl : `/api/carousel/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+    const proxied = rawUrl.startsWith("/") ? rawUrl : `${apiBase}/image-proxy?url=${encodeURIComponent(rawUrl)}`;
     fetch(proxied)
       .then(r => r.blob())
       .then(blob => new Promise<string>((resolve, reject) => {
@@ -138,7 +140,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const raw = imgs[0] ?? hookImageUrl ?? null;
     if (!raw) return null;
     try {
-      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
+      const proxied = raw.startsWith("/") ? raw : `${apiBase}/image-proxy?url=${encodeURIComponent(raw)}`;
       const r = await fetch(proxied);
       const blob = await r.blob();
       const url = await new Promise<string>((resolve, reject) => {
@@ -304,7 +306,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setGeneratingPdf(true);
     setPdfError(null);
     try {
-      const res = await fetch("/api/carousel/generate-pdf", {
+      const res = await fetch(`${apiBase}/generate-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -344,7 +346,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch("/api/carousel/save", {
+      const res = await fetch(`${apiBase}/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -431,7 +433,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   async function handleRegenerateSlide(slideIndex: number) {
     setRegenerating(slideIndex);
     try {
-      const res = await fetch("/api/carousel/regenerate-slide", {
+      const res = await fetch(`${apiBase}/regenerate-slide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, hookTone, slideIndex }),
@@ -458,7 +460,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const prevHistory = graphicHistory[slideIndex] ?? [];
       const rawAvoid = [...prevHistory, currentComp].filter(Boolean);
       const avoid = rawAvoid.length > 2 ? rawAvoid.slice(-2) : rawAvoid;
-      const res = await fetch("/api/carousel/regenerate-graphic", {
+      const res = await fetch(`${apiBase}/regenerate-graphic`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -503,7 +505,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       // Step 1: optionally regenerate the prompt with guidelines
       let finalPrompt = currentImagePrompt;
       if (imageGuidelines.trim() || !finalPrompt) {
-        const promptRes = await fetch("/api/carousel/regenerate-image-prompt", {
+        const promptRes = await fetch(`${apiBase}/regenerate-image-prompt`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -524,7 +526,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       // Step 2: generate the new image
       const targetAspect = reelsMode ? "9:16" : "4:5";
-      const imgRes = await fetch("/api/carousel/generate-image", {
+      const imgRes = await fetch(`${apiBase}/generate-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt, imageStyle, imageAspect: targetAspect }),
@@ -550,7 +552,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setImageRegenError(null);
     setPromptAlternatives([]);
     try {
-      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+      const res = await fetch(`${apiBase}/regenerate-image-prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -579,7 +581,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (suggestedPrompts.length > 0 || fetchingSuggestions) return;
     setFetchingSuggestions(true);
     try {
-      const res = await fetch("/api/carousel/regenerate-image-prompt", {
+      const res = await fetch(`${apiBase}/regenerate-image-prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -611,7 +613,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const slide = content.slides[slideIndex];
       if (!slide) { setGraphicError("Slide not found"); setRegeneratingGraphic(null); return; }
       const attempt = (vectorAttempts[slideIndex] ?? 0) + 1;
-      const res = await fetch("/api/carousel/regenerate-graphic", {
+      const res = await fetch(`${apiBase}/regenerate-graphic`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
