@@ -13,6 +13,7 @@ import { DEFAULT_HOOK_OVERLAYS, type HookOverlaySettings } from "@/components/ca
 import FeedPreview, { type FeedMode } from "@/components/carousel/preview/FeedPreview";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
+import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -1180,15 +1181,21 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         const slide = content.slides[slideIdx];
         if (!slide) return null;
         return (
-          <GraphicDataEditor
-            graphicJson={slide.graphic ?? ""}
+          <PanelErrorBoundary
+            key={`editor-${slideIdx}`}
+            label="Graphic data editor"
             onClose={() => setDataEditorOpen(null)}
-            onSave={(newJson) => {
-              const slides = [...content.slides];
-              slides[slideIdx] = { ...slides[slideIdx], graphic: newJson };
-              onContentChange({ ...config, content: { ...content, slides } });
-            }}
-          />
+          >
+            <GraphicDataEditor
+              graphicJson={slide.graphic ?? ""}
+              onClose={() => setDataEditorOpen(null)}
+              onSave={(newJson) => {
+                const slides = [...content.slides];
+                slides[slideIdx] = { ...slides[slideIdx], graphic: newJson };
+                onContentChange({ ...config, content: { ...content, slides } });
+              }}
+            />
+          </PanelErrorBoundary>
         );
       })()}
 
@@ -1202,20 +1209,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         const used = graphicRegenCount[slideIdx] ?? 0;
         const atLimit = used >= GRAPHIC_REGEN_LIMIT;
         return (
-          <GraphicTypePicker
-            currentComponent={currentComp}
-            brandStyle={bs}
-            busy={regeneratingGraphic === slideIdx || atLimit}
+          <PanelErrorBoundary
+            key={`picker-${slideIdx}`}
+            label="Graphic type picker"
             onClose={() => setTypePickerOpen(null)}
-            onPick={(componentKey) => {
-              if (atLimit) {
-                setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
-                return;
-              }
-              handleRegenerateGraphic(slideIdx, "", componentKey);
-              setTypePickerOpen(null);
-            }}
-          />
+          >
+            <GraphicTypePicker
+              currentComponent={currentComp}
+              brandStyle={bs}
+              busy={regeneratingGraphic === slideIdx || atLimit}
+              onClose={() => setTypePickerOpen(null)}
+              onPick={(componentKey) => {
+                if (atLimit) {
+                  setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
+                  return;
+                }
+                handleRegenerateGraphic(slideIdx, "", componentKey);
+                setTypePickerOpen(null);
+              }}
+            />
+          </PanelErrorBoundary>
         );
       })()}
 

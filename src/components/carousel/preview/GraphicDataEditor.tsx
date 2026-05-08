@@ -13,20 +13,31 @@ type Props = {
 type AnyData = any;
 
 export default function GraphicDataEditor({ graphicJson, onSave, onClose }: Props) {
-  const initial = useMemo(() => {
+  const initial = useMemo<AnyData>(() => {
+    const fallback = { component: "callout", data: { text: "" } };
     try {
-      const parsed = JSON.parse(graphicJson || "{}");
-      return parsed && typeof parsed === "object" ? parsed : { component: "callout", data: {} };
+      const raw = (graphicJson ?? "").trim();
+      if (!raw || raw === '""') return fallback;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
+      // Guarantee data is an object so FieldRenderer always receives a record
+      const data = parsed.data && typeof parsed.data === "object" && !Array.isArray(parsed.data)
+        ? parsed.data
+        : {};
+      return { component: typeof parsed.component === "string" ? parsed.component : "callout", data };
     } catch {
-      return { component: "callout", data: {} };
+      return fallback;
     }
   }, [graphicJson]);
   const [draft, setDraft] = useState<AnyData>(initial);
-  const meta = getGraphicTypeMeta(draft.component);
+  const meta = getGraphicTypeMeta(draft?.component);
 
   function updateData(newData: AnyData) {
     setDraft({ ...draft, data: newData });
   }
+
+  const componentLabel = meta?.label ?? draft?.component ?? "graphic";
+  const componentDesc = meta?.description ?? "Tweak the values shown in the graphic";
 
   return (
     <div style={{
@@ -44,10 +55,10 @@ export default function GraphicDataEditor({ graphicJson, onSave, onClose }: Prop
       }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Edit graphic data — {meta?.label ?? draft.component}
+            Edit graphic data — {componentLabel}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-            {meta?.description ?? "Tweak the values shown in the graphic"}
+            {componentDesc}
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
@@ -69,11 +80,26 @@ export default function GraphicDataEditor({ graphicJson, onSave, onClose }: Prop
 
       {/* Fields */}
       <div style={{ padding: "12px 14px", maxHeight: 400, overflowY: "auto" }}>
-        <FieldRenderer
-          value={draft.data ?? {}}
-          path={[]}
-          onChange={(newVal) => updateData(newVal)}
-        />
+        {(() => {
+          const safeData = draft?.data && typeof draft.data === "object" && !Array.isArray(draft.data)
+            ? draft.data
+            : {};
+          const keys = Object.keys(safeData);
+          if (keys.length === 0) {
+            return (
+              <div style={{ fontSize: 12, color: "var(--muted)", padding: "12px 0", textAlign: "center" }}>
+                No editable fields for this component yet — pick a different type or regenerate.
+              </div>
+            );
+          }
+          return (
+            <FieldRenderer
+              value={safeData}
+              path={[]}
+              onChange={(newVal) => updateData(newVal)}
+            />
+          );
+        })()}
       </div>
     </div>
   );
