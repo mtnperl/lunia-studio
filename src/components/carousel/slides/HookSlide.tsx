@@ -36,10 +36,10 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
-  const bg = brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)';
-  const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
-  const sublineColor = brandStyle?.accent ?? '#c8dde8';
-  const arrowColor = brandStyle?.secondary ?? '#4a7c8e';
+  const bg = brandStyle?.hookBackground ?? '#F7F4EF';
+  const headlineColor = brandStyle?.hookHeadline ?? '#01253f';
+  const sublineColor = brandStyle?.accent ?? '#01253f';
+  const arrowColor = brandStyle?.secondary ?? '#01253f';
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: 'hidden' }}>
@@ -154,7 +154,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: '#ffffff',
+          color: '#01253f',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
@@ -162,7 +162,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo sizeScale={logoScale} />
+      <LuniaLogo variant="dark" sizeScale={logoScale} />
     </SlideWrapper>
   );
 }

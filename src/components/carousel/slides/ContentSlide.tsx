@@ -221,12 +221,12 @@ export default function ContentSlide({
   // Tighten gap when graphic needs space
   const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.6) : sectionGapBase;
 
-  // Colors — dark mode overrides when darkBackground=true
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? '#f0ece6');
-  const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? '#1e7a8a');
-  const bodyColor = darkBackground ? 'rgba(255,255,255,0.88)' : (brandStyle?.body ?? '#1a2535');
-  const citationColor = darkBackground ? 'rgba(255,255,255,0.55)' : (brandStyle?.secondary ?? '#6b7280');
-  const arrowColor = darkBackground ? 'rgba(255,255,255,0.4)' : (brandStyle?.secondary ?? '#9ab0b8');
+  // Colors — `darkBackground` now means "match the (light) hook"; default is dark navy.
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#F7F4EF') : (brandStyle?.background ?? '#01253f');
+  const headlineColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : (brandStyle?.hookHeadline ?? '#F7F4EF');
+  const bodyColor = darkBackground ? (brandStyle?.body ?? '#1a2535') : 'rgba(247,244,239,0.88)';
+  const citationColor = darkBackground ? (brandStyle?.secondary ?? '#6b7280') : 'rgba(247,244,239,0.55)';
+  const arrowColor = darkBackground ? (brandStyle?.secondary ?? '#9ab0b8') : 'rgba(247,244,239,0.4)';
 
   // Split body into bold first sentence + remaining body
   // Require uppercase after period to avoid splitting on decimals (7.5) or abbreviations (N.R.E.M.)
@@ -281,7 +281,7 @@ export default function ContentSlide({
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: darkBackground ? '#ffffff' : '#0d2137',
+          color: darkBackground ? '#01253f' : '#F7F4EF',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
@@ -289,7 +289,7 @@ export default function ContentSlide({
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
+      <LuniaLogo variant={darkBackground ? "dark" : "light"} sizeScale={logoScale} />
 
       {/* Flex column layout — headline / body+citation / graphic */}
       <div style={{

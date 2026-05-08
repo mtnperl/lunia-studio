@@ -22,9 +22,9 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
 
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? 'linear-gradient(160deg, #0a1628 0%, #0d2137 40%, #0a2a3a 100%)') : (brandStyle?.background ?? "#f0ece6");
-  const headlineColor = darkBackground ? (brandStyle?.hookHeadline ?? '#ffffff') : (brandStyle?.headline ?? "#1e7a8a");
-  const followColor = darkBackground ? 'rgba(255,255,255,0.8)' : (brandStyle?.headline ?? "#1e7a8a");
+  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#F7F4EF') : (brandStyle?.background ?? '#01253f');
+  const headlineColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : (brandStyle?.hookHeadline ?? '#F7F4EF');
+  const followColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : 'rgba(247,244,239,0.8)';
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
@@ -46,7 +46,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <LuniaLogo variant={darkBackground ? "light" : "dark"} sizeScale={logoScale} />
+      <LuniaLogo variant={darkBackground ? "dark" : "light"} sizeScale={logoScale} />
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
@@ -59,7 +59,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: darkBackground ? '#ffffff' : '#0d2137',
+          color: darkBackground ? '#01253f' : '#F7F4EF',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
