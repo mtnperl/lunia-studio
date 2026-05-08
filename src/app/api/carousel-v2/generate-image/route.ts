@@ -2,6 +2,7 @@ import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
+import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
 const IDEOGRAM_STYLE_MAP: Record<string, string> = {
@@ -48,8 +49,16 @@ export async function POST(req: Request) {
     const textInImage: boolean = Boolean(body.textInImage);
     const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override });
 
-    const prompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
-    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} style=${imageStyle} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
+    // Pick a visual mood for this generation. If the caller passes one (e.g.
+    // "regenerate with the same mood"), respect it; otherwise random.
+    const mood: VisualMood = getMoodById(body.moodId) ?? pickRandomMood();
+
+    const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
+    // Append the mood's style block. Placing it AFTER the Claude-written
+    // subject prompt biases the model toward the mood's color/lighting/finish
+    // while keeping Claude's compositional direction intact.
+    const prompt = `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.`;
+    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 100)}..."`);
 
     let url: string | undefined;
     try {
@@ -62,7 +71,7 @@ export async function POST(req: Request) {
     }
     if (!url) throw new Error(`No image URL in ${engine} response`);
 
-    return Response.json({ url, engine });
+    return Response.json({ url, engine, mood: { id: mood.id, label: mood.label } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[api/carousel-v2/generate-image]', msg);
