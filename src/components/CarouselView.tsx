@@ -123,7 +123,23 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt, imageStyle: currentImageStyle }),
       })
-        .then((r) => r.json())
+        .then(async (r) => {
+          // Read body as text first so we can surface non-JSON errors
+          // (Vercel timeout pages, HTML 502/504 responses, etc.) instead
+          // of throwing a useless "Unexpected token" JSON parse error.
+          const raw = await r.text();
+          let parsed: { url?: string; error?: string; engine?: string } = {};
+          try {
+            parsed = raw ? JSON.parse(raw) : {};
+          } catch {
+            const snippet = raw.slice(0, 160).replace(/\s+/g, " ").trim();
+            return { url: undefined, error: `HTTP ${r.status}: ${snippet || "non-JSON response"}` };
+          }
+          if (!r.ok && !parsed.error) {
+            return { url: undefined, error: `HTTP ${r.status}` };
+          }
+          return parsed;
+        })
         .then(({ url, error: apiErr }) => {
           if (url) {
             setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });

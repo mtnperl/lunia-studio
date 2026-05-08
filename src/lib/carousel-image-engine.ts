@@ -21,14 +21,15 @@ export type ChooseEngineInput = {
   override?: ImageEngine;
 };
 
-// Hook-image engine mix. Recraft V4 Pro stays the workhorse (best for the
-// atmospheric photo backgrounds Lunia leans on), with occasional Ideogram
-// (cleaner typography / poster look) and FLUX.2 (more design-forward
-// graphic posters) sprinkled in for visual variety across carousels.
+// Hook-image engine mix. Recraft V4 Pro is the only engine routed by
+// default until Ideogram V3 and FLUX.2 endpoints on fal.ai are verified
+// against live calls. Set to 100/0/0 so user-facing generations don't
+// hit unverified endpoints. Override available via body.imageEngine for
+// targeted testing.
 const HOOK_ENGINE_WEIGHTS: { engine: ImageEngine; weight: number }[] = [
-  { engine: "recraft",  weight: 60 },
-  { engine: "ideogram", weight: 25 },
-  { engine: "flux2",    weight: 15 },
+  { engine: "recraft",  weight: 100 },
+  { engine: "ideogram", weight: 0 },
+  { engine: "flux2",    weight: 0 },
 ];
 
 function pickWeighted(): ImageEngine {
