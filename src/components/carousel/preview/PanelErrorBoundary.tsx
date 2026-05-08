@@ -58,6 +58,13 @@ export default class PanelErrorBoundary extends Component<Props, State> {
               >
                 Retry
               </button>
+              <button
+                onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+                title="Reload the page (clears cached JS)"
+                style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 5, fontSize: 10, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", padding: "4px 8px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600 }}
+              >
+                Reload page
+              </button>
               {this.props.onClose && (
                 <button
                   onClick={this.props.onClose}
