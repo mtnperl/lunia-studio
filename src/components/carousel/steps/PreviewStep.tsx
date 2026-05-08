@@ -11,6 +11,8 @@ import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { DEFAULT_HOOK_OVERLAYS, type HookOverlaySettings } from "@/components/carousel/shared/HookOverlays";
 import FeedPreview, { type FeedMode } from "@/components/carousel/preview/FeedPreview";
+import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
+import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -33,6 +35,24 @@ type Props = {
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
+
+// ─── Toolbar button style (v2 toolbar) ────────────────────────────────────────
+function toolbarBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "5px 12px",
+    borderRadius: 5,
+    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+    background: active ? "var(--accent-dim)" : "transparent",
+    color: active ? "var(--accent)" : "var(--muted)",
+    fontSize: 11,
+    fontWeight: active ? 700 : 500,
+    fontFamily: "inherit",
+    cursor: "pointer",
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+  };
+}
 
 // ─── Hook overlay panel helpers ───────────────────────────────────────────────
 function OverlayRow({ label, hint, enabled, onToggle, children }: {
@@ -123,6 +143,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // v2-only: feed view (single-slide phone mockup) toggle + current index
   const [viewMode, setViewMode] = useState<"strip" | "feed">("feed");
   const [feedIndex, setFeedIndex] = useState(0);
+  // v2-only: graphic type picker — which slide's picker is open (or null)
+  const [typePickerOpen, setTypePickerOpen] = useState<number | null>(null);
+  // v2-only: graphic data editor — which slide's editor is open (or null)
+  const [dataEditorOpen, setDataEditorOpen] = useState<number | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -527,8 +551,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
-  async function handleRegenerateGraphic(slideIndex: number, userComment: string = "") {
-    // v2 per-load cap (5 regens / slide)
+  async function handleRegenerateGraphic(slideIndex: number, userComment: string = "", forceComponent?: string) {
+    // v2 per-load cap (5 regens / slide). Forced-component picks count too.
     if (isV2 && (graphicRegenCount[slideIndex] ?? 0) >= GRAPHIC_REGEN_LIMIT) {
       setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
       return;
@@ -556,6 +580,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           currentGraphic: slide.graphic ?? "",
           avoidComponents: avoid,
           userComment: userComment.trim() || undefined,
+          forceComponent: forceComponent || undefined,
         }),
       });
       const data = await res.json();
@@ -1074,25 +1099,51 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       {/* v2: Feed/Strip view toggle + global hook overlays button */}
       {isV2 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12, flexWrap: "wrap" }}>
-          <button
-            onClick={() => setOverlaysPanelOpen((v) => !v)}
-            title="Edit hook image overlays"
-            style={{
-              padding: "5px 12px",
-              borderRadius: 5,
-              border: `1px solid ${overlaysPanelOpen ? "var(--accent)" : "var(--border)"}`,
-              background: overlaysPanelOpen ? "var(--accent-dim)" : "transparent",
-              color: overlaysPanelOpen ? "var(--accent)" : "var(--muted)",
-              fontSize: 11,
-              fontWeight: overlaysPanelOpen ? 700 : 500,
-              fontFamily: "inherit",
-              cursor: "pointer",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-            }}
-          >
-            ✨ Hook overlays
-          </button>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setOverlaysPanelOpen((v) => !v)}
+              title="Edit hook image overlays"
+              style={{
+                padding: "5px 12px",
+                borderRadius: 5,
+                border: `1px solid ${overlaysPanelOpen ? "var(--accent)" : "var(--border)"}`,
+                background: overlaysPanelOpen ? "var(--accent-dim)" : "transparent",
+                color: overlaysPanelOpen ? "var(--accent)" : "var(--muted)",
+                fontSize: 11,
+                fontWeight: overlaysPanelOpen ? 700 : 500,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              ✨ Hook overlays
+            </button>
+            {/* Graphic type + data editor — only meaningful for content slides (1-3) */}
+            {viewMode === "feed" && feedIndex >= 1 && feedIndex <= 3 && (() => {
+              const slideIdx = feedIndex - 1;
+              const pickerOpen = typePickerOpen === slideIdx;
+              const editorOpen = dataEditorOpen === slideIdx;
+              return (
+                <>
+                  <button
+                    onClick={() => { setTypePickerOpen(pickerOpen ? null : slideIdx); setDataEditorOpen(null); }}
+                    title="Pick graphic type for this slide"
+                    style={toolbarBtnStyle(pickerOpen)}
+                  >
+                    🧩 S{feedIndex} type
+                  </button>
+                  <button
+                    onClick={() => { setDataEditorOpen(editorOpen ? null : slideIdx); setTypePickerOpen(null); }}
+                    title="Edit graphic data for this slide"
+                    style={toolbarBtnStyle(editorOpen)}
+                  >
+                    ✏️ S{feedIndex} data
+                  </button>
+                </>
+              );
+            })()}
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
             {(["strip", "feed"] as const).map((mode) => {
@@ -1122,6 +1173,51 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </div>
         </div>
       )}
+
+      {/* v2: Graphic data editor — manual data tweaks */}
+      {isV2 && dataEditorOpen !== null && (() => {
+        const slideIdx = dataEditorOpen;
+        const slide = content.slides[slideIdx];
+        if (!slide) return null;
+        return (
+          <GraphicDataEditor
+            graphicJson={slide.graphic ?? ""}
+            onClose={() => setDataEditorOpen(null)}
+            onSave={(newJson) => {
+              const slides = [...content.slides];
+              slides[slideIdx] = { ...slides[slideIdx], graphic: newJson };
+              onContentChange({ ...config, content: { ...content, slides } });
+            }}
+          />
+        );
+      })()}
+
+      {/* v2: Graphic type picker (drives slide 1-3 forced component) */}
+      {isV2 && typePickerOpen !== null && (() => {
+        const slideIdx = typePickerOpen;
+        const slide = content.slides[slideIdx];
+        if (!slide) return null;
+        let currentComp: string | undefined;
+        try { currentComp = JSON.parse(slide.graphic ?? "{}").component; } catch {}
+        const used = graphicRegenCount[slideIdx] ?? 0;
+        const atLimit = used >= GRAPHIC_REGEN_LIMIT;
+        return (
+          <GraphicTypePicker
+            currentComponent={currentComp}
+            brandStyle={bs}
+            busy={regeneratingGraphic === slideIdx || atLimit}
+            onClose={() => setTypePickerOpen(null)}
+            onPick={(componentKey) => {
+              if (atLimit) {
+                setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
+                return;
+              }
+              handleRegenerateGraphic(slideIdx, "", componentKey);
+              setTypePickerOpen(null);
+            }}
+          />
+        );
+      })()}
 
       {/* v2: Feed view */}
       {isV2 && viewMode === "feed" && (() => {
@@ -1363,6 +1459,59 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                         >
                           ✨ graphic {used > 0 && `(${used}/${GRAPHIC_REGEN_LIMIT})`}
                         </button>
+                      );
+                    })()}
+                    {isV2 && (() => {
+                      const slideIdx = i - 1;
+                      const pickerOpen = typePickerOpen === slideIdx;
+                      const editorOpen = dataEditorOpen === slideIdx;
+                      return (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTypePickerOpen(pickerOpen ? null : slideIdx); setDataEditorOpen(null); }}
+                            disabled={isRegeneratingGraphic}
+                            title="Pick graphic type"
+                            style={{
+                              background: pickerOpen ? "var(--accent-dim)" : "var(--surface)",
+                              color: pickerOpen ? "var(--accent)" : "var(--muted)",
+                              border: `1px solid ${pickerOpen ? "var(--accent-mid)" : "var(--border)"}`,
+                              borderRadius: 6,
+                              padding: "7px 10px",
+                              fontSize: 11,
+                              fontFamily: "inherit",
+                              cursor: isRegeneratingGraphic ? "not-allowed" : "pointer",
+                              opacity: isRegeneratingGraphic ? 0.5 : 1,
+                              transition: "background 0.15s",
+                              letterSpacing: "0.01em",
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            🧩 type
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDataEditorOpen(editorOpen ? null : slideIdx); setTypePickerOpen(null); }}
+                            disabled={isRegeneratingGraphic}
+                            title="Edit graphic data"
+                            style={{
+                              background: editorOpen ? "var(--accent-dim)" : "var(--surface)",
+                              color: editorOpen ? "var(--accent)" : "var(--muted)",
+                              border: `1px solid ${editorOpen ? "var(--accent-mid)" : "var(--border)"}`,
+                              borderRadius: 6,
+                              padding: "7px 10px",
+                              fontSize: 11,
+                              fontFamily: "inherit",
+                              cursor: isRegeneratingGraphic ? "not-allowed" : "pointer",
+                              opacity: isRegeneratingGraphic ? 0.5 : 1,
+                              transition: "background 0.15s",
+                              letterSpacing: "0.01em",
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ✏️ data
+                          </button>
+                        </>
                       );
                     })()}
                     <button

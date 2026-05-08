@@ -199,14 +199,14 @@ Brand rules (follow exactly):
 - Headline: uppercase, max 8 words
 - graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (hubSpoke/iceberg/bridge/bento/conceptFlow/dotchain/steps/etc.) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels ≤4 words, sublabels ≤5 words. Always output a valid component JSON.`;
 
-export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = [], userComment: string = "") =>
+export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = [], userComment: string = "", forceComponent?: string) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
 
 Topic: "${topic}"
 Headline: "${headline}"
 Body: "${body}"
-${avoidComponents.length > 0 ? `ALREADY USED — do NOT pick any of these: ${avoidComponents.join(", ")}. You MUST choose a completely different component type.` : ''}
-${userComment.trim() ? `\nUSER FEEDBACK on the previous graphic — apply this when picking the new one:\n"${userComment.trim().slice(0, 400)}"\n` : ''}
+${forceComponent ? `\nFORCED COMPONENT (mandatory): the user has explicitly chosen the "${forceComponent}" component. You MUST output a graphic with "component":"${forceComponent}". Fill the data shape for THIS component using the slide content above. Do not pick any other component, and ignore any "already used" rules below.\n` : ''}${avoidComponents.length > 0 && !forceComponent ? `ALREADY USED — do NOT pick any of these: ${avoidComponents.join(", ")}. You MUST choose a completely different component type.` : ''}
+${userComment.trim() ? `\nUSER FEEDBACK on the previous graphic — apply this when ${forceComponent ? "filling the forced component's data" : "picking the new one"}:\n"${userComment.trim().slice(0, 400)}"\n` : ''}
 Return ONLY a valid compact single-line JSON object. MANDATORY: you MUST use a different component type than the ones already used. Use this 3-tier routing:
 
 STEP 1 — CLASSIFY the slide:

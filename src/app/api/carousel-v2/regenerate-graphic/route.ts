@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const forceVector: boolean = body.forceVector === true;
     const attempt: number = typeof body.attempt === "number" ? body.attempt : 0;
     const userComment: string = typeof body.userComment === "string" ? body.userComment : "";
+    const forceComponent: string | undefined = typeof body.forceComponent === "string" && body.forceComponent.trim()
+      ? body.forceComponent.trim()
+      : undefined;
 
     // Known valid component keys — any Claude response with a key outside this set is invalid
     const VALID_COMPONENTS = new Set([
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
 
     const prompt = forceVector
       ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody, attempt)
-      : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents, userComment);
+      : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents, userComment, forceComponent);
 
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
