@@ -174,6 +174,7 @@ type Props = {
   arrowScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
   showLuniaLifeWatermark?: boolean;
+  prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   citationFontSize?: number;        // override the default 18px citation size
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
@@ -196,6 +197,7 @@ export default function ContentSlide({
   arrowScale = 1,
   darkBackground = false,
   showLuniaLifeWatermark = false,
+  prominentWatermark = false,
   citationFontSize = 18,
   reels = false,
   headlineScale = 1,
@@ -270,17 +272,17 @@ export default function ContentSlide({
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: prominentWatermark ? 30 : 24,
           left: 0,
           right: 0,
           textAlign: 'center',
           fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 300,
-          fontSize: 18,
+          fontWeight: prominentWatermark ? 500 : 300,
+          fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: darkBackground ? '#ffffff' : '#0d2137',
-          opacity: 0.13,
+          opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
         }}>

@@ -13,6 +13,7 @@ type Props = {
   shimmer?: boolean;
   logoScale?: number;
   showLuniaLifeWatermark?: boolean;
+  prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;
 };
 
@@ -27,6 +28,7 @@ export default function CommentCTASlide({
   shimmer = false,
   logoScale = 1,
   showLuniaLifeWatermark = false,
+  prominentWatermark = false,
   reels = false,
 }: Props) {
   const slideH = reels ? 1920 : 1350;
@@ -59,17 +61,17 @@ export default function CommentCTASlide({
       {showLuniaLifeWatermark && (
         <div style={{
           position: "absolute",
-          bottom: 24,
+          bottom: prominentWatermark ? 30 : 24,
           left: 0,
           right: 0,
           textAlign: "center",
           fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 300,
-          fontSize: 18,
+          fontWeight: prominentWatermark ? 500 : 300,
+          fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: "0.35em",
           textTransform: "uppercase",
           color: "#ffffff",
-          opacity: 0.13,
+          opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: "none",
           userSelect: "none",
         }}>

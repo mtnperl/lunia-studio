@@ -13,10 +13,11 @@ type Props = {
   logoScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
   showLuniaLifeWatermark?: boolean;
+  prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false, reels = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
   const slideH = reels ? 1920 : 1350;
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
@@ -49,17 +50,17 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: prominentWatermark ? 30 : 24,
           left: 0,
           right: 0,
           textAlign: 'center',
           fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 300,
-          fontSize: 18,
+          fontWeight: prominentWatermark ? 500 : 300,
+          fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: darkBackground ? '#ffffff' : '#0d2137',
-          opacity: 0.13,
+          opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
         }}>

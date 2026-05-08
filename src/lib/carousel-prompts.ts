@@ -54,7 +54,8 @@ export const GENERATE_CAROUSEL_PROMPT = (
   hasStyleRef = false,
   template: CarouselTemplate | null = null,
   brandStyle?: BrandStyle,
-  concise = false
+  concise = false,
+  v2Mode = false
 ) => {
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
@@ -96,7 +97,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. Write in 3 paragraphs separated by \n\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.
-- graphic: compact single-line JSON. MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types. Use this 3-tier routing to pick:
+- graphic: compact single-line JSON. ${v2Mode ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline is about a hidden truth, prefer iceberg over generic bento. If it's a transformation, prefer bridge. If it's a paradox, prefer matrix2x2. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
     A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A
@@ -143,7 +144,7 @@ Brand rules (follow exactly):
   {"component":"vector","data":{"keywords":"SPACE-SEPARATED TOPIC KEYWORDS (3-5 evocative words)","label":"SHORT LABEL","mood":"calm|energetic|scientific|playful"}}  — SVG illustration for emotional/conceptual slides; mood: calm=relaxation/recovery, energetic=activation/performance, scientific=mechanisms/biology, playful=habits/lifestyle
 
   Output valid JSON only — no wrapping quotes, no code fence, no explanation. Always output a valid component JSON — never output an empty string.
-- imagePrompt: A Recraft V3 realistic_image photography prompt for the hook slide background image. The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
+- imagePrompt: ${v2Mode ? "A SUBJECT-ONLY image prompt for the hook slide background. Describe the visual concept, composition, and key elements — but DO NOT specify color palette, lighting style, photographic finish, or aesthetic adjectives like 'cinematic' / 'editorial' / 'premium'. Style/palette/lighting will be applied separately by the visual-mood layer." : "A Recraft V3 realistic_image photography prompt for the hook slide background image."} The hook headline IS your creative brief — create a LITERAL VISUAL METAPHOR of the exact words in hooks[0].headline. Pull the most striking noun or verb from the headline and build a cinematic scene around it. The image should feel like a still frame of the hook happening.
   Examples of hook-to-image translation:
   • "ADENOSINE IS DROWNING YOUR BRAIN" → dark water engulfing, objects sinking into deep blue, air bubbles rising from below, cold undercurrent light
   • "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH" → single light switch on a dark wall, the moment before it flips off, deep shadow, one cold highlight

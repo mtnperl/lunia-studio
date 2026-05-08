@@ -24,10 +24,12 @@ type Props = {
   logoScale?: number;
   arrowScale?: number;
   showLuniaLifeWatermark?: boolean;
+  /** v2: render the LUNIA LIFE footer at higher visibility (bolder, less ghosty). */
+  prominentWatermark?: boolean;
   reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, reels = false }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
@@ -130,17 +132,17 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: prominentWatermark ? 30 : 24,
           left: 0,
           right: 0,
           textAlign: 'center',
           fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 300,
-          fontSize: 18,
+          fontWeight: prominentWatermark ? 500 : 300,
+          fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: '#ffffff',
-          opacity: 0.13,
+          opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
         }}>
