@@ -748,8 +748,9 @@ const PATHS: Record<VectorTheme, (color: string, accent: string, bg: string) => 
   ),
 };
 
-function themeFromKeywords(keywords: string): VectorTheme {
-  const k = keywords.toLowerCase();
+function themeFromKeywords(keywords: unknown): VectorTheme {
+  const k = typeof keywords === "string" ? keywords.toLowerCase() : "";
+  if (!k) return "default";
   // Sleep / rest
   if (/sleep|melatonin|insomnia|rest|night|bed|dream/.test(k)) return "sleep";
   // Brain / cognition
@@ -855,7 +856,7 @@ type Props = {
   brandStyle?: BrandStyle;
 };
 
-export function VectorIllustration({ keywords = "sleep calm", label, mood, brandStyle }: Props) {
+export function VectorIllustration({ keywords, label, mood, brandStyle }: Props) {
   const theme = themeFromKeywords(keywords);
   const accent = brandStyle?.accent ?? "#1e7a8a";
   const body = brandStyle?.body ?? "#1a2535";
