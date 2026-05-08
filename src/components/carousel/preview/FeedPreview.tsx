@@ -111,23 +111,37 @@ function InstagramChromeAndSlide({
   slideNode: ReactNode; slideW: number; slideH: number; slideScale: number;
   index: number; total: number; captionPreview: string;
 }) {
+  const bg = "#000";
+  const textPrimary = "#fafafa";
+  const textSecondary = "#a8a8a8";
+
   return (
     <>
       {/* Top bar — avatar + username + ··· */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#000" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: bg }}>
         <div style={{
-          width: 30, height: 30, borderRadius: "50%",
-          background: `linear-gradient(135deg, ${brandAccent} 0%, #8a4baa 100%)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 13, fontWeight: 700, color: "#fff",
-        }}>L</div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{username}</div>
-        <div style={{ marginLeft: "auto", fontSize: 18, color: "#fff", letterSpacing: 1 }}>···</div>
+          width: 32, height: 32, borderRadius: "50%",
+          padding: 1.5,
+          background: `linear-gradient(135deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%)`,
+        }}>
+          <div style={{
+            width: "100%", height: "100%", borderRadius: "50%",
+            border: `2px solid ${bg}`,
+            background: `linear-gradient(135deg, ${brandAccent} 0%, #8a4baa 100%)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, fontWeight: 700, color: "#fff",
+          }}>L</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: textPrimary, lineHeight: 1.1 }}>{username}</div>
+          <div style={{ fontSize: 11, color: textSecondary, lineHeight: 1.1 }}>Sponsored</div>
+        </div>
+        <IGMoreIcon />
       </div>
 
       {/* Slide */}
       <div style={{
-        width: slideW, height: slideH, position: "relative", overflow: "hidden", background: "#000",
+        width: slideW, height: slideH, position: "relative", overflow: "hidden", background: bg,
       }}>
         <div style={{ transform: `scale(${slideScale})`, transformOrigin: "top left" }}>
           {slideNode}
@@ -137,39 +151,119 @@ function InstagramChromeAndSlide({
           <div style={{
             position: "absolute", top: 10, right: 10,
             background: "rgba(0,0,0,0.55)", color: "#fff",
-            fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 12,
+            fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 12,
+            backdropFilter: "blur(4px)",
           }}>{index + 1}/{total}</div>
         )}
       </div>
 
-      {/* Action row — heart / comment / share / save */}
-      <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", gap: 14, fontSize: 22, background: "#000" }}>
-        <span>♡</span>
-        <span style={{ fontSize: 20 }}>💬</span>
-        <span style={{ fontSize: 20 }}>✈</span>
-        <span style={{ marginLeft: "auto" }}>🔖</span>
+      {/* Action row + dots */}
+      <div style={{ position: "relative", padding: "6px 12px 0", background: bg }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <IGHeartIcon color={textPrimary} />
+          <IGCommentIcon color={textPrimary} />
+          <IGShareIcon color={textPrimary} />
+          <div style={{ flex: 1, display: "flex", justifyContent: "center", gap: 4 }}>
+            {total > 1 && Array.from({ length: total }).map((_, i) => (
+              <div key={i} style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: i === index ? "#0095f6" : "rgba(255,255,255,0.3)",
+                transition: "background 0.15s",
+              }} />
+            ))}
+          </div>
+          <IGBookmarkIcon color={textPrimary} />
+        </div>
       </div>
 
-      {/* Slide dots */}
-      {total > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 4, paddingBottom: 6, background: "#000" }}>
-          {Array.from({ length: total }).map((_, i) => (
-            <div key={i} style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: i === index ? brandAccent : "rgba(255,255,255,0.35)",
-              transition: "background 0.15s",
-            }} />
-          ))}
-        </div>
-      )}
+      {/* Likes count */}
+      <div style={{ padding: "8px 12px 0", background: bg, fontSize: 13, fontWeight: 600, color: textPrimary }}>
+        Liked by <span style={{ fontWeight: 600 }}>jenna_sleeps</span> and <span style={{ fontWeight: 600 }}>1,247 others</span>
+      </div>
 
-      {/* Caption preview */}
-      <div style={{ padding: "4px 12px 12px", fontSize: 12, lineHeight: 1.4, color: "#eee", background: "#000" }}>
+      {/* Caption */}
+      <div style={{ padding: "4px 12px 0", fontSize: 13, lineHeight: 1.4, color: textPrimary, background: bg }}>
         <span style={{ fontWeight: 600 }}>{username}</span>{" "}
-        {captionPreview}
-        {captionPreview && <span style={{ color: "#9ab" }}>… more</span>}
+        <span style={{ color: textPrimary }}>{captionPreview}</span>
+        {captionPreview && <span style={{ color: textSecondary }}>… more</span>}
+      </div>
+
+      {/* View all comments */}
+      <div style={{ padding: "4px 12px 0", fontSize: 13, color: textSecondary, background: bg }}>
+        View all 28 comments
+      </div>
+
+      {/* Add a comment row */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "8px 12px",
+        background: bg,
+        borderTop: "1px solid #1a1a1a",
+        marginTop: 6,
+      }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          background: `linear-gradient(135deg, ${brandAccent} 0%, #8a4baa 100%)`,
+          flexShrink: 0,
+          fontSize: 9, fontWeight: 700, color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>L</div>
+        <div style={{ fontSize: 13, color: textSecondary, flex: 1 }}>Add a comment...</div>
+        <div style={{ display: "flex", gap: 8, fontSize: 11, color: textSecondary }}>
+          <span>♥</span>
+          <span>+</span>
+        </div>
+      </div>
+
+      {/* Time ago */}
+      <div style={{ padding: "0 12px 10px", fontSize: 10, color: textSecondary, background: bg, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        2 hours ago
       </div>
     </>
+  );
+}
+
+// ─── Instagram-style SVG icons ────────────────────────────────────────────────
+function IGHeartIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+  );
+}
+
+function IGCommentIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+  );
+}
+
+function IGShareIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="22" y1="2" x2="11" y2="13"/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </svg>
+  );
+}
+
+function IGBookmarkIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+}
+
+function IGMoreIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fafafa" aria-hidden>
+      <circle cx="5" cy="12" r="1.6"/>
+      <circle cx="12" cy="12" r="1.6"/>
+      <circle cx="19" cy="12" r="1.6"/>
+    </svg>
   );
 }
 

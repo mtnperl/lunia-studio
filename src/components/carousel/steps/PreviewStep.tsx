@@ -121,7 +121,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }));
   const [overlaysPanelOpen, setOverlaysPanelOpen] = useState(false);
   // v2-only: feed view (single-slide phone mockup) toggle + current index
-  const [viewMode, setViewMode] = useState<"strip" | "feed">("strip");
+  const [viewMode, setViewMode] = useState<"strip" | "feed">("feed");
   const [feedIndex, setFeedIndex] = useState(0);
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
@@ -1071,34 +1071,55 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
-      {/* v2: Feed/Strip view toggle */}
+      {/* v2: Feed/Strip view toggle + global hook overlays button */}
       {isV2 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 10, gap: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
-          {(["strip", "feed"] as const).map((mode) => {
-            const active = viewMode === mode;
-            return (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: 5,
-                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                  background: active ? "var(--accent-dim)" : "transparent",
-                  color: active ? "var(--accent)" : "var(--muted)",
-                  fontSize: 11,
-                  fontWeight: active ? 700 : 500,
-                  fontFamily: "inherit",
-                  cursor: "pointer",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {mode === "strip" ? "Strip" : (reelsMode ? "TikTok feed" : "IG feed")}
-              </button>
-            );
-          })}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12, flexWrap: "wrap" }}>
+          <button
+            onClick={() => setOverlaysPanelOpen((v) => !v)}
+            title="Edit hook image overlays"
+            style={{
+              padding: "5px 12px",
+              borderRadius: 5,
+              border: `1px solid ${overlaysPanelOpen ? "var(--accent)" : "var(--border)"}`,
+              background: overlaysPanelOpen ? "var(--accent-dim)" : "transparent",
+              color: overlaysPanelOpen ? "var(--accent)" : "var(--muted)",
+              fontSize: 11,
+              fontWeight: overlaysPanelOpen ? 700 : 500,
+              fontFamily: "inherit",
+              cursor: "pointer",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            ✨ Hook overlays
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
+            {(["strip", "feed"] as const).map((mode) => {
+              const active = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 5,
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    background: active ? "var(--accent-dim)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--muted)",
+                    fontSize: 11,
+                    fontWeight: active ? 700 : 500,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {mode === "strip" ? "Strip" : (reelsMode ? "TikTok feed" : "IG feed")}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
