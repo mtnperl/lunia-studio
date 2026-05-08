@@ -44,6 +44,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
   const [graphicHistory, setGraphicHistory] = useState<Record<number, string[]>>({});
   const [vectorAttempts, setVectorAttempts] = useState<Record<number, number>>({});
+  // v2-only: per-slide regen counter (resets on page reload) + open comment panel + draft comment
+  const [graphicRegenCount, setGraphicRegenCount] = useState<Record<number, number>>({});
+  const [graphicCommentOpen, setGraphicCommentOpen] = useState<number | null>(null);
+  const [graphicComment, setGraphicComment] = useState<Record<number, string>>({});
+  const GRAPHIC_REGEN_LIMIT = 5;
+  const isV2 = apiBase === "/api/carousel-v2";
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -448,7 +454,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
-  async function handleRegenerateGraphic(slideIndex: number) {
+  async function handleRegenerateGraphic(slideIndex: number, userComment: string = "") {
+    // v2 per-load cap (5 regens / slide)
+    if (isV2 && (graphicRegenCount[slideIndex] ?? 0) >= GRAPHIC_REGEN_LIMIT) {
+      setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
+      return;
+    }
     setRegeneratingGraphic(slideIndex);
     setGraphicError(null);
     try {
@@ -471,6 +482,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           body: slide.body,
           currentGraphic: slide.graphic ?? "",
           avoidComponents: avoid,
+          userComment: userComment.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -488,6 +500,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (currentComp) {
         setGraphicHistory(prev => ({ ...prev, [slideIndex]: [...(prev[slideIndex] ?? []), currentComp] }));
       }
+      // v2 per-load counter
+      setGraphicRegenCount(prev => ({ ...prev, [slideIndex]: (prev[slideIndex] ?? 0) + 1 }));
+      // Close comment panel and clear draft on success
+      setGraphicCommentOpen(null);
+      setGraphicComment(prev => ({ ...prev, [slideIndex]: "" }));
       const slides = [...content.slides];
       slides[slideIndex] = { ...slides[slideIndex], graphic };
       onContentChange({ ...config, content: { ...content, slides } });
@@ -1145,6 +1162,40 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     >
                       {isRegenerating ? "…" : "↺"}
                     </button>
+                    {isV2 && (() => {
+                      const slideIdx = i - 1;
+                      const used = graphicRegenCount[slideIdx] ?? 0;
+                      const atLimit = used >= GRAPHIC_REGEN_LIMIT;
+                      const isOpen = graphicCommentOpen === slideIdx;
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (atLimit) return;
+                            setGraphicCommentOpen(isOpen ? null : slideIdx);
+                          }}
+                          disabled={isRegenerating || isRegeneratingGraphic || atLimit}
+                          title={atLimit ? `Limit reached (${GRAPHIC_REGEN_LIMIT}/session)` : `Regenerate graphic with optional comment (${used}/${GRAPHIC_REGEN_LIMIT})`}
+                          style={{
+                            background: isOpen ? "var(--accent-dim)" : "var(--surface)",
+                            color: isOpen ? "var(--accent)" : "var(--muted)",
+                            border: `1px solid ${isOpen ? "var(--accent-mid)" : "var(--border)"}`,
+                            borderRadius: 6,
+                            padding: "7px 10px",
+                            fontSize: 11,
+                            fontFamily: "inherit",
+                            cursor: (atLimit || isRegenerating || isRegeneratingGraphic) ? "not-allowed" : "pointer",
+                            opacity: atLimit ? 0.4 : (isRegenerating || isRegeneratingGraphic) ? 0.5 : 1,
+                            transition: "background 0.15s",
+                            letterSpacing: "0.01em",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ✨ graphic {used > 0 && `(${used}/${GRAPHIC_REGEN_LIMIT})`}
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === i - 1 ? null : i - 1); }}
                       title="Pick an icon graphic"
@@ -1238,6 +1289,58 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 </div>
               </div>
             )}
+
+            {/* v2 graphic regeneration comment panel */}
+            {isV2 && i >= 1 && i <= 3 && graphicCommentOpen === i - 1 && (() => {
+              const slideIdx = i - 1;
+              const used = graphicRegenCount[slideIdx] ?? 0;
+              const draft = graphicComment[slideIdx] ?? "";
+              const isBusy = regeneratingGraphic === slideIdx;
+              return (
+                <div style={{ marginTop: 8, border: "1px solid var(--accent-mid)", borderRadius: 8, overflow: "hidden", background: "var(--surface)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "var(--accent-dim)", borderBottom: "1px solid var(--accent-mid)" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Regenerate graphic · {used}/{GRAPHIC_REGEN_LIMIT}
+                    </span>
+                    <button onClick={() => setGraphicCommentOpen(null)} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
+                  </div>
+                  <div style={{ padding: "10px 12px" }}>
+                    <textarea
+                      value={draft}
+                      onChange={(e) => setGraphicComment(prev => ({ ...prev, [slideIdx]: e.target.value.slice(0, 400) }))}
+                      placeholder="Optional — what to change? e.g. 'use minutes not hours', 'make this a vertical comparison'"
+                      rows={2}
+                      style={{
+                        width: "100%", boxSizing: "border-box",
+                        padding: "8px 10px", fontSize: 12, fontFamily: "inherit",
+                        background: "var(--bg)", color: "var(--text)",
+                        border: "1px solid var(--border)", borderRadius: 6,
+                        resize: "vertical", minHeight: 44,
+                      }}
+                    />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
+                      <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+                        {draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRegenerateGraphic(slideIdx, draft); }}
+                        disabled={isBusy}
+                        style={{
+                          background: "var(--accent)", color: "#fff",
+                          border: "none", borderRadius: 6,
+                          padding: "7px 14px", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                          cursor: isBusy ? "not-allowed" : "pointer",
+                          opacity: isBusy ? 0.6 : 1,
+                          letterSpacing: "0.02em",
+                        }}
+                      >
+                        {isBusy ? "Generating…" : (draft.trim() ? "Regenerate with comment" : "Regenerate")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             </div>
           );
         })}
