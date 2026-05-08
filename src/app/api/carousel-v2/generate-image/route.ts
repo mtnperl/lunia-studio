@@ -3,16 +3,6 @@ import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
 
-// Recraft V4 Pro doesn't accept a "style" enum the way V3 did — style is
-// expressed via prompt cues. Map the user's imageStyle pick to a suffix
-// that nudges the model toward the right look.
-const RECRAFT_STYLE_SUFFIX: Record<string, string> = {
-  realistic: 'editorial photography, photorealistic, ultra-sharp',
-  cartoon: 'digital illustration, soft shading, hand-drawn feel',
-  anime: '2D art poster, anime-inspired illustration, clean lines',
-  vector: 'flat vector illustration, minimal geometric shapes, no gradients',
-};
-
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
 const IDEOGRAM_STYLE_MAP: Record<string, string> = {
   realistic: 'REALISTIC',
@@ -61,7 +51,15 @@ export async function POST(req: Request) {
     const prompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
     console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} style=${imageStyle} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
 
-    const url = await runEngine(engine, { prompt, imageStyle, imageSize, imageAspect });
+    let url: string | undefined;
+    try {
+      url = await runEngine(engine, { prompt, imageStyle, imageSize, imageAspect });
+    } catch (engineErr) {
+      // Surface fal.ai's actual error body so we can see what's wrong client-side
+      const detail = extractFalError(engineErr);
+      console.error(`[api/carousel-v2/generate-image] ${engine} call failed:`, detail);
+      return Response.json({ error: `${engine} failed: ${detail}` }, { status: 500 });
+    }
     if (!url) throw new Error(`No image URL in ${engine} response`);
 
     return Response.json({ url, engine });
@@ -70,6 +68,22 @@ export async function POST(req: Request) {
     console.error('[api/carousel-v2/generate-image]', msg);
     return Response.json({ error: msg }, { status: 500 });
   }
+}
+
+function extractFalError(err: unknown): string {
+  if (!err) return "unknown error";
+  if (err instanceof Error) {
+    // fal client wraps API errors with a `body` or `response` field
+    const e = err as Error & { body?: unknown; response?: { status?: number; data?: unknown } };
+    if (e.body) {
+      try { return typeof e.body === "string" ? e.body : JSON.stringify(e.body); } catch { /* fallthrough */ }
+    }
+    if (e.response?.data) {
+      try { return JSON.stringify(e.response.data); } catch { /* fallthrough */ }
+    }
+    return err.message || String(err);
+  }
+  try { return JSON.stringify(err); } catch { return String(err); }
 }
 
 type RunInput = {
@@ -83,11 +97,13 @@ async function runEngine(engine: ImageEngine, input: RunInput): Promise<string |
   const endpoint = FAL_ENDPOINTS[engine];
 
   if (engine === 'recraft') {
-    const styleSuffix = RECRAFT_STYLE_SUFFIX[input.imageStyle] ?? RECRAFT_STYLE_SUFFIX.realistic;
-    const enrichedPrompt = `${input.prompt}\n\nStyle: ${styleSuffix}`;
+    // Match lib/fal.ts generateAdImage() shape exactly — verbatim prompt,
+    // image_size as {width,height}, no style enum (V4 Pro doesn't accept V3's).
+    // Style intent is already woven into the prompt by the upstream Claude
+    // image-prompt generator (see regenerate-image-prompt route).
     const result = await fal.subscribe(endpoint, {
       input: {
-        prompt: enrichedPrompt,
+        prompt: input.prompt,
         image_size: input.imageSize,
       },
       logs: false,
