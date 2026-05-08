@@ -9,6 +9,7 @@ import { BrandStyle, CarouselConfig, CarouselFormat, HookTone } from "@/lib/type
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
+import { DEFAULT_HOOK_OVERLAYS, type HookOverlaySettings } from "@/components/carousel/shared/HookOverlays";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -32,6 +33,67 @@ type Props = {
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
 const PREVIEW_SCALE = 0.48;
 
+// ─── Hook overlay panel helpers ───────────────────────────────────────────────
+function OverlayRow({ label, hint, enabled, onToggle, children }: {
+  label: string;
+  hint: string;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "auto 1fr auto",
+      alignItems: "center",
+      gap: 12,
+      padding: "8px 0",
+      borderTop: "1px dashed var(--border)",
+      opacity: enabled ? 1 : 0.5,
+    }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onToggle(e.target.checked)}
+          style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+        />
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
+      </label>
+      <span style={{ fontSize: 10, color: "var(--subtle)", letterSpacing: "0.02em" }}>{hint}</span>
+      <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
+    </div>
+  );
+}
+
+function SliderControl({ label, min, max, step, value, onChange }: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ width: 100, accentColor: "var(--accent)", cursor: "pointer" }}
+      />
+      <span style={{ fontSize: 10, color: "var(--muted)", fontVariantNumeric: "tabular-nums", minWidth: 32, textAlign: "right" }}>
+        {value.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2)}
+      </span>
+    </div>
+  );
+}
+
+
 export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, carouselFormat = "standard" }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
@@ -50,6 +112,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [graphicComment, setGraphicComment] = useState<Record<number, string>>({});
   const GRAPHIC_REGEN_LIMIT = 5;
   const isV2 = apiBase === "/api/carousel-v2";
+  // v2-only: hook image overlay settings + control panel toggle
+  const [hookOverlays, setHookOverlays] = useState<HookOverlaySettings>(() => ({
+    ...DEFAULT_HOOK_OVERLAYS,
+    // Seed frame color from brand accent if available
+    frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
+  }));
+  const [overlaysPanelOpen, setOverlaysPanelOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -665,7 +734,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
@@ -679,7 +748,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
     <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
@@ -1141,6 +1210,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     ↺ image
                   </button>
                 )}
+                {i === 0 && isV2 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setOverlaysPanelOpen((v) => !v); }}
+                    title="Edit hook image overlays"
+                    style={{
+                      background: overlaysPanelOpen ? "var(--accent-dim)" : "var(--surface)",
+                      color: overlaysPanelOpen ? "var(--accent)" : "var(--muted)",
+                      border: `1px solid ${overlaysPanelOpen ? "var(--accent-mid)" : "var(--border)"}`,
+                      borderRadius: 6,
+                      padding: "7px 10px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                      letterSpacing: "0.01em",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ✨ overlays
+                  </button>
+                )}
                 {i >= 1 && i <= 3 && (
                   <>
                     <button
@@ -1345,6 +1436,119 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           );
         })}
       </div>
+
+      {/* v2: Hook overlays control panel */}
+      {isV2 && overlaysPanelOpen && (
+        <div style={{
+          marginTop: 12,
+          border: "1px solid var(--accent-mid)",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "var(--surface)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--accent-dim)", borderBottom: "1px solid var(--accent-mid)" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Hook Overlays
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                Layered effects on the hook image. Changes apply live and to PNG export.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                onClick={() => setHookOverlays({
+                  ...DEFAULT_HOOK_OVERLAYS,
+                  frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
+                })}
+                style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 5, fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "4px 8px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600 }}
+              >
+                Reset
+              </button>
+              <button onClick={() => setOverlaysPanelOpen(false)} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1, padding: "4px 6px" }}>✕</button>
+            </div>
+          </div>
+
+          <div style={{ padding: "12px 14px", display: "grid", gap: 14 }}>
+            {/* Editorial frame */}
+            <OverlayRow
+              label="Editorial frame"
+              hint="Thin inset border"
+              enabled={hookOverlays.frame.enabled}
+              onToggle={(v) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, enabled: v } }))}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Color</label>
+                <input
+                  type="color"
+                  value={hookOverlays.frame.color}
+                  onChange={(e) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, color: e.target.value } }))}
+                  style={{ width: 28, height: 22, border: "1px solid var(--border)", borderRadius: 4, padding: 0, background: "transparent", cursor: "pointer" }}
+                />
+                <SliderControl
+                  label="Opacity"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={hookOverlays.frame.opacity}
+                  onChange={(v) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, opacity: v } }))}
+                />
+              </div>
+            </OverlayRow>
+
+            {/* Vignette */}
+            <OverlayRow
+              label="Soft vignette"
+              hint="Darkens corners, focuses center"
+              enabled={hookOverlays.vignette.enabled}
+              onToggle={(v) => setHookOverlays((s) => ({ ...s, vignette: { ...s.vignette, enabled: v } }))}
+            >
+              <SliderControl
+                label="Strength"
+                min={0}
+                max={0.6}
+                step={0.05}
+                value={hookOverlays.vignette.intensity}
+                onChange={(v) => setHookOverlays((s) => ({ ...s, vignette: { ...s.vignette, intensity: v } }))}
+              />
+            </OverlayRow>
+
+            {/* Color grade */}
+            <OverlayRow
+              label="Color grade"
+              hint="Editorial polish (contrast + warmth)"
+              enabled={hookOverlays.colorGrade.enabled}
+              onToggle={(v) => setHookOverlays((s) => ({ ...s, colorGrade: { ...s.colorGrade, enabled: v } }))}
+            >
+              <SliderControl
+                label="Strength"
+                min={0}
+                max={2}
+                step={0.1}
+                value={hookOverlays.colorGrade.intensity}
+                onChange={(v) => setHookOverlays((s) => ({ ...s, colorGrade: { ...s.colorGrade, intensity: v } }))}
+              />
+            </OverlayRow>
+
+            {/* Film grain */}
+            <OverlayRow
+              label="Film grain"
+              hint="Subtle noise texture"
+              enabled={hookOverlays.grain.enabled}
+              onToggle={(v) => setHookOverlays((s) => ({ ...s, grain: { ...s.grain, enabled: v } }))}
+            >
+              <SliderControl
+                label="Opacity"
+                min={0}
+                max={0.2}
+                step={0.01}
+                value={hookOverlays.grain.opacity}
+                onChange={(v) => setHookOverlays((s) => ({ ...s, grain: { ...s.grain, opacity: v } }))}
+              />
+            </OverlayRow>
+          </div>
+        </div>
+      )}
 
       {/* Hook image refinement panel */}
       {imageRefineOpen && (

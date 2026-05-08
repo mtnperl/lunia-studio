@@ -4,6 +4,7 @@ import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle } from '@/lib/types';
+import { FrameOverlay, VignetteOverlay, GrainOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -26,10 +27,12 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   /** v2: render the LUNIA LIFE footer at higher visibility (bolder, less ghosty). */
   prominentWatermark?: boolean;
+  /** v2: layered overlays applied on top of the background image (frame, vignette, color grade, grain). */
+  overlays?: HookOverlaySettings;
   reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
@@ -55,6 +58,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
               width: '100%', height: '100%',
               objectFit: 'cover', objectPosition: 'center',
               display: 'block',
+              filter: overlays?.colorGrade.enabled ? buildColorGradeFilter(overlays.colorGrade.intensity) : undefined,
             }}
           />
           {/* Overlay: lighter (0.45) for fal images to show more drama; heavier (0.82) for template images */}
@@ -63,6 +67,15 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
             background: bg,
             opacity: isFalImage ? 0.45 : 0.82,
           }} />
+          {overlays?.vignette.enabled && <VignetteOverlay intensity={overlays.vignette.intensity} />}
+          {overlays?.grain.enabled && <GrainOverlay opacity={overlays.grain.opacity} />}
+          {overlays?.frame.enabled && (
+            <FrameOverlay
+              color={overlays.frame.color}
+              opacity={overlays.frame.opacity}
+              inset={overlays.frame.inset}
+            />
+          )}
         </>
       ) : shimmer ? (
         <div style={{
