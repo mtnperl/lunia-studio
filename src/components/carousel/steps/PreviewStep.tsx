@@ -10,6 +10,7 @@ import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { DEFAULT_HOOK_OVERLAYS, type HookOverlaySettings } from "@/components/carousel/shared/HookOverlays";
+import FeedPreview, { type FeedMode } from "@/components/carousel/preview/FeedPreview";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -119,6 +120,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
   }));
   const [overlaysPanelOpen, setOverlaysPanelOpen] = useState(false);
+  // v2-only: feed view (single-slide phone mockup) toggle + current index
+  const [viewMode, setViewMode] = useState<"strip" | "feed">("strip");
+  const [feedIndex, setFeedIndex] = useState(0);
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -1067,7 +1071,60 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
+      {/* v2: Feed/Strip view toggle */}
+      {isV2 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 10, gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
+          {(["strip", "feed"] as const).map((mode) => {
+            const active = viewMode === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 5,
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  background: active ? "var(--accent-dim)" : "transparent",
+                  color: active ? "var(--accent)" : "var(--muted)",
+                  fontSize: 11,
+                  fontWeight: active ? 700 : 500,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {mode === "strip" ? "Strip" : (reelsMode ? "TikTok feed" : "IG feed")}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* v2: Feed view */}
+      {isV2 && viewMode === "feed" && (() => {
+        const mode: FeedMode = reelsMode ? "tiktok" : "instagram";
+        const aspect = reelsMode ? "9:16" : "4:5";
+        const total = exportNodes.length;
+        const idx = Math.min(feedIndex, total - 1);
+        return (
+          <FeedPreview
+            slideNode={exportNodes[idx]}
+            index={idx}
+            total={total}
+            onPrev={() => setFeedIndex((i) => Math.max(0, i - 1))}
+            onNext={() => setFeedIndex((i) => Math.min(total - 1, i + 1))}
+            mode={mode}
+            aspect={aspect}
+            caption={content.caption}
+            brandAccent={bs?.accent ?? "#1e7a8a"}
+          />
+        );
+      })()}
+
       {/* Slide strip */}
+      {(!isV2 || viewMode === "strip") && (
       <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
         {slideNodes.map((slide, i) => {
           const isActive = activeSlide === i;
@@ -1436,6 +1493,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           );
         })}
       </div>
+      )}
 
       {/* v2: Hook overlays control panel */}
       {isV2 && overlaysPanelOpen && (
