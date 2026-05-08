@@ -84,7 +84,26 @@ Return ONLY valid JSON in this exact format, no other text:
   "caption": "string",
   "imagePrompt": "string"
 }
+${v2Mode ? `
+NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
+Slide 1 — THE SURPRISE
+  Role: Challenge what most people believe. Pull out the counter-intuitive finding that makes the reader stop scrolling.
+  Headline: 4-7 words that CONTRADICT a common assumption (e.g. "MORE SLEEP ISN'T ALWAYS BETTER", "CORTISOL ISN'T THE PROBLEM"). Avoid generic statements of fact.
+  Body: Open with the specific surprising stat or finding. Create a "wait, what?" moment. The body should set up TENSION between common belief and reality.
+
+Slide 2 — THE MECHANISM
+  Role: Explain WHY slide 1 is true. The biology / chemistry / system / causal chain behind the surprise.
+  Headline: 4-7 words that NAME or DESCRIBE the mechanism (e.g. "GABA RECEPTORS QUIET THE BRAIN", "ADENOSINE BUILDS UP ALL DAY"). Reveal the cause.
+  Body: Walk through cause-and-effect. Show the chain. Use specific molecules, hormones, brain regions, or processes by name. This is the explanatory beat.
+
+Slide 3 — THE ACTION
+  Role: Tell the reader what to DO. Concrete, specific, doable today.
+  Headline: 4-7 words that PRESCRIBE or EMPOWER (e.g. "CUT CAFFEINE BY 2PM", "TAKE MAGNESIUM 30 MIN PRE-BED"). Active verbs, no vague hedges.
+  Body: One specific habit, timing window, dose, or behavior. No "consider", no "try to". Cite the study supporting the recommendation.
+
+The 3 slides MUST NOT all read as statements of fact. Slide 1 surprises, slide 2 explains, slide 3 directs. Different verbs, different rhythms, different jobs. If slide 1 and slide 3 feel interchangeable, you have failed the arc.
+` : ""}
 Brand rules (follow exactly):
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
