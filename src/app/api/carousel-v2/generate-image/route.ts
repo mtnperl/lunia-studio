@@ -12,7 +12,10 @@ const IDEOGRAM_STYLE_MAP: Record<string, string> = {
   vector: 'DESIGN',
 };
 
-export const maxDuration = 60;
+// Recraft V4 Pro consistently takes 40-90s on fal.ai (slower than V3's
+// 20-30s). 60s was clipping the long tail and producing 504s. 120s gives
+// headroom without inviting hung requests.
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const ip =

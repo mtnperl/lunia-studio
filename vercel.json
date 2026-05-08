@@ -26,6 +26,24 @@
     },
     "src/app/api/shopify/route.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/carousel-v2/generate/route.ts": {
+      "maxDuration": 90
+    },
+    "src/app/api/carousel-v2/generate-image/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/carousel-v2/regenerate-slide/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/carousel-v2/regenerate-graphic/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/carousel-v2/regenerate-image-prompt/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/carousel-v2/export/route.ts": {
+      "maxDuration": 60
     }
   }
 }
