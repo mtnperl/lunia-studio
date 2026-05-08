@@ -849,13 +849,13 @@ function moodOpacity(mood?: VectorMood): number {
 }
 
 type Props = {
-  keywords: string;
+  keywords?: string;
   label?: string;
   mood?: VectorMood;
   brandStyle?: BrandStyle;
 };
 
-export function VectorIllustration({ keywords, label, mood, brandStyle }: Props) {
+export function VectorIllustration({ keywords = "sleep calm", label, mood, brandStyle }: Props) {
   const theme = themeFromKeywords(keywords);
   const accent = brandStyle?.accent ?? "#1e7a8a";
   const body = brandStyle?.body ?? "#1a2535";
