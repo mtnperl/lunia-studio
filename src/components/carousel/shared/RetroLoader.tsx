@@ -6,7 +6,7 @@ const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢�
 type LoaderItem = { label: string; done: boolean; error: string | null };
 
 // ─── Full-page retro loader (used in CarouselView during fal.ai generation) ───
-export function RetroImageLoader({ items }: { items: LoaderItem[] }) {
+export function RetroImageLoader({ items, modelLabel = "fal-ai/recraft-v3" }: { items: LoaderItem[]; modelLabel?: string }) {
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
@@ -35,12 +35,12 @@ export function RetroImageLoader({ items }: { items: LoaderItem[] }) {
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: `repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)` }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fff", paddingBottom: 10, marginBottom: 18, fontSize: 11, letterSpacing: "0.12em" }}>
         <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
-        <span style={{ color: "#888" }}>fal-ai/recraft-v3 · v2.0</span>
+        <span style={{ color: "#888" }}>{modelLabel} · v2.0</span>
         <span>{spinner}</span>
       </div>
       <div style={{ marginBottom: 22, fontSize: 12, letterSpacing: "0.08em" }}>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>RENDERING SLIDE BACKGROUNDS</div>
-        <div style={{ color: "#888", fontSize: 11 }}>MODEL: fal-ai/recraft-v3 · realistic_image · 1024×1280</div>
+        <div style={{ color: "#888", fontSize: 11 }}>MODEL: {modelLabel} · 1024×1280</div>
       </div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 10, color: "#888", marginBottom: 5, letterSpacing: "0.1em" }}>── RENDER PROGRESS ──────────────────────</div>
@@ -70,7 +70,7 @@ export function RetroImageLoader({ items }: { items: LoaderItem[] }) {
         })}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>
-        <span>RECRAFT V3 — ANTHROPIC × FAL.AI</span>
+        <span>{modelLabel.toUpperCase()} — ANTHROPIC × FAL.AI</span>
         <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
       </div>
     </div>
@@ -78,7 +78,7 @@ export function RetroImageLoader({ items }: { items: LoaderItem[] }) {
 }
 
 // ─── Retro error screen ───────────────────────────────────────────────────────
-export function RetroImageError({ items, onRetry }: { items: LoaderItem[]; onRetry: () => void }) {
+export function RetroImageError({ items, onRetry, modelLabel = "fal-ai/recraft-v3" }: { items: LoaderItem[]; onRetry: () => void; modelLabel?: string }) {
   const errored = items.filter((it) => !!it.error);
   return (
     <div style={{ fontFamily: "'Courier New', Courier, monospace", background: "#000", color: "#f55", border: "3px solid #f55", borderRadius: 2, padding: "32px 36px", maxWidth: 520, margin: "48px auto" }}>
@@ -89,7 +89,7 @@ export function RetroImageError({ items, onRetry }: { items: LoaderItem[]; onRet
       </div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>!! IMAGE GENERATION FAILED !!</div>
-        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>fal-ai/recraft-v3 could not render the background images.</div>
+        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>{modelLabel} could not render the background images.</div>
       </div>
       <div style={{ borderTop: "1px solid #500", borderBottom: "1px solid #500", padding: "12px 0", marginBottom: 20 }}>
         {errored.map((item, i) => (

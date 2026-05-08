@@ -3,12 +3,14 @@ import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
 
-// Recraft V4 Pro style values: https://fal.ai/models/fal-ai/recraft/v4/pro/text-to-image
-const RECRAFT_STYLE_MAP: Record<string, string> = {
-  realistic: 'realistic_image',
-  cartoon: 'digital_illustration',
-  anime: 'digital_illustration/2d_art_poster',
-  vector: 'vector_illustration',
+// Recraft V4 Pro doesn't accept a "style" enum the way V3 did — style is
+// expressed via prompt cues. Map the user's imageStyle pick to a suffix
+// that nudges the model toward the right look.
+const RECRAFT_STYLE_SUFFIX: Record<string, string> = {
+  realistic: 'editorial photography, photorealistic, ultra-sharp',
+  cartoon: 'digital illustration, soft shading, hand-drawn feel',
+  anime: '2D art poster, anime-inspired illustration, clean lines',
+  vector: 'flat vector illustration, minimal geometric shapes, no gradients',
 };
 
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
@@ -81,11 +83,12 @@ async function runEngine(engine: ImageEngine, input: RunInput): Promise<string |
   const endpoint = FAL_ENDPOINTS[engine];
 
   if (engine === 'recraft') {
+    const styleSuffix = RECRAFT_STYLE_SUFFIX[input.imageStyle] ?? RECRAFT_STYLE_SUFFIX.realistic;
+    const enrichedPrompt = `${input.prompt}\n\nStyle: ${styleSuffix}`;
     const result = await fal.subscribe(endpoint, {
       input: {
-        prompt: input.prompt,
+        prompt: enrichedPrompt,
         image_size: input.imageSize,
-        style: RECRAFT_STYLE_MAP[input.imageStyle] ?? 'realistic_image',
       },
       logs: false,
     });

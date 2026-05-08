@@ -398,7 +398,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "loading" && (
             <RetroImageLoader items={[
               { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
-            ]} />
+            ]} modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"} />
           )}
           {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "failed" && (
             <RetroImageError
@@ -406,6 +406,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
               ]}
               onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle)}
+              modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"}
             />
           )}
           {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && config && (
