@@ -808,9 +808,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       });
       // Capture the body as text first so we can surface useful errors even when the response isn't JSON (Vercel auth wall, framework 404 page, etc.).
       const raw = await res.text();
-      let data: { url?: string; error?: string } | null = null;
-      try { data = JSON.parse(raw) as typeof data; } catch { /* not JSON */ }
-      if (!res.ok || !data?.url) {
+      type ApiResp = { url?: string; error?: string };
+      let data: ApiResp | null = null;
+      try { data = JSON.parse(raw) as ApiResp; } catch { /* not JSON */ }
+      const successUrl = data?.url;
+      if (!res.ok || !successUrl) {
         const detail = data?.error ?? raw.slice(0, 200) ?? "(empty response)";
         setGraphicError(`bg: ${res.status} from ${url} — ${detail}`);
         console.error("[generate-slide-bg] failed", { status: res.status, url, raw });
@@ -819,7 +821,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setContentBgImages(prev => {
         const next = [...prev];
         while (next.length < 3) next.push(null);
-        next[slideIndex] = data!.url as string;
+        next[slideIndex] = successUrl;
         // Sync to config so onContentChange persists across reloads + saves.
         onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
         return next;
