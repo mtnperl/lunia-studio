@@ -264,6 +264,24 @@ export default function ContentSlide({
   // Logo + watermark variant flips with the resolved bg luminance.
   const useDarkInk = useAutoInk ? !bgIsDark : darkBackground;
 
+  // Synthesize a brandStyle for the *infographic graphics* whose accent / body /
+  // secondary always contrast with the resolved slide bg. Otherwise a teal
+  // brandStyle.accent (the historical default) reads "blueish" on a dark navy
+  // slide and washes out on a light cream slide. We keep the explicit
+  // brandStyle.background + hook* fields when set so other consumers downstream
+  // are unaffected.
+  const inkMutedStrong = bgIsDark ? 'rgba(247,244,239,0.78)' : 'rgba(1,37,63,0.78)';
+  const inkMutedSoft = bgIsDark ? 'rgba(247,244,239,0.55)' : 'rgba(1,37,63,0.55)';
+  const graphicBrandStyle: BrandStyle = {
+    background: bg,
+    hookBackground: brandStyle?.hookBackground ?? '#01253f',
+    headline: ink,
+    hookHeadline: brandStyle?.hookHeadline ?? '#ffffff',
+    body: inkMutedStrong,
+    accent: ink,
+    secondary: inkMutedSoft,
+  };
+
   // Split body into bold first sentence + remaining body
   // Require uppercase after period to avoid splitting on decimals (7.5) or abbreviations (N.R.E.M.)
   const firstPeriod = body.search(/[.!?]\s+[A-Z]/);
@@ -445,7 +463,7 @@ export default function ContentSlide({
             ) : hasGraphicSpec ? (
               // Path 1 — React SVG component (TIER A data-precise)
               <GraphicErrorBoundary graphicSpec={graphicSpec}>
-                {renderGraphicSpec(graphicSpec, brandStyle)}
+                {renderGraphicSpec(graphicSpec, graphicBrandStyle)}
               </GraphicErrorBoundary>
             ) : (
               // Path 2 — raw SVG (saved carousels only)
@@ -466,7 +484,7 @@ export default function ContentSlide({
           style={graphicStyle}
           headline={headline}
           body={body}
-          brandStyle={brandStyle}
+          brandStyle={graphicBrandStyle}
         />
       )}
     </SlideWrapper>
