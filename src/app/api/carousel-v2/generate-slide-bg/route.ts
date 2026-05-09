@@ -4,7 +4,7 @@ import { isDarkColor } from '@/lib/color';
 
 export const maxDuration = 120;
 
-const RECRAFT_ENDPOINT = 'fal-ai/recraft/v4/text-to-image/pro';
+const RECRAFT_ENDPOINT = 'fal-ai/recraft/v4/pro/text-to-image';
 
 function buildBgPrompt(args: {
   headline: string;
