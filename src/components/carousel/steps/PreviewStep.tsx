@@ -163,6 +163,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Free-form dominant slide background. When set, slides use this color and auto-derive
   // ink (text/arrows/watermark/logo) from luminance — overrides the Classic/Match-hook toggle.
   const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor);
+  // AI-generated bg images for content slides 1-3 (indexed 0..2). null = none, undefined = pristine, string = url, "shimmer" = generating.
+  const [contentBgImages, setContentBgImages] = useState<(string | null)[]>(
+    config.contentBgImages ?? [null, null, null]
+  );
+  const [contentBgGenerating, setContentBgGenerating] = useState<Set<number>>(new Set());
+  const [contentBgOverlayOpacity, setContentBgOverlayOpacity] = useState<number>(
+    typeof config.contentBgOverlayOpacity === 'number' ? config.contentBgOverlayOpacity : 0.55
+  );
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(true);
   const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
   const [headlineScale, setHeadlineScale] = useState(1);
@@ -470,6 +478,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           arrowScale,
           darkBackground,
           slideBgColor,
+          contentBgImages,
+          contentBgOverlayOpacity,
           showLuniaLifeWatermark,
           imageStyle,
           format: carouselFormat,
@@ -764,6 +774,54 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  async function handleGenerateContentBg(slideIndex: number) {
+    if (slideIndex < 0 || slideIndex > 2) return;
+    const slide = content.slides[slideIndex];
+    if (!slide) { setGraphicError("Slide not found"); return; }
+    setContentBgGenerating(prev => { const next = new Set(prev); next.add(slideIndex); return next; });
+    setGraphicError(null);
+    try {
+      const res = await fetch(`${apiBase}/generate-slide-bg`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          headline: slide.headline,
+          body: slide.body,
+          slideBgColor,
+          imageAspect: reelsMode ? "9:16" : "4:5",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        setGraphicError(data?.error ?? "Failed to generate slide background");
+        return;
+      }
+      setContentBgImages(prev => {
+        const next = [...prev];
+        while (next.length < 3) next.push(null);
+        next[slideIndex] = data.url as string;
+        // Sync to config so onContentChange persists across reloads + saves.
+        onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
+        return next;
+      });
+    } catch {
+      setGraphicError("Network error — please check your connection");
+    } finally {
+      setContentBgGenerating(prev => { const next = new Set(prev); next.delete(slideIndex); return next; });
+    }
+  }
+
+  function handleClearContentBg(slideIndex: number) {
+    setContentBgImages(prev => {
+      const next = [...prev];
+      while (next.length < 3) next.push(null);
+      next[slideIndex] = null;
+      onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
+      return next;
+    });
+  }
+
   // fal.ai images: hook (imgs[0]) + editorial background images on content slides (imgs[1-3]).
   // CTA slide stays clean — brand colors only.
   const slideNodes = [
@@ -771,9 +829,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[0] ?? undefined} bgImageShimmer={contentBgGenerating.has(0)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[1] ?? undefined} bgImageShimmer={contentBgGenerating.has(1)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[2] ?? undefined} bgImageShimmer={contentBgGenerating.has(2)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
@@ -785,9 +843,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[0] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[1] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[2] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
@@ -1006,6 +1064,25 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               </button>
             )}
           </div>
+          {/* AI bg image overlay opacity — only visible when at least one content slide has a bg image */}
+          {contentBgImages.some((u) => !!u) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Bg dim</span>
+              <input
+                type="range"
+                min={0}
+                max={0.9}
+                step={0.05}
+                value={contentBgOverlayOpacity}
+                onChange={(e) => setContentBgOverlayOpacity(parseFloat(e.target.value))}
+                title={`Overlay opacity ${Math.round(contentBgOverlayOpacity * 100)}% (lower = image more visible)`}
+                style={{ width: 90 }}
+              />
+              <span style={{ fontSize: 10, color: "var(--subtle)", fontVariantNumeric: "tabular-nums", minWidth: 28, textAlign: "right" }}>
+                {Math.round(contentBgOverlayOpacity * 100)}%
+              </span>
+            </div>
+          )}
           {/* Citation font size */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Citation size</span>
@@ -1596,6 +1673,56 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     >
                       🔷 icon
                     </button>
+                    {isV2 && (() => {
+                      const slideIdx = i - 1;
+                      const generating = contentBgGenerating.has(slideIdx);
+                      const hasBg = !!contentBgImages[slideIdx];
+                      return (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleGenerateContentBg(slideIdx); }}
+                            disabled={generating}
+                            title={hasBg ? "Regenerate AI background" : "Generate an AI background image for this slide"}
+                            style={{
+                              background: hasBg ? "var(--accent-dim)" : "var(--surface)",
+                              color: hasBg ? "var(--accent)" : "var(--muted)",
+                              border: `1px solid ${hasBg ? "var(--accent-mid)" : "var(--border)"}`,
+                              borderRadius: 6,
+                              padding: "7px 10px",
+                              fontSize: 11,
+                              fontFamily: "inherit",
+                              cursor: generating ? "not-allowed" : "pointer",
+                              opacity: generating ? 0.5 : 1,
+                              transition: "background 0.15s",
+                              letterSpacing: "0.01em",
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {generating ? "🌄 …" : hasBg ? "🌄 ↺ bg" : "🌄 bg"}
+                          </button>
+                          {hasBg && !generating && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleClearContentBg(slideIdx); }}
+                              title="Remove AI background"
+                              style={{
+                                background: "transparent",
+                                color: "var(--subtle)",
+                                border: "1px solid var(--border)",
+                                borderRadius: 6,
+                                padding: "7px 10px",
+                                fontSize: 11,
+                                fontFamily: "inherit",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                              }}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>

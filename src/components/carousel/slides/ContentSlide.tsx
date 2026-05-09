@@ -176,6 +176,12 @@ type Props = {
   darkBackground?: boolean;         // match hook slide dark background
   /** Override the slide background with any color. When set, headline/body/citation/arrows + logo + watermark all auto-flip to the contrasting brand ink (#F7F4EF on dark, #01253f on light). */
   slideBgColor?: string;
+  /** Optional fal.ai-generated full-bleed background image. The slide bg color is overlaid on top so structured content stays readable. */
+  bgImageUrl?: string;
+  /** Show a shimmer in place of the bg image while it's being generated. */
+  bgImageShimmer?: boolean;
+  /** 0..1 — opacity of the bg color OVERLAY on top of the bg image. Higher = image more muted. Default 0.55. */
+  bgImageOverlayOpacity?: number;
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   citationFontSize?: number;        // override the default 18px citation size
@@ -200,6 +206,9 @@ export default function ContentSlide({
   arrowScale = 1,
   darkBackground = false,
   slideBgColor,
+  bgImageUrl,
+  bgImageShimmer = false,
+  bgImageOverlayOpacity = 0.55,
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
   citationFontSize = 18,
@@ -294,7 +303,33 @@ export default function ContentSlide({
   const headlineFontSize = Math.round(headlineSize(headline.length) * headlineScale);
 
   return (
-    <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
+    <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: 'hidden' }}>
+      {/* AI-generated bg image — full-bleed, then a slide-color overlay keeps text + structured graphic readable. Mirrors the hook slide pattern. */}
+      {bgImageUrl ? (
+        <>
+          <img
+            src={bgImageUrl}
+            crossOrigin="anonymous"
+            alt=""
+            style={{
+              position: 'absolute', top: 0, left: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'center',
+              display: 'block',
+            }}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: bg, opacity: bgImageOverlayOpacity }} />
+        </>
+      ) : bgImageShimmer ? (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: bgIsDark
+            ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%)'
+            : 'linear-gradient(90deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.02) 100%)',
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 1.6s ease-in-out infinite',
+        }} />
+      ) : null}
       <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
       {showLuniaLifeWatermark && (
         <div style={{

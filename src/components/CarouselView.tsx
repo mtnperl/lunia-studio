@@ -102,7 +102,16 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const content = variants[selectedVariant] ?? null;
 
   const config: CarouselConfig | null = content
-    ? { topic, content, selectedHook, brandStyle: brandStyle ?? undefined, hookImageUrl: hookImageUrl ?? undefined, slideImages }
+    ? {
+        topic,
+        content,
+        selectedHook,
+        brandStyle: brandStyle ?? undefined,
+        hookImageUrl: hookImageUrl ?? undefined,
+        slideImages,
+        contentBgImages: initialCarousel?.contentBgImages,
+        contentBgOverlayOpacity: initialCarousel?.contentBgOverlayOpacity,
+      }
     : null;
 
   // Only generate hook (0) — content + CTA slides stay clean with brand colors

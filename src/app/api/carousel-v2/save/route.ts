@@ -43,7 +43,9 @@ export async function POST(req: Request) {
     const {
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
-      showDecoration, logoScale, arrowScale, darkBackground, slideBgColor, showLuniaLifeWatermark,
+      showDecoration, logoScale, arrowScale, darkBackground, slideBgColor,
+      contentBgImages, contentBgOverlayOpacity,
+      showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale,
       format, engagementSubType, didYouKnowContent,
@@ -73,10 +75,14 @@ export async function POST(req: Request) {
     // Persist fal.ai images to Vercel Blob before their CDN URLs expire.
     // Run in parallel — any individual failure falls back to the original URL.
     const rawSlides: (string | null)[] = slideImages ?? [];
-    const [mirroredHook, ...mirroredSlides] = await Promise.all([
+    const rawContentBgs: (string | null)[] = Array.isArray(contentBgImages) ? contentBgImages : [];
+    const [mirroredHook, ...mirroredRest] = await Promise.all([
       mirrorImage(hookImageUrl, `${id}-hook`),
       ...rawSlides.map((u, i) => mirrorImage(u, `${id}-slide-${i}`)),
+      ...rawContentBgs.map((u, i) => mirrorImage(u, `${id}-bg-${i}`)),
     ]);
+    const mirroredSlides = mirroredRest.slice(0, rawSlides.length) as (string | null)[];
+    const mirroredContentBgs = mirroredRest.slice(rawSlides.length) as (string | null)[];
 
     const carousel: SavedCarousel = {
       id,
@@ -94,6 +100,8 @@ export async function POST(req: Request) {
       arrowScale,
       darkBackground,
       slideBgColor: slideBgColor ?? undefined,
+      contentBgImages: mirroredContentBgs.length > 0 ? mirroredContentBgs : (contentBgImages ?? undefined),
+      contentBgOverlayOpacity: typeof contentBgOverlayOpacity === 'number' ? contentBgOverlayOpacity : undefined,
       showLuniaLifeWatermark,
       imageStyle: imageStyle ?? undefined,
       format: format ?? undefined,

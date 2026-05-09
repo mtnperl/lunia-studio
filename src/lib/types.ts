@@ -320,6 +320,10 @@ export type CarouselConfig = {
   brandStyle?: BrandStyle;
   hookImageUrl?: string; // template image used as hook slide background overlay
   slideImages?: (string | null)[]; // fal.ai generated images: index 0=hook, 1-3=content, 4=CTA
+  /** AI-generated background images for content slides 1-3 (indexed 0..2). Each entry may be null when no bg has been generated. */
+  contentBgImages?: (string | null)[];
+  /** 0..1 — opacity of the slide-color overlay on top of contentBgImages. Higher = image more muted. */
+  contentBgOverlayOpacity?: number;
 };
 
 export type SavedCarousel = {
@@ -338,6 +342,10 @@ export type SavedCarousel = {
   darkBackground?: boolean;
   /** Free-form slide background hex; auto-derives ink from luminance. Overrides darkBackground when set. */
   slideBgColor?: string;
+  /** AI-generated background images for content slides 1-3. */
+  contentBgImages?: (string | null)[];
+  /** 0..1 overlay opacity. */
+  contentBgOverlayOpacity?: number;
   showLuniaLifeWatermark?: boolean;
   imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
   format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
