@@ -33,6 +33,12 @@ type Props = {
   initialCitationFontSize?: number;
   initialSlideBgColor?: string;
   initialDarkBackground?: boolean;
+  initialLogoScale?: number;
+  initialArrowScale?: number;
+  initialHeadlineScale?: number;
+  initialBodyScale?: number;
+  initialShowLuniaLifeWatermark?: boolean;
+  initialHookOverlays?: HookOverlaySettings;
   carouselFormat?: CarouselFormat;
 };
 
@@ -118,7 +124,7 @@ function SliderControl({ label, min, max, step, value, onChange }: {
 }
 
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, carouselFormat = "standard" }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, carouselFormat = "standard" }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -137,7 +143,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const GRAPHIC_REGEN_LIMIT = 5;
   const isV2 = apiBase === "/api/carousel-v2";
   // v2-only: hook image overlay settings + control panel toggle
-  const [hookOverlays, setHookOverlays] = useState<HookOverlaySettings>(() => ({
+  const [hookOverlays, setHookOverlays] = useState<HookOverlaySettings>(() => initialHookOverlays ?? ({
     ...DEFAULT_HOOK_OVERLAYS,
     // Seed frame color from brand accent if available
     frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
@@ -157,8 +163,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Logo / arrow / background / watermark / citation / format controls
-  const [logoScale, setLogoScale] = useState(1.4);
-  const [arrowScale, setArrowScale] = useState(1.4);
+  const [logoScale, setLogoScale] = useState(initialLogoScale ?? 1.4);
+  const [arrowScale, setArrowScale] = useState(initialArrowScale ?? 1.4);
   const [darkBackground, setDarkBackground] = useState(initialDarkBackground ?? false);
   // Free-form dominant slide background. When set, slides use this color and auto-derive
   // ink (text/arrows/watermark/logo) from luminance — overrides the Classic/Match-hook toggle.
@@ -171,10 +177,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [contentBgOverlayOpacity, setContentBgOverlayOpacity] = useState<number>(
     typeof config.contentBgOverlayOpacity === 'number' ? config.contentBgOverlayOpacity : 0.55
   );
-  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(true);
+  const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(initialShowLuniaLifeWatermark ?? true);
   const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
-  const [headlineScale, setHeadlineScale] = useState(1);
-  const [bodyScale, setBodyScale] = useState(1);
+  const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? 1);
+  const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1);
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
@@ -487,6 +493,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           citationFontSize,
           headlineScale,
           bodyScale,
+          hookOverlays: isV2 ? hookOverlays : undefined,
         }),
       });
       if (!res.ok) return;

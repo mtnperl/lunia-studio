@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale,
       format, engagementSubType, didYouKnowContent,
+      hookOverlays,
     } = body;
 
     if (!topic) {
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
       citationFontSize: citationFontSize ?? undefined,
       headlineScale: headlineScale ?? undefined,
       bodyScale: bodyScale ?? undefined,
+      hookOverlays: hookOverlays ?? undefined,
       savedAt: new Date().toISOString(),
     };
 

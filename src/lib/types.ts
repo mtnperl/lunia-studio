@@ -326,6 +326,14 @@ export type CarouselConfig = {
   contentBgOverlayOpacity?: number;
 };
 
+/** v2 hook image overlay settings — inlined as a plain shape so types.ts stays free of UI imports. Mirrors HookOverlaySettings in components/carousel/shared/HookOverlays.tsx. */
+export type SavedHookOverlays = {
+  frame: { enabled: boolean; color: string; opacity: number; inset: number };
+  vignette: { enabled: boolean; intensity: number };
+  colorGrade: { enabled: boolean; intensity: number };
+  grain: { enabled: boolean; opacity: number };
+};
+
 export type SavedCarousel = {
   id: string;
   topic: string;
@@ -355,6 +363,8 @@ export type SavedCarousel = {
   citationFontSize?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** v2 hook image overlays (frame / vignette / color grade / grain). */
+  hookOverlays?: SavedHookOverlays;
   savedAt: string;
 };
 

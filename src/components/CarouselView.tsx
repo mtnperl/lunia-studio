@@ -445,6 +445,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialCitationFontSize={initialCarousel?.citationFontSize}
               initialSlideBgColor={initialCarousel?.slideBgColor}
               initialDarkBackground={initialCarousel?.darkBackground}
+              initialLogoScale={initialCarousel?.logoScale}
+              initialArrowScale={initialCarousel?.arrowScale}
+              initialHeadlineScale={initialCarousel?.headlineScale}
+              initialBodyScale={initialCarousel?.bodyScale}
+              initialShowLuniaLifeWatermark={initialCarousel?.showLuniaLifeWatermark}
+              initialHookOverlays={initialCarousel?.hookOverlays}
               carouselFormat={carouselFormat}
               onContentChange={(c) => {
                 const next = [...variants];
