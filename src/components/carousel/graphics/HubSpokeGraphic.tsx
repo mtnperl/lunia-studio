@@ -15,8 +15,10 @@ const DEFAULTS: Spoke[] = [
 ];
 
 export function HubSpokeGraphic({ center = 'Magnesium', spokes = DEFAULTS, brandStyle }: Props) {
-  const accent    = brandStyle?.accent    ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body      ?? '#1a2535';
+  const accent      = brandStyle?.accent     ?? '#1e7a8a';
+  const bodyColor   = brandStyle?.body       ?? '#1a2535';
+  // Text rendered ON TOP of the accent-filled hub pill — must contrast with accent, not with the slide bg. Defaults to slide bg color when ContentSlide synthesises a brandStyle for auto-ink mode.
+  const onAccent    = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(Math.max((spokes ?? []).length, 2), 5);
   const list = (spokes ?? []).slice(0, n);
@@ -46,7 +48,7 @@ export function HubSpokeGraphic({ center = 'Magnesium', spokes = DEFAULTS, brand
           fontFamily: 'Outfit, sans-serif',
           fontSize: 26,
           fontWeight: 700,
-          color: '#fff',
+          color: onAccent,
           textAlign: 'center',
           lineHeight: 1.25,
           wordBreak: 'break-word',

@@ -17,6 +17,7 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(stages.length, 5);
   const list = stages.slice(0, n);
@@ -60,7 +61,7 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
             <span style={{
               fontSize: 24,
               fontWeight: 700,
-              color: isLight ? '#fff' : bodyColor,
+              color: isLight ? onAccent : bodyColor,
               textAlign: 'center',
               lineHeight: 1.2,
             }}>

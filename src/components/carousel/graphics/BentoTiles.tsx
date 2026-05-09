@@ -17,6 +17,7 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#1a2535';
   const secondary = brandStyle?.secondary ?? '#6b7280';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(Math.max((tiles ?? []).length, 2), 4) as 2 | 3 | 4;
   const list = (tiles ?? []).slice(0, n);
@@ -70,7 +71,7 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
               <span style={{
                 fontSize: isWide ? 28 : 24,
                 fontWeight: 700,
-                color: isFeatured ? '#fff' : accent,
+                color: isFeatured ? onAccent : accent,
                 lineHeight: 1.2,
               }}>
                 {tile.label}
@@ -79,7 +80,8 @@ export function BentoTiles({ tiles = DEFAULTS, brandStyle }: Props) {
                 <span style={{
                   fontSize: isWide ? 22 : 18,
                   fontWeight: 400,
-                  color: isFeatured ? 'rgba(255,255,255,0.75)' : secondary,
+                  color: isFeatured ? onAccent : secondary,
+                  opacity: isFeatured ? 0.75 : 1,
                   lineHeight: 1.3,
                 }}>
                   {tile.body}

@@ -10,6 +10,7 @@ const DEFAULTS = ['Magnesium binds', 'GABA activates', 'Brain waves slow', 'Deep
 export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(Math.max(steps.length, 2), 5);
   const list = steps.slice(0, n);
@@ -54,7 +55,7 @@ export function ProcessFlow({ steps = DEFAULTS, brandStyle }: Props) {
               <span style={{
                 fontSize: 20,
                 fontWeight: 700,
-                color: '#fff',
+                color: onAccent,
                 lineHeight: 1,
               }}>
                 {i + 1}

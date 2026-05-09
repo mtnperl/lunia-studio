@@ -16,6 +16,7 @@ export function BridgeGraphic({
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#1a2535';
   const secondary = brandStyle?.secondary ?? '#6b7280';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   return (
     <div style={{
@@ -144,7 +145,7 @@ export function BridgeGraphic({
             <span style={{
               fontSize: 28,
               fontWeight: 700,
-              color: '#fff',
+              color: onAccent,
               textAlign: 'center',
               lineHeight: 1.3,
               wordBreak: 'break-word',

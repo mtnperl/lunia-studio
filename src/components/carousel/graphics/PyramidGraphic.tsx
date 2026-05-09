@@ -10,6 +10,7 @@ export function PyramidGraphic({
   brandStyle,
 }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
+  const onAccent = brandStyle?.background ?? '#ffffff';
   const n = Math.min(levels.length, 5);
   const list = levels.slice(0, n);
 
@@ -42,7 +43,7 @@ export function PyramidGraphic({
             <span style={{
               fontSize: isApex ? 22 : 24,
               fontWeight: isApex ? 700 : 500,
-              color: '#ffffff',
+              color: onAccent,
               textAlign: 'center',
               lineHeight: 1.2,
             }}>

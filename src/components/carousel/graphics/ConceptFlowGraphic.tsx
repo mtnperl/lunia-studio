@@ -19,6 +19,7 @@ export function ConceptFlowGraphic({ nodes = DEFAULTS, title, brandStyle }: Prop
   const accent    = brandStyle?.accent    ?? '#1e7a8a';
   const secondary = brandStyle?.secondary ?? '#6b7280';
   const bodyColor = brandStyle?.body      ?? '#1a2535';
+  const onAccent  = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(Math.max((nodes ?? []).length, 2), 5);
   const list = (nodes ?? []).slice(0, n);
@@ -81,7 +82,7 @@ export function ConceptFlowGraphic({ nodes = DEFAULTS, title, brandStyle }: Prop
                   fontFamily: 'Outfit, sans-serif',
                   fontSize: labelSize,
                   fontWeight: 700,
-                  color: isFeatured ? '#fff' : accent,
+                  color: isFeatured ? onAccent : accent,
                   lineHeight: 1.3,
                   wordBreak: 'break-word',
                   overflowWrap: 'break-word',
@@ -92,7 +93,8 @@ export function ConceptFlowGraphic({ nodes = DEFAULTS, title, brandStyle }: Prop
                   <div style={{
                     fontFamily: 'Outfit, sans-serif',
                     fontSize: subSize,
-                    color: isFeatured ? 'rgba(255,255,255,0.75)' : secondary,
+                    color: isFeatured ? onAccent : secondary,
+                    opacity: isFeatured ? 0.75 : 1,
                     marginTop: 8,
                     lineHeight: 1.3,
                     wordBreak: 'break-word',

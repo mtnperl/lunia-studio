@@ -17,6 +17,7 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(cells.length, 12);
   const list = cells.slice(0, n);
@@ -29,7 +30,7 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
     if (v === 2) return `${accent}70`;
     return `${secondary}60`;
   };
-  const textColor = (v: number) => v >= 2 ? '#fff' : bodyColor;
+  const textColor = (v: number) => v >= 2 ? onAccent : bodyColor;
 
   return (
     <div style={{
@@ -85,7 +86,8 @@ export function HeatGrid({ cells = DEFAULTS, title, brandStyle }: Props) {
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: cell.value >= 2 ? 'rgba(255,255,255,0.6)' : `${accent}80`,
+                  background: cell.value >= 2 ? onAccent : `${accent}80`,
+                  opacity: cell.value >= 2 ? 0.6 : 1,
                 }} />
               ))}
             </div>

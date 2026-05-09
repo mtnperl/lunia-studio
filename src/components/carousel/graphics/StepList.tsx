@@ -16,6 +16,7 @@ export function StepList({
 }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
   const headlineColor = brandStyle?.headline ?? '#1a2535';
+  const onAccent = brandStyle?.background ?? '#ffffff';
 
   return (
     <div style={{
@@ -47,7 +48,7 @@ export function StepList({
             <span style={{
               fontSize: 32,
               fontWeight: 700,
-              color: '#ffffff',
+              color: onAccent,
               lineHeight: 1,
             }}>
               {i + 1}

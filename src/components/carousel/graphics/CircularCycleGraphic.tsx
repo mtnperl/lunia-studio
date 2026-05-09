@@ -70,7 +70,7 @@ export function CircularCycleGraphic({ steps = DEFAULTS, brandStyle }: Props) {
             {/* Step number */}
             <circle cx={nx + NODE_R * 0.6} cy={ny - NODE_R * 0.6} r={12} fill={accent} />
             <text x={nx + NODE_R * 0.6} y={ny - NODE_R * 0.6 + 5} textAnchor="middle"
-              fontFamily="Outfit, sans-serif" fontSize="13" fontWeight="700" fill="#fff">
+              fontFamily="Outfit, sans-serif" fontSize="13" fontWeight="700" fill={bg}>
               {i + 1}
             </text>
             {/* Label */}
