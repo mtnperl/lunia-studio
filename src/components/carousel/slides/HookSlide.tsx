@@ -36,10 +36,11 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
-  const bg = brandStyle?.hookBackground ?? '#F7F4EF';
-  const headlineColor = brandStyle?.hookHeadline ?? '#01253f';
-  const sublineColor = brandStyle?.accent ?? '#01253f';
-  const arrowColor = brandStyle?.secondary ?? '#01253f';
+  // Hook stays dark by default so white text reads cleanly; users can override via brandStyle.hookBackground.
+  const bg = brandStyle?.hookBackground ?? '#01253f';
+  const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
+  const sublineColor = brandStyle?.accent ?? '#F7F4EF';
+  const arrowColor = brandStyle?.secondary ?? 'rgba(247,244,239,0.55)';
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: 'hidden' }}>
@@ -154,7 +155,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: '#01253f',
+          color: '#ffffff',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
@@ -162,7 +163,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo variant="dark" sizeScale={logoScale} />
+      <LuniaLogo variant="light" sizeScale={logoScale} />
     </SlideWrapper>
   );
 }

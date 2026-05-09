@@ -32,9 +32,9 @@ export default function CommentCTASlide({
   reels = false,
 }: Props) {
   const slideH = reels ? 1920 : 1350;
-  const bg = brandStyle?.hookBackground ?? "#F7F4EF";
-  const headlineColor = brandStyle?.hookHeadline ?? "#01253f";
-  const accentColor = brandStyle?.accent ?? "#01253f";
+  const bg = brandStyle?.hookBackground ?? "#01253f";
+  const headlineColor = brandStyle?.hookHeadline ?? "#ffffff";
+  const accentColor = brandStyle?.accent ?? "#F7F4EF";
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: "hidden" }}>
@@ -56,7 +56,7 @@ export default function CommentCTASlide({
         }} />
       ) : null}
 
-      <LuniaLogo variant="dark" sizeScale={logoScale} />
+      <LuniaLogo variant="light" sizeScale={logoScale} />
 
       {showLuniaLifeWatermark && (
         <div style={{
@@ -70,7 +70,7 @@ export default function CommentCTASlide({
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: "0.35em",
           textTransform: "uppercase",
-          color: "#01253f",
+          color: "#ffffff",
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: "none",
           userSelect: "none",
