@@ -782,13 +782,20 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   async function handleGenerateContentBg(slideIndex: number) {
-    if (slideIndex < 0 || slideIndex > 2) return;
+    if (slideIndex < 0 || slideIndex > 2) {
+      setGraphicError(`bg: invalid slide index ${slideIndex}`);
+      return;
+    }
     const slide = content.slides[slideIndex];
-    if (!slide) { setGraphicError("Slide not found"); return; }
+    if (!slide) {
+      setGraphicError(`bg: slide ${slideIndex + 1} not found in content (have ${content.slides.length} slides)`);
+      return;
+    }
     setContentBgGenerating(prev => { const next = new Set(prev); next.add(slideIndex); return next; });
     setGraphicError(null);
+    const url = `${apiBase}/generate-slide-bg`;
     try {
-      const res = await fetch(`${apiBase}/generate-slide-bg`, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -799,21 +806,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           imageAspect: reelsMode ? "9:16" : "4:5",
         }),
       });
-      const data = await res.json();
+      // Capture the body as text first so we can surface useful errors even when the response isn't JSON (Vercel auth wall, framework 404 page, etc.).
+      const raw = await res.text();
+      let data: { url?: string; error?: string } | null = null;
+      try { data = JSON.parse(raw) as typeof data; } catch { /* not JSON */ }
       if (!res.ok || !data?.url) {
-        setGraphicError(data?.error ?? "Failed to generate slide background");
+        const detail = data?.error ?? raw.slice(0, 200) ?? "(empty response)";
+        setGraphicError(`bg: ${res.status} from ${url} — ${detail}`);
+        console.error("[generate-slide-bg] failed", { status: res.status, url, raw });
         return;
       }
       setContentBgImages(prev => {
         const next = [...prev];
         while (next.length < 3) next.push(null);
-        next[slideIndex] = data.url as string;
+        next[slideIndex] = data!.url as string;
         // Sync to config so onContentChange persists across reloads + saves.
         onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
         return next;
       });
-    } catch {
-      setGraphicError("Network error — please check your connection");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setGraphicError(`bg: network error calling ${url} — ${msg}`);
+      console.error("[generate-slide-bg] network", err);
     } finally {
       setContentBgGenerating(prev => { const next = new Set(prev); next.delete(slideIndex); return next; });
     }
