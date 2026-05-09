@@ -240,7 +240,7 @@ export default function Page() {
       savedAt: new Date().toISOString(),
     };
     setPendingCarousel(synthetic);
-    navigate("carousel");
+    navigate("carousel-v2");
   }
 
   const [navQuery, setNavQuery] = useState("");
@@ -496,9 +496,9 @@ export default function Page() {
         {tab === "home" && (
           <HomeView
             onNewScript={() => navigate("generate")}
-            onNewCarousel={() => navigate("carousel")}
+            onNewCarousel={() => navigate("carousel-v2")}
             onOpenScript={openEditor}
-            onOpenCarousel={(c) => { if (c) setPendingCarousel(c); navigate("carousel"); }}
+            onOpenCarousel={(c) => { if (c) setPendingCarousel(c); navigate("carousel-v2"); }}
           />
         )}
         {tab === "generate"  && <GenerateView onOpenEditor={openEditor} />}
@@ -513,7 +513,7 @@ export default function Page() {
             <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
               <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Carousel Library</h1>
             </div>
-            <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel"); }} />
+            <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel-v2"); }} />
           </div>
         )}
         {tab === "email-panels" && <EmailPanelBuilderView />}
