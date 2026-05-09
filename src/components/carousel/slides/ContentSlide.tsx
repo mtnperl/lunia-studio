@@ -41,6 +41,7 @@ import { IconGraphic } from '@/components/carousel/graphics/IconGraphic';
 import { IconLayout } from '@/components/carousel/graphics/IconLayout';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
+import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -173,6 +174,8 @@ type Props = {
   logoScale?: number;
   arrowScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
+  /** Override the slide background with any color. When set, headline/body/citation/arrows + logo + watermark all auto-flip to the contrasting brand ink (#F7F4EF on dark, #01253f on light). */
+  slideBgColor?: string;
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   citationFontSize?: number;        // override the default 18px citation size
@@ -196,6 +199,7 @@ export default function ContentSlide({
   logoScale = 1,
   arrowScale = 1,
   darkBackground = false,
+  slideBgColor,
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
   citationFontSize = 18,
@@ -221,12 +225,35 @@ export default function ContentSlide({
   // Tighten gap when graphic needs space
   const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.6) : sectionGapBase;
 
-  // Colors — `darkBackground` now means "match the (light) hook"; default is dark navy.
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#F7F4EF') : (brandStyle?.background ?? '#01253f');
-  const headlineColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : (brandStyle?.hookHeadline ?? '#F7F4EF');
-  const bodyColor = darkBackground ? (brandStyle?.body ?? '#1a2535') : 'rgba(247,244,239,0.88)';
-  const citationColor = darkBackground ? (brandStyle?.secondary ?? '#6b7280') : 'rgba(247,244,239,0.55)';
-  const arrowColor = darkBackground ? (brandStyle?.secondary ?? '#9ab0b8') : 'rgba(247,244,239,0.4)';
+  // Colors. Resolution order:
+  //   1. `slideBgColor` (user-picked) — auto-derives ink from luminance
+  //   2. brandStyle from the saved template
+  //   3. `darkBackground` toggle (legacy two-mode preset)
+  //   4. Dark navy default
+  const fallbackBg = darkBackground ? '#F7F4EF' : '#01253f';
+  const brandBg = darkBackground ? brandStyle?.hookBackground : brandStyle?.background;
+  const bg = slideBgColor ?? brandBg ?? fallbackBg;
+  const bgIsDark = isDarkColor(bg);
+  const ink = bgIsDark ? INK_LIGHT : INK_DARK;
+  // When slideBgColor is explicit OR the auto-derived ink is needed, prefer luminance-based ink
+  // and fall back to brandStyle ONLY when it agrees with the bg luminance — otherwise the
+  // template's text color may collide with a custom bg. The two preset modes still respect
+  // brandStyle for back-compat when no custom color is set.
+  const useAutoInk = slideBgColor !== undefined;
+  const headlineColor = useAutoInk
+    ? ink
+    : (darkBackground ? (brandStyle?.headline ?? INK_DARK) : (brandStyle?.hookHeadline ?? INK_LIGHT));
+  const bodyColor = useAutoInk
+    ? (bgIsDark ? 'rgba(247,244,239,0.88)' : '#1a2535')
+    : (darkBackground ? (brandStyle?.body ?? '#1a2535') : 'rgba(247,244,239,0.88)');
+  const citationColor = useAutoInk
+    ? (bgIsDark ? 'rgba(247,244,239,0.55)' : '#6b7280')
+    : (darkBackground ? (brandStyle?.secondary ?? '#6b7280') : 'rgba(247,244,239,0.55)');
+  const arrowColor = useAutoInk
+    ? (bgIsDark ? 'rgba(247,244,239,0.4)' : '#9ab0b8')
+    : (darkBackground ? (brandStyle?.secondary ?? '#9ab0b8') : 'rgba(247,244,239,0.4)');
+  // Logo + watermark variant flips with the resolved bg luminance.
+  const useDarkInk = useAutoInk ? !bgIsDark : darkBackground;
 
   // Split body into bold first sentence + remaining body
   // Require uppercase after period to avoid splitting on decimals (7.5) or abbreviations (N.R.E.M.)
@@ -281,7 +308,7 @@ export default function ContentSlide({
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: darkBackground ? '#01253f' : '#F7F4EF',
+          color: useDarkInk ? '#01253f' : '#F7F4EF',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',
@@ -289,7 +316,7 @@ export default function ContentSlide({
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo variant={darkBackground ? "dark" : "light"} sizeScale={logoScale} />
+      <LuniaLogo variant={useDarkInk ? "dark" : "light"} sizeScale={logoScale} />
 
       {/* Flex column layout — headline / body+citation / graphic */}
       <div style={{

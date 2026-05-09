@@ -1,6 +1,7 @@
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
+import { isDarkColor, INK_LIGHT, INK_DARK } from "@/lib/color";
 
 type Props = {
   headline: string;
@@ -12,19 +13,32 @@ type Props = {
   shimmer?: boolean;                // show shimmer while loading
   logoScale?: number;
   darkBackground?: boolean;         // match hook slide dark background
+  /** Override the slide background with any color. Auto-derives ink from luminance. */
+  slideBgColor?: string;
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
   const slideH = reels ? 1920 : 1350;
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
 
-  const bg = darkBackground ? (brandStyle?.hookBackground ?? '#F7F4EF') : (brandStyle?.background ?? '#01253f');
-  const headlineColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : (brandStyle?.hookHeadline ?? '#F7F4EF');
-  const followColor = darkBackground ? (brandStyle?.headline ?? '#01253f') : 'rgba(247,244,239,0.8)';
+  const fallbackBg = darkBackground ? '#F7F4EF' : '#01253f';
+  const brandBg = darkBackground ? brandStyle?.hookBackground : brandStyle?.background;
+  const bg = slideBgColor ?? brandBg ?? fallbackBg;
+  const bgIsDark = isDarkColor(bg);
+  const useAutoInk = slideBgColor !== undefined;
+  const ink = bgIsDark ? INK_LIGHT : INK_DARK;
+
+  const headlineColor = useAutoInk
+    ? ink
+    : (darkBackground ? (brandStyle?.headline ?? INK_DARK) : (brandStyle?.hookHeadline ?? INK_LIGHT));
+  const followColor = useAutoInk
+    ? (bgIsDark ? 'rgba(247,244,239,0.8)' : '#01253f')
+    : (darkBackground ? (brandStyle?.headline ?? '#01253f') : 'rgba(247,244,239,0.8)');
+  const useDarkInk = useAutoInk ? !bgIsDark : darkBackground;
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
@@ -46,7 +60,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <LuniaLogo variant={darkBackground ? "dark" : "light"} sizeScale={logoScale} />
+      <LuniaLogo variant={useDarkInk ? "dark" : "light"} sizeScale={logoScale} />
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
@@ -59,7 +73,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
           fontSize: prominentWatermark ? 22 : 18,
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
-          color: darkBackground ? '#01253f' : '#F7F4EF',
+          color: useDarkInk ? '#01253f' : '#F7F4EF',
           opacity: prominentWatermark ? 0.55 : 0.13,
           pointerEvents: 'none',
           userSelect: 'none',

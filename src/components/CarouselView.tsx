@@ -434,6 +434,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialImageStyle={imageStyle}
               initialReelsMode={initialCarousel?.reelsMode}
               initialCitationFontSize={initialCarousel?.citationFontSize}
+              initialSlideBgColor={initialCarousel?.slideBgColor}
+              initialDarkBackground={initialCarousel?.darkBackground}
               carouselFormat={carouselFormat}
               onContentChange={(c) => {
                 const next = [...variants];

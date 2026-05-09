@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const {
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
-      showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
+      showDecoration, logoScale, arrowScale, darkBackground, slideBgColor, showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale,
       format, engagementSubType, didYouKnowContent,
@@ -93,6 +93,7 @@ export async function POST(req: Request) {
       logoScale,
       arrowScale,
       darkBackground,
+      slideBgColor: slideBgColor ?? undefined,
       showLuniaLifeWatermark,
       imageStyle: imageStyle ?? undefined,
       format: format ?? undefined,

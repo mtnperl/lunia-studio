@@ -31,6 +31,8 @@ type Props = {
   initialImageStyle?: CarouselImageStyle;
   initialReelsMode?: boolean;
   initialCitationFontSize?: number;
+  initialSlideBgColor?: string;
+  initialDarkBackground?: boolean;
   carouselFormat?: CarouselFormat;
 };
 
@@ -116,7 +118,7 @@ function SliderControl({ label, min, max, step, value, onChange }: {
 }
 
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, carouselFormat = "standard" }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, carouselFormat = "standard" }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -157,7 +159,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Logo / arrow / background / watermark / citation / format controls
   const [logoScale, setLogoScale] = useState(1.4);
   const [arrowScale, setArrowScale] = useState(1.4);
-  const [darkBackground, setDarkBackground] = useState(false);
+  const [darkBackground, setDarkBackground] = useState(initialDarkBackground ?? false);
+  // Free-form dominant slide background. When set, slides use this color and auto-derive
+  // ink (text/arrows/watermark/logo) from luminance — overrides the Classic/Match-hook toggle.
+  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor);
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(true);
   const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
   const [headlineScale, setHeadlineScale] = useState(1);
@@ -464,6 +469,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           logoScale,
           arrowScale,
           darkBackground,
+          slideBgColor,
           showLuniaLifeWatermark,
           imageStyle,
           format: carouselFormat,
@@ -765,12 +771,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
+      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -779,12 +785,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
+      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -939,23 +945,66 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
         {/* Row 2: content style controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          {/* Background toggle */}
+          {/* Slide background — presets + free color picker. Custom color auto-derives ink from luminance. */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Slides bg</span>
-            <button onClick={() => setDarkBackground(false)} style={{
-              padding: "3px 8px", fontSize: 11, fontWeight: 700,
-              background: !darkBackground ? "var(--text)" : "var(--surface)",
-              color: !darkBackground ? "var(--bg)" : "var(--muted)",
-              border: "1px solid var(--border)", borderRadius: 5,
-              cursor: "pointer", fontFamily: "inherit",
-            }}>Classic</button>
-            <button onClick={() => setDarkBackground(true)} style={{
-              padding: "3px 8px", fontSize: 11, fontWeight: 700,
-              background: darkBackground ? "var(--text)" : "var(--surface)",
-              color: darkBackground ? "var(--bg)" : "var(--muted)",
-              border: "1px solid var(--border)", borderRadius: 5,
-              cursor: "pointer", fontFamily: "inherit",
-            }}>Match hook</button>
+            {([
+              { label: "Dark", color: "#01253f" },
+              { label: "Light", color: "#F7F4EF" },
+            ] as const).map(({ label, color }) => {
+              const active = slideBgColor?.toLowerCase() === color.toLowerCase();
+              return (
+                <button
+                  key={color}
+                  onClick={() => { setSlideBgColor(color); setDarkBackground(color === "#F7F4EF"); }}
+                  title={`${label} (${color})`}
+                  style={{
+                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    background: active ? "var(--text)" : "var(--surface)",
+                    color: active ? "var(--bg)" : "var(--muted)",
+                    border: "1px solid var(--border)", borderRadius: 5,
+                    cursor: "pointer", fontFamily: "inherit",
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}
+                >
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: color, border: "1px solid rgba(0,0,0,0.15)" }} />
+                  {label}
+                </button>
+              );
+            })}
+            <label
+              title="Pick any color — text + components flip automatically"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "3px 6px",
+                background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: 5,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="color"
+                value={slideBgColor ?? "#01253f"}
+                onChange={(e) => { const c = e.target.value; setSlideBgColor(c); setDarkBackground(c.toLowerCase() === "#f7f4ef"); }}
+                style={{ width: 18, height: 18, padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.04em" }}>Custom</span>
+            </label>
+            {slideBgColor !== undefined && (
+              <button
+                onClick={() => { setSlideBgColor(undefined); }}
+                title="Clear custom color (use brandStyle / preset)"
+                style={{
+                  padding: "3px 8px", fontSize: 11, fontWeight: 600,
+                  background: "transparent",
+                  color: "var(--subtle)",
+                  border: "1px solid var(--border)", borderRadius: 5,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
           {/* Citation font size */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

@@ -336,6 +336,8 @@ export type SavedCarousel = {
   logoScale?: number;
   arrowScale?: number;
   darkBackground?: boolean;
+  /** Free-form slide background hex; auto-derives ink from luminance. Overrides darkBackground when set. */
+  slideBgColor?: string;
   showLuniaLifeWatermark?: boolean;
   imageStyle?: string;     // "realistic" | "cartoon" | "anime" | "vector"
   format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
