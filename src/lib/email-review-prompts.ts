@@ -7,8 +7,18 @@ export const FRAMEWORK_VERSION = "v1.0";
 // Kept inline so the build doesn't depend on the .docx existing on disk.
 const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0
 
-You are running an email flow review for Lunia Life, a hormone-support
-supplement brand for women in perimenopause and menopause.
+You are running an email flow review for Lunia Life, a science-first sleep
+and wellness supplement brand. Lunia serves a broad audience of adults
+optimizing their sleep and recovery — anyone affected by stress, shift
+work, training load, hormonal change across any life stage, parenting,
+travel, or simply wanting deeper sleep.
+
+DO NOT assume the audience is exclusively women in perimenopause /
+menopause. DO NOT inject menopause framing into the review unless the
+specific email body or flow trigger explicitly addresses that audience.
+Infer the audience for THIS flow from THIS flow's actual content and
+trigger, not from any prior assumption about Lunia's customer base. A
+generic adult sleeper is the default audience.
 
 The output must follow this exact 6-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
