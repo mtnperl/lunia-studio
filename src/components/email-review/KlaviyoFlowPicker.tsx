@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { EmailFlow } from "@/lib/types";
 
 type FlowSummary = { id: string; name: string; status: string; triggerType: string; emailCount: number };
@@ -147,7 +148,13 @@ export default function KlaviyoFlowPicker({ onPicked, onCancel }: Props) {
       />
 
       {loading ? (
-        <div style={{ padding: 36, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Loading {mode}…</div>
+        <div style={{ padding: 12 }}>
+          <MiniReviewLoader label={`fetching ${mode} from klaviyo`} detail={mode === "flows" ? "FLOWS API" : "CAMPAIGNS API"} engine="klaviyo · read" />
+        </div>
+      ) : picking ? (
+        <div style={{ padding: 12 }}>
+          <MiniReviewLoader label="hydrating flow + every email" detail="FETCHING TEMPLATES" engine="klaviyo · flow detail" />
+        </div>
       ) : filtered.length === 0 ? (
         <div style={{ padding: 36, textAlign: "center", color: "var(--subtle)", fontSize: 13 }}>
           {error ? "Could not load. Fix the error above and retry." : `No ${mode} found.`}

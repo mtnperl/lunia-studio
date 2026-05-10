@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 
 type Props = {
   reviewId: string;
@@ -59,7 +60,7 @@ export default function ExportDocxButton({ reviewId, flowName }: Props) {
   }
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, position: "relative" }}>
       <button
         onClick={exportDocx}
         disabled={busy}
@@ -81,6 +82,11 @@ export default function ExportDocxButton({ reviewId, flowName }: Props) {
         {busy ? "Exporting…" : "↓ Word doc"}
       </button>
       {error && <span style={{ fontSize: 11, color: "var(--error)" }}>{error}</span>}
+      {busy && (
+        <span style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 280, zIndex: 10 }}>
+          <MiniReviewLoader label="building word doc" detail="MIRRORING TO BLOB" engine="email-review · docx" />
+        </span>
+      )}
     </span>
   );
 }

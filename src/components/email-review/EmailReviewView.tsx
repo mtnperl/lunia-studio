@@ -7,6 +7,7 @@ import FlowImagesGrid from "@/components/email-review/FlowImagesGrid";
 import CopyButton from "@/components/email-review/CopyButton";
 import KlaviyoPushButton from "@/components/email-review/KlaviyoPushButton";
 import ExportDocxButton from "@/components/email-review/ExportDocxButton";
+import { AnalyzeLoader } from "@/components/email-review/ReviewLoaders";
 import type { EmailFlow, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
@@ -138,16 +139,17 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
 
   if (mode === "running") {
     return (
-      <div style={{ maxWidth: 760, margin: "120px auto", padding: 40, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, textAlign: "center" }}>
-        <div style={{ fontSize: 32 }}>📧</div>
-        <h1 style={{ fontFamily: "Arial, sans-serif", fontSize: 20, fontWeight: 700, margin: "10px 0 6px", color: "#102635" }}>Running flow review</h1>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-          {flow?.flowName} · {flow?.emails.length} email{flow?.emails.length === 1 ? "" : "s"} · framework v1.0
-        </p>
-        <p style={{ margin: "16px 0 0", fontSize: 12, color: "var(--subtle)" }}>
-          Sonnet 4.6 with thinking. Typically 30-60 seconds.
-        </p>
-        {running && <div style={{ marginTop: 18, fontSize: 12, color: "var(--accent)", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 700 }}>working</div>}
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "32px 32px 80px" }}>
+        <AnalyzeLoader
+          flowName={flow?.flowName ?? "(loading)"}
+          emailCount={flow?.emails.length ?? 0}
+          frameworkVersion="v1.0"
+        />
+        {running && (
+          <div style={{ marginTop: 14, textAlign: "center", fontSize: 11, color: "var(--subtle)", fontFamily: "'Courier New', Courier, monospace", letterSpacing: "0.08em" }}>
+            sonnet 4.6 with thinking · ~30-60s typical · ~120s max
+          </div>
+        )}
       </div>
     );
   }

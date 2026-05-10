@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import CopyButton from "@/components/email-review/CopyButton";
+import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { FlowReviewImageEngine, FlowReviewImagePrompt } from "@/lib/types";
 
 type Props = {
@@ -76,10 +77,16 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
         <CopyButton text={prompt.prompt} label="Copy prompt" />
       </div>
 
-      {prompt.imageUrl && (
+      {prompt.status === "generating" ? (
+        <MiniReviewLoader
+          label={`rendering ${prompt.placement.replace(/_/g, " ")} · ${prompt.aspect}`}
+          detail={prompt.engine.toUpperCase()}
+          engine={`fal.ai · ${prompt.engine}`}
+        />
+      ) : prompt.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={prompt.imageUrl} alt="" style={{ width: "100%", borderRadius: 6, border: "1px solid #d6cfbe", maxHeight: 400, objectFit: "cover" }} />
-      )}
+      ) : null}
 
       <pre style={{ margin: 0, padding: 12, background: "#fff", border: "1px solid #e8e2d2", borderRadius: 6, fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, lineHeight: 1.55, color: "#1A1A1A", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 240, overflow: "auto" }}>
         {prompt.prompt}
@@ -170,8 +177,15 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
               opacity: regenLoading ? 0.6 : 1,
             }}
           >
-            {regenLoading ? "Generating 3 suggestions…" : prompt.regenSuggestions ? "↺ Get 3 fresh suggestions" : "Get 3 alternative prompts →"}
+            {regenLoading ? "Drafting 3 alternatives…" : prompt.regenSuggestions ? "↺ Get 3 fresh suggestions" : "Get 3 alternative prompts →"}
           </button>
+          {regenLoading && (
+            <MiniReviewLoader
+              label="drafting 3 alternative prompts"
+              detail="VARYING ANGLE · LIGHT · CAMERA"
+              engine="claude · regen-suggestions"
+            />
+          )}
           {regenError && (
             <div style={{ padding: "6px 10px", background: "rgba(176, 65, 62, 0.08)", border: "1px solid rgba(176, 65, 62, 0.3)", borderRadius: 5, fontSize: 12, color: "#B0413E" }}>{regenError}</div>
           )}
