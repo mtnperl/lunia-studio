@@ -42,7 +42,7 @@ export default function KlaviyoPushButton({ reviewId, emailId, sourceTemplateId,
       const data = await res.json();
       if (!res.ok) {
         if (data.code === "no_write_key") {
-          setError("KLAVIYO_API_KEY_WRITE not set on the server. Add it to enable writebacks.");
+          setError("No Klaviyo write access. Add KLAVIYO_API_KEY (full-access) or KLAVIYO_API_KEY_WRITE on the server.");
         } else {
           setError(data.error ?? `${res.status}`);
         }

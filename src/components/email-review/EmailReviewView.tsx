@@ -207,7 +207,7 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
           </h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
             Each push clones the source template and swaps it onto the flow message as a draft. You publish manually in Klaviyo.
-            Requires <code style={{ background: "var(--surface-r)", padding: "1px 5px", borderRadius: 3 }}>KLAVIYO_API_KEY_WRITE</code>.
+            Works with a full-access <code style={{ background: "var(--surface-r)", padding: "1px 5px", borderRadius: 3 }}>KLAVIYO_API_KEY</code>; or set a separate <code style={{ background: "var(--surface-r)", padding: "1px 5px", borderRadius: 3 }}>KLAVIYO_API_KEY_WRITE</code> if you want write capability isolated.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {review.flow.emails.map((email, i) => (

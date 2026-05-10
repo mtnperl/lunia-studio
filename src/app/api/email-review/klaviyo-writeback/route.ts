@@ -53,7 +53,10 @@ export async function POST(req: Request) {
   const allowed = await checkRateLimit(ip, "klaviyo-write");
   if (!allowed) return Response.json({ error: "Too many requests" }, { status: 429 });
   if (!hasWriteAccess()) {
-    return Response.json({ error: "KLAVIYO_API_KEY_WRITE not set", code: "no_write_key" }, { status: 503 });
+    return Response.json({
+      error: "No Klaviyo write access. Add KLAVIYO_API_KEY (full-access key) or KLAVIYO_API_KEY_WRITE (write-scoped) to your Vercel env.",
+      code: "no_write_key",
+    }, { status: 503 });
   }
 
   const t0 = Date.now();

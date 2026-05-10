@@ -39,8 +39,12 @@ export class KlaviyoServerError extends Error {
 function readKey(): string | null {
   return process.env.KLAVIYO_API_KEY ?? null;
 }
+// Use the dedicated write key when set; otherwise fall back to KLAVIYO_API_KEY
+// so a single full-access Klaviyo key satisfies both read and write paths.
+// Set KLAVIYO_API_KEY_WRITE explicitly only when you want to isolate write
+// capability behind a separate, scoped key.
 function writeKey(): string | null {
-  return process.env.KLAVIYO_API_KEY_WRITE ?? null;
+  return process.env.KLAVIYO_API_KEY_WRITE ?? process.env.KLAVIYO_API_KEY ?? null;
 }
 
 export function hasReadAccess(): boolean { return !!readKey(); }
@@ -58,7 +62,9 @@ type FetchOpts = {
 async function klaviyoFetch<T = unknown>(path: string, opts: FetchOpts = {}): Promise<T> {
   const { method = "GET", body, useWriteKey = false, timeoutMs = 5000, retries = 3 } = opts;
   const key = useWriteKey ? writeKey() : readKey();
-  if (!key) throw new KlaviyoAuthError(useWriteKey ? "KLAVIYO_API_KEY_WRITE not set" : "KLAVIYO_API_KEY not set");
+  if (!key) throw new KlaviyoAuthError(useWriteKey
+    ? "Klaviyo write key not set. Add KLAVIYO_API_KEY (full-access) or KLAVIYO_API_KEY_WRITE."
+    : "KLAVIYO_API_KEY not set");
 
   const url = path.startsWith("http") ? path : `${KLAVIYO_BASE}${path}`;
   let lastErr: unknown;
