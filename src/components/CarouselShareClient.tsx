@@ -90,19 +90,11 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Without this, toPng + canvas work eats the activation window and share silently fails.
   const preloadedFilesRef = useRef<Map<string, File>>(new Map());
 
-  // Pre-fetch the hook background as a data URL at mount so it's ready when user
-  // clicks download. Canvas compositing needs it because html-to-image cannot render
-  // <img> elements in SVG foreignObject — they always come out blank.
-  const hookBgDataUrlRef = useRef<string | null>(null);
-  useEffect(() => {
-    const raw = imgs[0] ?? hookImageUrl ?? null;
-    if (!raw) return;
-    const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
-    fetchAsDataUrl(proxied)
-      .then(u => { hookBgDataUrlRef.current = u; })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Cache of <img.src> → data URL. Filled in background at mount + on demand.
+  // Canvas compositing needs the data URL form because html-to-image's SVG
+  // foreignObject silently drops <img> contents on mobile Safari (and
+  // unreliably on Android) regardless of CORS / data-URL src.
+  const imageDataUrlCache = useRef<Map<string, string>>(new Map());
 
   function proxyUrl(url: string | null | undefined): string | undefined {
     if (!url) return undefined;
@@ -110,34 +102,88 @@ export default function CarouselShareClient({ carousel }: Props) {
     return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
-  // Get the hook background as a data URL — use cached value or fetch on demand.
-  async function getHookBgDataUrl(): Promise<string | null> {
-    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
-    const raw = imgs[0] ?? hookImageUrl ?? null;
-    if (!raw) return null;
-    try {
-      const proxied = raw.startsWith("/") ? raw : `/api/carousel/image-proxy?url=${encodeURIComponent(raw)}`;
-      const url = await fetchAsDataUrl(proxied);
-      hookBgDataUrlRef.current = url;
-      return url;
-    } catch {
-      return null;
-    }
+  /** Fetch any <img.src> → data URL. Cached. Auto-proxies cross-origin URLs. */
+  async function loadDataUrl(src: string): Promise<string> {
+    if (src.startsWith("data:")) return src;
+    const cached = imageDataUrlCache.current.get(src);
+    if (cached) return cached;
+    const target = src.startsWith("/")
+      ? src
+      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
+    const dataUrl = await fetchAsDataUrl(target);
+    imageDataUrlCache.current.set(src, dataUrl);
+    return dataUrl;
   }
 
-  // Canvas compositing for the hook slide.
-  // 1. Hide <img> + make inner wrapper transparent → toPng captures foreground only
-  // 2. Draw background image onto canvas (cover-fit)
-  // 3. Draw foreground overlay on top → correct final PNG
-  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH: number): Promise<File> {
-    const imgEl = el.querySelector("img") as HTMLImageElement | null;
-    // el > SlideWrapper outer div > SlideWrapper inner div (has background style + content)
-    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
+  /** Fire-and-forget pre-warm. */
+  function prefetchUrl(src: string | null | undefined) {
+    if (!src) return;
+    loadDataUrl(src).catch(() => {});
+  }
 
-    const savedImgDisplay = imgEl?.style.display ?? "";
+  // Pre-fetch the hook background + every content-slide bg at mount so the
+  // cache is hot when the user taps Download. On mobile, the iOS Safari
+  // transient-activation token expires ~5s after tap — every async fetch we
+  // can move to mount time matters.
+  useEffect(() => {
+    prefetchUrl(proxyUrl(imgs[0]) ?? proxyUrl(hookImageUrl));
+    (contentBgImages ?? []).forEach((u) => prefetchUrl(proxyUrl(u)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Canvas compositing for any slide containing <img>s. Same proven pattern
+   * as the old hook-only path, generalised to handle multiple images per
+   * slide (V2 content slides have a bg <img>; some may have a graphic <img>
+   * in the graphic zone too).
+   *
+   * 1. For each <img>: capture its bounding rect relative to `el` and resolve
+   *    its src to a data URL.
+   * 2. Hide every <img> + clear SlideWrapper inner background so toPng
+   *    captures a transparent-backdrop foreground.
+   * 3. Draw each image at its actual position on a 2x canvas with
+   *    object-fit-aware fitting (cover / contain / fill).
+   * 4. Draw the foreground PNG on top.
+   */
+  async function compositeWithImages(
+    el: HTMLElement,
+    imgEls: HTMLImageElement[],
+    filename: string,
+    exportH: number,
+  ): Promise<File> {
+    const elRect = el.getBoundingClientRect();
+    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string };
+    const infos: ImgInfo[] = [];
+
+    for (const img of imgEls) {
+      const src = img.getAttribute("src");
+      if (!src) continue;
+      let dataUrl: string;
+      try {
+        dataUrl = await loadDataUrl(src);
+      } catch {
+        continue; // skip this image; fg capture will still produce something
+      }
+      const r = img.getBoundingClientRect();
+      infos.push({
+        dataUrl,
+        x: r.x - elRect.x,
+        y: r.y - elRect.y,
+        w: r.width,
+        h: r.height,
+        objectFit: getComputedStyle(img).objectFit || "fill",
+      });
+    }
+
+    // Hide every <img> + clear the SlideWrapper inner background so toPng
+    // captures only the foreground.
+    // el > SlideWrapper outer > SlideWrapper inner (has the user-supplied
+    // `style={{ background: bg }}` from HookSlide / ContentSlide).
+    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
+    const savedDisplays = imgEls.map((img) => img.style.display);
     const savedWrapperBg = innerWrapper?.style.background ?? "";
 
-    if (imgEl) imgEl.style.display = "none";
+    imgEls.forEach((img) => { img.style.display = "none"; });
     if (innerWrapper) innerWrapper.style.background = "transparent";
 
     let fgDataUrl: string;
@@ -147,30 +193,47 @@ export default function CarouselShareClient({ carousel }: Props) {
         cacheBust: false, backgroundColor: "transparent",
       });
     } finally {
-      if (imgEl) imgEl.style.display = savedImgDisplay;
+      imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
-    const W = 1080 * 2, H = exportH * 2; // pixelRatio: 2
+    const PR = 2;
+    const W = 1080 * PR, H = exportH * PR;
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
 
-    // Layer 1: background photo (cover-fit, centred)
-    await new Promise<void>(resolve => {
-      const bg = new Image();
-      bg.onload = () => {
-        const scale = Math.max(W / bg.width, H / bg.height);
-        const w = bg.width * scale, h = bg.height * scale;
-        ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
-        resolve();
-      };
-      bg.onerror = () => resolve();
-      bg.src = bgDataUrl;
-    });
+    // Draw each image at its actual on-page position (DOM order = z-order).
+    for (const info of infos) {
+      await new Promise<void>((resolve) => {
+        const im = new Image();
+        im.onload = () => {
+          const dx = info.x * PR;
+          const dy = info.y * PR;
+          const dw = info.w * PR;
+          const dh = info.h * PR;
+          if (info.objectFit === "cover") {
+            const scale = Math.max(dw / im.width, dh / im.height);
+            const sw = dw / scale, sh = dh / scale;
+            const sx = (im.width - sw) / 2;
+            const sy = (im.height - sh) / 2;
+            ctx.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
+          } else if (info.objectFit === "contain") {
+            const scale = Math.min(dw / im.width, dh / im.height);
+            const dwc = im.width * scale, dhc = im.height * scale;
+            ctx.drawImage(im, dx + (dw - dwc) / 2, dy + (dh - dhc) / 2, dwc, dhc);
+          } else {
+            ctx.drawImage(im, dx, dy, dw, dh);
+          }
+          resolve();
+        };
+        im.onerror = () => resolve();
+        im.src = info.dataUrl;
+      });
+    }
 
-    // Layer 2: foreground (gradient overlay + text + decorations — captured via toPng)
-    await new Promise<void>(resolve => {
+    // Draw the foreground (text, arrows, color overlay div, decorations) over the images.
+    await new Promise<void>((resolve) => {
       const fg = new Image();
       fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
       fg.onerror = () => resolve();
@@ -178,7 +241,7 @@ export default function CarouselShareClient({ carousel }: Props) {
     });
 
     const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
     );
     return new File([blob], filename, { type: "image/png" });
   }
@@ -193,28 +256,26 @@ export default function CarouselShareClient({ carousel }: Props) {
       ? `lunia-reel-${index + 1}-${label}.png`
       : `lunia-slide-${index + 1}-${label}.png`;
 
-    // Wait for any <img> to finish loading
-    await Promise.all(Array.from(el.querySelectorAll("img")).map(img =>
+    // Wait for any <img> in the slide to finish loading first.
+    const imgEls = Array.from(el.querySelectorAll("img")) as HTMLImageElement[];
+    await Promise.all(imgEls.map((img) =>
       img.complete ? Promise.resolve()
-        : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
+        : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }),
     ));
 
-    // Hook slide: canvas compositing required (html-to-image drops <img> contents).
-    // On mobile Safari this path can reject with a raw Event when image decode fails;
-    // fall back to direct toPng so the user still gets a slide (without the photo bg).
-    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
-      const bgDataUrl = await getHookBgDataUrl();
-      if (bgDataUrl) {
-        try {
-          return await compositeHookSlide(el, bgDataUrl, filename, exportH);
-        } catch (compErr) {
-          console.warn("[share] hook composite failed, falling back to plain toPng", describeRejection(compErr));
-          // fall through
-        }
+    // Any slide with at least one <img> needs canvas compositing —
+    // html-to-image drops <img> contents on mobile Safari. Fall back to plain
+    // toPng on composite failure so the user still gets a slide.
+    if (imgEls.length > 0) {
+      try {
+        return await compositeWithImages(el, imgEls, filename, exportH);
+      } catch (compErr) {
+        console.warn("[share] composite failed, falling back to plain toPng", describeRejection(compErr));
+        // fall through
       }
     }
 
-    // All other slides + hook fallback: standard html-to-image
+    // No <img>s (CTA, content slides without bg): standard html-to-image.
     const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
@@ -435,9 +496,9 @@ export default function CarouselShareClient({ carousel }: Props) {
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode}
       overlays={hookOverlays} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[0] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[1] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[2] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[0])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[1])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[2])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     isEngagement && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />,
