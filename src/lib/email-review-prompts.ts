@@ -24,20 +24,50 @@ The output must follow this exact 6-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
 
 ## Section 1 — Headline
-3 to 5 sentences summarizing the biggest issues. Then a bulleted "if you
-only do three things" list. Lead with the strategic issue, not the cosmetic
-one. Each fix must be specific and actionable.
+3 to 5 sentences summarizing the biggest strategic issues. Then:
+
+**If you only do ONE thing right now, do this:**
+> [Single most urgent, concrete action — specific enough to act on Monday
+> without needing to think about what it means. Not "improve subject lines."
+> Write the actual fix: the exact copy change, structural move, or removal.]
+
+Why this matters: 1 sentence on what downstream metric or experience it unlocks.
+
+**If you only do three things:**
+- ...
+- ...
+- ...
+
+Lead with the strategic issue, not the cosmetic one. Each bullet must be
+specific and actionable — not a principle, a concrete task. The ONE thing
+and the three things may overlap; that's fine.
 
 ## Section 2 — Timing
-Per-email send timing verdict + a recommended cadence with explicit
-hour/day numbers. Use category-specific norms:
-- Sleep is daily, replenishment is monthly
+Per-email send timing verdict for each email. Then:
+
+**Recommended cadence (do this now):**
+| Email | Current delay | Recommended delay | Reason |
+| ----- | ------------- | ----------------- | ------ |
+| E1    | ...           | ...               | ...    |
+
+Use this exact table structure. If the current timing is already correct,
+write "keep as-is" in the Recommended delay cell. Give explicit hour/day
+numbers, never ranges. "3 hours" not "2-4 hours."
+
+Category-specific norms:
+- Sleep: daily-ish replenishment, replenishment is monthly
 - Two-email gap under 24 hours = pressure-y, flag it
 - Final email more than 5 days after trigger = too cold (except lapsed)
-- Recommend specific timing, not ranges. "3 hours, 24 hours, 72 hours."
+- Canonical timing: abandoned checkout (1-3h, 24h, 72h), welcome (0h,
+  day 2, day 5, day 9), post-purchase (day 0, 3, 7, 14, 21)
 
-If metrics are provided in input.metrics, ground every timing
-recommendation in the actual open / click / RPR data.
+If metrics are provided in input.metrics, add a second paragraph after
+the table grounding every recommendation in the actual open / click / RPR
+data. Example: "E2 has a 14% open rate at 4h — moving to 24h matches the
+post-open engagement window seen in E1."
+
+If timing is already on-canon across all emails, write:
+"Timing is already well-structured. No changes recommended."
 
 ## Section 3 — Subject lines, preview text, sender
 Per-email, use this exact structure (in this order):
@@ -82,13 +112,21 @@ Rules:
   work together, not separately" is right.
 
 ## Section 4 — Full body rewrites (NON-NEGOTIABLE)
-For each email, provide TWO versions in plain text:
-- Version A (recommended): on-canon, content-led, no discount or
-  subscription-tied discount only
-- Version B (fallback): keeps a one-time discount if the user insists,
-  but reframed to fix structural and brand-voice issues
+For each email, open with:
 
-Each version uses these block tags:
+**Recommended version (implement this): Version A**
+> Why: 1 sentence on the single most important structural or voice change
+> made versus the current email.
+
+Then provide both versions in plain text:
+- Version A (RECOMMENDED — implement this first): on-canon, content-led,
+  no discount or subscription-tied discount only
+- Version B (fallback — only if discount must stay): keeps a one-time
+  discount if Mathan insists, but reframed to fix structural and brand-
+  voice issues. Do not label Version B as "also good" — it is a
+  compromise, say so plainly.
+
+Each version uses these block tags (every tag required, no skipping):
 [ SUBJECT ]
 [ PREVIEW ]
 [ HEADLINE ]
@@ -100,27 +138,62 @@ Each version uses these block tags:
 Close with a "Notes on the rewrite" subsection covering: em dash check,
 exclamation count, bolding logic, compliance language, discount logic.
 
+The "Recommended version" callout is REQUIRED for every email. Do not
+skip it. Do not reverse-label Version B as recommended. Version A is
+always the default action, Version B is always the fallback.
+
 ## Section 5 — Design, images, copy (per-email audit)
-Always check:
-- FDA badge issue (supplements are not FDA approved → flag in red)
+For each email, structure the audit as a list of findings. Each finding
+MUST use this exact two-line format:
+
+  ⚠ [Issue label]: [what is wrong — 1 sentence, specific]
+  Fix: [exact action to take — specific enough to hand to a designer with
+  no context. Not "improve the CTA color" — "change CTA button background
+  from #BFFBF8 to #FFD800 and set text to #102635 navy."]
+
+If an email has no findings, write:
+  ✓ Email N — no issues found.
+
+Always check (for every email):
+- FDA badge issue (supplements are not FDA approved → flag in red, mandatory)
 - Footer typos (e.g. "receiveemails" missing space)
 - Duplicate logos (header + in-image)
 - Em dashes anywhere (zero tolerance)
 - Exclamation count (max 1 per piece)
-- Bolding density (bold ingredient names + risk-reversal phrases)
-- One CTA per email, in navy
+- Bolding density (bold ingredient names + risk-reversal phrases only)
+- One CTA per email, in Signal Yellow #FFD800 with navy text
 - "X is not Y, it is Z" sentence structure (banned)
+- Image quality / brand-fit (generic stock → flag and note what to replace with)
+
+After all per-email findings, close with:
+
+**Top fix across the whole flow (do this first):**
+> [Single most impactful design/copy fix — specific. The one that fixes
+> the most visible problem or eliminates a compliance risk.]
 
 ## Section 6 — Strategic question + Action checklist
 Strategic question: 2-3 paragraph reflection on what the flow is trying to
 do at a higher level, and how to rebuild it. Be opinionated.
 
-Action checklist with 3 buckets:
-- This week (compliance and craft fixes)
-- Next two weeks (testable rewrites)
-- Bigger strategic decisions
+Then immediately:
+
+**Start here (do this before anything else):**
+> [The single most important item from the entire checklist below. Not a
+> bucket, not a theme — one specific, actionable task that either removes
+> a compliance risk or unlocks the biggest performance gain. If there is a
+> compliance issue, it is always the start-here item.]
+
+Why this first: 1 sentence on urgency or leverage.
+
+Action checklist with 3 buckets (numbered, so Mathan can reference them):
+- **This week** (compliance and craft fixes — items 1-N)
+- **Next two weeks** (testable rewrites — items N+1-M)
+- **Bigger strategic decisions** (items M+1-end)
 
 Close with "What I need from you to take this further".
+
+The "Start here" callout is REQUIRED. It should appear between the
+strategic question paragraphs and the bucketed checklist. Do not omit it.
 
 ## Brand voice rules (non-negotiable)
 - No em dashes anywhere
