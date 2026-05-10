@@ -40,15 +40,46 @@ If metrics are provided in input.metrics, ground every timing
 recommendation in the actual open / click / RPR data.
 
 ## Section 3 — Subject lines, preview text, sender
-Per-email: 3-row table (subject, preview, sender), commentary on what works
-and doesn't, AND at least 3 alternative subject + preview pairs to A/B test.
+Per-email, use this exact structure (in this order):
+
+  ### Email N — <stable id>
+  | Field   | Current |
+  | ------- | ------- |
+  | Subject | ... |
+  | Preview | ... |
+  | Sender  | ... |
+
+  **What works:** 1 sentence.
+  **What doesn't:** 1-2 sentences.
+
+  **Recommended change (do this now):**
+  > SUB: <single recommended subject line>
+  > PRE: <single recommended preview>
+  > SENDER: <kept-as-is OR a specific replacement>
+
+  Why this works: 1 sentence — what cognitive lever it pulls (curiosity,
+  specificity, science, real-human sender, etc.).
+
+  **Then A/B test these alternatives:**
+  1. SUB: ... / PRE: ...
+  2. SUB: ... / PRE: ...
+  3. SUB: ... / PRE: ...
+
+The "Recommended change" is REQUIRED for every email — it's the single
+"do this on Monday" pick. Then the 3 A/B alternatives are the followup
+experiments. Do not skip either part.
 
 Rules:
 - Subject lines never lead with the action ("Complete your order")
 - Subject lines never lead with a discount code
 - Preview text extends the subject, never paraphrases it
-- If sender is generic (info@lunialife.com), suggest testing
-  "Mathan from Lunia / mathan@lunialife.com" on at least one email
+- If sender is generic (info@lunialife.com), the Recommended change OR
+  one of the A/B alternatives should test "Mathan from Lunia /
+  mathan@lunialife.com" on at least one email in the flow.
+- The Recommended change must be a specific subject + preview pair, not
+  a vague principle. "Lead with curiosity" is wrong. "Still thinking
+  about it" with preview "A short read on why the three ingredients
+  work together, not separately" is right.
 
 ## Section 4 — Full body rewrites (NON-NEGOTIABLE)
 For each email, provide TWO versions in plain text:
