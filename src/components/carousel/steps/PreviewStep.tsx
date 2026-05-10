@@ -238,139 +238,59 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
-  // Pre-fetch slide backgrounds as data URLs for canvas compositing.
-  // html-to-image cannot render <img> elements via SVG foreignObject on any
-  // browser, so any slide with a bg image needs the bg pulled out, captured
-  // as a data URL, and composited onto the canvas alongside the foreground.
-  // Keyed by slide index: 0 = hook, 1..3 = content slides, 4 = CTA (no bg).
-  const slideBgDataUrlsRef = useRef<Map<number, string>>(new Map());
+  // Cache of image-URL → data-URL. Keyed by the resolved URL we'd actually
+  // assign to <img.src> (i.e. the proxied path or local path).
+  // html-to-image can't reliably embed remote <img>s via SVG foreignObject on
+  // mobile Safari — even with crossOrigin set + a CORS-friendly proxy, the
+  // browser silently drops the image from the rasterised output. Inlining the
+  // src as a data URL bypasses the entire CORS / async-fetch path inside the
+  // SVG serializer, so the rendered PNG always contains the image.
+  const imageDataUrlCache = useRef<Map<string, string>>(new Map());
 
-  // Helper: identify the raw bg URL for a given slide index.
-  function rawBgUrlFor(index: number): string | null {
-    if (index === 0) return imgs[0] ?? hookImageUrl ?? null;
-    if (index >= 1 && index <= 3) return contentBgImages[index - 1] ?? null;
-    return null;
+  /** Resolve any URL we'd hand to <img.src> into a data URL. Cached per source.
+   *  Auto-proxies cross-origin URLs through /api/carousel(-v2)/image-proxy so the
+   *  browser fetch isn't blocked by CORS. */
+  async function loadDataUrl(src: string): Promise<string> {
+    if (src.startsWith("data:")) return src;
+    const cached = imageDataUrlCache.current.get(src);
+    if (cached) return cached;
+    // Same-origin (`/`-prefixed) URLs go straight to fetch. Anything else gets
+    // wrapped with the proxy so the browser doesn't trip over CORS.
+    const target = src.startsWith("/")
+      ? src
+      : `${apiBase}/image-proxy?url=${encodeURIComponent(src)}`;
+    const r = await fetch(target);
+    if (!r.ok) throw new Error(`Image fetch failed: ${r.status}`);
+    const blob = await r.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    imageDataUrlCache.current.set(src, dataUrl);
+    return dataUrl;
+  }
+
+  /** Fire-and-forget pre-warm so the cache is hot by the time the user clicks Download. */
+  function prefetchUrl(src: string | null | undefined) {
+    if (!src) return;
+    loadDataUrl(src).catch(() => {});
   }
 
   // Pre-fetch hook bg whenever the source URL changes.
   useEffect(() => {
-    const rawUrl = imgs[0] ?? hookImageUrl ?? null;
-    if (!rawUrl) { slideBgDataUrlsRef.current.delete(0); return; }
-    const proxied = rawUrl.startsWith("/") ? rawUrl : `${apiBase}/image-proxy?url=${encodeURIComponent(rawUrl)}`;
-    fetch(proxied)
-      .then(r => r.blob())
-      .then(blob => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }))
-      .then(dataUrl => { slideBgDataUrlsRef.current.set(0, dataUrl); })
-      .catch(() => {});
+    const proxied = proxyUrl(imgs[0]) ?? hookImageUrl ?? null;
+    if (proxied) prefetchUrl(proxied);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgs[0], hookImageUrl]);
 
-  // Pre-fetch content-slide bgs whenever any of them change. Stringify so the
-  // dep array compares value-wise, not reference-wise.
+  // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
   useEffect(() => {
-    contentBgImages.forEach((url, idx) => {
-      const slideIdx = idx + 1;
-      if (!url) { slideBgDataUrlsRef.current.delete(slideIdx); return; }
-      const proxied = url.startsWith("/") ? url : `${apiBase}/image-proxy?url=${encodeURIComponent(url)}`;
-      fetch(proxied)
-        .then(r => r.blob())
-        .then(blob => new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        }))
-        .then(dataUrl => { slideBgDataUrlsRef.current.set(slideIdx, dataUrl); })
-        .catch(() => {});
-    });
+    contentBgImages.forEach((u) => prefetchUrl(proxyUrl(u)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentBgKey]);
-
-  async function getSlideBgDataUrl(index: number): Promise<string | null> {
-    const cached = slideBgDataUrlsRef.current.get(index);
-    if (cached) return cached;
-    const raw = rawBgUrlFor(index);
-    if (!raw) return null;
-    try {
-      const proxied = raw.startsWith("/") ? raw : `${apiBase}/image-proxy?url=${encodeURIComponent(raw)}`;
-      const r = await fetch(proxied);
-      const blob = await r.blob();
-      const url = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      slideBgDataUrlsRef.current.set(index, url);
-      return url;
-    } catch {
-      return null;
-    }
-  }
-
-  // Canvas compositing for any slide with an <img> background:
-  // 1. Hide the first <img> (the bg) so html-to-image captures only the foreground.
-  // 2. Make the SlideWrapper inner transparent so the bg shows through later.
-  // 3. Capture fg as PNG with transparent backdrop via toPng.
-  // 4. Draw bg image + fg onto a 2x-resolution canvas → final PNG.
-  // Works for both HookSlide (full-bleed bg + text overlay) and ContentSlide
-  // (full-bleed bg + colored opacity overlay + structured graphic + text).
-  async function compositeSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH = 1350): Promise<File> {
-    const imgEl = el.querySelector("img") as HTMLImageElement | null;
-    // el > SlideWrapper outer > SlideWrapper inner (has background style)
-    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
-    const savedImgDisplay = imgEl?.style.display ?? "";
-    const savedWrapperBg = innerWrapper?.style.background ?? "";
-
-    if (imgEl) imgEl.style.display = "none";
-    if (innerWrapper) innerWrapper.style.background = "transparent";
-
-    let fgDataUrl: string;
-    try {
-      fgDataUrl = await toPng(el, {
-        width: 1080, height: exportH, pixelRatio: 2,
-        cacheBust: false, backgroundColor: "transparent",
-      });
-    } finally {
-      if (imgEl) imgEl.style.display = savedImgDisplay;
-      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
-    }
-
-    const W = 1080 * 2, H = exportH * 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-
-    await new Promise<void>(resolve => {
-      const bg = new Image();
-      bg.onload = () => {
-        const scale = Math.max(W / bg.width, H / bg.height);
-        const w = bg.width * scale, h = bg.height * scale;
-        ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
-        resolve();
-      };
-      bg.onerror = () => resolve();
-      bg.src = bgDataUrl;
-    });
-
-    await new Promise<void>(resolve => {
-      const fg = new Image();
-      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
-      fg.onerror = () => resolve();
-      fg.src = fgDataUrl;
-    });
-
-    const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png")
-    );
-    return new File([blob], filename, { type: "image/png" });
-  }
 
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
@@ -382,26 +302,45 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       : `lunia-slide-${index + 1}-${label}.png`;
     const exportH = reelsMode ? 1920 : 1350;
 
-    const imgEls = Array.from(el.querySelectorAll("img"));
-    await Promise.all(imgEls.map(img =>
-      img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
-    ));
+    // Find every <img> in the slide (bg, graphic, anything else) and inline
+    // each src as a data URL. Skip <img>s whose src is missing or already a
+    // data URL.
+    const imgEls = Array.from(el.querySelectorAll("img")) as HTMLImageElement[];
+    const restorers: Array<() => void> = [];
 
-    // Any slide with an <img> background needs canvas compositing — html-to-image
-    // can't render <img> contents reliably (especially on mobile Safari, where
-    // remote images get CORS-tainted and silently drop from the export).
-    // This applies to: hook (imgs[0] / hookImageUrl) AND each content slide
-    // that has a bg image (contentBgImages[index - 1] for index in 1..3).
-    if (rawBgUrlFor(index)) {
-      const bgDataUrl = await getSlideBgDataUrl(index);
-      if (bgDataUrl) {
-        return compositeSlide(el, bgDataUrl, filename, exportH);
+    for (const img of imgEls) {
+      const originalSrc = img.getAttribute("src");
+      if (!originalSrc || originalSrc.startsWith("data:")) continue;
+      try {
+        const dataUrl = await loadDataUrl(originalSrc);
+        img.setAttribute("src", dataUrl);
+        // Wait for the new src to fully decode before we rasterise. `decode()`
+        // is the cross-browser way to ensure the image is render-ready and the
+        // intrinsic size is updated.
+        if (typeof img.decode === "function") {
+          await img.decode().catch(() => undefined);
+        } else {
+          await new Promise<void>((resolve) => {
+            const done = () => resolve();
+            if (img.complete) done();
+            else { img.onload = done; img.onerror = done; }
+          });
+        }
+        restorers.push(() => img.setAttribute("src", originalSrc));
+      } catch {
+        // If the proxy fetch fails, leave the original src alone and let
+        // html-to-image try its luck. Worst case we get the previous broken
+        // behaviour for that one image, not a thrown export.
       }
     }
 
-    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
-    const blob = await (await fetch(dataUrl)).blob();
-    return new File([blob], filename, { type: "image/png" });
+    try {
+      const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
+      const blob = await (await fetch(dataUrl)).blob();
+      return new File([blob], filename, { type: "image/png" });
+    } finally {
+      for (const restore of restorers) restore();
+    }
   }
 
   async function saveFile(file: File) {
