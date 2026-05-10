@@ -130,9 +130,37 @@ When the review recommends a new image, write a prompt in this exact
 engines — recraft, ideogram, or flux2 — based on the image's intent. You
 must select the engine in the imagePrompts output.
 
+CRITICAL: image models have NO concept of "Lunia". The word "Lunia" by
+itself produces a generic supplement bottle. Every product-shot prompt
+must spell out the bottle visually, every time, using the canonical spec
+below. Prompts that just say "a Lunia bottle" are broken on arrival.
+
+### Lunia bottle — canonical visual spec (always include in product prompts)
+
+  amber glass apothecary bottle, soft-edged cylindrical shape, matte
+  navy and ivory paper label wrapped around the lower two-thirds, three
+  small stars debossed on the label in a vertical stack, simple sans-
+  serif lowercase wordmark, no other text or graphics on the label,
+  matte navy screw cap. The bottle stands roughly 14 cm tall in frame.
+
+If the email's existing imagery already shows the product clearly,
+DEFAULT TO NON-PRODUCT IMAGERY — mood, ingredient flat-lay, lifestyle,
+or abstract textural — and only recommend a fresh product shot when
+the current product image is generic, low-quality, or off-brand. Image
+models render abstract / lifestyle / ingredient imagery far more
+reliably than brand-specific products.
+
+Ingredient flat-lay reference: "scattered dried botanicals (chamomile,
+ashwagandha root slices, valerian, magnesium salt crystals) on a soft
+ivory linen surface, no product bottle present, top-down composition,
+loose intentional arrangement, plenty of negative space."
+
+### 8-step prompt structure
+
 1. Opening descriptor (always start with this exact phrase):
    "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject description (specifics, not abstractions)
+2. Concrete subject description (specifics, not abstractions). If the
+   subject is the Lunia bottle, paste the canonical visual spec above.
 3. Lighting language (direction + quality)
 4. Camera + lens spec (e.g. "Hasselblad medium format, 80mm lens, f/2.8")
 5. Style references (1-2 max from: Kinfolk, Aesop, NYT T Magazine, Cereal,
@@ -142,13 +170,16 @@ must select the engine in the imagePrompts output.
 7. Composition note (negative space placement for headline / CTA)
 8. Negative prompt block:
    "Avoid: stock photo aesthetic, plastic skin tones, harsh contrast, AI
-   rendering tells, purple or magenta tones, sci-fi tropes, text overlays,
-   watermarks, neon, oversaturation."
+   rendering tells (extra fingers, melted hands, gibberish text), purple
+   or magenta tones, sci-fi tropes, text overlays, watermarks, neon,
+   oversaturation, branded competitor bottles, clinical pharmacy stock,
+   any text or letterforms on the bottle label."
 
 Engine selection guidance:
-- Product hero / bottle shots / ingredient flat-lay → recraft
+- Lunia bottle hero or ingredient flat-lay → recraft (most consistent
+  for product photography)
 - Lifestyle editorial / human subjects → recraft (preferred) or ideogram
-- Abstract / textural / mood → ideogram or flux2
+- Abstract / textural / mood (no product, no people) → ideogram or flux2
 
 ## Patterns to kill on sight
 - "Complete your order" subject lines

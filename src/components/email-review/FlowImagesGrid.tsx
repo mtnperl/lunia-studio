@@ -37,38 +37,68 @@ export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
   }, [review, onReviewUpdate]);
 
   async function generateAll() {
-    // If already generating, abort and restart fresh — per the AbortController
-    // UX decision in the plan.
+    // Fan out in the BROWSER — one /generate-image POST per prompt, in
+    // parallel. Server-side fan-out hits Vercel's deployment-protection
+    // auth wall (child requests don't carry the user's session cookie)
+    // which leaves prompts stuck on "generating" forever.
+    //
+    // Re-trigger cancels in-flight fetches via AbortController so a second
+    // click during a slow render restarts cleanly.
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setBatching(true);
     setBatchError(null);
+
+    const targets = review.imagePrompts.filter((p) => p.status !== "ready");
+    if (targets.length === 0) { setBatching(false); return; }
+
+    // Optimistically mark every target as generating so the cards show
+    // loaders immediately while requests are in flight.
+    onReviewUpdate({
+      ...review,
+      imagePrompts: review.imagePrompts.map((p) =>
+        p.status === "ready" ? p : { ...p, status: "generating", errorMessage: undefined },
+      ),
+    });
+
+    const results = await Promise.allSettled(
+      targets.map((p) =>
+        fetch("/api/email-review/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewId: review.id, promptId: p.id }),
+          signal: ctrl.signal,
+        }).then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          return { id: p.id, ok: r.ok && !!data.prompt, prompt: data.prompt as FlowReviewImagePrompt | undefined, error: data.error as string | undefined };
+        }),
+      ),
+    );
+
+    if (ctrl.signal.aborted) return; // user re-clicked; the new run owns state
+
+    // After Promise.allSettled returns, we re-fetch the review once so we
+    // get the canonical state (including any updates the polling hook
+    // already merged). This also keeps the UI accurate when individual
+    // fetches failed at the network layer.
     try {
-      const res = await fetch("/api/email-review/generate-images-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewId: review.id }),
-        signal: ctrl.signal,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setBatchError(data.error ?? `${res.status}`);
-        return;
+      const res = await fetch(`/api/email-review/${review.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.review) onReviewUpdate(data.review as SavedFlowReview);
       }
-      // Optimistically mark every non-ready prompt as generating; the polling
-      // hook above will pick up the real status as fal lands each render.
-      const next: SavedFlowReview = {
-        ...review,
-        imagePrompts: review.imagePrompts.map((p) => p.status === "ready" ? p : { ...p, status: "generating", errorMessage: undefined }),
-      };
-      onReviewUpdate(next);
-    } catch (err) {
-      if ((err as { name?: string }).name === "AbortError") return; // intentional
-      setBatchError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBatching(false);
+    } catch { /* ignore */ }
+
+    const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
+    if (failed.length > 0) {
+      const first = failed[0];
+      const detail = first.status === "rejected"
+        ? (first.reason instanceof Error ? first.reason.message : String(first.reason))
+        : (first.value.error ?? "render failed");
+      setBatchError(`${failed.length} of ${targets.length} renders failed. First: ${detail}`);
     }
+    setBatching(false);
   }
 
   function updatePrompt(next: FlowReviewImagePrompt) {
