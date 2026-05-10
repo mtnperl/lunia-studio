@@ -668,6 +668,106 @@ export type SavedEmail = {
   savedAt: string;
 };
 
+// ─── Email Flow Review (v1 — replaces single-email rewriter UX with framework-driven flow review) ────
+
+export type EmailFlowType =
+  | "abandoned_checkout"
+  | "browse_abandonment"
+  | "welcome"
+  | "post_purchase"
+  | "replenishment"
+  | "lapsed"
+  | "campaign";
+
+export type EmailFlowAsset = {
+  id: string;
+  position: number;             // E1 = 1, E2 = 2, ...
+  subject: string;
+  previewText: string;
+  senderName: string;
+  senderEmail: string;
+  sendDelayHours: number;       // hours after trigger
+  screenshotUrls?: string[];
+  html?: string;
+  bodyText?: string;
+  metrics?: { openRate: number; clickRate: number; revenuePerRecipient: number };
+};
+
+export type EmailFlow = {
+  id: string;
+  source: "klaviyo" | "upload";
+  klaviyoFlowId?: string;
+  flowType: EmailFlowType;
+  flowName: string;
+  trigger: string;              // "Started Checkout event"
+  emails: EmailFlowAsset[];
+  fetchedAt: string;
+};
+
+export type FlowReviewSectionKey =
+  | "headline"
+  | "timing"
+  | "subjects"
+  | "rewrites"
+  | "design"
+  | "strategy";
+
+export type FlowReviewFlag = {
+  severity: "compliance" | "warning";
+  text: string;
+  emailId?: string;             // optional anchor to the offending email
+};
+
+export type FlowReviewSection = {
+  key: FlowReviewSectionKey;
+  title: string;
+  bodyMarkdown: string;         // structured markdown rendered with the Lunia palette
+  flags?: FlowReviewFlag[];
+};
+
+export type FlowReviewImageEngine = "recraft" | "ideogram" | "flux2";
+
+export type FlowReviewImagePrompt = {
+  id: string;
+  emailId: string;              // which EmailFlowAsset it replaces
+  placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
+  aspect: "16:9" | "4:5" | "1:1";
+  engine: FlowReviewImageEngine;
+  prompt: string;               // 8-step structured prompt
+  imageUrl?: string;
+  status: "pending" | "generating" | "ready" | "error";
+  errorMessage?: string;
+  // Set by /api/email-review/regen-suggestions before re-render. User picks one
+  // → it overwrites prompt + engine and triggers a fresh render.
+  regenSuggestions?: { engine: FlowReviewImageEngine; prompt: string; rationale: string }[];
+  // Previously rendered images stay accessible so the user can compare. Newest first.
+  history?: { prompt: string; engine: FlowReviewImageEngine; imageUrl: string; renderedAt: string }[];
+};
+
+export type KlaviyoWritebackResult = {
+  emailId: string;
+  klaviyoMessageId: string;
+  templateDraftId?: string;
+  status: "queued" | "pushed" | "error";
+  pushedAt?: string;
+  errorMessage?: string;
+  target: "body" | "subject" | "preview";
+  contentVersion: string;       // "A" | "B" | "alt-1" etc.
+};
+
+export type SavedFlowReview = {
+  id: string;
+  flow: EmailFlow;              // snapshot of inputs
+  sections: FlowReviewSection[];
+  imagePrompts: FlowReviewImagePrompt[];
+  ifYouOnlyDoThree: string[];   // 3 bullets pulled out of the headline section
+  frameworkVersion: string;     // e.g. "v1.0"
+  writebacks?: KlaviyoWritebackResult[];
+  createdAt: string;
+  // Optional cached docx export URL (on Vercel Blob)
+  docxUrl?: string;
+};
+
 // ─── UGC Tracker ──────────────────────────────────────────────────────────────
 
 export type UGCPipelineStage =

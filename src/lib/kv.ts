@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBrief } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -20,7 +20,10 @@ function getRedis(): Redis {
   return _redis;
 }
 
-const redis = {
+// Tiny shim around ioredis that JSON-encodes values + supports `ex:` TTL.
+// Exported so other server-side libs (e.g. lib/klaviyo) can reuse the same
+// connection without re-implementing the wrapper.
+export const redis = {
   get: <T = unknown>(key: string): Promise<T | null> =>
     getRedis()
       .get(key)
@@ -80,6 +83,9 @@ const RATE_LIMITS: Record<string, number> = {
   images: 100,    // fal.ai image generation
   "ugc-caption": 100, // UGC caption drafts
   "ugc-import": 10,   // CSV imports
+  klaviyo: 60,    // Klaviyo proxy reads (60/h per IP — Klaviyo allows ~75/min globally)
+  "email-review": 30, // analyze + regen-suggestions (Sonnet, expensive)
+  "klaviyo-write": 12, // template writebacks (deliberately tight — every write is a real change)
   login: 10,      // login attempts per IP
 };
 
@@ -346,6 +352,40 @@ export async function getEmailById(id: string): Promise<SavedEmail | null> {
 export async function deleteEmailKv(id: string): Promise<void> {
   const all = await getEmails();
   await redis.set(EMAILS_KEY, all.filter((e) => e.id !== id), { ex: TTL_SECONDS });
+}
+
+// ─── Email Flow Reviews ──────────────────────────────────────────────────────
+// Single-key list pattern (same shape as getEmails / getCarousels). Last 100
+// reviews kept; older entries fall off.
+const FLOW_REVIEWS_KEY = "lunia:flow_reviews";
+
+export async function getFlowReviews(): Promise<SavedFlowReview[]> {
+  try {
+    return (await redis.get<SavedFlowReview[]>(FLOW_REVIEWS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveFlowReview(review: SavedFlowReview): Promise<void> {
+  const all = await getFlowReviews();
+  const idx = all.findIndex((r) => r.id === review.id);
+  if (idx >= 0) {
+    all[idx] = review;
+  } else {
+    all.unshift(review);
+  }
+  await redis.set(FLOW_REVIEWS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+}
+
+export async function getFlowReviewById(id: string): Promise<SavedFlowReview | null> {
+  const all = await getFlowReviews();
+  return all.find((r) => r.id === id) ?? null;
+}
+
+export async function deleteFlowReviewKv(id: string): Promise<void> {
+  const all = await getFlowReviews();
+  await redis.set(FLOW_REVIEWS_KEY, all.filter((r) => r.id !== id), { ex: TTL_SECONDS });
 }
 
 // ─── UGC Tracker ──────────────────────────────────────────────────────────────
