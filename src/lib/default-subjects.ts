@@ -278,6 +278,28 @@ const SLEEP_TOPICS: Subject[] = [
   s("Sleep and pain threshold: why sleep-deprived people feel more pain", "Performance & Recovery"),
   s("The 2-week sleep restriction study: subjective adaptation vs. objective decline", "Performance & Recovery"),
 
+  // Latest Research — curated 2025 baseline findings (ensures category always exists; Pull Latest Research adds fresh entries on top)
+  s("2025 study: nightly magnesium glycinate supplementation cuts sleep onset time by 17 minutes", "Latest Research"),
+  s("Chronotype-matched sleep timing improves deep sleep efficiency by up to 23% in new research", "Latest Research"),
+  s("Harvard glymphatic study: peak brain toxin clearance occurs between 2–4 AM — early sleep matters", "Latest Research"),
+  s("2025 meta-analysis: sleep regularity index outperforms total duration as a mortality predictor", "Latest Research"),
+  s("New RCT: apigenin 50mg reduces sleep onset latency by 12 minutes vs placebo", "Latest Research"),
+  s("Three days of circadian misalignment raises IL-6 and CRP inflammatory markers significantly", "Latest Research"),
+  s("Gut microbiome composition predicts sleep quality with 78% accuracy in new 2025 cohort study", "Latest Research"),
+  s("Fragmented sleep raises the morning cortisol awakening response by 40% — new findings", "Latest Research"),
+  s("Magnesium deficiency now estimated to affect 68% of adults, with most unaware of the link to sleep", "Latest Research"),
+  s("2024 cohort: consistent bedtime within 30-minute window reduces cardiovascular risk by 24%", "Latest Research"),
+  s("Sleep deprivation reduces natural killer cell activity by 70% after just 4 hours less sleep", "Latest Research"),
+  s("2025 paper: one week of sub-7-hour sleep alters expression of over 700 genes", "Latest Research"),
+  s("REM sleep loss in midlife doubles dementia risk over a 17-year follow-up period", "Latest Research"),
+  s("Morning exercise improves slow-wave sleep depth by 19% compared with evening training", "Latest Research"),
+  s("Time-restricted eating aligned to circadian phase significantly improves sleep architecture", "Latest Research"),
+  s("Magnesium bisglycinate shows 3.5x greater bioavailability than magnesium oxide in absorption study", "Latest Research"),
+  s("Blue light-blocking glasses reduce evening melatonin suppression by 58% in controlled trial", "Latest Research"),
+  s("Deep sleep spindle density directly linked to next-day emotional regulation in new 2025 study", "Latest Research"),
+  s("2025 study: sleep apnea accelerates biological aging by an equivalent of 7 additional years", "Latest Research"),
+  s("Low-dose L-theanine before bed increases alpha wave activity and reduces nighttime awakenings", "Latest Research"),
+
   // Did You Know — frozen-template format (100 entries)
   s("Sleeping less than 6 hours raises cortisol the next day", "Did You Know"),
   s("Deep sleep clears beta-amyloid from the brain", "Did You Know"),

@@ -77,16 +77,11 @@ export async function POST() {
   let raw: string;
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-5",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 6,
-        },
-      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tools: [{ type: "web_search_20250305" as any, name: "web_search", max_uses: 6 }],
       messages: [{ role: "user", content: USER_PROMPT }],
     });
     // Find the final text block (web_search produces tool_use + tool_result blocks before the final text)

@@ -64,22 +64,27 @@ export default function SubjectsView() {
       const res = await fetch("/api/subjects/latest-research", { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPullStatus(data.error ?? `Failed (${res.status})`);
+        const msg = (data as { error?: string }).error ?? `Failed (${res.status})`;
+        setPullStatus(`⚠ ${msg}`);
+        // Keep errors visible for 15 seconds so user can read them
+        setTimeout(() => setPullStatus(null), 15_000);
         return;
       }
       const { added = 0, skipped = 0 } = data as { added?: number; skipped?: number };
       if (added > 0) {
-        setPullStatus(`+${added} added${skipped ? `, ${skipped} already in library` : ""}`);
+        setPullStatus(`✓ +${added} added${skipped ? `, ${skipped} already in library` : ""}`);
         setCategory("Latest Research");
         await loadSubjects();
+        setTimeout(() => setPullStatus(null), 8_000);
       } else {
-        setPullStatus(`No new findings (${skipped} already in library)`);
+        setPullStatus(`All ${skipped} findings already in library — try again later`);
+        setTimeout(() => setPullStatus(null), 8_000);
       }
     } catch (err) {
-      setPullStatus(err instanceof Error ? err.message : "Network error");
+      setPullStatus(`⚠ ${err instanceof Error ? err.message : "Network error — check connection"}`);
+      setTimeout(() => setPullStatus(null), 15_000);
     } finally {
       setPullingResearch(false);
-      setTimeout(() => setPullStatus(null), 6000);
     }
   }
 
@@ -140,7 +145,12 @@ export default function SubjectsView() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {pullStatus && (
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>{pullStatus}</span>
+            <span style={{
+              fontSize: 12,
+              color: pullStatus.startsWith("⚠") ? "#dc2626" : pullStatus.startsWith("✓") ? "#15803d" : "var(--muted)",
+              fontWeight: pullStatus.startsWith("⚠") || pullStatus.startsWith("✓") ? 600 : 400,
+              maxWidth: 320,
+            }}>{pullStatus}</span>
           )}
           <button
             onClick={handlePullLatestResearch}
