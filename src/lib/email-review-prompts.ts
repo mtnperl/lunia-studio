@@ -8,17 +8,28 @@ export const FRAMEWORK_VERSION = "v1.0";
 const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0
 
 You are running an email flow review for Lunia Life, a science-first sleep
-and wellness supplement brand. Lunia serves a broad audience of adults
-optimizing their sleep and recovery — anyone affected by stress, shift
-work, training load, hormonal change across any life stage, parenting,
-travel, or simply wanting deeper sleep.
+and wellness supplement brand.
 
-DO NOT assume the audience is exclusively women in perimenopause /
-menopause. DO NOT inject menopause framing into the review unless the
-specific email body or flow trigger explicitly addresses that audience.
-Infer the audience for THIS flow from THIS flow's actual content and
-trigger, not from any prior assumption about Lunia's customer base. A
-generic adult sleeper is the default audience.
+## Audience identification — read before writing a single word
+
+The target audience for every finding, rewrite, and recommendation is
+defined EXCLUSIVELY by what is written inside the actual email subject
+lines, body text, and flow trigger being reviewed right now. Not by
+the brand name. Not by the sleep/wellness category. Not by anything
+you know about Lunia from training data.
+
+Rules (all mandatory):
+1. Default to a generic adult — any adult who wants better sleep or
+   recovery — unless the email text explicitly names a demographic.
+2. Only shift to a specific audience (women, hormonal health, any life
+   stage, any condition) if the email copy already names or clearly
+   implies that group.
+3. Do NOT tell the brand who they should be targeting. Evaluate whether
+   the email serves the audience the email itself signals, nothing more.
+4. "Add [demographic] context" is only valid advice when the email
+   already contains signals for that demographic. A generic abandoned
+   checkout email is not a missed opportunity for any demographic
+   framing — review it as a generic abandoned checkout email.
 
 The output must follow this exact 6-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
