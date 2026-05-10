@@ -238,12 +238,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
-  // Pre-fetch hook background as data URL for canvas compositing.
-  // html-to-image cannot render <img> elements via SVG foreignObject on any browser.
-  const hookBgDataUrlRef = useRef<string | null>(null);
+  // Pre-fetch slide backgrounds as data URLs for canvas compositing.
+  // html-to-image cannot render <img> elements via SVG foreignObject on any
+  // browser, so any slide with a bg image needs the bg pulled out, captured
+  // as a data URL, and composited onto the canvas alongside the foreground.
+  // Keyed by slide index: 0 = hook, 1..3 = content slides, 4 = CTA (no bg).
+  const slideBgDataUrlsRef = useRef<Map<number, string>>(new Map());
+
+  // Helper: identify the raw bg URL for a given slide index.
+  function rawBgUrlFor(index: number): string | null {
+    if (index === 0) return imgs[0] ?? hookImageUrl ?? null;
+    if (index >= 1 && index <= 3) return contentBgImages[index - 1] ?? null;
+    return null;
+  }
+
+  // Pre-fetch hook bg whenever the source URL changes.
   useEffect(() => {
     const rawUrl = imgs[0] ?? hookImageUrl ?? null;
-    if (!rawUrl) return;
+    if (!rawUrl) { slideBgDataUrlsRef.current.delete(0); return; }
     const proxied = rawUrl.startsWith("/") ? rawUrl : `${apiBase}/image-proxy?url=${encodeURIComponent(rawUrl)}`;
     fetch(proxied)
       .then(r => r.blob())
@@ -253,14 +265,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       }))
-      .then(dataUrl => { hookBgDataUrlRef.current = dataUrl; })
+      .then(dataUrl => { slideBgDataUrlsRef.current.set(0, dataUrl); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgs[0], hookImageUrl]);
 
-  async function getHookBgDataUrl(): Promise<string | null> {
-    if (hookBgDataUrlRef.current) return hookBgDataUrlRef.current;
-    const raw = imgs[0] ?? hookImageUrl ?? null;
+  // Pre-fetch content-slide bgs whenever any of them change. Stringify so the
+  // dep array compares value-wise, not reference-wise.
+  const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
+  useEffect(() => {
+    contentBgImages.forEach((url, idx) => {
+      const slideIdx = idx + 1;
+      if (!url) { slideBgDataUrlsRef.current.delete(slideIdx); return; }
+      const proxied = url.startsWith("/") ? url : `${apiBase}/image-proxy?url=${encodeURIComponent(url)}`;
+      fetch(proxied)
+        .then(r => r.blob())
+        .then(blob => new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }))
+        .then(dataUrl => { slideBgDataUrlsRef.current.set(slideIdx, dataUrl); })
+        .catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentBgKey]);
+
+  async function getSlideBgDataUrl(index: number): Promise<string | null> {
+    const cached = slideBgDataUrlsRef.current.get(index);
+    if (cached) return cached;
+    const raw = rawBgUrlFor(index);
     if (!raw) return null;
     try {
       const proxied = raw.startsWith("/") ? raw : `${apiBase}/image-proxy?url=${encodeURIComponent(raw)}`;
@@ -272,17 +307,21 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
-      hookBgDataUrlRef.current = url;
+      slideBgDataUrlsRef.current.set(index, url);
       return url;
     } catch {
       return null;
     }
   }
 
-  // Canvas compositing for the hook slide:
-  // Capture foreground (text, overlays, decorations) with transparent bg via toPng,
-  // then draw bg image + fg onto canvas to produce correct final PNG.
-  async function compositeHookSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH = 1350): Promise<File> {
+  // Canvas compositing for any slide with an <img> background:
+  // 1. Hide the first <img> (the bg) so html-to-image captures only the foreground.
+  // 2. Make the SlideWrapper inner transparent so the bg shows through later.
+  // 3. Capture fg as PNG with transparent backdrop via toPng.
+  // 4. Draw bg image + fg onto a 2x-resolution canvas → final PNG.
+  // Works for both HookSlide (full-bleed bg + text overlay) and ContentSlide
+  // (full-bleed bg + colored opacity overlay + structured graphic + text).
+  async function compositeSlide(el: HTMLElement, bgDataUrl: string, filename: string, exportH = 1350): Promise<File> {
     const imgEl = el.querySelector("img") as HTMLImageElement | null;
     // el > SlideWrapper outer > SlideWrapper inner (has background style)
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
@@ -348,11 +387,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       img.complete ? Promise.resolve() : new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); })
     ));
 
-    // Hook slide: canvas compositing (html-to-image cannot render <img> contents)
-    if (index === 0 && (imgs[0] ?? hookImageUrl)) {
-      const bgDataUrl = await getHookBgDataUrl();
+    // Any slide with an <img> background needs canvas compositing — html-to-image
+    // can't render <img> contents reliably (especially on mobile Safari, where
+    // remote images get CORS-tainted and silently drop from the export).
+    // This applies to: hook (imgs[0] / hookImageUrl) AND each content slide
+    // that has a bg image (contentBgImages[index - 1] for index in 1..3).
+    if (rawBgUrlFor(index)) {
+      const bgDataUrl = await getSlideBgDataUrl(index);
       if (bgDataUrl) {
-        return compositeHookSlide(el, bgDataUrl, filename, exportH);
+        return compositeSlide(el, bgDataUrl, filename, exportH);
       }
     }
 
@@ -866,9 +909,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} />,
-    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[0] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[1] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
-    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[2] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[0])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[1])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    <ContentSlide key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[2])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />
       : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} reels={reelsMode} />,
