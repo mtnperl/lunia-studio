@@ -98,7 +98,7 @@ const TAB_TITLES: Record<string, string> = {
   "email-subjects": "Email subjects",
   "email-library": "Email library",
   "email-reviews": "Email flow reviews",
-  "email-flows": "Email flows (Klaviyo + uploads)",
+  "email-flows": "Saved flow reviews",
   video: "Video builder",
   "video-library": "Video library",
   "video-assets": "Video assets",
@@ -134,7 +134,7 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     section: "Email",
     items: [
       { key: "email-reviews", product: "carousel", label: "Flow reviews" },
-      { key: "email-flows",   product: "carousel", label: "Flows" },
+      { key: "email-flows",   product: "carousel", label: "Saved reviews" },
       { key: "email-panels",  product: "carousel", label: "Panels (legacy)"   },
       { key: "email-subjects", product: "carousel", label: "Subjects (legacy)" },
       { key: "email-library",  product: "carousel", label: "Library (legacy)"  },
@@ -539,8 +539,8 @@ export default function Page() {
         {tab === "email-flows" && (
           <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
             <EmailFlowsLibrary
-              onPickFlow={(flow) => { setPendingEmailFlow(flow); setPendingReviewId(null); setTab("email-reviews"); }}
               onPickReview={(reviewId) => { setPendingReviewId(reviewId); setPendingEmailFlow(null); setTab("email-reviews"); }}
+              onNewReview={() => { setPendingReviewId(null); setPendingEmailFlow(null); setTab("email-reviews"); }}
             />
           </div>
         )}
