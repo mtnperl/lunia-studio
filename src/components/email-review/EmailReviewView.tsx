@@ -255,10 +255,32 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
             key={s.key}
             reviewId={review.id}
             section={s}
+            done={(review.doneSectionKeys ?? []).includes(s.key)}
             onUpdate={(next) => setReview({
               ...review,
               sections: review.sections.map((sec) => sec.key === next.key ? next : sec),
             })}
+            onToggleDone={async (sectionKey, next) => {
+              // Optimistic update — flip the local list immediately so the UI
+              // collapses/expands without waiting for the round trip.
+              const currentDone = new Set(review.doneSectionKeys ?? []);
+              if (next) currentDone.add(sectionKey); else currentDone.delete(sectionKey);
+              const optimistic: SavedFlowReview = { ...review, doneSectionKeys: Array.from(currentDone) };
+              setReview(optimistic);
+              try {
+                const res = await fetch("/api/email-review/toggle-section-done", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ reviewId: review.id, sectionKey, done: next }),
+                });
+                if (!res.ok) {
+                  // Revert on failure
+                  setReview(review);
+                }
+              } catch {
+                setReview(review);
+              }
+            }}
           />
         ))}
       </div>

@@ -795,6 +795,8 @@ export type SavedFlowReview = {
   flowCompleteness?: FlowCompletenessGap;
   /** Populated by /api/email-review/generate-additional-emails when the user clicks the banner button. */
   additionalEmails?: AdditionalEmail[];
+  /** Section keys the user has marked done. Drives the collapse + "REOPEN" UI. */
+  doneSectionKeys?: FlowReviewSectionKey[];
   createdAt: string;
   // Optional cached docx export URL (on Vercel Blob)
   docxUrl?: string;

@@ -18,9 +18,13 @@ type Props = {
   reviewId: string;
   section: FlowReviewSection;
   onUpdate: (next: FlowReviewSection) => void;
+  /** Drives the collapsed "done" state + REOPEN button. */
+  done?: boolean;
+  /** Toggle persisted via /api/email-review/toggle-section-done. */
+  onToggleDone?: (sectionKey: FlowReviewSection["key"], next: boolean) => void;
 };
 
-export default function ReviewSectionCard({ reviewId, section, onUpdate }: Props) {
+export default function ReviewSectionCard({ reviewId, section, onUpdate, done = false, onToggleDone }: Props) {
   const meta = META[section.key];
   const [revising, setRevising] = useState(false);
   const [draft, setDraft] = useState("");
@@ -50,6 +54,81 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate }: Props
     } finally {
       setBusy(false);
     }
+  }
+
+  // Collapsed "done" view: just the header strip + a REOPEN button. The
+  // section is visually de-emphasised so the eye flows past it to whatever
+  // still needs work.
+  if (done) {
+    return (
+      <article
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 14,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          opacity: 0.78,
+        }}
+      >
+        <header
+          style={{
+            display: "flex",
+            alignItems: "stretch",
+            background: "linear-gradient(135deg, #1f3a4a 0%, #2a4f63 100%)",
+            color: "rgba(255,255,255,0.85)",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              flexShrink: 0,
+              width: 56,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(31, 111, 58, 0.9)",
+              color: "#fff",
+              fontFamily: "Arial, sans-serif",
+              fontSize: 22,
+              fontWeight: 700,
+            }}
+          >
+            ✓
+          </div>
+          <div style={{ flex: 1, padding: "12px 18px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>
+              Section {meta.number} · DONE
+            </div>
+            <div style={{ fontFamily: "Arial, sans-serif", fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.92)" }}>
+              {meta.title}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 14px" }}>
+            <button
+              onClick={() => onToggleDone?.(section.key, false)}
+              title="Reopen this section"
+              style={{
+                padding: "5px 11px",
+                fontSize: 11,
+                fontWeight: 700,
+                background: "transparent",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.4)",
+                borderRadius: 5,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              ↺ Reopen
+            </button>
+          </div>
+        </header>
+      </article>
+    );
   }
 
   return (
@@ -123,6 +202,27 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate }: Props
           >
             {revising ? "Cancel" : "✎ Revise"}
           </button>
+          {onToggleDone && (
+            <button
+              onClick={() => onToggleDone(section.key, true)}
+              title="Mark this section done — it will collapse so you can focus on what's left"
+              style={{
+                padding: "5px 11px",
+                fontSize: 11,
+                fontWeight: 700,
+                background: "transparent",
+                color: "#fff",
+                border: "1px solid rgba(191, 251, 248, 0.5)",
+                borderRadius: 5,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              ✓ Done
+            </button>
+          )}
         </div>
       </header>
 
