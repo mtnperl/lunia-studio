@@ -16,6 +16,8 @@ import VideoLibraryView from "@/components/VideoLibraryView";
 import EmailLibraryView from "@/components/EmailLibraryView";
 import EmailSubjectsView from "@/components/EmailSubjectsView";
 import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
+import EmailReviewView from "@/components/email-review/EmailReviewView";
+import EmailFlowsLibrary from "@/components/email-review/EmailFlowsLibrary";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
 import UGCBriefsView from "@/components/ugc/UGCBriefsView";
 import {
@@ -30,7 +32,7 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "email-reviews" | "email-flows" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -68,6 +70,8 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "email-panels": IconMail,
   "email-subjects": IconHash,
   "email-library": IconFolder,
+  "email-reviews": IconSparkles,
+  "email-flows": IconBoard,
   video: IconVideo,
   "video-library": IconFolder,
   "video-assets": IconImage,
@@ -93,6 +97,8 @@ const TAB_TITLES: Record<string, string> = {
   "email-panels": "Email panels",
   "email-subjects": "Email subjects",
   "email-library": "Email library",
+  "email-reviews": "Email flow reviews",
+  "email-flows": "Email flows (Klaviyo + uploads)",
   video: "Video builder",
   "video-library": "Video library",
   "video-assets": "Video assets",
@@ -127,9 +133,11 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Email",
     items: [
-      { key: "email-panels",   product: "carousel", label: "Panels"   },
-      { key: "email-subjects", product: "carousel", label: "Subjects" },
-      { key: "email-library",  product: "carousel", label: "Library"  },
+      { key: "email-reviews", product: "carousel", label: "Flow reviews" },
+      { key: "email-flows",   product: "carousel", label: "Flows" },
+      { key: "email-panels",  product: "carousel", label: "Panels (legacy)"   },
+      { key: "email-subjects", product: "carousel", label: "Subjects (legacy)" },
+      { key: "email-library",  product: "carousel", label: "Library (legacy)"  },
     ],
   },
   ...(SHOW_VIDEO ? [{
@@ -165,6 +173,7 @@ export default function Page() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
+  const [pendingEmailFlow, setPendingEmailFlow] = useState<import("@/lib/types").EmailFlow | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -519,6 +528,19 @@ export default function Page() {
         {tab === "email-panels" && <EmailPanelBuilderView />}
         {tab === "email-subjects" && <EmailSubjectsView />}
         {tab === "email-library" && <EmailPanelBuilderView initialStep="library" />}
+        {tab === "email-reviews" && (
+          <EmailReviewView
+            initialFlow={pendingEmailFlow}
+            onConsumed={() => setPendingEmailFlow(null)}
+          />
+        )}
+        {tab === "email-flows" && (
+          <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
+            <EmailFlowsLibrary
+              onPickFlow={(flow) => { setPendingEmailFlow(flow); setTab("email-reviews"); }}
+            />
+          </div>
+        )}
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
