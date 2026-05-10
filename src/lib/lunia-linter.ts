@@ -44,7 +44,7 @@ const BANNED_BADGES = [
 // Matches "X is not Y, it is Z" / "isn't Y, it's Z" / contracted variants.
 // Conservative: requires the connecting comma + "it is/it's" pattern within a
 // short window so we don't catch accidentally negated clauses.
-const BANNED_PHRASE_RE = /\b(?:is\s+not|isn['’]t|are\s+not|aren['’]t|wasn['’]t|weren['’]t)\s+\S+(?:\s+\S+){0,4}\s*,\s*it[''’]s\s+/gi;
+const BANNED_PHRASE_RE = /\b(?:is\s+not|isn['’]t|are\s+not|aren['’]t|wasn['’]t|weren['’]t)\s+\S+(?:\s+\S+){0,4}\s*,\s*it(?:\s+is|['’]s)\s+/gi;
 
 export function lintLuniaCopy(input: string): LintResult {
   if (!input || typeof input !== "string") return { findings: [] };

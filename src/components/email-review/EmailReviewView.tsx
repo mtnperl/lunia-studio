@@ -6,6 +6,7 @@ import ReviewSectionCard from "@/components/email-review/ReviewSectionCard";
 import FlowImagesGrid from "@/components/email-review/FlowImagesGrid";
 import CopyButton from "@/components/email-review/CopyButton";
 import KlaviyoPushButton from "@/components/email-review/KlaviyoPushButton";
+import ExportDocxButton from "@/components/email-review/ExportDocxButton";
 import type { EmailFlow, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
@@ -171,6 +172,7 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <CopyButton text={copyEntire} label="Copy entire review" size="md" variant="outline" />
+          <ExportDocxButton reviewId={review.id} flowName={review.flow.flowName} />
           <button
             onClick={() => { setMode("input"); setReview(null); setShowInputType("choose"); }}
             style={{ padding: "7px 14px", fontSize: 12, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
