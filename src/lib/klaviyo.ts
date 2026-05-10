@@ -165,8 +165,10 @@ type KFlowActionsResponse = {
   data: {
     id: string;
     attributes: { action_type: string; settings?: { delay?: number }; tracking_options?: unknown };
-    relationships?: { "flow-messages"?: { data: { id: string }[] } };
   }[];
+};
+type KFlowActionMessagesResponse = {
+  data: { id: string; type: string }[];
 };
 type KFlowMessageResponse = {
   data: {
@@ -237,9 +239,11 @@ function mapFlowType(triggerType: string, name: string): EmailFlow["flowType"] {
 }
 
 export async function getFlow(flowId: string): Promise<EmailFlow> {
-  // Read flow + actions
+  // Read flow + actions. NOTE: Klaviyo does not allow `include=flow-messages`
+  // on the /flow-actions/ collection — we have to walk each action's
+  // relationship endpoint to discover its messages.
   const flowRes = await klaviyoFetch<KFlowResponse>(`/flows/${flowId}/?fields[flow]=name,status,trigger_type,created`);
-  const actionsRes = await klaviyoFetch<KFlowActionsResponse>(`/flows/${flowId}/flow-actions/?include=flow-messages&fields[flow-action]=action_type,settings,tracking_options`);
+  const actionsRes = await klaviyoFetch<KFlowActionsResponse>(`/flows/${flowId}/flow-actions/?fields[flow-action]=action_type,settings,tracking_options`);
 
   const messageIds: { id: string; delaySec: number; position: number }[] = [];
   let cumDelaySec = 0;
@@ -250,7 +254,18 @@ export async function getFlow(flowId: string): Promise<EmailFlow> {
       cumDelaySec += action.attributes?.settings?.delay ?? 0;
     }
     if (t === "SEND_EMAIL" || t === "EMAIL") {
-      const msgIds = action.relationships?.["flow-messages"]?.data?.map(d => d.id) ?? [];
+      let msgIds: string[] = [];
+      try {
+        const rel = await klaviyoFetch<KFlowActionMessagesResponse>(`/flow-actions/${action.id}/relationships/flow-messages/`);
+        msgIds = (rel.data ?? []).map((d) => d.id);
+      } catch {
+        // Some Klaviyo accounts expose the messages directly off the action
+        // resource instead of the relationship endpoint. Try once as fallback.
+        try {
+          const direct = await klaviyoFetch<KFlowActionMessagesResponse>(`/flow-actions/${action.id}/flow-messages/`);
+          msgIds = (direct.data ?? []).map((d) => d.id);
+        } catch { /* leave empty; action contributes no messages */ }
+      }
       for (const id of msgIds) {
         position += 1;
         messageIds.push({ id, delaySec: cumDelaySec, position });
