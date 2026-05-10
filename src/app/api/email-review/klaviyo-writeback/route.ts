@@ -18,6 +18,7 @@ import {
   KlaviyoAuthError,
   KlaviyoRateLimitError,
 } from "@/lib/klaviyo";
+import { applyLuniaTypography } from "@/lib/email-typography";
 import type { KlaviyoWritebackResult } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -41,11 +42,12 @@ type WritebackBody = {
 function applyHtmlEdit(originalHtml: string | undefined, _targetSection: Target, rewrite: WritebackBody["rewrite"]): string {
   // For body rewrites we patch the existing template HTML. For subject/preview
   // we don't touch the HTML — those live on the flow message, not the template.
-  // For v1 we keep this conservative: if the user provided full html, use it
-  // verbatim; otherwise return the original (the swap of subject/preview is
-  // handled separately and is out of scope for v1's writeback).
-  if (rewrite.html) return rewrite.html;
-  return originalHtml ?? "";
+  // If the caller provided full html, use it verbatim. Either way, inject
+  // Lunia's Inter typography system (Inter 400 headlines / 300 body / 700
+  // bold / Signal Yellow CTA) so the Klaviyo draft renders in canon. Safe
+  // to call repeatedly — applyLuniaTypography is idempotent.
+  const base = rewrite.html ?? originalHtml ?? "";
+  return applyLuniaTypography(base);
 }
 
 export async function POST(req: Request) {

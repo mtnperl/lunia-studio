@@ -124,6 +124,42 @@ Palette:
 
 Hard don'ts: gradients, purple, neon, "wellness pastels".
 
+## Email typography (use in every body rewrite)
+Lunia emails use Inter as the single typeface. When recommending HTML
+or rendering rewrites for Klaviyo, every text style must map to one of:
+
+  Headlines (H1 / H2):  Inter, font-weight 400 (Inter Normal),
+                        letter-spacing -0.01em, color #102635
+  Body paragraphs:      Inter, font-weight 300 (Inter Light),
+                        line-height 1.6, color #1A1A1A
+  Bold within body:     Inter, font-weight 700 (Inter Bold), inherits
+                        body color; bold sparingly — ingredient names
+                        and risk-reversal phrases only
+  CTA button label:     Inter, font-weight 700, navy text on Signal
+                        Yellow #FFD800 background
+
+Do not introduce any other font family. Do not use Georgia / serif for
+the body. Do not bold whole paragraphs — bold a phrase at most.
+
+## Flow completeness — canonical counts
+
+The framework prescribes a canonical email count per flow type. Always
+evaluate the input flow against this table and surface the gap in the
+\`flowCompleteness\` output field.
+
+  Abandoned checkout:    3 emails (1-3h, 24h, 72h)
+  Browse abandonment:    2 emails (4-12h, 48h)
+  Welcome:               4 emails over 10 days (immediate, day 2, day 5, day 9)
+  Post-purchase:         5 emails over 21 days (day 0, day 3, day 7, day 14, day 21)
+  Replenishment:         3 emails (replenishment-5d, replenishment-day, replenishment+14d)
+  Lapsed:                2 emails over 30 days (day 0, day 14)
+  Campaign:              1 email (no flow completeness applies)
+
+A flow with FEWER than the canonical count is incomplete and must be
+flagged with a specific rationale in flowCompleteness.rationale. A flow
+with MORE than the canonical count is overbuilt and should also be
+flagged — recommend which positions to cut. Equal count → no gap.
+
 ## Image prompt scaffold (8-step structure)
 When the review recommends a new image, write a prompt in this exact
 8-step structure. Mathan's image-gen layer will route to one of three fal
@@ -203,6 +239,18 @@ before or after. No markdown fences.
 \`\`\`ts
 type AnalyzeOutput = {
   ifYouOnlyDoThree: string[];   // exactly 3 items
+  flowCompleteness: {
+    currentCount: number;         // how many emails are in the input flow
+    canonicalCount: number;       // framework's recommended count for this flow type
+    gap: number;                  // canonicalCount - currentCount (negative = overbuilt)
+    rationale: string;            // 1-2 sentences explaining the gap or "no gap"
+    suggestedAdditions?: {        // present only when gap > 0
+      position: number;           // where it fits in the sequence
+      role: string;               // e.g. "third touch", "ritual reminder"
+      sendDelayHours: number;     // when it should fire from trigger
+      purpose: string;            // one-line — what this email answers
+    }[];
+  };
   sections: {
     key: "headline" | "timing" | "subjects" | "rewrites" | "design" | "strategy";
     title: string;
@@ -235,6 +283,17 @@ export function buildAnalyzePrompt(args: {
   linterHint: string;          // from lintFindingsToPromptHint
 }): string {
   return `${FRAMEWORK_RUBRIC}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+}
+
+// Used by /api/email-review/generate-additional-emails. Asks Claude to
+// draft N new emails for a flow that's currently short of canon.
+export function buildGenerateAdditionalEmailsPrompt(args: {
+  flowJson: string;
+  count: number;
+  suggestedAdditionsJson: string;   // serialized array from flowCompleteness.suggestedAdditions
+  existingRewritesMarkdown: string; // Section 4 body — for voice continuity
+}): string {
+  return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nThe input flow is short of the canonical count for its flow type. Draft ${args.count} fresh email${args.count === 1 ? "" : "s"} that slot into the sequence and bring the flow up to canon.\n\nUse the suggested-additions table from the original review for positioning. Honour every framework rule (no em dashes, max 1 exclamation per email, allowed compliance language, no banned phrases / badges, Inter typography). Voice-match the existing rewrites so the new emails sound like the same brand.\n\nSuggested positions / purposes:\n\`\`\`json\n${args.suggestedAdditionsJson}\n\`\`\`\n\nExisting rewrites (Section 4 of the review, for voice continuity — do NOT copy verbatim):\n"""\n${args.existingRewritesMarkdown.slice(0, 6000)}\n"""\n\nOriginal flow:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype Output = {\n  emails: {\n    id: string;                 // stable id, e.g. "new-e4"\n    position: number;           // where it slots into the sequence\n    role: string;               // e.g. "Day 5 — melatonin problem", "Browse abandonment touch 2"\n    sendDelayHours: number;     // hours from flow trigger\n    subjectA: string;           // primary subject\n    subjectAlts: string[];      // 2 alternatives for A/B\n    previewText: string;\n    senderName: string;         // suggest "Mathan from Lunia" when appropriate\n    senderEmail: string;\n    bodyMarkdown: string;       // full body using the [ HEADLINE ] [ BODY ] [ CTA BUTTON ] block tags from the framework, with Inter typography in mind (headline normal 400, body light 300, bold 700 for emphasis only)\n    rationale: string;          // 1 sentence: why this email exists in the flow\n  }[];\n};\n\`\`\``;
 }
 
 // Used by /api/email-review/regenerate-section. Re-runs the framework on a

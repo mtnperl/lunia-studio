@@ -755,6 +755,34 @@ export type KlaviyoWritebackResult = {
   contentVersion: string;       // "A" | "B" | "alt-1" etc.
 };
 
+export type FlowCompletenessGap = {
+  currentCount: number;
+  canonicalCount: number;
+  gap: number;                   // canonicalCount - currentCount (negative = overbuilt)
+  rationale: string;
+  suggestedAdditions?: {
+    position: number;
+    role: string;
+    sendDelayHours: number;
+    purpose: string;
+  }[];
+};
+
+export type AdditionalEmail = {
+  id: string;
+  position: number;
+  role: string;
+  sendDelayHours: number;
+  subjectA: string;
+  subjectAlts: string[];
+  previewText: string;
+  senderName: string;
+  senderEmail: string;
+  bodyMarkdown: string;          // uses [ HEADLINE ] [ BODY ] [ CTA BUTTON ] tags
+  rationale: string;
+  createdAt: string;
+};
+
 export type SavedFlowReview = {
   id: string;
   flow: EmailFlow;              // snapshot of inputs
@@ -763,6 +791,10 @@ export type SavedFlowReview = {
   ifYouOnlyDoThree: string[];   // 3 bullets pulled out of the headline section
   frameworkVersion: string;     // e.g. "v1.0"
   writebacks?: KlaviyoWritebackResult[];
+  /** Set by /api/email-review/analyze. Drives the "add more emails" banner. */
+  flowCompleteness?: FlowCompletenessGap;
+  /** Populated by /api/email-review/generate-additional-emails when the user clicks the banner button. */
+  additionalEmails?: AdditionalEmail[];
   createdAt: string;
   // Optional cached docx export URL (on Vercel Blob)
   docxUrl?: string;

@@ -15,6 +15,7 @@ import { lintLuniaCopy, lintFindingsToPromptHint } from "@/lib/lunia-linter";
 import type {
   EmailFlow,
   EmailFlowAsset,
+  FlowCompletenessGap,
   FlowReviewImagePrompt,
   FlowReviewSection,
   SavedFlowReview,
@@ -24,6 +25,7 @@ export const maxDuration = 300;
 
 type AnalyzeOutput = {
   ifYouOnlyDoThree: string[];
+  flowCompleteness?: FlowCompletenessGap;
   sections: FlowReviewSection[];
   imagePrompts: (Omit<FlowReviewImagePrompt, "status" | "history" | "regenSuggestions"> & {
     rationale?: string;
@@ -138,6 +140,7 @@ export async function POST(req: Request) {
         status: "pending" as const,
       })),
       ifYouOnlyDoThree: parsed.ifYouOnlyDoThree.slice(0, 3),
+      flowCompleteness: parsed.flowCompleteness,
       frameworkVersion: FRAMEWORK_VERSION,
       createdAt: new Date().toISOString(),
     };

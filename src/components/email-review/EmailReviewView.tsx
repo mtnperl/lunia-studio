@@ -8,6 +8,8 @@ import CopyButton from "@/components/email-review/CopyButton";
 import KlaviyoPushButton from "@/components/email-review/KlaviyoPushButton";
 import ExportDocxButton from "@/components/email-review/ExportDocxButton";
 import { AnalyzeLoader } from "@/components/email-review/ReviewLoaders";
+import FlowCompletenessBanner from "@/components/email-review/FlowCompletenessBanner";
+import AdditionalEmailsDeck from "@/components/email-review/AdditionalEmailsDeck";
 import type { EmailFlow, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
@@ -225,6 +227,19 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
         </div>
       </header>
 
+      {/* Flow completeness banner — top of review, drives "generate more emails" */}
+      {review.flowCompleteness && (
+        <FlowCompletenessBanner
+          reviewId={review.id}
+          completeness={review.flowCompleteness}
+          existingAdditionalCount={review.additionalEmails?.length ?? 0}
+          onAdditionalEmails={(newEmails) => setReview((prev) => prev ? ({
+            ...prev,
+            additionalEmails: [...(prev.additionalEmails ?? []), ...newEmails],
+          }) : prev)}
+        />
+      )}
+
       <section style={{ background: "#102635", color: "#fff", borderRadius: 12, padding: 24 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "#BFFBF8", letterSpacing: "0.08em", textTransform: "uppercase" }}>If you only do three things</div>
         <ol style={{ margin: "12px 0 0", paddingLeft: 22, fontFamily: "Arial, sans-serif", fontSize: 14, lineHeight: 1.55 }}>
@@ -247,6 +262,11 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
           />
         ))}
       </div>
+
+      {/* Newly-generated emails (if any) */}
+      {review.additionalEmails && review.additionalEmails.length > 0 && (
+        <AdditionalEmailsDeck emails={review.additionalEmails} />
+      )}
 
       <FlowImagesGrid review={review} onReviewUpdate={setReview} />
 
