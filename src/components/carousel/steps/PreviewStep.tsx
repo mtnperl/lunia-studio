@@ -238,24 +238,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
 
-  // Cache of image-URL → data-URL. Keyed by the resolved URL we'd actually
-  // assign to <img.src> (i.e. the proxied path or local path).
-  // html-to-image can't reliably embed remote <img>s via SVG foreignObject on
-  // mobile Safari — even with crossOrigin set + a CORS-friendly proxy, the
-  // browser silently drops the image from the rasterised output. Inlining the
-  // src as a data URL bypasses the entire CORS / async-fetch path inside the
-  // SVG serializer, so the rendered PNG always contains the image.
+  // Cache of image-URL → data-URL. Keyed by the resolved <img.src> (proxied
+  // path or local path). html-to-image's SVG foreignObject silently drops
+  // <img> contents on mobile Safari, so we use canvas compositing instead:
+  // pull the image data out, capture the slide foreground (with all <img>s
+  // hidden) via toPng, then draw the image(s) + foreground onto a 2x canvas.
   const imageDataUrlCache = useRef<Map<string, string>>(new Map());
 
-  /** Resolve any URL we'd hand to <img.src> into a data URL. Cached per source.
-   *  Auto-proxies cross-origin URLs through /api/carousel(-v2)/image-proxy so the
-   *  browser fetch isn't blocked by CORS. */
+  /** Fetch any <img.src> URL → data URL. Cached. Auto-proxies cross-origin. */
   async function loadDataUrl(src: string): Promise<string> {
     if (src.startsWith("data:")) return src;
     const cached = imageDataUrlCache.current.get(src);
     if (cached) return cached;
-    // Same-origin (`/`-prefixed) URLs go straight to fetch. Anything else gets
-    // wrapped with the proxy so the browser doesn't trip over CORS.
     const target = src.startsWith("/")
       ? src
       : `${apiBase}/image-proxy?url=${encodeURIComponent(src)}`;
@@ -272,7 +266,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     return dataUrl;
   }
 
-  /** Fire-and-forget pre-warm so the cache is hot by the time the user clicks Download. */
+  /** Fire-and-forget pre-warm so the cache is hot by Download time. */
   function prefetchUrl(src: string | null | undefined) {
     if (!src) return;
     loadDataUrl(src).catch(() => {});
@@ -292,6 +286,121 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentBgKey]);
 
+  /**
+   * Canvas compositing for any slide containing <img>s. This is the proven
+   * pattern from CarouselShareClient.compositeHookSlide, generalised to handle
+   * multiple images per slide (V2 content slides have a bg <img>; some may
+   * also have a graphic <img> in the graphic zone).
+   *
+   * Steps:
+   * 1. For each <img>, capture its bounding rect relative to `el` and resolve
+   *    its src to a data URL.
+   * 2. Hide every <img> + clear the SlideWrapper inner background so the
+   *    foreground capture has a transparent backdrop.
+   * 3. toPng captures the foreground (text, arrows, color overlay div, etc.).
+   * 4. On a 2x-resolution canvas, draw each image at its actual position with
+   *    object-fit-aware fitting, then draw the foreground PNG on top.
+   */
+  async function compositeWithImages(
+    el: HTMLElement,
+    imgEls: HTMLImageElement[],
+    filename: string,
+    exportH: number,
+  ): Promise<File> {
+    const elRect = el.getBoundingClientRect();
+    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string };
+    const infos: ImgInfo[] = [];
+
+    for (const img of imgEls) {
+      const src = img.getAttribute("src");
+      if (!src) continue;
+      let dataUrl: string;
+      try {
+        dataUrl = await loadDataUrl(src);
+      } catch {
+        continue; // skip this image, fall through to whatever fg captures
+      }
+      const r = img.getBoundingClientRect();
+      infos.push({
+        dataUrl,
+        x: r.x - elRect.x,
+        y: r.y - elRect.y,
+        w: r.width,
+        h: r.height,
+        objectFit: getComputedStyle(img).objectFit || "fill",
+      });
+    }
+
+    // Hide every <img> + clear inner wrapper bg so toPng captures only the fg.
+    // el > SlideWrapper outer > SlideWrapper inner (carries the user-supplied
+    // `style={{ background: bg }}` from HookSlide / ContentSlide).
+    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
+    const savedDisplays = imgEls.map((img) => img.style.display);
+    const savedWrapperBg = innerWrapper?.style.background ?? "";
+
+    imgEls.forEach((img) => { img.style.display = "none"; });
+    if (innerWrapper) innerWrapper.style.background = "transparent";
+
+    let fgDataUrl: string;
+    try {
+      fgDataUrl = await toPng(el, {
+        width: 1080, height: exportH, pixelRatio: 2,
+        cacheBust: false, backgroundColor: "transparent",
+      });
+    } finally {
+      imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
+      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
+    }
+
+    const PR = 2;
+    const W = 1080 * PR, H = exportH * PR;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    // Draw each image at its actual on-page position (in DOM order = z-order).
+    for (const info of infos) {
+      await new Promise<void>((resolve) => {
+        const im = new Image();
+        im.onload = () => {
+          const dx = info.x * PR;
+          const dy = info.y * PR;
+          const dw = info.w * PR;
+          const dh = info.h * PR;
+          if (info.objectFit === "cover") {
+            const scale = Math.max(dw / im.width, dh / im.height);
+            const sw = dw / scale, sh = dh / scale;
+            const sx = (im.width - sw) / 2;
+            const sy = (im.height - sh) / 2;
+            ctx.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
+          } else if (info.objectFit === "contain") {
+            const scale = Math.min(dw / im.width, dh / im.height);
+            const dwc = im.width * scale, dhc = im.height * scale;
+            ctx.drawImage(im, dx + (dw - dwc) / 2, dy + (dh - dhc) / 2, dwc, dhc);
+          } else {
+            ctx.drawImage(im, dx, dy, dw, dh);
+          }
+          resolve();
+        };
+        im.onerror = () => resolve();
+        im.src = info.dataUrl;
+      });
+    }
+
+    // Draw the foreground (text, arrows, color overlay, etc.) over the images.
+    await new Promise<void>((resolve) => {
+      const fg = new Image();
+      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
+      fg.onerror = () => resolve();
+      fg.src = fgDataUrl;
+    });
+
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
+    );
+    return new File([blob], filename, { type: "image/png" });
+  }
+
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error("Export element not found");
@@ -302,45 +411,27 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       : `lunia-slide-${index + 1}-${label}.png`;
     const exportH = reelsMode ? 1920 : 1350;
 
-    // Find every <img> in the slide (bg, graphic, anything else) and inline
-    // each src as a data URL. Skip <img>s whose src is missing or already a
-    // data URL.
+    // Wait for any <img> in the slide to finish loading first.
     const imgEls = Array.from(el.querySelectorAll("img")) as HTMLImageElement[];
-    const restorers: Array<() => void> = [];
+    await Promise.all(imgEls.map((img) =>
+      img.complete ? Promise.resolve() : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }),
+    ));
 
-    for (const img of imgEls) {
-      const originalSrc = img.getAttribute("src");
-      if (!originalSrc || originalSrc.startsWith("data:")) continue;
+    // Any slide with at least one <img> needs canvas compositing — html-to-image
+    // drops <img> contents on mobile Safari (and unreliably on Android).
+    if (imgEls.length > 0) {
       try {
-        const dataUrl = await loadDataUrl(originalSrc);
-        img.setAttribute("src", dataUrl);
-        // Wait for the new src to fully decode before we rasterise. `decode()`
-        // is the cross-browser way to ensure the image is render-ready and the
-        // intrinsic size is updated.
-        if (typeof img.decode === "function") {
-          await img.decode().catch(() => undefined);
-        } else {
-          await new Promise<void>((resolve) => {
-            const done = () => resolve();
-            if (img.complete) done();
-            else { img.onload = done; img.onerror = done; }
-          });
-        }
-        restorers.push(() => img.setAttribute("src", originalSrc));
-      } catch {
-        // If the proxy fetch fails, leave the original src alone and let
-        // html-to-image try its luck. Worst case we get the previous broken
-        // behaviour for that one image, not a thrown export.
+        return await compositeWithImages(el, imgEls, filename, exportH);
+      } catch (err) {
+        console.warn("[carousel] composite failed, falling back to plain toPng", err);
+        // fall through
       }
     }
 
-    try {
-      const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
-      const blob = await (await fetch(dataUrl)).blob();
-      return new File([blob], filename, { type: "image/png" });
-    } finally {
-      for (const restore of restorers) restore();
-    }
+    // Slides with no <img> (CTA, content slides without bg/graphic): plain toPng.
+    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], filename, { type: "image/png" });
   }
 
   async function saveFile(file: File) {
