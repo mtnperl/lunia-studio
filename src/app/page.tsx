@@ -174,6 +174,7 @@ export default function Page() {
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
   const [pendingEmailFlow, setPendingEmailFlow] = useState<import("@/lib/types").EmailFlow | null>(null);
+  const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -531,13 +532,15 @@ export default function Page() {
         {tab === "email-reviews" && (
           <EmailReviewView
             initialFlow={pendingEmailFlow}
-            onConsumed={() => setPendingEmailFlow(null)}
+            initialReviewId={pendingReviewId}
+            onConsumed={() => { setPendingEmailFlow(null); setPendingReviewId(null); }}
           />
         )}
         {tab === "email-flows" && (
           <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px" }}>
             <EmailFlowsLibrary
-              onPickFlow={(flow) => { setPendingEmailFlow(flow); setTab("email-reviews"); }}
+              onPickFlow={(flow) => { setPendingEmailFlow(flow); setPendingReviewId(null); setTab("email-reviews"); }}
+              onPickReview={(reviewId) => { setPendingReviewId(reviewId); setPendingEmailFlow(null); setTab("email-reviews"); }}
             />
           </div>
         )}

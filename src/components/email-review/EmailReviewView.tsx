@@ -14,6 +14,8 @@ type Mode = "input" | "running" | "review";
 
 type Props = {
   initialFlow?: EmailFlow | null;
+  /** Open a previously saved review by id. Fetched from /api/email-review/[id]. */
+  initialReviewId?: string | null;
   onConsumed?: () => void;
 };
 
@@ -21,12 +23,13 @@ const SECTION_ORDER: SavedFlowReview["sections"][number]["key"][] = [
   "headline", "timing", "subjects", "rewrites", "design", "strategy",
 ];
 
-export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
+export default function EmailReviewView({ initialFlow, initialReviewId, onConsumed }: Props) {
   const [mode, setMode] = useState<Mode>("input");
   const [flow, setFlow] = useState<EmailFlow | null>(initialFlow ?? null);
   const [review, setReview] = useState<SavedFlowReview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   const [showInputType, setShowInputType] = useState<"choose" | "klaviyo" | "upload">("choose");
 
   // Auto-pick the appropriate input mode if a flow was handed in by the
@@ -47,6 +50,36 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFlow]);
+
+  // Load a saved review by id (clicking a row in EmailFlowsLibrary).
+  useEffect(() => {
+    if (!initialReviewId) return;
+    let alive = true;
+    setLoadingSaved(true);
+    setError(null);
+    fetch(`/api/email-review/${initialReviewId}`)
+      .then(async (r) => {
+        const data = await r.json();
+        if (!alive) return;
+        if (!r.ok || !data.review) {
+          setError(data.error ?? `Could not load review (${r.status})`);
+          setMode("input");
+          return;
+        }
+        setReview(data.review as SavedFlowReview);
+        setFlow((data.review as SavedFlowReview).flow);
+        setMode("review");
+      })
+      .catch((err) => alive && setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => {
+        if (alive) {
+          setLoadingSaved(false);
+          onConsumed?.();
+        }
+      });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReviewId]);
 
   async function runAnalyze(f: EmailFlow) {
     setMode("running");
@@ -83,6 +116,14 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
     });
     const data = await res.json();
     return data.payload ?? "";
+  }
+
+  if (loadingSaved) {
+    return (
+      <div style={{ maxWidth: 760, margin: "120px auto", padding: 40, textAlign: "center", fontFamily: "'Courier New', Courier, monospace", color: "var(--muted)", fontSize: 13, letterSpacing: "0.06em" }}>
+        Loading saved review…
+      </div>
+    );
   }
 
   if (mode === "input") {
