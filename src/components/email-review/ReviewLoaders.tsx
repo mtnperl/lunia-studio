@@ -21,7 +21,7 @@ function useSpinner() {
 const SCANLINES = "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)";
 
 // ─── Full-screen analyze loader ──────────────────────────────────────────────
-// Used during /api/email-review/analyze (Sonnet 4.6 with thinking, ~30-60s).
+// Used during /api/email-review/analyze (Opus 4.7 with thinking, ~45-90s).
 // Walks through the framework's 6 sections so the user sees what's coming.
 
 const ANALYZE_STEPS = [

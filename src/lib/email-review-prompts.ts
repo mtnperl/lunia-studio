@@ -206,6 +206,19 @@ export function buildAnalyzePrompt(args: {
   return `${FRAMEWORK_RUBRIC}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
+// Used by /api/email-review/regenerate-section. Re-runs the framework on a
+// single section with the user's revision request, plus the original flow
+// + existing review for context. Returns ONE updated section.
+export function buildRegenerateSectionPrompt(args: {
+  flowJson: string;
+  sectionKey: "headline" | "timing" | "subjects" | "rewrites" | "design" | "strategy";
+  currentSectionMarkdown: string;
+  userComment: string;
+  otherSectionsBrief: string;     // 1-line summaries of the other 5 sections so the regen stays coherent
+}): string {
+  return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nYou previously generated a 6-section review for the email flow below. The user wants Section "${args.sectionKey}" rewritten with the following revision request:\n\nUSER REVISION REQUEST:\n"""\n${args.userComment}\n"""\n\nBefore the revision, the section read:\n"""\n${args.currentSectionMarkdown}\n"""\n\nThe other sections of the review say (1-line summaries, for context — do NOT regenerate these):\n${args.otherSectionsBrief}\n\nThe original flow input is:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype RegenSectionOutput = {\n  key: "${args.sectionKey}";\n  title: string;\n  bodyMarkdown: string;          // markdown with H2/H3 headers, tables, code blocks for image prompts\n  flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];\n};\n\`\`\`\n\nFollow every framework rule (no em dashes, max 1 exclamation per piece, allowed compliance language, banned phrases / badges). Honor the user's revision request fully. Stay coherent with the rest of the review.`;
+}
+
 // Used by /api/email-review/regen-suggestions. Asks Claude for 3 alternatives
 // that vary along the prompt's axes.
 export function buildRegenSuggestionsPrompt(args: {

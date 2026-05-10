@@ -147,7 +147,7 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
         />
         {running && (
           <div style={{ marginTop: 14, textAlign: "center", fontSize: 11, color: "var(--subtle)", fontFamily: "'Courier New', Courier, monospace", letterSpacing: "0.08em" }}>
-            sonnet 4.6 with thinking · ~30-60s typical · ~120s max
+            claude opus 4.7 with thinking · ~45-90s typical · ~120s max
           </div>
         )}
       </div>
@@ -195,7 +195,15 @@ export default function EmailReviewView({ initialFlow, onConsumed }: Props) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {sections.map((s) => (
-          <ReviewSectionCard key={s.key} section={s} />
+          <ReviewSectionCard
+            key={s.key}
+            reviewId={review.id}
+            section={s}
+            onUpdate={(next) => setReview({
+              ...review,
+              sections: review.sections.map((sec) => sec.key === next.key ? next : sec),
+            })}
+          />
         ))}
       </div>
 
