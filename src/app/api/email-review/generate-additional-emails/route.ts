@@ -10,6 +10,11 @@ import { checkRateLimit, getFlowReviewById, saveFlowReview } from "@/lib/kv";
 import { buildGenerateAdditionalEmailsPrompt } from "@/lib/email-review-prompts";
 import type { AdditionalEmail } from "@/lib/types";
 
+/** Replace em dashes with a plain hyphen-space so generated copy stays on-brand. */
+function stripEmDashes(text: string): string {
+  return text.replace(/ — /g, ", ").replace(/—/g, " - ");
+}
+
 export const maxDuration = 300;
 
 type ClaudeEmail = Omit<AdditionalEmail, "id" | "createdAt">;
@@ -69,6 +74,7 @@ export async function POST(req: Request) {
       ...e,
       id: `add-${randomUUID().slice(0, 8)}`,
       subjectAlts: Array.isArray(e.subjectAlts) ? e.subjectAlts : [],
+      bodyMarkdown: stripEmDashes(e.bodyMarkdown ?? ""),
       createdAt: new Date().toISOString(),
     }));
 

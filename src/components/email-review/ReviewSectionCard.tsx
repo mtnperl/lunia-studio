@@ -6,12 +6,13 @@ import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { FlowReviewSection, FlowReviewSectionKey } from "@/lib/types";
 
 const META: Record<FlowReviewSectionKey, { number: number; title: string; subtitle: string; icon: string; tint: string }> = {
-  headline:  { number: 1, title: "Headline",                                   subtitle: "If you only do three things",        icon: "★", tint: "#FFD800" },
-  timing:    { number: 2, title: "Timing",                                     subtitle: "Send cadence + when to fix",         icon: "◷", tint: "#BFFBF8" },
-  subjects:  { number: 3, title: "Subject lines, preview, sender",             subtitle: "Open + close levers · A/B options",  icon: "✉", tint: "#F4DDC2" },
-  rewrites:  { number: 4, title: "Full body rewrites",                         subtitle: "Version A + Version B per email",    icon: "✎", tint: "#D9E5DD" },
-  design:    { number: 5, title: "Design and images",                          subtitle: "Visual audit — layout, images, CTA",  icon: "✦", tint: "#E5DFD0" },
-  strategy:  { number: 6, title: "Strategic question + Action checklist",     subtitle: "Reframe + this-week / next-two-weeks", icon: "◆", tint: "#C8DDE8" },
+  // "headline" kept for backward compat with old reviews that include it.
+  headline:  { number: 0, title: "Headline",                                   subtitle: "If you only do three things",        icon: "★", tint: "#FFD800" },
+  timing:    { number: 1, title: "Timing",                                     subtitle: "Send cadence + when to fix",         icon: "◷", tint: "#BFFBF8" },
+  subjects:  { number: 2, title: "Subject lines, preview, sender",             subtitle: "Open + close levers · A/B options",  icon: "✉", tint: "#F4DDC2" },
+  rewrites:  { number: 3, title: "Full body rewrites",                         subtitle: "Version A + Version B per email",    icon: "✎", tint: "#D9E5DD" },
+  design:    { number: 4, title: "Design and images",                          subtitle: "Visual audit — layout, images, CTA",  icon: "✦", tint: "#E5DFD0" },
+  strategy:  { number: 5, title: "Strategic question + Action checklist",     subtitle: "Reframe + this-week / next-two-weeks", icon: "◆", tint: "#C8DDE8" },
 };
 
 // ─── Finding parser ───────────────────────────────────────────────────────────

@@ -21,8 +21,11 @@ type Props = {
   onConsumed?: () => void;
 };
 
+// "headline" is intentionally excluded — new reviews have 5 sections (no headline).
+// Old reviews that still contain a "headline" section will render it because
+// ReviewSectionCard has a backward-compat META entry for it (number=0).
 const SECTION_ORDER: SavedFlowReview["sections"][number]["key"][] = [
-  "headline", "timing", "subjects", "rewrites", "design", "strategy",
+  "timing", "subjects", "rewrites", "design", "strategy",
 ];
 
 export default function EmailReviewView({ initialFlow, initialReviewId, onConsumed }: Props) {
@@ -134,7 +137,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
         <header>
           <h1 style={{ fontFamily: "var(--font-ui, Inter)", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>Email flow review</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted)" }}>
-            Pull a flow from Klaviyo or upload one manually. The review runs the framework&apos;s 6 sections, lints brand voice, and drafts replacement images.
+            Pull a flow from Klaviyo or upload one manually. The review runs the framework&apos;s 5 sections, lints brand voice, and drafts replacement images.
           </p>
         </header>
 

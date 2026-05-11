@@ -9,6 +9,11 @@ import { checkRateLimit, getFlowReviewById, saveFlowReview } from "@/lib/kv";
 import { buildRegenerateSectionPrompt } from "@/lib/email-review-prompts";
 import type { FlowReviewSection, FlowReviewSectionKey } from "@/lib/types";
 
+/** Replace em dashes with a plain hyphen-space so generated copy stays on-brand. */
+function stripEmDashes(text: string): string {
+  return text.replace(/ — /g, ", ").replace(/—/g, " - ");
+}
+
 export const maxDuration = 300;
 
 const VALID_KEYS: FlowReviewSectionKey[] = ["headline", "timing", "subjects", "rewrites", "design", "strategy"];
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
     review.sections[idx] = {
       key: sectionKey,
       title: parsed.title || review.sections[idx].title,
-      bodyMarkdown: parsed.bodyMarkdown,
+      bodyMarkdown: stripEmDashes(parsed.bodyMarkdown),
       flags: parsed.flags,
     };
     await saveFlowReview(review);

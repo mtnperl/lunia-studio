@@ -68,6 +68,13 @@ function computeFlowCompleteness(flow: EmailFlow): FlowCompletenessGap {
   return { currentCount, canonicalCount, gap, rationale };
 }
 
+/** Replace em dashes with a plain hyphen-space so generated copy stays on-brand. */
+function stripEmDashes(text: string): string {
+  // " — " (spaced em dash) → ", "
+  // "—" (bare em dash) → " - "
+  return text.replace(/ — /g, ", ").replace(/—/g, " - ");
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -179,7 +186,11 @@ export async function POST(req: Request) {
     const review: SavedFlowReview = {
       id: randomUUID(),
       flow: preprocessed,
-      sections: parsed.sections,
+      // Strip em dashes from every section's generated copy so the output is on-brand.
+      sections: parsed.sections.map((s) => ({
+        ...s,
+        bodyMarkdown: stripEmDashes(s.bodyMarkdown),
+      })),
       imagePrompts: parsed.imagePrompts.map((p) => ({
         ...p,
         status: "pending" as const,

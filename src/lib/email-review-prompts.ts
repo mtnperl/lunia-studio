@@ -34,29 +34,10 @@ Rules (all mandatory):
    checkout email is not a missed opportunity for any demographic
    framing — review it as a generic abandoned checkout email.
 
-The output must follow this exact 6-section structure. Do not skip
+The output must follow this exact 5-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
 
-## Section 1 — Headline
-3 to 5 sentences summarizing the biggest strategic issues. Then:
-
-**If you only do ONE thing right now, do this:**
-> [Single most urgent, concrete action — specific enough to act on Monday
-> without needing to think about what it means. Not "improve subject lines."
-> Write the actual fix: the exact copy change, structural move, or removal.]
-
-Why this matters: 1 sentence on what downstream metric or experience it unlocks.
-
-**If you only do three things:**
-- ...
-- ...
-- ...
-
-Lead with the strategic issue, not the cosmetic one. Each bullet must be
-specific and actionable — not a principle, a concrete task. The ONE thing
-and the three things may overlap; that's fine.
-
-## Section 2 — Timing
+## Section 1 — Timing
 Per-email send timing verdict for each email. Then:
 
 **Recommended cadence (do this now):**
@@ -83,7 +64,7 @@ post-open engagement window seen in E1."
 If timing is already on-canon across all emails, write:
 "Timing is already well-structured. No changes recommended."
 
-## Section 3 — Subject lines, preview text, sender
+## Section 2 — Subject lines, preview text, sender
 Per-email, use this exact structure (in this order):
 
   ### Email N — <stable id>
@@ -125,7 +106,7 @@ Rules:
   about it" with preview "A short read on why the three ingredients
   work together, not separately" is right.
 
-## Section 4 — Full body rewrites (NON-NEGOTIABLE)
+## Section 3 — Full body rewrites (NON-NEGOTIABLE)
 For each email, open with:
 
 **Recommended version (implement this): Version A**
@@ -156,11 +137,11 @@ The "Recommended version" callout is REQUIRED for every email. Do not
 skip it. Do not reverse-label Version B as recommended. Version A is
 always the default action, Version B is always the fallback.
 
-## Section 5 — Design and images (per-email visual audit)
+## Section 4 — Design and images (per-email visual audit)
 SCOPE: visual design, layout, images, and brand-identity only. Do NOT
 audit copy, voice, tone, word choice, banned phrases, em dashes,
 exclamation counts, or bolding density here — those are covered in
-Section 3 (subject lines) and Section 4 (body rewrites). If you notice a
+Section 2 (subject lines) and Section 3 (body rewrites). If you notice a
 copy issue, do not flag it in this section; it belongs in Section 4.
 
 For each email, structure the audit as a list of findings. Each finding
@@ -205,7 +186,7 @@ After all per-email findings, close with:
 > [Single most impactful visual fix — specific. Prioritise compliance
 > issues (FDA badge) over aesthetic ones.]
 
-## Section 6 — Strategic question + Action checklist
+## Section 5 — Strategic question + Action checklist
 Strategic question: 2-3 paragraph reflection on what the flow is trying to
 do at a higher level, and how to rebuild it. Be opinionated.
 
@@ -356,11 +337,11 @@ type AnalyzeOutput = {
     }[];
   };                              // never omit this field — the UI always shows the count chip
   sections: {
-    key: "headline" | "timing" | "subjects" | "rewrites" | "design" | "strategy";
+    key: "timing" | "subjects" | "rewrites" | "design" | "strategy";
     title: string;
     bodyMarkdown: string;       // markdown with H2/H3 headers, tables, code blocks for image prompts
     flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
-  }[];                          // exactly 6 entries, in order: headline, timing, subjects, rewrites, design, strategy
+  }[];                          // exactly 5 entries, in order: timing, subjects, rewrites, design, strategy
   imagePrompts: {
     id: string;                 // stable id like "img-e1-hero"
     emailId: string;            // matches the EmailFlowAsset.id from input
@@ -373,14 +354,14 @@ type AnalyzeOutput = {
 };
 \`\`\`
 
-The "rewrites" section's bodyMarkdown must contain Version A AND Version B
+The "rewrites" section (Section 3) bodyMarkdown must contain Version A AND Version B
 for every email in the input flow, using the [ SUBJECT ] / [ PREVIEW ] /
 [ HEADLINE ] / [ BODY ] / [ CTA BUTTON ] / [ HERO IMAGE ] / [ TRUST BADGES ]
 block tags. Wrap image prompts in fenced code blocks tagged \`magnific\`.
 
-If the input is a single campaign (one email), Section 2 (timing) should
+If the input is a single campaign (one email), Section 1 (timing) should
 write "No findings — single campaign, no flow timing to evaluate." and
-Section 3 should still produce 3+ subject alternatives.`;
+Section 2 should still produce 3+ subject alternatives.`;
 
 export function buildAnalyzePrompt(args: {
   flowJson: string;            // serialized EmailFlow
@@ -410,7 +391,7 @@ export function buildRegenerateSectionPrompt(args: {
   userComment: string;
   otherSectionsBrief: string;     // 1-line summaries of the other 5 sections so the regen stays coherent
 }): string {
-  return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nYou previously generated a 6-section review for the email flow below. The user wants Section "${args.sectionKey}" rewritten with the following revision request:\n\nUSER REVISION REQUEST:\n"""\n${args.userComment}\n"""\n\nBefore the revision, the section read:\n"""\n${args.currentSectionMarkdown}\n"""\n\nThe other sections of the review say (1-line summaries, for context — do NOT regenerate these):\n${args.otherSectionsBrief}\n\nThe original flow input is:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype RegenSectionOutput = {\n  key: "${args.sectionKey}";\n  title: string;\n  bodyMarkdown: string;          // markdown with H2/H3 headers, tables, code blocks for image prompts\n  flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];\n};\n\`\`\`\n\nFollow every framework rule (no em dashes, max 1 exclamation per piece, allowed compliance language, banned phrases / badges). Honor the user's revision request fully. Stay coherent with the rest of the review.`;
+  return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nYou previously generated a 5-section review for the email flow below. The user wants Section "${args.sectionKey}" rewritten with the following revision request:\n\nUSER REVISION REQUEST:\n"""\n${args.userComment}\n"""\n\nBefore the revision, the section read:\n"""\n${args.currentSectionMarkdown}\n"""\n\nThe other sections of the review say (1-line summaries, for context — do NOT regenerate these):\n${args.otherSectionsBrief}\n\nThe original flow input is:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype RegenSectionOutput = {\n  key: "${args.sectionKey}";\n  title: string;\n  bodyMarkdown: string;          // markdown with H2/H3 headers, tables, code blocks for image prompts\n  flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];\n};\n\`\`\`\n\nFollow every framework rule (no em dashes, max 1 exclamation per piece, allowed compliance language, banned phrases / badges). Honor the user's revision request fully. Stay coherent with the rest of the review.`;
 }
 
 // Used by /api/email-review/regen-suggestions. Asks Claude for 3 alternatives
