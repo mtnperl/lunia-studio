@@ -38,31 +38,39 @@ The output must follow this exact 5-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
 
 ## Section 1 — Timing
-Per-email send timing verdict for each email. Then:
+Per-email send timing verdict for each email. Open with a summary table:
 
-**Recommended cadence (do this now):**
+**Recommended cadence:**
 | Email | Current delay | Recommended delay | Reason |
 | ----- | ------------- | ----------------- | ------ |
 | E1    | ...           | ...               | ...    |
 
-Use this exact table structure. If the current timing is already correct,
-write "keep as-is" in the Recommended delay cell. Give explicit hour/day
-numbers, never ranges. "3 hours" not "2-4 hours."
+Use this exact table structure. Give explicit hour/day numbers, never
+ranges. "3 hours" not "2-4 hours." If the current timing is already
+correct, write "keep as-is" in the Recommended delay cell.
 
 Category-specific norms:
-- Sleep: daily-ish replenishment, replenishment is monthly
 - Two-email gap under 24 hours = pressure-y, flag it
 - Final email more than 5 days after trigger = too cold (except lapsed)
 - Canonical timing: abandoned checkout (1-3h, 24h, 72h), welcome (0h,
   day 2, day 5, day 9), post-purchase (day 0, 3, 7, 14, 21)
 
-If metrics are provided in input.metrics, add a second paragraph after
-the table grounding every recommendation in the actual open / click / RPR
-data. Example: "E2 has a 14% open rate at 4h — moving to 24h matches the
-post-open engagement window seen in E1."
+If metrics are provided in input.metrics, add a paragraph after the
+table grounding each recommendation in the actual open / click / RPR
+data.
 
-If timing is already on-canon across all emails, write:
-"Timing is already well-structured. No changes recommended."
+After the table, add a ⚠ finding block for EVERY email where timing
+needs to change. Use this exact two-line format:
+
+  ⚠ E[N] — [short issue label, e.g. "gap too short", "first touch delayed"]
+  Fix: Change send delay to [X hours / Y days]. [One sentence: why this
+  timing matches the category norm or the metrics signal.]
+
+For emails where timing is already correct, write a ✓ line instead:
+  ✓ E[N] — timing on-canon, no change needed.
+
+If ALL emails are on-canon, write a single line:
+  ✓ Timing is well-structured across the whole flow. No changes needed.
 
 ## Section 2 — Subject lines, preview text, sender
 Per-email, use this exact structure (in this order):
@@ -190,25 +198,44 @@ After all per-email findings, close with:
 Strategic question: 2-3 paragraph reflection on what the flow is trying to
 do at a higher level, and how to rebuild it. Be opinionated.
 
-Then immediately:
+Then the "Start here" item as a ⚠ finding block (REQUIRED — do not omit):
 
-**Start here (do this before anything else):**
-> [The single most important item from the entire checklist below. Not a
-> bucket, not a theme — one specific, actionable task that either removes
-> a compliance risk or unlocks the biggest performance gain. If there is a
-> compliance issue, it is always the start-here item.]
+  ⚠ Start here: [The single most important task from the whole review —
+  specific and actionable, not a theme. Compliance issues always come
+  first. If there is an FDA badge, that is the start-here item.]
+  Fix: [Exact step to take. One sentence — no padding.]
 
 Why this first: 1 sentence on urgency or leverage.
 
-Action checklist with 3 buckets (numbered, so Mathan can reference them):
-- **This week** (compliance and craft fixes — items 1-N)
-- **Next two weeks** (testable rewrites — items N+1-M)
-- **Bigger strategic decisions** (items M+1-end)
+Then the full action checklist. Use ⚠ format for EVERY item so Mathan
+can check each one off individually. Three buckets:
 
-Close with "What I need from you to take this further".
+**This week** — compliance and craft fixes:
 
-The "Start here" callout is REQUIRED. It should appear between the
-strategic question paragraphs and the bucketed checklist. Do not omit it.
+  ⚠ This week — [item label]: [what is wrong or missing]
+  Fix: [exact action — specific enough to hand to someone without context]
+
+(one ⚠ block per item; repeat for every This-week item)
+
+**Next two weeks** — testable rewrites and A/B experiments:
+
+  ⚠ Next two weeks — [item label]: [what to test or improve]
+  Fix: [exact A/B setup or edit — name the email, the field, the change]
+
+(one ⚠ block per item)
+
+**Bigger strategic decisions** — structural or positioning questions:
+
+  ⚠ Strategic decision — [item label]: [the decision or question]
+  Fix: [what to decide, build, or research — with a suggested direction]
+
+(one ⚠ block per item)
+
+Close with a short "What I need from you to take this further" paragraph
+(prose, not ⚠ items — this is a prompt for next steps, not a checklist).
+
+The "Start here" ⚠ block is REQUIRED. It must appear immediately after
+the strategic question paragraphs and before the three-bucket checklist.
 
 ${BRAND_GUIDELINES}
 
