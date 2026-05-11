@@ -8,8 +8,15 @@ export const maxDuration = 180;
 
 const VALID_ENGINES: FlowReviewImageEngine[] = ["recraft", "ideogram", "flux2"];
 
-// Recraft V3 — stable fallback when V4 Pro returns 403 (plan/billing gate).
-const RECRAFT_V3_ENDPOINT = "fal-ai/recraft-v3";
+// Engine fallback ladder for the "recraft" slot.
+// fal-ai/recraft/v4/pro requires a paid plan. If it 403s, try v3. If that
+// also 403s (key doesn't have recraft at all), fall through to ideogram which
+// uses a completely different billing pool.
+const RECRAFT_LADDER: string[] = [
+  "fal-ai/recraft-v3",                         // v3 first — most widely accessible
+  FAL_ENDPOINTS["recraft"],                     // v4/pro as second attempt
+  FAL_ENDPOINTS["ideogram"],                    // ideogram as last resort
+];
 
 function aspectToSize(aspect: string): { width: number; height: number } {
   switch (aspect) {
@@ -20,36 +27,68 @@ function aspectToSize(aspect: string): { width: number; height: number } {
   }
 }
 
-function isForbidden(err: unknown): boolean {
-  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  return msg.includes("forbidden") || msg.includes("403");
+/** True for auth/plan errors — these trigger a fallback to the next engine. */
+function isAccessError(err: unknown): boolean {
+  if (err instanceof Error) {
+    // fal SDK's ApiError exposes .status directly on the Error subclass
+    const status = (err as Error & { status?: number }).status;
+    if (status === 401 || status === 403) return true;
+    const msg = err.message.toLowerCase();
+    return msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("403") || msg.includes("401");
+  }
+  const msg = String(err).toLowerCase();
+  return msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("403") || msg.includes("401");
 }
 
-async function callFal(engine: ImageEngine, prompt: string, aspect: string): Promise<string | undefined> {
-  const endpoint = FAL_ENDPOINTS[engine];
+async function callRecraftWithFallback(prompt: string, aspect: string): Promise<string | undefined> {
   const size = aspectToSize(aspect);
-
-  if (engine === "recraft") {
+  let lastErr: unknown;
+  for (const endpoint of RECRAFT_LADDER) {
     try {
-      const result = await fal.subscribe(endpoint, {
-        input: { prompt, image_size: size },
-        logs: false,
-      });
-      return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
-    } catch (err) {
-      // V4 Pro is gated behind a billing tier. If our key can't access it,
-      // fall back to V3 transparently — same prompt format, very similar quality.
-      if (isForbidden(err)) {
-        console.warn("[email-review/generate-image] recraft v4/pro returned Forbidden — falling back to recraft-v3");
-        const result = await fal.subscribe(RECRAFT_V3_ENDPOINT, {
+      const isIdeogramFallback = endpoint === FAL_ENDPOINTS["ideogram"];
+      let result;
+      if (isIdeogramFallback) {
+        // Ideogram uses aspect_ratio string, not image_size
+        const ar = aspect === "16:9" ? "16:9" : aspect === "1:1" ? "1:1" : "4:5";
+        result = await fal.subscribe(endpoint, {
+          input: { prompt, aspect_ratio: ar, rendering_speed: "BALANCED", style: "REALISTIC" },
+          logs: false,
+        });
+      } else {
+        result = await fal.subscribe(endpoint, {
           input: { prompt, image_size: size },
           logs: false,
         });
-        return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
       }
-      throw err;
+      const url = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+      if (url) {
+        if (endpoint !== RECRAFT_LADDER[0]) {
+          console.warn(`[email-review/generate-image] recraft primary failed — succeeded with fallback: ${endpoint}`);
+        }
+        return url;
+      }
+    } catch (err) {
+      if (isAccessError(err)) {
+        console.warn(`[email-review/generate-image] access denied on ${endpoint}, trying next`);
+        lastErr = err;
+        continue;
+      }
+      throw err; // non-auth error — propagate immediately
     }
   }
+  // All rungs exhausted
+  const detail = lastErr instanceof Error ? lastErr.message : String(lastErr ?? "unknown");
+  throw new Error(
+    `All recraft/ideogram engines returned Forbidden — check FAL_KEY in Vercel env vars and confirm the key has at least one active model quota. Last error: ${detail}`,
+  );
+}
+
+async function callFal(engine: ImageEngine, prompt: string, aspect: string): Promise<string | undefined> {
+  if (engine === "recraft") {
+    return callRecraftWithFallback(prompt, aspect);
+  }
+  const endpoint = FAL_ENDPOINTS[engine];
+  const size = aspectToSize(aspect);
   if (engine === "ideogram") {
     const ar = aspect === "16:9" ? "16:9" : aspect === "1:1" ? "1:1" : "4:5";
     const result = await fal.subscribe(endpoint, {
@@ -67,6 +106,13 @@ async function callFal(engine: ImageEngine, prompt: string, aspect: string): Pro
 }
 
 export async function POST(req: Request) {
+  if (!process.env.FAL_KEY) {
+    return Response.json(
+      { error: "FAL_KEY is not configured — add it to Vercel Environment Variables to enable image generation" },
+      { status: 503 },
+    );
+  }
+
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "127.0.0.1";
   const allowed = await checkRateLimit(ip, "images");
   if (!allowed) return Response.json({ error: "Too many requests" }, { status: 429 });
@@ -104,7 +150,7 @@ export async function POST(req: Request) {
       review.imagePrompts[idx] = updated;
       await saveFlowReview(review);
       console.error(`[email-review/generate-image] fal ${engine} failed:`, detail);
-      return Response.json({ error: `fal ${engine} failed: ${detail}` }, { status: 502 });
+      return Response.json({ error: detail }, { status: 502 });
     }
     if (!url) {
       const errMsg = `No URL returned from fal ${engine}`;
@@ -136,7 +182,7 @@ export async function POST(req: Request) {
       status: "ready",
       errorMessage: undefined,
       history: history.slice(0, 8),
-      regenSuggestions: undefined, // clear any stale suggestions once a new render lands
+      regenSuggestions: undefined,
     };
     review.imagePrompts[idx] = updated;
     await saveFlowReview(review);
