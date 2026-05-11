@@ -394,6 +394,67 @@ export function buildRegenerateSectionPrompt(args: {
   return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nYou previously generated a 5-section review for the email flow below. The user wants Section "${args.sectionKey}" rewritten with the following revision request:\n\nUSER REVISION REQUEST:\n"""\n${args.userComment}\n"""\n\nBefore the revision, the section read:\n"""\n${args.currentSectionMarkdown}\n"""\n\nThe other sections of the review say (1-line summaries, for context — do NOT regenerate these):\n${args.otherSectionsBrief}\n\nThe original flow input is:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype RegenSectionOutput = {\n  key: "${args.sectionKey}";\n  title: string;\n  bodyMarkdown: string;          // markdown with H2/H3 headers, tables, code blocks for image prompts\n  flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];\n};\n\`\`\`\n\nFollow every framework rule (no em dashes, max 1 exclamation per piece, allowed compliance language, banned phrases / badges). Honor the user's revision request fully. Stay coherent with the rest of the review.`;
 }
 
+// Used by /api/email-review/regenerate-additional-email. Revises a single
+// generated email with the user's guidance, keeping position / role intact.
+export function buildReviseAdditionalEmailPrompt(args: {
+  flowJson: string;
+  existingEmailJson: string;     // the AdditionalEmail to revise (JSON)
+  userComment: string;           // Mathan's revision guidance
+  existingRewritesMarkdown: string; // Section 3 body — for voice continuity
+}): string {
+  return `${FRAMEWORK_RUBRIC}
+
+## Task
+
+The user wants to revise one of the previously generated emails for this flow.
+Keep the position, role, and sendDelayHours the same — those structural decisions
+are locked in. Apply the user's revision request to everything else: subject,
+preview, sender, body copy, and rationale.
+
+USER REVISION REQUEST:
+"""
+${args.userComment}
+"""
+
+The email to revise (current version):
+\`\`\`json
+${args.existingEmailJson}
+\`\`\`
+
+Existing flow rewrites (Section 3 of the review, for voice continuity):
+"""
+${args.existingRewritesMarkdown.slice(0, 4000)}
+"""
+
+Original flow:
+\`\`\`json
+${args.flowJson}
+\`\`\`
+
+## Output format
+
+Return ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.
+
+\`\`\`ts
+type AdditionalEmail = {
+  id: string;                 // preserve the original id exactly
+  position: number;           // preserve unchanged
+  role: string;               // preserve unchanged
+  sendDelayHours: number;     // preserve unchanged
+  subjectA: string;
+  subjectAlts: string[];      // 2 A/B alternatives
+  previewText: string;
+  senderName: string;
+  senderEmail: string;
+  bodyMarkdown: string;       // [ HEADLINE ] [ BODY ] [ CTA BUTTON ] block tags
+  rationale: string;
+  createdAt: string;          // preserve the original createdAt value
+};
+\`\`\`
+
+Follow every framework rule (no em dashes, max 1 exclamation per email, no banned phrases / badges). Honor the user's revision request fully.`;
+}
+
 // Used by /api/email-review/regen-suggestions. Asks Claude for 3 alternatives
 // that vary along the prompt's axes.
 export function buildRegenSuggestionsPrompt(args: {

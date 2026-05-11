@@ -333,7 +333,22 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
 
       {/* Newly-generated emails (if any) */}
       {review.additionalEmails && review.additionalEmails.length > 0 && (
-        <AdditionalEmailsDeck emails={review.additionalEmails} />
+        <AdditionalEmailsDeck
+          emails={review.additionalEmails}
+          reviewId={review.id}
+          onEmailUpdated={(updated) =>
+            setReview((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    additionalEmails: (prev.additionalEmails ?? []).map((e) =>
+                      e.id === updated.id ? updated : e,
+                    ),
+                  }
+                : prev,
+            )
+          }
+        />
       )}
 
       <FlowImagesGrid review={review} onReviewUpdate={setReview} />
