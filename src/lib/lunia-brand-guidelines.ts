@@ -92,18 +92,34 @@ export const PRODUCT = {
 //   /public/lunia-bottle-ref-3.jpeg  (linen surface, golden hour window)
 //   /public/lunia-bottle-ref-clean.jpeg  (clean white studio shot — clearest label view)
 
-export const BOTTLE_VISUAL_SPEC = `wide squat amber glass supplement bottle with a black ribbed plastic \
-screw cap. The label wraps the full body: upper half is a clean white \
-background with a subtle constellation dot pattern; the logo mark is a \
-navy diamond cross of five dots arranged in a plus shape; below that \
-"LUNIA LIFE" in large bold uppercase navy sans-serif, then "SLEEP \
-SUPPLEMENT" in smaller uppercase tracking; the lower half of the label \
-shows a painted mountain landscape — layered deep teal and dark navy \
-ridges with golden yellow highlights along the peaks, fading to near-\
-black at the base; ingredient text in small white italic reads \
-"Magnesium glycinate / Apigenin / L-Theanine / 60 caps". Amber glass \
-is visible at the very bottom of the bottle and capsules are faintly \
-visible through the glass at the top.`;
+export const BOTTLE_VISUAL_SPEC = `Wide squat amber glass supplement bottle — body wider than it is tall, \
+pharmaceutical shape. Very wide black ribbed plastic screw cap, \
+significantly wider than the neck. Full-wrap paper label covering the \
+middle 70% of the bottle height.
+
+Label (top to bottom):
+- Upper half: pale blue-grey sky gradient background, fading from near-\
+white at the very top to soft sky blue, with subtle scattered circular \
+bubble texture across the surface.
+- Logo mark centered near the top: a geometric pattern of nine navy \
+circles arranged in a diamond-cross shape — three rows of dots forming \
+a diamond, with connecting lines, resembling a constellation or \
+asterisk of circles.
+- "LUNIA LIFE" in large bold dark charcoal/navy sans-serif uppercase, \
+wide letter-spacing, centered.
+- "SLEEP SUPPLEMENT" in smaller uppercase tracking immediately below, \
+lighter grey.
+- Lower half: a painted mountain landscape illustration — layered \
+receding mountain ridges in teal, slate blue, and deep navy, with \
+fine golden glitter/particle highlights dusted along every ridge line, \
+the deepest foreground ridge fading to near-black; the whole scene has \
+a watercolor and gold-leaf quality.
+- Ingredient text in centered white italic: "Magnesium glycinate / \
+Apigenin / L-Theanine" stacked on three lines; below that "60" in \
+larger white, "caps" in smaller white beneath.
+
+Amber glass is visible above the label (through which dark capsules are \
+faintly visible) and below the label at the bottle base.`;
 
 // Photography style reference — use these when writing image prompts
 // that include the Lunia bottle in a styled scene.
@@ -319,7 +335,7 @@ Palette:
 - Slate Blue #2C3F51 (secondary text)
 - Soft Ivory #F7F4EF (default light background)
 - Aqua Accent #BFFBF8 (max 5–10% of layout)
-- Signal Yellow #FFD800 (canonical CTA — navy text on yellow button)
+- Signal Yellow #FFD800 (accent use only — highlights, badges, UI elements. NOT for email CTA buttons)
 
 Hard don'ts: gradients, purple, lavender, neon, "wellness pastels".
 
@@ -329,5 +345,6 @@ Inter is the single typeface for all email content.
 - Headlines (H1/H2): Inter 400 (Normal), letter-spacing -0.01em, color #102635
 - Body: Inter 300 (Light), line-height 1.6, color #1A1A1A
 - Bold within body: Inter 700, sparingly — ingredient names + risk-reversal phrases only
-- CTA button: Inter 700, navy text on Signal Yellow #FFD800
-Do NOT use Georgia, serif, or any other font family.`;
+- CTA button: Inter 700 (Bold), white text (#ffffff) on Rich Navy #01253F background
+Do NOT use Georgia, serif, or any other font family.
+Do NOT use yellow or Signal Yellow on email CTA buttons — that is a UI color only.`;
