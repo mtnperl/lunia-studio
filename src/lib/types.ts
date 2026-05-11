@@ -797,6 +797,12 @@ export type SavedFlowReview = {
   additionalEmails?: AdditionalEmail[];
   /** Section keys the user has marked done. Drives the collapse + "REOPEN" UI. */
   doneSectionKeys?: FlowReviewSectionKey[];
+  /**
+   * Per-section item done state. Key = FlowReviewSectionKey; value = array of
+   * done item IDs (derived from the ⚠ line content in bodyMarkdown). When all
+   * ⚠ items in a section are marked done the section auto-promotes to done.
+   */
+  doneSectionItems?: Record<string, string[]>;
   createdAt: string;
   // Optional cached docx export URL (on Vercel Blob)
   docxUrl?: string;

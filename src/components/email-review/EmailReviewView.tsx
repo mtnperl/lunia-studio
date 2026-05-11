@@ -256,6 +256,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
             reviewId={review.id}
             section={s}
             done={(review.doneSectionKeys ?? []).includes(s.key)}
+            doneItemIds={(review.doneSectionItems ?? {})[s.key] ?? []}
             onUpdate={(next) => setReview({
               ...review,
               sections: review.sections.map((sec) => sec.key === next.key ? next : sec),
@@ -272,6 +273,48 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ reviewId: review.id, sectionKey, done: next }),
+                });
+                if (!res.ok) {
+                  // Revert on failure
+                  setReview(review);
+                }
+              } catch {
+                setReview(review);
+              }
+            }}
+            onToggleItemDone={async (sectionKey, itemId, itemDone, allDone) => {
+              // Optimistic update — update item list (and section done flag) immediately.
+              const prevItems = (review.doneSectionItems ?? {})[sectionKey] ?? [];
+              const nextItemSet = new Set(prevItems);
+              if (itemDone) nextItemSet.add(itemId); else nextItemSet.delete(itemId);
+              const nextItems = Array.from(nextItemSet);
+
+              // If reopening an item, also reopen the section.
+              const nextSectionDone = new Set(review.doneSectionKeys ?? []);
+              if (allDone) {
+                nextSectionDone.add(sectionKey);
+              } else if (!itemDone) {
+                nextSectionDone.delete(sectionKey);
+              }
+
+              const optimistic: SavedFlowReview = {
+                ...review,
+                doneSectionItems: { ...(review.doneSectionItems ?? {}), [sectionKey]: nextItems },
+                doneSectionKeys: Array.from(nextSectionDone),
+              };
+              setReview(optimistic);
+
+              try {
+                const res = await fetch("/api/email-review/toggle-item-done", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    reviewId: review.id,
+                    sectionKey,
+                    itemId,
+                    done: itemDone,
+                    autoSectionDone: allDone,
+                  }),
                 });
                 if (!res.ok) {
                   // Revert on failure

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import CopyButton from "@/components/email-review/CopyButton";
 import MarkdownRenderer from "@/components/email-review/MarkdownRenderer";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
@@ -14,6 +14,56 @@ const META: Record<FlowReviewSectionKey, { number: number; title: string; subtit
   strategy:  { number: 6, title: "Strategic question + Action checklist",     subtitle: "Reframe + this-week / next-two-weeks", icon: "◆", tint: "#C8DDE8" },
 };
 
+// ─── Finding parser ───────────────────────────────────────────────────────────
+// Splits a bodyMarkdown string into alternating segments: regular markdown and
+// ⚠ finding blocks. A finding block is one ⚠ line optionally followed by a
+// "Fix: …" line. The item ID is the first 80 chars of the issue text (stable
+// across renders as long as the review content doesn't change).
+
+type SegmentMd      = { type: "md"; content: string };
+type SegmentFinding = { type: "finding"; id: string; issueText: string; fixText: string | null };
+type Segment        = SegmentMd | SegmentFinding;
+
+function parseFindingSegments(markdown: string): Segment[] {
+  const lines = markdown.split("\n");
+  const segments: Segment[] = [];
+  let mdBuffer: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trimStart().startsWith("⚠")) {
+      // Flush the markdown buffer
+      if (mdBuffer.length > 0) {
+        const content = mdBuffer.join("\n").trimEnd();
+        if (content) segments.push({ type: "md", content });
+        mdBuffer = [];
+      }
+      // Issue line (preserve the ⚠ symbol)
+      const issueLine = line.trimStart();
+      // Peek ahead for a Fix: line
+      let fixText: string | null = null;
+      if (i + 1 < lines.length && /^\s*Fix:/i.test(lines[i + 1])) {
+        i++;
+        fixText = lines[i].trim();
+      }
+      // Stable item ID: first 80 chars of the text after "⚠ "
+      const id = issueLine.replace(/^⚠\s*/, "").slice(0, 80).trim();
+      segments.push({ type: "finding", id, issueText: issueLine, fixText });
+    } else {
+      mdBuffer.push(line);
+    }
+    i++;
+  }
+  if (mdBuffer.length > 0) {
+    const content = mdBuffer.join("\n").trimEnd();
+    if (content) segments.push({ type: "md", content });
+  }
+  return segments;
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 type Props = {
   reviewId: string;
   section: FlowReviewSection;
@@ -22,14 +72,57 @@ type Props = {
   done?: boolean;
   /** Toggle persisted via /api/email-review/toggle-section-done. */
   onToggleDone?: (sectionKey: FlowReviewSection["key"], next: boolean) => void;
+  /**
+   * IDs of ⚠ items that the user has already marked done in this section.
+   * Passed down from EmailReviewView which owns the review state.
+   */
+  doneItemIds?: string[];
+  /**
+   * Called when the user clicks Done / Reopen on a single ⚠ item.
+   * `allDone` is true when marking done and this was the last remaining item —
+   * the parent should also mark the whole section done.
+   */
+  onToggleItemDone?: (
+    sectionKey: FlowReviewSection["key"],
+    itemId: string,
+    done: boolean,
+    allDone: boolean,
+  ) => void;
 };
 
-export default function ReviewSectionCard({ reviewId, section, onUpdate, done = false, onToggleDone }: Props) {
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function ReviewSectionCard({
+  reviewId,
+  section,
+  onUpdate,
+  done = false,
+  onToggleDone,
+  doneItemIds = [],
+  onToggleItemDone,
+}: Props) {
   const meta = META[section.key];
   const [revising, setRevising] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Parse ⚠ findings once per bodyMarkdown change (stable reference via useMemo).
+  const segments = useMemo(() => parseFindingSegments(section.bodyMarkdown), [section.bodyMarkdown]);
+  const findingIds = useMemo(
+    () => segments.filter((s): s is SegmentFinding => s.type === "finding").map((s) => s.id),
+    [segments],
+  );
+
+  function handleItemToggle(itemId: string, nextDone: boolean) {
+    if (!onToggleItemDone) return;
+    let allDone = false;
+    if (nextDone) {
+      const nowDone = new Set([...doneItemIds, itemId]);
+      allDone = findingIds.every((id) => nowDone.has(id));
+    }
+    onToggleItemDone(section.key, itemId, nextDone, allDone);
+  }
 
   async function regenerate() {
     if (!draft.trim()) return;
@@ -56,9 +149,7 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate, done = 
     }
   }
 
-  // Collapsed "done" view: just the header strip + a REOPEN button. The
-  // section is visually de-emphasised so the eye flows past it to whatever
-  // still needs work.
+  // ── Collapsed "done" view ──────────────────────────────────────────────────
   if (done) {
     return (
       <article
@@ -106,6 +197,11 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate, done = 
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 14px" }}>
+            {findingIds.length > 0 && (
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginRight: 4 }}>
+                {findingIds.length} item{findingIds.length !== 1 ? "s" : ""} resolved
+              </span>
+            )}
             <button
               onClick={() => onToggleDone?.(section.key, false)}
               title="Reopen this section"
@@ -130,6 +226,10 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate, done = 
       </article>
     );
   }
+
+  // ── Active section view ────────────────────────────────────────────────────
+  const doneCount = findingIds.filter((id) => doneItemIds.includes(id)).length;
+  const totalFindings = findingIds.length;
 
   return (
     <article
@@ -174,6 +274,11 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate, done = 
         <div style={{ flex: 1, padding: "16px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)" }}>
             Section {meta.number}
+            {totalFindings > 0 && (
+              <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 10 }}>
+                · {doneCount}/{totalFindings} items resolved
+              </span>
+            )}
           </div>
           <h2 style={{ margin: 0, fontFamily: "Arial, sans-serif", fontSize: 20, fontWeight: 700, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
             {meta.title}
@@ -315,9 +420,91 @@ export default function ReviewSectionCard({ reviewId, section, onUpdate, done = 
         </div>
       )}
 
-      {/* Body */}
-      <div style={{ padding: "14px 28px 22px" }}>
-        <MarkdownRenderer>{section.bodyMarkdown}</MarkdownRenderer>
+      {/* Body — rendered as segments; ⚠ findings get interactive Done/Reopen buttons */}
+      <div style={{ padding: "14px 28px 22px", display: "flex", flexDirection: "column", gap: 0 }}>
+        {segments.map((seg, idx) => {
+          if (seg.type === "md") {
+            return <MarkdownRenderer key={idx}>{seg.content}</MarkdownRenderer>;
+          }
+          // ── Finding block ────────────────────────────────────────────────
+          const itemDone = doneItemIds.includes(seg.id);
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                padding: "10px 14px",
+                background: itemDone ? "rgba(34,197,94,0.06)" : "rgba(176,65,62,0.06)",
+                border: `1px solid ${itemDone ? "rgba(34,197,94,0.28)" : "rgba(176,65,62,0.22)"}`,
+                borderRadius: 8,
+                margin: "6px 0",
+                transition: "background 0.15s, border-color 0.15s",
+              }}
+            >
+              {/* Text column */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: "Arial, sans-serif",
+                    fontSize: 13,
+                    color: itemDone ? "#15803d" : "#B0413E",
+                    fontWeight: 600,
+                    lineHeight: 1.5,
+                    textDecoration: itemDone ? "line-through" : "none",
+                    opacity: itemDone ? 0.7 : 1,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {seg.issueText}
+                </div>
+                {seg.fixText && (
+                  <div
+                    style={{
+                      fontFamily: "Arial, sans-serif",
+                      fontSize: 12.5,
+                      color: itemDone ? "#15803d" : "#5b5340",
+                      lineHeight: 1.5,
+                      marginTop: 3,
+                      textDecoration: itemDone ? "line-through" : "none",
+                      opacity: itemDone ? 0.6 : 1,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {seg.fixText}
+                  </div>
+                )}
+              </div>
+              {/* Done / Reopen button */}
+              {onToggleItemDone && (
+                <button
+                  onClick={() => handleItemToggle(seg.id, !itemDone)}
+                  title={itemDone ? "Reopen this item" : "Mark this item done"}
+                  style={{
+                    flexShrink: 0,
+                    padding: "3px 10px",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: itemDone ? "rgba(34,197,94,0.15)" : "rgba(176,65,62,0.10)",
+                    color: itemDone ? "#15803d" : "#B0413E",
+                    border: `1px solid ${itemDone ? "rgba(34,197,94,0.4)" : "rgba(176,65,62,0.3)"}`,
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    alignSelf: "flex-start",
+                    marginTop: 1,
+                  }}
+                >
+                  {itemDone ? "↺ Reopen" : "✓ Done"}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </article>
   );
