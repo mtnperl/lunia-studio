@@ -8,6 +8,9 @@ export const maxDuration = 180;
 
 const VALID_ENGINES: FlowReviewImageEngine[] = ["recraft", "ideogram", "flux2"];
 
+// Recraft V3 — stable fallback when V4 Pro returns 403 (plan/billing gate).
+const RECRAFT_V3_ENDPOINT = "fal-ai/recraft-v3";
+
 function aspectToSize(aspect: string): { width: number; height: number } {
   switch (aspect) {
     case "16:9": return { width: 1280, height: 720 };
@@ -17,16 +20,35 @@ function aspectToSize(aspect: string): { width: number; height: number } {
   }
 }
 
+function isForbidden(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return msg.includes("forbidden") || msg.includes("403");
+}
+
 async function callFal(engine: ImageEngine, prompt: string, aspect: string): Promise<string | undefined> {
   const endpoint = FAL_ENDPOINTS[engine];
   const size = aspectToSize(aspect);
 
   if (engine === "recraft") {
-    const result = await fal.subscribe(endpoint, {
-      input: { prompt, image_size: size },
-      logs: false,
-    });
-    return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+    try {
+      const result = await fal.subscribe(endpoint, {
+        input: { prompt, image_size: size },
+        logs: false,
+      });
+      return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+    } catch (err) {
+      // V4 Pro is gated behind a billing tier. If our key can't access it,
+      // fall back to V3 transparently — same prompt format, very similar quality.
+      if (isForbidden(err)) {
+        console.warn("[email-review/generate-image] recraft v4/pro returned Forbidden — falling back to recraft-v3");
+        const result = await fal.subscribe(RECRAFT_V3_ENDPOINT, {
+          input: { prompt, image_size: size },
+          logs: false,
+        });
+        return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+      }
+      throw err;
+    }
   }
   if (engine === "ideogram") {
     const ar = aspect === "16:9" ? "16:9" : aspect === "1:1" ? "1:1" : "4:5";

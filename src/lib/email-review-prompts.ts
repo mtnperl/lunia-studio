@@ -156,7 +156,13 @@ The "Recommended version" callout is REQUIRED for every email. Do not
 skip it. Do not reverse-label Version B as recommended. Version A is
 always the default action, Version B is always the fallback.
 
-## Section 5 — Design, images, copy (per-email audit)
+## Section 5 — Design and images (per-email visual audit)
+SCOPE: visual design, layout, images, and brand-identity only. Do NOT
+audit copy, voice, tone, word choice, banned phrases, em dashes,
+exclamation counts, or bolding density here — those are covered in
+Section 3 (subject lines) and Section 4 (body rewrites). If you notice a
+copy issue, do not flag it in this section; it belongs in Section 4.
+
 For each email, structure the audit as a list of findings. Each finding
 MUST use this exact two-line format:
 
@@ -165,25 +171,39 @@ MUST use this exact two-line format:
   no context. Not "improve the CTA color" — "change CTA button background
   to #01253F Rich Navy and set text to #ffffff white, Inter 700."]
 
-If an email has no findings, write:
-  ✓ Email N — no issues found.
+If an email has no design findings, write:
+  ✓ Email N — no design issues found.
 
-Always check (for every email):
-- FDA badge issue (supplements are not FDA approved → flag in red, mandatory)
-- Footer typos (e.g. "receiveemails" missing space)
-- Duplicate logos (header + in-image)
-- Em dashes anywhere (zero tolerance)
-- Exclamation count (max 1 per piece)
-- Bolding density (bold ingredient names + risk-reversal phrases only)
-- One CTA per email: Rich Navy #01253F background, white #ffffff text, Inter 700
-- "X is not Y, it is Z" sentence structure (banned)
-- Image quality / brand-fit (generic stock → flag and note what to replace with)
+Design checklist (check every email against each of these):
+- **FDA / trust badge compliance**: any FDA Approved, Doctor Recommended,
+  or Clinically Proven badge is a mandatory red-flag. Flag it, name the
+  exact badge, and specify the replacement (e.g. "replace with 'Third-Party
+  Tested' or remove entirely").
+- **CTA button spec**: one CTA per email, Rich Navy #01253F background,
+  white #ffffff text, Inter 700 Bold. Flag wrong color, wrong font weight,
+  or multiple CTAs.
+- **Logo**: duplicate logos (header logo + logo baked into a hero image),
+  missing logo, or logo at wrong scale.
+- **Hero image quality and brand-fit**: generic stock photography with no
+  relevance to sleep or Lunia's aesthetic — flag it and describe what the
+  replacement should look like (see image prompt scaffold below).
+- **Color palette compliance**: any purple, magenta, lavender, neon, or
+  heavy gradient in the email design. Lunia palette: Deep Navy #102635,
+  Rich Navy #01253F, Slate Blue #2C3F51, Soft Ivory #F7F4EF, Aqua Accent
+  #BFFBF8 (max 5-10%), Signal Yellow #FFD800 (accent/badge only, not CTA).
+- **Image-to-text ratio and visual hierarchy**: all-text emails with no
+  visual break; images too small to carry weight; text overlapping images
+  in a way that kills readability.
+- **Mobile layout**: images wider than the text column, padding too tight
+  for a 375px viewport, buttons too small to tap (<44px height).
+- **Footer**: visible typos or formatting bugs (e.g. "receiveemails"
+  missing a space, broken unsubscribe link text, wrong address).
 
 After all per-email findings, close with:
 
-**Top fix across the whole flow (do this first):**
-> [Single most impactful design/copy fix — specific. The one that fixes
-> the most visible problem or eliminates a compliance risk.]
+**Top design fix across the whole flow (do this first):**
+> [Single most impactful visual fix — specific. Prioritise compliance
+> issues (FDA badge) over aesthetic ones.]
 
 ## Section 6 — Strategic question + Action checklist
 Strategic question: 2-3 paragraph reflection on what the flow is trying to

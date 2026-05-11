@@ -10,7 +10,7 @@ const META: Record<FlowReviewSectionKey, { number: number; title: string; subtit
   timing:    { number: 2, title: "Timing",                                     subtitle: "Send cadence + when to fix",         icon: "◷", tint: "#BFFBF8" },
   subjects:  { number: 3, title: "Subject lines, preview, sender",             subtitle: "Open + close levers · A/B options",  icon: "✉", tint: "#F4DDC2" },
   rewrites:  { number: 4, title: "Full body rewrites",                         subtitle: "Version A + Version B per email",    icon: "✎", tint: "#D9E5DD" },
-  design:    { number: 5, title: "Design, images, copy",                       subtitle: "Per-email audit",                    icon: "✦", tint: "#E5DFD0" },
+  design:    { number: 5, title: "Design and images",                          subtitle: "Visual audit — layout, images, CTA",  icon: "✦", tint: "#E5DFD0" },
   strategy:  { number: 6, title: "Strategic question + Action checklist",     subtitle: "Reframe + this-week / next-two-weeks", icon: "◆", tint: "#C8DDE8" },
 };
 
