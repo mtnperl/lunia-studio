@@ -3,12 +3,12 @@ import {
   createContentMessage,
   extractText,
   CONTENT_MODEL,
-  CONTENT_THINKING,
   CONTENT_MAX_TOKENS_MAX,
 } from "@/lib/anthropic";
 import { checkRateLimit, saveFlowReview } from "@/lib/kv";
 import {
-  buildAnalyzePrompt,
+  buildAnalyzePhase1Prompt,
+  buildAnalyzePhase2Prompt,
   FRAMEWORK_VERSION,
 } from "@/lib/email-review-prompts";
 import { lintLuniaCopy, lintFindingsToPromptHint } from "@/lib/lunia-linter";
@@ -23,13 +23,22 @@ import type {
 
 export const maxDuration = 300;
 
-type AnalyzeOutput = {
+type ImagePromptDraft = Omit<FlowReviewImagePrompt, "status" | "history" | "regenSuggestions"> & {
+  rationale?: string;
+};
+
+type Phase1Output = {
   ifYouOnlyDoThree: string[];
-  flowCompleteness?: FlowCompletenessGap;  // Claude should always return this; fallback computed below
-  sections: FlowReviewSection[];
-  imagePrompts: (Omit<FlowReviewImagePrompt, "status" | "history" | "regenSuggestions"> & {
-    rationale?: string;
-  })[];
+  flowCompleteness?: FlowCompletenessGap;
+  sections: FlowReviewSection[];           // timing, subjects, design, strategy
+  imagePrompts: ImagePromptDraft[];
+};
+
+type Phase2Output = {
+  key: "rewrites";
+  title: string;
+  bodyMarkdown: string;
+  flags?: FlowReviewSection["flags"];
 };
 
 // Canonical email counts per flow type — mirrors the prompt rubric.
@@ -111,33 +120,46 @@ function aggregateLinterFindings(flow: EmailFlow): string {
   return lintFindingsToPromptHint({ findings: all });
 }
 
-function safeParseJson(raw: string): AnalyzeOutput | null {
+function safeParseJson<T>(raw: string): T | null {
   // Strip optional ```json fences
   const stripped = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try {
-    return JSON.parse(stripped) as AnalyzeOutput;
+    return JSON.parse(stripped) as T;
   } catch {
     // Sometimes Claude leads with "Here is the JSON:" — try the first { ... } block
     const m = stripped.match(/\{[\s\S]*\}$/);
     if (m) {
-      try { return JSON.parse(m[0]) as AnalyzeOutput; } catch { /* fall through */ }
+      try { return JSON.parse(m[0]) as T; } catch { /* fall through */ }
     }
     return null;
   }
 }
 
-function validate(out: AnalyzeOutput | null): { ok: boolean; reason?: string } {
-  if (!out) return { ok: false, reason: "Claude did not return parseable JSON" };
-  if (!Array.isArray(out.ifYouOnlyDoThree) || out.ifYouOnlyDoThree.length < 1) {
-    return { ok: false, reason: "missing ifYouOnlyDoThree" };
-  }
-  if (!Array.isArray(out.sections) || out.sections.length === 0) {
-    return { ok: false, reason: "missing sections" };
-  }
-  if (!Array.isArray(out.imagePrompts)) {
-    return { ok: false, reason: "missing imagePrompts" };
-  }
+function validatePhase1(out: Phase1Output | null): { ok: boolean; reason?: string } {
+  if (!out) return { ok: false, reason: "Phase 1: Claude did not return parseable JSON" };
+  if (!Array.isArray(out.ifYouOnlyDoThree) || out.ifYouOnlyDoThree.length < 1)
+    return { ok: false, reason: "Phase 1: missing ifYouOnlyDoThree" };
+  if (!Array.isArray(out.sections) || out.sections.length === 0)
+    return { ok: false, reason: "Phase 1: missing sections" };
+  if (!Array.isArray(out.imagePrompts))
+    return { ok: false, reason: "Phase 1: missing imagePrompts" };
   return { ok: true };
+}
+
+function validatePhase2(out: Phase2Output | null): { ok: boolean; reason?: string } {
+  if (!out) return { ok: false, reason: "Phase 2: Claude did not return parseable JSON" };
+  if (out.key !== "rewrites")
+    return { ok: false, reason: `Phase 2: unexpected key "${out.key as string}"` };
+  if (typeof out.bodyMarkdown !== "string" || out.bodyMarkdown.length < 10)
+    return { ok: false, reason: "Phase 2: missing or empty bodyMarkdown" };
+  return { ok: true };
+}
+
+/** Summarise Phase 1 findings in a few lines for Phase 2 context coherence. */
+function buildPhase1Brief(p1: Phase1Output): string {
+  return p1.sections
+    .map((s) => `- ${s.title}: ${s.bodyMarkdown.replace(/\s+/g, " ").slice(0, 200)}…`)
+    .join("\n");
 }
 
 export async function POST(req: Request) {
@@ -158,70 +180,96 @@ export async function POST(req: Request) {
 
     const t0 = Date.now();
 
-    // Attempt 1 — full prompt at the model's hard token ceiling.
-    let text: string;
-    let parsed: AnalyzeOutput | null;
-    let valid: { ok: boolean; reason?: string };
+    // ── Phase 1: timing, subjects, design, strategy + meta + image prompts ──
+    // Capped thinking budget so the visible JSON always has room to close.
+    const thinking5k = { type: "enabled" as const, budget_tokens: 5_000 };
+    const thinking8k = { type: "enabled" as const, budget_tokens: 8_000 };
+
+    let p1text: string;
+    let p1: Phase1Output | null;
     {
       const msg = await createContentMessage({
         model: CONTENT_MODEL,
         max_tokens: CONTENT_MAX_TOKENS_MAX,
-        thinking: CONTENT_THINKING,
-        messages: [{ role: "user", content: buildAnalyzePrompt({ flowJson, linterHint }) }],
+        thinking: thinking5k,
+        messages: [{ role: "user", content: buildAnalyzePhase1Prompt({ flowJson, linterHint }) }],
       });
-      text = extractText(msg);
-      parsed = safeParseJson(text);
-      valid = validate(parsed);
+      p1text = extractText(msg);
+      p1 = safeParseJson<Phase1Output>(p1text);
     }
+    const v1 = validatePhase1(p1);
+    if (!v1.ok || !p1) {
+      console.error("[email-review/analyze] Phase 1 failed:", v1.reason, "raw:", p1text.slice(0, 500));
+      return Response.json({
+        error: `Analyze Phase 1 failed: ${v1.reason}`,
+        raw: p1text.slice(0, 2000),
+      }, { status: 502 });
+    }
+    console.log(`[email-review/analyze] Phase 1 ok — ${p1.sections.length} sections, ${p1.imagePrompts.length} prompts, elapsed=${Date.now() - t0}ms`);
 
-    // Attempt 2 — if the JSON was truncated (output too long for budget), retry
-    // with a conciseness constraint that trims rewrite bodies to 180 words each
-    // so the full JSON lands inside the 32k ceiling.
-    if (!valid.ok) {
-      console.warn(
-        `[email-review/analyze] attempt 1 failed (${valid.reason}, outputLen=${text.length}) — retrying with concise flag`,
-      );
+    // ── Phase 2: full body rewrites (Version A + B per email) ───────────────
+    // The rewrites section is by far the longest output; isolating it here
+    // means each call comfortably fits within the 32k token ceiling.
+    let p2text: string;
+    let p2: Phase2Output | null;
+    {
       const msg2 = await createContentMessage({
         model: CONTENT_MODEL,
         max_tokens: CONTENT_MAX_TOKENS_MAX,
-        thinking: CONTENT_THINKING,
-        messages: [{ role: "user", content: buildAnalyzePrompt({ flowJson, linterHint, concise: true }) }],
+        thinking: thinking8k,
+        messages: [{ role: "user", content: buildAnalyzePhase2Prompt({
+          flowJson,
+          phase1Brief: buildPhase1Brief(p1),
+        }) }],
       });
-      text = extractText(msg2);
-      parsed = safeParseJson(text);
-      valid = validate(parsed);
+      p2text = extractText(msg2);
+      p2 = safeParseJson<Phase2Output>(p2text);
     }
-
-    if (!valid.ok || !parsed) {
-      console.error("[email-review/analyze] both attempts failed:", valid.reason, "raw:", text.slice(0, 500));
+    const v2 = validatePhase2(p2);
+    if (!v2.ok || !p2) {
+      console.error("[email-review/analyze] Phase 2 failed:", v2.reason, "raw:", p2text.slice(0, 500));
       return Response.json({
-        error: `Analyze returned invalid output: ${valid.reason}`,
-        raw: text.slice(0, 2000),
+        error: `Analyze Phase 2 (rewrites) failed: ${v2.reason}`,
+        raw: p2text.slice(0, 2000),
       }, { status: 502 });
     }
+    console.log(`[email-review/analyze] Phase 2 ok — rewrites ${p2.bodyMarkdown.length} chars, elapsed=${Date.now() - t0}ms`);
 
-    // Guarantee flowCompleteness is always set — fall back to server-side
-    // computation when Claude omits the field or returns null/undefined.
+    // ── Merge phases + guarantee flowCompleteness ───────────────────────────
+    const rewritesSection: FlowReviewSection = {
+      key: "rewrites",
+      title: p2.title || "Full body rewrites",
+      bodyMarkdown: stripEmDashes(p2.bodyMarkdown),
+      flags: p2.flags,
+    };
+
+    // Merge: insert rewrites after subjects (index 1), before design.
+    const p1SectionsClean = p1.sections.map((s) => ({
+      ...s,
+      bodyMarkdown: stripEmDashes(s.bodyMarkdown),
+    }));
+    const subjectsIdx = p1SectionsClean.findIndex((s) => s.key === "subjects");
+    const mergedSections: FlowReviewSection[] = [
+      ...p1SectionsClean.slice(0, subjectsIdx + 1),
+      rewritesSection,
+      ...p1SectionsClean.slice(subjectsIdx + 1),
+    ];
+
     const flowCompleteness: FlowCompletenessGap =
-      parsed.flowCompleteness ?? computeFlowCompleteness(preprocessed);
-
-    if (!parsed.flowCompleteness) {
+      p1.flowCompleteness ?? computeFlowCompleteness(preprocessed);
+    if (!p1.flowCompleteness) {
       console.warn("[email-review/analyze] Claude omitted flowCompleteness — using server-side fallback");
     }
 
     const review: SavedFlowReview = {
       id: randomUUID(),
       flow: preprocessed,
-      // Strip em dashes from every section's generated copy so the output is on-brand.
-      sections: parsed.sections.map((s) => ({
-        ...s,
-        bodyMarkdown: stripEmDashes(s.bodyMarkdown),
-      })),
-      imagePrompts: parsed.imagePrompts.map((p) => ({
+      sections: mergedSections,
+      imagePrompts: p1.imagePrompts.map((p) => ({
         ...p,
         status: "pending" as const,
       })),
-      ifYouOnlyDoThree: parsed.ifYouOnlyDoThree.slice(0, 3),
+      ifYouOnlyDoThree: p1.ifYouOnlyDoThree.slice(0, 3),
       flowCompleteness,
       frameworkVersion: FRAMEWORK_VERSION,
       createdAt: new Date().toISOString(),

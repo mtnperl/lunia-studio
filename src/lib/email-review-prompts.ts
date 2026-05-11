@@ -363,16 +363,103 @@ If the input is a single campaign (one email), Section 1 (timing) should
 write "No findings — single campaign, no flow timing to evaluate." and
 Section 2 should still produce 3+ subject alternatives.`;
 
+// ─── Legacy single-call prompt (kept for reference / short flows) ─────────────
 export function buildAnalyzePrompt(args: {
-  flowJson: string;            // serialized EmailFlow
-  linterHint: string;          // from lintFindingsToPromptHint
-  /** Set to true on retry attempts — injects a conciseness hint to prevent truncation. */
+  flowJson: string;
+  linterHint: string;
   concise?: boolean;
 }): string {
   const conciseHint = args.concise
     ? `\n\n## CONCISENESS CONSTRAINT (active on this run)\nOutput length is tightly limited. For Section 3 (rewrites), keep EACH Version A and Version B body to 180 words maximum. For Section 2 (subjects), limit each email to 3 A/B alternatives maximum. All other sections: trim to the most actionable findings only. The JSON must close completely — an unclosed JSON object is useless. Prioritise a complete, valid JSON response over exhaustive detail.\n`
     : "";
   return `${FRAMEWORK_RUBRIC}${conciseHint}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+}
+
+// ─── Phase 1 of 2: everything EXCEPT the body rewrites ─────────────────────
+// Returns: ifYouOnlyDoThree, flowCompleteness, sections[timing/subjects/design/strategy],
+// imagePrompts. The rewrites section is generated separately in Phase 2 so
+// the combined output never exceeds the 32k token ceiling.
+
+const PHASE1_OUTPUT_INSTRUCTIONS = `## Output format (Phase 1 of 2)
+
+Return ONLY a valid JSON object. No prose before or after. No markdown fences.
+
+IMPORTANT: Do NOT include a "rewrites" section — that will be generated in Phase 2.
+
+\`\`\`ts
+type Phase1Output = {
+  ifYouOnlyDoThree: string[];   // exactly 3 items — top wins across the whole review
+  flowCompleteness: {             // REQUIRED — always include, even when gap === 0
+    currentCount: number;
+    canonicalCount: number;
+    gap: number;
+    rationale: string;
+    suggestedAdditions?: {
+      position: number;
+      role: string;
+      sendDelayHours: number;
+      purpose: string;
+    }[];
+  };
+  sections: {
+    key: "timing" | "subjects" | "design" | "strategy";   // NO rewrites here
+    title: string;
+    bodyMarkdown: string;
+    flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
+  }[];                            // exactly 4 entries: timing, subjects, design, strategy
+  imagePrompts: {
+    id: string;                   // e.g. "img-e1-hero"
+    emailId: string;
+    placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
+    aspect: "16:9" | "4:5" | "1:1";
+    engine: "recraft" | "ideogram" | "flux2";
+    prompt: string;               // full 8-step structured prompt
+    rationale?: string;
+  }[];
+};
+\`\`\`
+
+If the input is a single campaign (one email), Section 1 (timing) should
+write "No findings — single campaign, no flow timing to evaluate." and
+Section 2 should still produce 3+ subject alternatives.`;
+
+export function buildAnalyzePhase1Prompt(args: {
+  flowJson: string;
+  linterHint: string;
+}): string {
+  return `${FRAMEWORK_RUBRIC}\n\n${PHASE1_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+}
+
+// ─── Phase 2 of 2: body rewrites only ──────────────────────────────────────
+// Takes the Phase 1 brief (key findings from timing/subjects/design) for
+// voice and context coherence, then generates the full rewrites section
+// (Section 3 — Version A + Version B per email).
+
+const PHASE2_OUTPUT_INSTRUCTIONS = `## Output format (Phase 2 of 2)
+
+Return ONLY a valid JSON object. No prose before or after. No markdown fences.
+
+\`\`\`ts
+type Phase2Output = {
+  key: "rewrites";
+  title: string;                 // "Full body rewrites"
+  bodyMarkdown: string;          // Version A + Version B for every email in the flow,
+                                 // using the block tags from Section 3 of the framework
+  flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
+};
+\`\`\`
+
+The bodyMarkdown MUST contain Version A AND Version B for every email, using the
+[ SUBJECT ] / [ PREVIEW ] / [ HEADLINE ] / [ BODY ] / [ CTA BUTTON ] /
+[ HERO IMAGE ] / [ TRUST BADGES ] block tags. Each version must close with a
+"Notes on the rewrite" paragraph covering em dash check, exclamation count, discount logic.`;
+
+export function buildAnalyzePhase2Prompt(args: {
+  flowJson: string;
+  /** One-line summaries from Phase 1 to keep rewrites coherent with the analysis. */
+  phase1Brief: string;
+}): string {
+  return `${FRAMEWORK_RUBRIC}\n\n${PHASE2_OUTPUT_INSTRUCTIONS}\n\n## Phase 1 context (already generated — do NOT repeat these sections, just use them for coherence)\n\n${args.phase1Brief}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
 // Used by /api/email-review/generate-additional-emails. Asks Claude to
