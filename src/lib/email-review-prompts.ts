@@ -1,11 +1,14 @@
 // Prompts for the Email Flow Review Studio.
 // FRAMEWORK_VERSION should bump whenever the underlying framework doc changes.
+// Brand guidelines are in lunia-brand-guidelines.ts — always import from there.
+
+import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
 
 export const FRAMEWORK_VERSION = "v1.0";
 
 // The core framework — distilled from Lunia_Email_Flow_Review_Framework.docx.
 // Kept inline so the build doesn't depend on the .docx existing on disk.
-const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0
+const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0 (Brand Guidelines v${BRAND_VERSION})
 
 You are running an email flow review for Lunia Life, a science-first sleep
 and wellness supplement brand.
@@ -206,55 +209,17 @@ Close with "What I need from you to take this further".
 The "Start here" callout is REQUIRED. It should appear between the
 strategic question paragraphs and the bucketed checklist. Do not omit it.
 
-## Brand voice rules (non-negotiable)
-- No em dashes anywhere
-- Maximum one exclamation per piece, zero is better
-- No "X is not Y, it is Z" structure
-- Tone: calm authority, science-first, education-led, anti-hype
-- Never use "breakthrough", "miracle", "transform your sleep"
+${BRAND_GUIDELINES}
 
-## Compliance language (supplements)
-Allowed: "supports sleep quality", "may help you wind down", "shown in
-studies to support", "associated with"
-Banned: "treats insomnia", "cures sleep problems", "prevents 3am wakeups"
+## Discount logic (email-specific, supplements)
+Default: remove all one-time-purchase discounts. Use education and proof.
+If a discount must stay: tie to subscription only ($29.20/month).
+Final-touch discounts: only if framed as "no urgency, no expiry".
 
-## Trust badge rules
+## Trust badge rules (email-specific)
 Allowed: No GMO, Vegan (with verification), GMP Certified, FDA Registered
 Facility, Third-Party Tested, Made in USA (if true), Cruelty-Free.
 Banned: FDA Approved, Doctor Recommended, Clinically Proven (unless real).
-
-## Discount logic
-Default: remove all one-time-purchase discounts. Use education and proof.
-If a discount must stay: tie to subscription only.
-Final-touch discounts: only if framed as "no urgency, no expiry".
-
-## Visual identity
-Palette:
-- Deep Navy #102635 (primary text, navigation)
-- Rich Navy #01253F (editorial hero, dark sections, email mastheads)
-- Slate Blue #2C3F51 (secondary text)
-- Soft Ivory #F7F4EF (default light background)
-- Aqua Accent #BFFBF8 (max 5-10% of layout)
-- Signal Yellow #FFD800 (canonical CTA color with navy text)
-
-Hard don'ts: gradients, purple, neon, "wellness pastels".
-
-## Email typography (use in every body rewrite)
-Lunia emails use Inter as the single typeface. When recommending HTML
-or rendering rewrites for Klaviyo, every text style must map to one of:
-
-  Headlines (H1 / H2):  Inter, font-weight 400 (Inter Normal),
-                        letter-spacing -0.01em, color #102635
-  Body paragraphs:      Inter, font-weight 300 (Inter Light),
-                        line-height 1.6, color #1A1A1A
-  Bold within body:     Inter, font-weight 700 (Inter Bold), inherits
-                        body color; bold sparingly — ingredient names
-                        and risk-reversal phrases only
-  CTA button label:     Inter, font-weight 700, navy text on Signal
-                        Yellow #FFD800 background
-
-Do not introduce any other font family. Do not use Georgia / serif for
-the body. Do not bold whole paragraphs — bold a phrase at most.
 
 ## Flow completeness — canonical counts
 
@@ -286,13 +251,9 @@ itself produces a generic supplement bottle. Every product-shot prompt
 must spell out the bottle visually, every time, using the canonical spec
 below. Prompts that just say "a Lunia bottle" are broken on arrival.
 
-### Lunia bottle — canonical visual spec (always include in product prompts)
+### Lunia Restore bottle — canonical visual spec (always include in product prompts)
 
-  amber glass apothecary bottle, soft-edged cylindrical shape, matte
-  navy and ivory paper label wrapped around the lower two-thirds, three
-  small stars debossed on the label in a vertical stack, simple sans-
-  serif lowercase wordmark, no other text or graphics on the label,
-  matte navy screw cap. The bottle stands roughly 14 cm tall in frame.
+  ${BOTTLE_VISUAL_SPEC}
 
 If the email's existing imagery already shows the product clearly,
 DEFAULT TO NON-PRODUCT IMAGERY — mood, ingredient flat-lay, lifestyle,
