@@ -163,7 +163,7 @@ MUST use this exact two-line format:
   ⚠ [Issue label]: [what is wrong — 1 sentence, specific]
   Fix: [exact action to take — specific enough to hand to a designer with
   no context. Not "improve the CTA color" — "change CTA button background
-  from #BFFBF8 to #FFD800 and set text to #102635 navy."]
+  to #01253F Rich Navy and set text to #ffffff white, Inter 700."]
 
 If an email has no findings, write:
   ✓ Email N — no issues found.
@@ -175,7 +175,7 @@ Always check (for every email):
 - Em dashes anywhere (zero tolerance)
 - Exclamation count (max 1 per piece)
 - Bolding density (bold ingredient names + risk-reversal phrases only)
-- One CTA per email, in Signal Yellow #FFD800 with navy text
+- One CTA per email: Rich Navy #01253F background, white #ffffff text, Inter 700
 - "X is not Y, it is Z" sentence structure (banned)
 - Image quality / brand-fit (generic stock → flag and note what to replace with)
 
