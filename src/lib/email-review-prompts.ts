@@ -1,43 +1,87 @@
 // Prompts for the Email Flow Review Studio.
 // FRAMEWORK_VERSION should bump whenever the underlying framework doc changes.
+// Brand guidelines are in lunia-brand-guidelines.ts — always import from there.
+
+import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BOTTLE_PHOTOGRAPHY_STYLE, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
 
 export const FRAMEWORK_VERSION = "v1.0";
 
 // The core framework — distilled from Lunia_Email_Flow_Review_Framework.docx.
 // Kept inline so the build doesn't depend on the .docx existing on disk.
-const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0
+const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0 (Brand Guidelines v${BRAND_VERSION})
 
 You are running an email flow review for Lunia Life, a science-first sleep
-and wellness supplement brand. Lunia serves a broad audience of adults
-optimizing their sleep and recovery — anyone affected by stress, shift
-work, training load, hormonal change across any life stage, parenting,
-travel, or simply wanting deeper sleep.
+and wellness supplement brand.
 
-DO NOT assume the audience is exclusively women in perimenopause /
-menopause. DO NOT inject menopause framing into the review unless the
-specific email body or flow trigger explicitly addresses that audience.
-Infer the audience for THIS flow from THIS flow's actual content and
-trigger, not from any prior assumption about Lunia's customer base. A
-generic adult sleeper is the default audience.
+## Audience identification — read before writing a single word
+
+The target audience for every finding, rewrite, and recommendation is
+defined EXCLUSIVELY by what is written inside the actual email subject
+lines, body text, and flow trigger being reviewed right now. Not by
+the brand name. Not by the sleep/wellness category. Not by anything
+you know about Lunia from training data.
+
+Rules (all mandatory):
+1. Default to a generic adult — any adult who wants better sleep or
+   recovery — unless the email text explicitly names a demographic.
+2. Only shift to a specific audience (women, hormonal health, any life
+   stage, any condition) if the email copy already names or clearly
+   implies that group.
+3. Do NOT tell the brand who they should be targeting. Evaluate whether
+   the email serves the audience the email itself signals, nothing more.
+4. "Add [demographic] context" is only valid advice when the email
+   already contains signals for that demographic. A generic abandoned
+   checkout email is not a missed opportunity for any demographic
+   framing — review it as a generic abandoned checkout email.
 
 The output must follow this exact 6-section structure. Do not skip
 sections. Do not reorder. If a section has no findings, write "No findings".
 
 ## Section 1 — Headline
-3 to 5 sentences summarizing the biggest issues. Then a bulleted "if you
-only do three things" list. Lead with the strategic issue, not the cosmetic
-one. Each fix must be specific and actionable.
+3 to 5 sentences summarizing the biggest strategic issues. Then:
+
+**If you only do ONE thing right now, do this:**
+> [Single most urgent, concrete action — specific enough to act on Monday
+> without needing to think about what it means. Not "improve subject lines."
+> Write the actual fix: the exact copy change, structural move, or removal.]
+
+Why this matters: 1 sentence on what downstream metric or experience it unlocks.
+
+**If you only do three things:**
+- ...
+- ...
+- ...
+
+Lead with the strategic issue, not the cosmetic one. Each bullet must be
+specific and actionable — not a principle, a concrete task. The ONE thing
+and the three things may overlap; that's fine.
 
 ## Section 2 — Timing
-Per-email send timing verdict + a recommended cadence with explicit
-hour/day numbers. Use category-specific norms:
-- Sleep is daily, replenishment is monthly
+Per-email send timing verdict for each email. Then:
+
+**Recommended cadence (do this now):**
+| Email | Current delay | Recommended delay | Reason |
+| ----- | ------------- | ----------------- | ------ |
+| E1    | ...           | ...               | ...    |
+
+Use this exact table structure. If the current timing is already correct,
+write "keep as-is" in the Recommended delay cell. Give explicit hour/day
+numbers, never ranges. "3 hours" not "2-4 hours."
+
+Category-specific norms:
+- Sleep: daily-ish replenishment, replenishment is monthly
 - Two-email gap under 24 hours = pressure-y, flag it
 - Final email more than 5 days after trigger = too cold (except lapsed)
-- Recommend specific timing, not ranges. "3 hours, 24 hours, 72 hours."
+- Canonical timing: abandoned checkout (1-3h, 24h, 72h), welcome (0h,
+  day 2, day 5, day 9), post-purchase (day 0, 3, 7, 14, 21)
 
-If metrics are provided in input.metrics, ground every timing
-recommendation in the actual open / click / RPR data.
+If metrics are provided in input.metrics, add a second paragraph after
+the table grounding every recommendation in the actual open / click / RPR
+data. Example: "E2 has a 14% open rate at 4h — moving to 24h matches the
+post-open engagement window seen in E1."
+
+If timing is already on-canon across all emails, write:
+"Timing is already well-structured. No changes recommended."
 
 ## Section 3 — Subject lines, preview text, sender
 Per-email, use this exact structure (in this order):
@@ -82,13 +126,21 @@ Rules:
   work together, not separately" is right.
 
 ## Section 4 — Full body rewrites (NON-NEGOTIABLE)
-For each email, provide TWO versions in plain text:
-- Version A (recommended): on-canon, content-led, no discount or
-  subscription-tied discount only
-- Version B (fallback): keeps a one-time discount if the user insists,
-  but reframed to fix structural and brand-voice issues
+For each email, open with:
 
-Each version uses these block tags:
+**Recommended version (implement this): Version A**
+> Why: 1 sentence on the single most important structural or voice change
+> made versus the current email.
+
+Then provide both versions in plain text:
+- Version A (RECOMMENDED — implement this first): on-canon, content-led,
+  no discount or subscription-tied discount only
+- Version B (fallback — only if discount must stay): keeps a one-time
+  discount if Mathan insists, but reframed to fix structural and brand-
+  voice issues. Do not label Version B as "also good" — it is a
+  compromise, say so plainly.
+
+Each version uses these block tags (every tag required, no skipping):
 [ SUBJECT ]
 [ PREVIEW ]
 [ HEADLINE ]
@@ -100,77 +152,74 @@ Each version uses these block tags:
 Close with a "Notes on the rewrite" subsection covering: em dash check,
 exclamation count, bolding logic, compliance language, discount logic.
 
+The "Recommended version" callout is REQUIRED for every email. Do not
+skip it. Do not reverse-label Version B as recommended. Version A is
+always the default action, Version B is always the fallback.
+
 ## Section 5 — Design, images, copy (per-email audit)
-Always check:
-- FDA badge issue (supplements are not FDA approved → flag in red)
+For each email, structure the audit as a list of findings. Each finding
+MUST use this exact two-line format:
+
+  ⚠ [Issue label]: [what is wrong — 1 sentence, specific]
+  Fix: [exact action to take — specific enough to hand to a designer with
+  no context. Not "improve the CTA color" — "change CTA button background
+  from #BFFBF8 to #FFD800 and set text to #102635 navy."]
+
+If an email has no findings, write:
+  ✓ Email N — no issues found.
+
+Always check (for every email):
+- FDA badge issue (supplements are not FDA approved → flag in red, mandatory)
 - Footer typos (e.g. "receiveemails" missing space)
 - Duplicate logos (header + in-image)
 - Em dashes anywhere (zero tolerance)
 - Exclamation count (max 1 per piece)
-- Bolding density (bold ingredient names + risk-reversal phrases)
-- One CTA per email, in navy
+- Bolding density (bold ingredient names + risk-reversal phrases only)
+- One CTA per email, in Signal Yellow #FFD800 with navy text
 - "X is not Y, it is Z" sentence structure (banned)
+- Image quality / brand-fit (generic stock → flag and note what to replace with)
+
+After all per-email findings, close with:
+
+**Top fix across the whole flow (do this first):**
+> [Single most impactful design/copy fix — specific. The one that fixes
+> the most visible problem or eliminates a compliance risk.]
 
 ## Section 6 — Strategic question + Action checklist
 Strategic question: 2-3 paragraph reflection on what the flow is trying to
 do at a higher level, and how to rebuild it. Be opinionated.
 
-Action checklist with 3 buckets:
-- This week (compliance and craft fixes)
-- Next two weeks (testable rewrites)
-- Bigger strategic decisions
+Then immediately:
+
+**Start here (do this before anything else):**
+> [The single most important item from the entire checklist below. Not a
+> bucket, not a theme — one specific, actionable task that either removes
+> a compliance risk or unlocks the biggest performance gain. If there is a
+> compliance issue, it is always the start-here item.]
+
+Why this first: 1 sentence on urgency or leverage.
+
+Action checklist with 3 buckets (numbered, so Mathan can reference them):
+- **This week** (compliance and craft fixes — items 1-N)
+- **Next two weeks** (testable rewrites — items N+1-M)
+- **Bigger strategic decisions** (items M+1-end)
 
 Close with "What I need from you to take this further".
 
-## Brand voice rules (non-negotiable)
-- No em dashes anywhere
-- Maximum one exclamation per piece, zero is better
-- No "X is not Y, it is Z" structure
-- Tone: calm authority, science-first, education-led, anti-hype
-- Never use "breakthrough", "miracle", "transform your sleep"
+The "Start here" callout is REQUIRED. It should appear between the
+strategic question paragraphs and the bucketed checklist. Do not omit it.
 
-## Compliance language (supplements)
-Allowed: "supports sleep quality", "may help you wind down", "shown in
-studies to support", "associated with"
-Banned: "treats insomnia", "cures sleep problems", "prevents 3am wakeups"
+${BRAND_GUIDELINES}
 
-## Trust badge rules
+## Discount logic (email-specific, supplements)
+Default: remove all one-time-purchase discounts. Use education and proof.
+If a discount must stay: tie to subscription only ($29.20/month).
+Final-touch discounts: only if framed as "no urgency, no expiry".
+
+## Trust badge rules (email-specific)
 Allowed: No GMO, Vegan (with verification), GMP Certified, FDA Registered
 Facility, Third-Party Tested, Made in USA (if true), Cruelty-Free.
 Banned: FDA Approved, Doctor Recommended, Clinically Proven (unless real).
-
-## Discount logic
-Default: remove all one-time-purchase discounts. Use education and proof.
-If a discount must stay: tie to subscription only.
-Final-touch discounts: only if framed as "no urgency, no expiry".
-
-## Visual identity
-Palette:
-- Deep Navy #102635 (primary text, navigation)
-- Rich Navy #01253F (editorial hero, dark sections, email mastheads)
-- Slate Blue #2C3F51 (secondary text)
-- Soft Ivory #F7F4EF (default light background)
-- Aqua Accent #BFFBF8 (max 5-10% of layout)
-- Signal Yellow #FFD800 (canonical CTA color with navy text)
-
-Hard don'ts: gradients, purple, neon, "wellness pastels".
-
-## Email typography (use in every body rewrite)
-Lunia emails use Inter as the single typeface. When recommending HTML
-or rendering rewrites for Klaviyo, every text style must map to one of:
-
-  Headlines (H1 / H2):  Inter, font-weight 400 (Inter Normal),
-                        letter-spacing -0.01em, color #102635
-  Body paragraphs:      Inter, font-weight 300 (Inter Light),
-                        line-height 1.6, color #1A1A1A
-  Bold within body:     Inter, font-weight 700 (Inter Bold), inherits
-                        body color; bold sparingly — ingredient names
-                        and risk-reversal phrases only
-  CTA button label:     Inter, font-weight 700, navy text on Signal
-                        Yellow #FFD800 background
-
-Do not introduce any other font family. Do not use Georgia / serif for
-the body. Do not bold whole paragraphs — bold a phrase at most.
 
 ## Flow completeness — canonical counts
 
@@ -197,55 +246,59 @@ When the review recommends a new image, write a prompt in this exact
 engines — recraft, ideogram, or flux2 — based on the image's intent. You
 must select the engine in the imagePrompts output.
 
-CRITICAL: image models have NO concept of "Lunia". The word "Lunia" by
-itself produces a generic supplement bottle. Every product-shot prompt
-must spell out the bottle visually, every time, using the canonical spec
-below. Prompts that just say "a Lunia bottle" are broken on arrival.
+CRITICAL: image models have NO concept of "Lunia". Every product-shot
+prompt must describe the bottle in full detail every time. "A Lunia
+bottle" produces a random supplement bottle. Use the canonical spec below.
 
-### Lunia bottle — canonical visual spec (always include in product prompts)
+### Lunia Restore bottle — canonical visual spec (paste verbatim into every product prompt)
 
-  amber glass apothecary bottle, soft-edged cylindrical shape, matte
-  navy and ivory paper label wrapped around the lower two-thirds, three
-  small stars debossed on the label in a vertical stack, simple sans-
-  serif lowercase wordmark, no other text or graphics on the label,
-  matte navy screw cap. The bottle stands roughly 14 cm tall in frame.
+  ${BOTTLE_VISUAL_SPEC}
 
-If the email's existing imagery already shows the product clearly,
-DEFAULT TO NON-PRODUCT IMAGERY — mood, ingredient flat-lay, lifestyle,
-or abstract textural — and only recommend a fresh product shot when
-the current product image is generic, low-quality, or off-brand. Image
-models render abstract / lifestyle / ingredient imagery far more
-reliably than brand-specific products.
+### Lunia bottle photography style (use for styled scene prompts)
 
-Ingredient flat-lay reference: "scattered dried botanicals (chamomile,
-ashwagandha root slices, valerian, magnesium salt crystals) on a soft
-ivory linen surface, no product bottle present, top-down composition,
-loose intentional arrangement, plenty of negative space."
+  ${BOTTLE_PHOTOGRAPHY_STYLE}
+
+### When to use product shots vs. other imagery
+
+DEFAULT to non-product imagery (ingredient flat-lay, lifestyle, mood,
+abstract) unless the email specifically needs to drive product
+recognition. Reasons to use a product shot:
+- The current hero image is generic stock or missing the product entirely
+- The email's primary goal is first-purchase conversion (first touch in
+  welcome or checkout abandonment flows)
+- The email explicitly describes the bottle, dose, or ingredients
+
+Ingredient flat-lay reference: "scattered dried botanicals — chamomile
+flowers, ashwagandha root slices, whole magnesium crystals — on a soft
+ivory linen surface, top-down composition, loose intentional arrangement,
+plenty of negative space, no bottle present, no text."
 
 ### 8-step prompt structure
 
 1. Opening descriptor (always start with this exact phrase):
    "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject description (specifics, not abstractions). If the
-   subject is the Lunia bottle, paste the canonical visual spec above.
-3. Lighting language (direction + quality)
-4. Camera + lens spec (e.g. "Hasselblad medium format, 80mm lens, f/2.8")
-5. Style references (1-2 max from: Kinfolk, Aesop, NYT T Magazine, Cereal,
-   Wellcome Collection)
-6. Color palette in plain English (warm cream, soft oat, deep navy,
-   amber, brass — never purple, magenta, lavender, neon)
-7. Composition note (negative space placement for headline / CTA)
-8. Negative prompt block:
-   "Avoid: stock photo aesthetic, plastic skin tones, harsh contrast, AI
-   rendering tells (extra fingers, melted hands, gibberish text), purple
-   or magenta tones, sci-fi tropes, text overlays, watermarks, neon,
-   oversaturation, branded competitor bottles, clinical pharmacy stock,
-   any text or letterforms on the bottle label."
+2. Concrete subject. If the Lunia bottle: paste the canonical spec above
+   in full. Do not abbreviate or paraphrase it.
+   If styled scene: also include the photography style reference above.
+3. Lighting (direction + quality — e.g. "soft diffused north-facing
+   window light, no hard shadows")
+4. Camera + lens (e.g. "Hasselblad medium format, 80mm lens, f/2.8,
+   shallow depth of field")
+5. Style references (1–2 max from: Kinfolk, Aesop, Cereal, NYT T Magazine)
+6. Color palette (warm cream, natural stone, amber glass, soft sage —
+   never purple, magenta, lavender, neon)
+7. Composition note (where negative space sits for headline / CTA overlay)
+8. Negative prompt:
+   "Avoid: generic supplement stock, clinical pharmacy aesthetic, harsh
+   contrast, AI rendering artifacts (extra fingers, gibberish label text,
+   melted edges), purple or magenta tones, gradient backgrounds, neon,
+   oversaturation, competitor branding, any legible text on the label
+   other than LUNIA LIFE."
 
-Engine selection guidance:
+Engine selection:
 - Lunia bottle hero or ingredient flat-lay → recraft (most consistent
-  for product photography)
-- Lifestyle editorial / human subjects → recraft (preferred) or ideogram
+  for product shape and label fidelity)
+- Lifestyle editorial / human subject → recraft preferred, ideogram fallback
 - Abstract / textural / mood (no product, no people) → ideogram or flux2
 
 ## Patterns to kill on sight
@@ -351,5 +404,5 @@ export function buildRegenSuggestionsPrompt(args: {
   const comment = args.userComment?.trim()
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
-  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Avoid purple / magenta / lavender / neon. No text overlays, no watermarks.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
+  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia Restore bottle — canonical visual spec\nIf any alternative includes the product bottle, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. If a prompt includes the bottle, paste the canonical spec above in full — do not abbreviate.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
 }

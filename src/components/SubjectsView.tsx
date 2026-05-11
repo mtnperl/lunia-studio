@@ -66,7 +66,6 @@ export default function SubjectsView() {
       if (!res.ok) {
         const msg = (data as { error?: string }).error ?? `Failed (${res.status})`;
         setPullStatus(`⚠ ${msg}`);
-        // Keep errors visible for 15 seconds so user can read them
         setTimeout(() => setPullStatus(null), 15_000);
         return;
       }

@@ -17,6 +17,16 @@ const FLOW_TYPES: { key: EmailFlowType; label: string }[] = [
   { key: "campaign", label: "Single campaign" },
 ];
 
+const CANONICAL: Record<EmailFlowType, { count: number; timing: string }> = {
+  abandoned_checkout: { count: 3, timing: "1-3h · 24h · 72h" },
+  browse_abandonment: { count: 2, timing: "4-12h · 48h" },
+  welcome:            { count: 4, timing: "day 0 · 2 · 5 · 9" },
+  post_purchase:      { count: 5, timing: "day 0 · 3 · 7 · 14 · 21" },
+  replenishment:      { count: 3, timing: "−5d · day 0 · +14d" },
+  lapsed:             { count: 2, timing: "day 0 · day 14" },
+  campaign:           { count: 1, timing: "one-time send" },
+};
+
 type Props = {
   onSubmit: (flow: EmailFlow) => void;
   onCancel?: () => void;
@@ -55,6 +65,19 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
   const [flowName, setFlowName] = useState("");
   const [trigger, setTrigger] = useState("");
   const [emails, setEmails] = useState<DraftEmail[]>([blankEmail(1)]);
+
+  const canon = CANONICAL[flowType];
+  const emailGap = Math.max(0, canon.count - emails.length);
+
+  function fillToCanon() {
+    const toAdd = Math.max(0, canon.count - emails.length);
+    if (toAdd <= 0) return;
+    setEmails((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < toAdd; i++) next.push(blankEmail(next.length + 1));
+      return next;
+    });
+  }
 
   function setField(idx: number, patch: Partial<DraftEmail>) {
     setEmails((prev) => prev.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
@@ -113,6 +136,59 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           Paste the body text of each email. Subject + preview + send delay are required. Metrics are optional but make Section 2 (timing) much sharper.
         </div>
+      </div>
+
+      {/* Canonical count banner — shows before the user starts adding emails */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "12px 16px",
+        background: emailGap > 0 ? "#FFFBE6" : "#E8F4EC",
+        border: `1px solid ${emailGap > 0 ? "#FFD800" : "rgba(31,111,58,0.35)"}`,
+        borderRadius: 10,
+        flexWrap: "wrap",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+          <span style={{
+            flexShrink: 0,
+            padding: "3px 10px",
+            background: emailGap > 0 ? "#102635" : "#1f6f3a",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            borderRadius: 5,
+            letterSpacing: "0.02em",
+            fontFamily: "Arial, sans-serif",
+          }}>
+            {emails.length} / {canon.count} emails
+          </span>
+          <span style={{ fontSize: 13, color: emailGap > 0 ? "#5a4500" : "#1f6f3a", fontFamily: "Arial, sans-serif" }}>
+            {emailGap > 0
+              ? `Framework recommends ${canon.count} emails for this flow type · ${canon.timing}`
+              : `At the recommended count · ${canon.timing}`}
+          </span>
+        </div>
+        {emailGap > 0 && (
+          <button
+            onClick={fillToCanon}
+            style={{
+              flexShrink: 0,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 700,
+              background: "#102635",
+              color: "#fff",
+              border: "1px solid #102635",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.02em",
+            }}
+          >
+            + Add {emailGap} empty slot{emailGap === 1 ? "" : "s"}
+          </button>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

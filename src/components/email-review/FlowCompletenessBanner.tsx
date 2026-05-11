@@ -15,7 +15,9 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
   const [error, setError] = useState<string | null>(null);
 
   const remaining = Math.max(0, completeness.gap - existingAdditionalCount);
-  if (completeness.gap <= 0 && existingAdditionalCount === 0) return null; // no banner when at or above canon and nothing generated
+  // Always render — even at canon. User needs to see the count.
+  // Only skip when overbuilt AND nothing generated (overbuilt is a warning, not an action).
+  if (completeness.gap < 0 && existingAdditionalCount === 0) return null;
 
   async function generate(n: number) {
     setBusy(true);
@@ -40,6 +42,7 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
   }
 
   const overbuilt = completeness.gap < 0;
+  const atCanon = completeness.gap === 0 && remaining === 0;
   const accent = overbuilt ? "#9a6b00" : remaining > 0 ? "#102635" : "#1f6f3a";
   const tint = overbuilt ? "#FFFBE6" : remaining > 0 ? "#FFFBE6" : "#E8F4EC";
   const border = overbuilt ? "#FFD800" : remaining > 0 ? "#FFD800" : "rgba(31,111,58,0.35)";
@@ -55,27 +58,29 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
       gap: 12,
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+        {/* Big count chip */}
         <div style={{
           flexShrink: 0,
-          width: 44,
-          height: 44,
-          borderRadius: 10,
-          background: "#fff",
-          border: `1px solid ${border}`,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          background: atCanon ? "#1f6f3a" : remaining > 0 ? "#102635" : "#9a6b00",
+          color: "#fff",
+          borderRadius: 10,
+          padding: "8px 14px",
           fontFamily: "Arial, sans-serif",
-          fontSize: 16,
-          fontWeight: 700,
-          color: accent,
           lineHeight: 1,
+          gap: 2,
+          minWidth: 64,
+          textAlign: "center",
         }}>
-          {completeness.currentCount}/{completeness.canonicalCount}
+          <span style={{ fontSize: 22, fontWeight: 700 }}>{completeness.currentCount}<span style={{ fontSize: 13, opacity: 0.7 }}>/{completeness.canonicalCount}</span></span>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85 }}>emails</span>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
-            {overbuilt ? "Flow may be overbuilt" : remaining > 0 ? "Flow is short of canon" : "Flow is at canon"}
+            {overbuilt ? "Flow may be overbuilt" : remaining > 0 ? `${remaining} email${remaining === 1 ? "" : "s"} short of the framework recommendation` : "Flow is at the recommended count"}
           </div>
           <div style={{ fontSize: 14, color: "#1A1A1A", fontFamily: "Arial, sans-serif", lineHeight: 1.5 }}>
             {completeness.rationale}
