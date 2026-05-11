@@ -10,6 +10,7 @@ import ExportDocxButton from "@/components/email-review/ExportDocxButton";
 import { AnalyzeLoader } from "@/components/email-review/ReviewLoaders";
 import FlowCompletenessBanner from "@/components/email-review/FlowCompletenessBanner";
 import AdditionalEmailsDeck from "@/components/email-review/AdditionalEmailsDeck";
+import CreateFlowPanel from "@/components/email-review/CreateFlowPanel";
 import type { EmailFlow, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
@@ -35,7 +36,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(false);
-  const [showInputType, setShowInputType] = useState<"choose" | "klaviyo" | "upload">("choose");
+  const [showInputType, setShowInputType] = useState<"choose" | "klaviyo" | "upload" | "create">("choose");
 
   // Auto-pick the appropriate input mode if a flow was handed in by the
   // parent (e.g. clicking a Klaviyo-loaded flow from the EmailFlowsLibrary).
@@ -137,7 +138,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
         <header>
           <h1 style={{ fontFamily: "var(--font-ui, Inter)", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>Email flow review</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted)" }}>
-            Pull a flow from Klaviyo or upload one manually. The review runs the framework&apos;s 5 sections, lints brand voice, and drafts replacement images.
+            Pull a flow from Klaviyo, upload one manually, or describe a new flow and let Claude draft it from scratch.
           </p>
         </header>
 
@@ -146,22 +147,21 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
         )}
 
         {showInputType === "choose" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <button
-              onClick={() => setShowInputType("klaviyo")}
-              style={inputCardStyle}
-            >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <button onClick={() => setShowInputType("klaviyo")} style={inputCardStyle}>
               <span style={cardKickerStyle}>Klaviyo</span>
-              <span style={cardTitleStyle}>Pick a flow from Klaviyo →</span>
+              <span style={cardTitleStyle}>Review a Klaviyo flow →</span>
               <span style={cardSubStyle}>Browse + select. We pull every email + send delay automatically.</span>
             </button>
-            <button
-              onClick={() => setShowInputType("upload")}
-              style={inputCardStyle}
-            >
+            <button onClick={() => setShowInputType("upload")} style={inputCardStyle}>
               <span style={cardKickerStyle}>Upload</span>
-              <span style={cardTitleStyle}>Paste an email flow manually →</span>
-              <span style={cardSubStyle}>Use this if Klaviyo isn&apos;t connected, or for a flow you&apos;re drafting.</span>
+              <span style={cardTitleStyle}>Review an existing flow →</span>
+              <span style={cardSubStyle}>Paste email copy manually. Works without a Klaviyo connection.</span>
+            </button>
+            <button onClick={() => setShowInputType("create")} style={{ ...inputCardStyle, borderColor: "#BFFBF8", background: "rgba(191,251,248,0.06)" }}>
+              <span style={{ ...cardKickerStyle, color: "#1a6b68" }}>Create</span>
+              <span style={cardTitleStyle}>Create a new flow →</span>
+              <span style={cardSubStyle}>Describe the use case and Claude drafts a publish-ready flow from scratch.</span>
             </button>
           </div>
         )}
@@ -177,6 +177,13 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
           <FlowUploadStep
             onSubmit={(f) => { setFlow(f); runAnalyze(f); }}
             onCancel={() => setShowInputType("choose")}
+          />
+        )}
+
+        {showInputType === "create" && (
+          <CreateFlowPanel
+            onCancel={() => setShowInputType("choose")}
+            onRunReview={(f) => { setFlow(f); runAnalyze(f); }}
           />
         )}
       </div>

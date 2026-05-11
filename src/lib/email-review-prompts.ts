@@ -560,3 +560,66 @@ export function buildRegenSuggestionsPrompt(args: {
     : "";
   return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia Restore bottle — canonical visual spec\nIf any alternative includes the product bottle, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. If a prompt includes the bottle, paste the canonical spec above in full — do not abbreviate.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
 }
+
+// ─── Create-flow prompt ────────────────────────────────────────────────────────
+// Used by /api/email-review/create-flow. Takes a plain-English use case and
+// generates a complete, publish-ready EmailFlow following all framework rules.
+
+const CREATE_FLOW_OUTPUT_INSTRUCTIONS = `## Output format
+
+Return ONLY a valid JSON object. No prose before or after. No markdown fences.
+
+\`\`\`ts
+type CreateFlowOutput = {
+  flowType: "abandoned_checkout" | "browse_abandonment" | "welcome"
+          | "post_purchase" | "replenishment" | "lapsed" | "campaign";
+  flowName: string;           // short display name, e.g. "Abandoned Checkout — 3-email"
+  trigger: string;            // Klaviyo trigger description, e.g. "Started Checkout event"
+  emails: {
+    id: string;               // "e1", "e2", ...
+    position: number;         // 1, 2, 3, ...
+    role: string;             // e.g. "Day 0 — urgency trigger", "Day 3 — social proof"
+    subject: string;          // the final subject line
+    previewText: string;      // preview text that EXTENDS the subject, never paraphrases
+    senderName: string;       // recommend "Mathan from Lunia" for at least one touch
+    senderEmail: string;      // mathan@lunialife.com or hello@lunialife.com
+    sendDelayHours: number;   // hours after trigger
+    bodyText: string;         // full email body using the block tags below
+    rationale: string;        // one sentence: what this email's job is in the sequence
+  }[];
+};
+\`\`\`
+
+The bodyText for each email MUST use these block tags (every tag required):
+[ HEADLINE ]     — 4-10 words, Inter 400 normal weight
+[ BODY ]         — 80-180 words, Inter 300 light, 1-2 bold phrases max
+[ CTA BUTTON ]   — 3-6 words, Rich Navy #01253F background, white text, Inter 700
+[ HERO IMAGE ]   — describe the ideal image in 1-2 sentences (this is a brief, not the full prompt)
+[ TRUST BADGES ] — list which badges to show: only allowed ones (No GMO, GMP Certified, Third-Party Tested, etc.)
+
+Rules for every email:
+- No em dashes anywhere
+- Maximum 1 exclamation mark per email total
+- No "FDA Approved", "Doctor Recommended", "Clinically Proven"
+- Subject lines never lead with the action ("Complete your order")
+- Preview text extends the subject, never paraphrases it
+- No manufactured urgency on always-running discount codes
+- Use the canonical send-delay timing for the flow type (e.g. abandoned checkout: 1-3h, 24h, 72h)
+- Generate the canonical number of emails for the chosen flow type`;
+
+export function buildCreateFlowPrompt(args: { useCase: string }): string {
+  return `${FRAMEWORK_RUBRIC}
+
+## Task
+
+A Lunia Life team member has described a new email flow they need. Draft the complete,
+publish-ready flow from scratch. Determine the best flow type and canonical email count
+from the description, then write every email following every framework rule.
+
+USER USE CASE:
+"""
+${args.useCase}
+"""
+
+${CREATE_FLOW_OUTPUT_INSTRUCTIONS}`;
+}

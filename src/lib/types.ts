@@ -682,6 +682,8 @@ export type EmailFlowType =
 export type EmailFlowAsset = {
   id: string;
   position: number;             // E1 = 1, E2 = 2, ...
+  /** Short label like "Day 0 — first touch". Set by create-flow; not present on Klaviyo/upload flows. */
+  role?: string;
   subject: string;
   previewText: string;
   senderName: string;
