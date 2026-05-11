@@ -2,7 +2,7 @@
 // FRAMEWORK_VERSION should bump whenever the underlying framework doc changes.
 // Brand guidelines are in lunia-brand-guidelines.ts — always import from there.
 
-import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
+import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BOTTLE_PHOTOGRAPHY_STYLE, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
 
 export const FRAMEWORK_VERSION = "v1.0";
 
@@ -246,51 +246,59 @@ When the review recommends a new image, write a prompt in this exact
 engines — recraft, ideogram, or flux2 — based on the image's intent. You
 must select the engine in the imagePrompts output.
 
-CRITICAL: image models have NO concept of "Lunia". The word "Lunia" by
-itself produces a generic supplement bottle. Every product-shot prompt
-must spell out the bottle visually, every time, using the canonical spec
-below. Prompts that just say "a Lunia bottle" are broken on arrival.
+CRITICAL: image models have NO concept of "Lunia". Every product-shot
+prompt must describe the bottle in full detail every time. "A Lunia
+bottle" produces a random supplement bottle. Use the canonical spec below.
 
-### Lunia Restore bottle — canonical visual spec (always include in product prompts)
+### Lunia Restore bottle — canonical visual spec (paste verbatim into every product prompt)
 
   ${BOTTLE_VISUAL_SPEC}
 
-If the email's existing imagery already shows the product clearly,
-DEFAULT TO NON-PRODUCT IMAGERY — mood, ingredient flat-lay, lifestyle,
-or abstract textural — and only recommend a fresh product shot when
-the current product image is generic, low-quality, or off-brand. Image
-models render abstract / lifestyle / ingredient imagery far more
-reliably than brand-specific products.
+### Lunia bottle photography style (use for styled scene prompts)
 
-Ingredient flat-lay reference: "scattered dried botanicals (chamomile,
-ashwagandha root slices, valerian, magnesium salt crystals) on a soft
-ivory linen surface, no product bottle present, top-down composition,
-loose intentional arrangement, plenty of negative space."
+  ${BOTTLE_PHOTOGRAPHY_STYLE}
+
+### When to use product shots vs. other imagery
+
+DEFAULT to non-product imagery (ingredient flat-lay, lifestyle, mood,
+abstract) unless the email specifically needs to drive product
+recognition. Reasons to use a product shot:
+- The current hero image is generic stock or missing the product entirely
+- The email's primary goal is first-purchase conversion (first touch in
+  welcome or checkout abandonment flows)
+- The email explicitly describes the bottle, dose, or ingredients
+
+Ingredient flat-lay reference: "scattered dried botanicals — chamomile
+flowers, ashwagandha root slices, whole magnesium crystals — on a soft
+ivory linen surface, top-down composition, loose intentional arrangement,
+plenty of negative space, no bottle present, no text."
 
 ### 8-step prompt structure
 
 1. Opening descriptor (always start with this exact phrase):
    "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject description (specifics, not abstractions). If the
-   subject is the Lunia bottle, paste the canonical visual spec above.
-3. Lighting language (direction + quality)
-4. Camera + lens spec (e.g. "Hasselblad medium format, 80mm lens, f/2.8")
-5. Style references (1-2 max from: Kinfolk, Aesop, NYT T Magazine, Cereal,
-   Wellcome Collection)
-6. Color palette in plain English (warm cream, soft oat, deep navy,
-   amber, brass — never purple, magenta, lavender, neon)
-7. Composition note (negative space placement for headline / CTA)
-8. Negative prompt block:
-   "Avoid: stock photo aesthetic, plastic skin tones, harsh contrast, AI
-   rendering tells (extra fingers, melted hands, gibberish text), purple
-   or magenta tones, sci-fi tropes, text overlays, watermarks, neon,
-   oversaturation, branded competitor bottles, clinical pharmacy stock,
-   any text or letterforms on the bottle label."
+2. Concrete subject. If the Lunia bottle: paste the canonical spec above
+   in full. Do not abbreviate or paraphrase it.
+   If styled scene: also include the photography style reference above.
+3. Lighting (direction + quality — e.g. "soft diffused north-facing
+   window light, no hard shadows")
+4. Camera + lens (e.g. "Hasselblad medium format, 80mm lens, f/2.8,
+   shallow depth of field")
+5. Style references (1–2 max from: Kinfolk, Aesop, Cereal, NYT T Magazine)
+6. Color palette (warm cream, natural stone, amber glass, soft sage —
+   never purple, magenta, lavender, neon)
+7. Composition note (where negative space sits for headline / CTA overlay)
+8. Negative prompt:
+   "Avoid: generic supplement stock, clinical pharmacy aesthetic, harsh
+   contrast, AI rendering artifacts (extra fingers, gibberish label text,
+   melted edges), purple or magenta tones, gradient backgrounds, neon,
+   oversaturation, competitor branding, any legible text on the label
+   other than LUNIA LIFE."
 
-Engine selection guidance:
+Engine selection:
 - Lunia bottle hero or ingredient flat-lay → recraft (most consistent
-  for product photography)
-- Lifestyle editorial / human subjects → recraft (preferred) or ideogram
+  for product shape and label fidelity)
+- Lifestyle editorial / human subject → recraft preferred, ideogram fallback
 - Abstract / textural / mood (no product, no people) → ideogram or flux2
 
 ## Patterns to kill on sight
@@ -396,5 +404,5 @@ export function buildRegenSuggestionsPrompt(args: {
   const comment = args.userComment?.trim()
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
-  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Avoid purple / magenta / lavender / neon. No text overlays, no watermarks.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
+  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia Restore bottle — canonical visual spec\nIf any alternative includes the product bottle, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. If a prompt includes the bottle, paste the canonical spec above in full — do not abbreviate.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
 }

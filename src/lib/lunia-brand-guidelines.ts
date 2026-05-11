@@ -85,15 +85,38 @@ export const PRODUCT = {
 } as const;
 
 // ─── Bottle visual spec (for image prompts) ───────────────────────────────────
-// NOTE: The handbook's Images section is currently blank. This spec is the
-// canonical bottle description derived from the product design and used in
-// all image prompts. Update here when Mathan provides updated bottle art.
+// Derived from the reference photography in Lunia_CMS_Generation_Handbook.docx
+// (images 1–9). Reference images are saved at:
+//   /public/lunia-bottle-ref-1.jpeg  (travertine + lavender, window light)
+//   /public/lunia-bottle-ref-2.jpeg  (stone plinth + mountains bg)
+//   /public/lunia-bottle-ref-3.jpeg  (linen surface, golden hour window)
+//   /public/lunia-bottle-ref-clean.jpeg  (clean white studio shot — clearest label view)
 
-export const BOTTLE_VISUAL_SPEC = `amber glass apothecary bottle, soft-edged cylindrical shape, matte navy \
-and ivory paper label wrapped around the lower two-thirds, three small stars \
-debossed on the label in a vertical stack, simple sans-serif lowercase wordmark, \
-no other text or graphics on the label, matte navy screw cap. \
-The bottle stands roughly 14 cm tall in frame.`;
+export const BOTTLE_VISUAL_SPEC = `wide squat amber glass supplement bottle with a black ribbed plastic \
+screw cap. The label wraps the full body: upper half is a clean white \
+background with a subtle constellation dot pattern; the logo mark is a \
+navy diamond cross of five dots arranged in a plus shape; below that \
+"LUNIA LIFE" in large bold uppercase navy sans-serif, then "SLEEP \
+SUPPLEMENT" in smaller uppercase tracking; the lower half of the label \
+shows a painted mountain landscape — layered deep teal and dark navy \
+ridges with golden yellow highlights along the peaks, fading to near-\
+black at the base; ingredient text in small white italic reads \
+"Magnesium glycinate / Apigenin / L-Theanine / 60 caps". Amber glass \
+is visible at the very bottom of the bottle and capsules are faintly \
+visible through the glass at the top.`;
+
+// Photography style reference — use these when writing image prompts
+// that include the Lunia bottle in a styled scene.
+export const BOTTLE_PHOTOGRAPHY_STYLE = `Editorial supplement photography. \
+Place the bottle on a natural travertine or honed stone surface. \
+Soft diffused natural light from a window — golden hour or overcast. \
+Props kept minimal: a single botanical element (dried lavender sprig, \
+ranunculus, or chamomile stem — one prop only). \
+Background: cream linen, warm ivory, or soft sage — never dark, never \
+moody, never gradient. The overall feel is airy, natural, and lifestyle-\
+editorial. Not clinical, not centred-on-white. \
+Color palette in the scene: warm cream, natural stone, soft sage, amber \
+glass warmth. No purple, no lavender tones, no neon.`;
 
 // ─── Full brand guidelines string (inject into prompts) ───────────────────────
 // This is the authoritative brand context block. Include it at the top of any
