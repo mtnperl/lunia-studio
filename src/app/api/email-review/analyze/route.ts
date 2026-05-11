@@ -121,18 +121,36 @@ function aggregateLinterFindings(flow: EmailFlow): string {
 }
 
 function safeParseJson<T>(raw: string): T | null {
-  // Strip optional ```json fences
-  const stripped = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  try {
-    return JSON.parse(stripped) as T;
-  } catch {
-    // Sometimes Claude leads with "Here is the JSON:" — try the first { ... } block
-    const m = stripped.match(/\{[\s\S]*\}$/);
-    if (m) {
-      try { return JSON.parse(m[0]) as T; } catch { /* fall through */ }
+  // 1. Strip ``` fences Claude sometimes adds despite being told not to.
+  let s = raw.trim();
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+  // 2. Direct parse — the happy path.
+  try { return JSON.parse(s) as T; } catch { /* try harder */ }
+
+  // 3. Some models emit prose before the JSON object — find the first `{`
+  //    and the matching closing `}` at the same nesting depth.
+  const start = s.indexOf("{");
+  if (start !== -1) {
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = start; i < s.length; i++) {
+      const ch = s[i];
+      if (escape) { escape = false; continue; }
+      if (ch === "\\" && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          try { return JSON.parse(s.slice(start, i + 1)) as T; } catch { break; }
+        }
+      }
     }
-    return null;
   }
+  return null;
 }
 
 function validatePhase1(out: Phase1Output | null): { ok: boolean; reason?: string } {
@@ -243,16 +261,19 @@ export async function POST(req: Request) {
       flags: p2.flags,
     };
 
-    // Merge: insert rewrites after subjects (index 1), before design.
-    const p1SectionsClean = p1.sections.map((s) => ({
-      ...s,
-      bodyMarkdown: stripEmDashes(s.bodyMarkdown),
-    }));
+    // Strip em-dashes and drop any rogue "rewrites" Claude snuck into Phase 1
+    // despite the explicit instruction not to — Phase 2 is the authoritative source.
+    const p1SectionsClean = p1.sections
+      .filter((s) => s.key !== "rewrites")
+      .map((s) => ({ ...s, bodyMarkdown: stripEmDashes(s.bodyMarkdown) }));
+
+    // Insert rewrites after subjects; fall back to end if subjects is missing.
     const subjectsIdx = p1SectionsClean.findIndex((s) => s.key === "subjects");
+    const insertAt = subjectsIdx >= 0 ? subjectsIdx + 1 : p1SectionsClean.length;
     const mergedSections: FlowReviewSection[] = [
-      ...p1SectionsClean.slice(0, subjectsIdx + 1),
+      ...p1SectionsClean.slice(0, insertAt),
       rewritesSection,
-      ...p1SectionsClean.slice(subjectsIdx + 1),
+      ...p1SectionsClean.slice(insertAt),
     ];
 
     const flowCompleteness: FlowCompletenessGap =
