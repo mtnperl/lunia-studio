@@ -25,12 +25,48 @@ export const maxDuration = 300;
 
 type AnalyzeOutput = {
   ifYouOnlyDoThree: string[];
-  flowCompleteness?: FlowCompletenessGap;
+  flowCompleteness?: FlowCompletenessGap;  // Claude should always return this; fallback computed below
   sections: FlowReviewSection[];
   imagePrompts: (Omit<FlowReviewImagePrompt, "status" | "history" | "regenSuggestions"> & {
     rationale?: string;
   })[];
 };
+
+// Canonical email counts per flow type — mirrors the prompt rubric.
+const CANONICAL_COUNTS: Record<string, { count: number; timing: string }> = {
+  abandoned_checkout:  { count: 3,  timing: "1-3h, 24h, 72h" },
+  browse_abandonment:  { count: 2,  timing: "4-12h, 48h" },
+  welcome:             { count: 4,  timing: "immediate, day 2, day 5, day 9" },
+  post_purchase:       { count: 5,  timing: "day 0, day 3, day 7, day 14, day 21" },
+  replenishment:       { count: 3,  timing: "replenishment-5d, replenishment-day, replenishment+14d" },
+  lapsed:              { count: 2,  timing: "day 0, day 14" },
+  campaign:            { count: 1,  timing: "single send" },
+};
+
+/** Compute flowCompleteness server-side when Claude omits or returns null for it. */
+function computeFlowCompleteness(flow: EmailFlow): FlowCompletenessGap {
+  const canon = CANONICAL_COUNTS[flow.flowType];
+  if (!canon || flow.flowType === "campaign") {
+    return {
+      currentCount: flow.emails.length,
+      canonicalCount: flow.emails.length,
+      gap: 0,
+      rationale: "Single campaign — no flow completeness target applies.",
+    };
+  }
+  const currentCount = flow.emails.length;
+  const canonicalCount = canon.count;
+  const gap = canonicalCount - currentCount;
+  let rationale: string;
+  if (gap === 0) {
+    rationale = `The ${flow.flowType.replace(/_/g, " ")} flow is at the framework-recommended ${canonicalCount} emails (${canon.timing}).`;
+  } else if (gap > 0) {
+    rationale = `The framework recommends ${canonicalCount} emails for a ${flow.flowType.replace(/_/g, " ")} flow (${canon.timing}). You currently have ${currentCount} — ${gap} email${gap === 1 ? "" : "s"} short.`;
+  } else {
+    rationale = `You have ${currentCount} emails, which is ${Math.abs(gap)} more than the framework recommendation of ${canonicalCount} for a ${flow.flowType.replace(/_/g, " ")} flow. Consider whether the extra email${Math.abs(gap) === 1 ? " earns" : "s earn"} their place.`;
+  }
+  return { currentCount, canonicalCount, gap, rationale };
+}
 
 function stripHtml(html: string): string {
   return html
@@ -131,6 +167,15 @@ export async function POST(req: Request) {
       }, { status: 502 });
     }
 
+    // Guarantee flowCompleteness is always set — fall back to server-side
+    // computation when Claude omits the field or returns null/undefined.
+    const flowCompleteness: FlowCompletenessGap =
+      parsed.flowCompleteness ?? computeFlowCompleteness(preprocessed);
+
+    if (!parsed.flowCompleteness) {
+      console.warn("[email-review/analyze] Claude omitted flowCompleteness — using server-side fallback");
+    }
+
     const review: SavedFlowReview = {
       id: randomUUID(),
       flow: preprocessed,
@@ -140,7 +185,7 @@ export async function POST(req: Request) {
         status: "pending" as const,
       })),
       ifYouOnlyDoThree: parsed.ifYouOnlyDoThree.slice(0, 3),
-      flowCompleteness: parsed.flowCompleteness,
+      flowCompleteness,
       frameworkVersion: FRAMEWORK_VERSION,
       createdAt: new Date().toISOString(),
     };

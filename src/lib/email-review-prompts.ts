@@ -343,18 +343,18 @@ before or after. No markdown fences.
 \`\`\`ts
 type AnalyzeOutput = {
   ifYouOnlyDoThree: string[];   // exactly 3 items
-  flowCompleteness: {
+  flowCompleteness: {             // REQUIRED — always include, even when gap === 0
     currentCount: number;         // how many emails are in the input flow
     canonicalCount: number;       // framework's recommended count for this flow type
     gap: number;                  // canonicalCount - currentCount (negative = overbuilt)
-    rationale: string;            // 1-2 sentences explaining the gap or "no gap"
+    rationale: string;            // 1-2 sentences explaining the count vs canon, always
     suggestedAdditions?: {        // present only when gap > 0
       position: number;           // where it fits in the sequence
       role: string;               // e.g. "third touch", "ritual reminder"
       sendDelayHours: number;     // when it should fire from trigger
       purpose: string;            // one-line — what this email answers
     }[];
-  };
+  };                              // never omit this field — the UI always shows the count chip
   sections: {
     key: "headline" | "timing" | "subjects" | "rewrites" | "design" | "strategy";
     title: string;
