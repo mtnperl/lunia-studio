@@ -199,9 +199,12 @@ export async function POST(req: Request) {
     const t0 = Date.now();
 
     // ── Phase 1: timing, subjects, design, strategy + meta + image prompts ──
-    // Capped thinking budget so the visible JSON always has room to close.
+    // Phase 1 is analytical — 5 000 thinking tokens for thorough cross-section reasoning.
+    // Phase 2 is purely generative (rewriting copy) — 4 000 tokens is enough since
+    // the analytical work is already captured in the Phase 1 brief. Keeping it tight
+    // leaves more room for visible output and cuts billing cost on thinking tokens.
     const thinking5k = { type: "enabled" as const, budget_tokens: 5_000 };
-    const thinking8k = { type: "enabled" as const, budget_tokens: 8_000 };
+    const thinking4k = { type: "enabled" as const, budget_tokens: 4_000 };
 
     let p1text: string;
     let p1: Phase1Output | null;
@@ -234,7 +237,7 @@ export async function POST(req: Request) {
       const msg2 = await createContentMessage({
         model: CONTENT_MODEL,
         max_tokens: CONTENT_MAX_TOKENS_MAX,
-        thinking: thinking8k,
+        thinking: thinking4k,
         messages: [{ role: "user", content: buildAnalyzePhase2Prompt({
           flowJson,
           phase1Brief: buildPhase1Brief(p1),

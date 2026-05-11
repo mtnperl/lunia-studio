@@ -430,6 +430,111 @@ export function buildAnalyzePhase1Prompt(args: {
   return `${FRAMEWORK_RUBRIC}\n\n${PHASE1_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
+// ─── Phase 2 lean context ─────────────────────────────────────────────────
+// Phase 2 ONLY writes body rewrites — it doesn't need the timing rubric,
+// the subject-line rubric, the design rubric, the strategy rubric, the flow
+// completeness table, or the 8-step image prompt scaffold. Sending those wastes
+// ~5 000 input tokens and invites the model to drift into analysis it's not
+// supposed to do. This context block covers everything Phase 2 actually needs:
+// brand voice, product facts, compliance rules, Section 3 format, bottle spec.
+
+const PHASE2_REWRITE_RUBRIC = `# LUNIA LIFE — Email Rewrite Context (Brand Guidelines v${BRAND_VERSION})
+
+You are writing email body rewrites for Lunia Life, a science-first sleep
+and wellness supplement brand. Your ONLY output in this call is the full
+"Section 3 — Full body rewrites" block for the email flow provided.
+
+Write for the audience the email's own copy already signals. Do not infer
+a demographic unless the original email explicitly names one. A generic
+abandoned checkout email is not a missed opportunity for demographic
+framing — treat it as what it is.
+
+${BRAND_GUIDELINES}
+
+## Discount logic
+Default: remove all one-time-purchase discounts. Use education and proof.
+If a discount must stay: tie to subscription only ($29.20/month).
+Final-touch discounts: only if framed as "no urgency, no expiry".
+
+## Trust badge rules
+Allowed: No GMO, Vegan (with verification), GMP Certified, FDA Registered
+Facility, Third-Party Tested, Made in USA (if true), Cruelty-Free.
+Banned: FDA Approved, Doctor Recommended, Clinically Proven (unless real).
+
+## Patterns to kill on sight
+- "Complete your order" subject lines
+- "Final reminder: use code X" subject lines
+- Manufactured urgency on always-running discount codes
+- Pain-point hook copy in checkout abandonment
+- Subject line repeated in preview text
+- FDA Approved badge
+- Em dashes (—) — replace with comma or period
+- Multiple exclamation marks
+- "X is not Y, it is Z" structure
+- Discount-led second touch in abandonment flows
+
+## Section 3 — Full body rewrites format
+
+For each email, open with:
+
+**Recommended version (implement this): Version A**
+> Why: 1 sentence on the single most important structural or voice change
+> made versus the current email.
+
+Then provide both versions in plain text:
+- Version A (RECOMMENDED — implement this first): on-canon, content-led,
+  no discount or subscription-tied discount only
+- Version B (fallback — only if discount must stay): keeps a one-time
+  discount if Mathan insists, but reframed. Do not label Version B as
+  "also good" — it is a compromise, say so plainly.
+
+Each version uses these block tags (every tag required, no skipping):
+[ SUBJECT ]
+[ PREVIEW ]
+[ HEADLINE ]
+[ BODY ]
+[ CTA BUTTON ]
+[ HERO IMAGE ] — 1-2 sentence brief: what the image shows, where it sits
+  (above_cta / below_cta / between_paragraphs / hero). If it includes the
+  Lunia bottle, describe it as: amber glass supplement bottle, mountain
+  landscape label illustration, wide black ribbed cap.
+[ TRUST BADGES ] — list which badges to keep or remove
+
+Close with a "Notes on the rewrite" subsection: em dash check, exclamation
+count, bolding logic, compliance language, discount logic.
+
+The "Recommended version" callout is REQUIRED for every email. Version A is
+always the default action, Version B is always the fallback.`;
+
+// ─── Lean context for additional-email generation and single-email revision ──
+// Same principle as PHASE2_REWRITE_RUBRIC — these calls write email copy, not
+// analysis. Strip the analysis-only sections so the prompt stays tight.
+const ADDITIONAL_EMAIL_RUBRIC = `# LUNIA LIFE — Email Drafting Context (Brand Guidelines v${BRAND_VERSION})
+
+You are drafting email copy for Lunia Life, a science-first sleep supplement brand.
+Write for the audience the flow's own copy signals. Do not infer demographics
+unless the existing emails explicitly name one.
+
+${BRAND_GUIDELINES}
+
+## Discount logic
+Default: remove all one-time-purchase discounts. Use education and proof.
+If a discount must stay: tie to subscription only ($29.20/month).
+
+## Trust badge rules
+Allowed: No GMO, Vegan, GMP Certified, FDA Registered Facility, Third-Party Tested,
+Made in USA (if true), Cruelty-Free.
+Banned: FDA Approved, Doctor Recommended, Clinically Proven.
+
+## Patterns to kill
+- "Complete your order" subject lines
+- Manufactured urgency on always-running codes
+- Pain-point hooks in checkout abandonment
+- Subject line repeated in preview
+- Em dashes — replace with comma or period
+- More than 1 exclamation per email
+- "X is not Y, it is Z" structure`;
+
 // ─── Phase 2 of 2: body rewrites only ──────────────────────────────────────
 // Takes the Phase 1 brief (key findings from timing/subjects/design) for
 // voice and context coherence, then generates the full rewrites section
@@ -459,7 +564,10 @@ export function buildAnalyzePhase2Prompt(args: {
   /** One-line summaries from Phase 1 to keep rewrites coherent with the analysis. */
   phase1Brief: string;
 }): string {
-  return `${FRAMEWORK_RUBRIC}\n\n${PHASE2_OUTPUT_INSTRUCTIONS}\n\n## Phase 1 context (already generated — do NOT repeat these sections, just use them for coherence)\n\n${args.phase1Brief}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+  // Use the lean rubric — Phase 2 doesn't need the timing / subjects / design /
+  // strategy rubrics, the flow completeness table, or the image prompt scaffold.
+  // Sending those wastes ~5 000 input tokens per call.
+  return `${PHASE2_REWRITE_RUBRIC}\n\n${PHASE2_OUTPUT_INSTRUCTIONS}\n\n## Phase 1 context (already generated — do NOT repeat these sections, just use them for coherence)\n\n${args.phase1Brief}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
 // Used by /api/email-review/generate-additional-emails. Asks Claude to
@@ -468,9 +576,13 @@ export function buildGenerateAdditionalEmailsPrompt(args: {
   flowJson: string;
   count: number;
   suggestedAdditionsJson: string;   // serialized array from flowCompleteness.suggestedAdditions
-  existingRewritesMarkdown: string; // Section 4 body — for voice continuity
+  existingRewritesMarkdown: string; // Section 3 body — for voice continuity
 }): string {
-  return `${FRAMEWORK_RUBRIC}\n\n## Task\n\nThe input flow is short of the canonical count for its flow type. Draft ${args.count} fresh email${args.count === 1 ? "" : "s"} that slot into the sequence and bring the flow up to canon.\n\nUse the suggested-additions table from the original review for positioning. Honour every framework rule (no em dashes, max 1 exclamation per email, allowed compliance language, no banned phrases / badges, Inter typography). Voice-match the existing rewrites so the new emails sound like the same brand.\n\nSuggested positions / purposes:\n\`\`\`json\n${args.suggestedAdditionsJson}\n\`\`\`\n\nExisting rewrites (Section 4 of the review, for voice continuity — do NOT copy verbatim):\n"""\n${args.existingRewritesMarkdown.slice(0, 6000)}\n"""\n\nOriginal flow:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype Output = {\n  emails: {\n    id: string;                 // stable id, e.g. "new-e4"\n    position: number;           // where it slots into the sequence\n    role: string;               // e.g. "Day 5 — melatonin problem", "Browse abandonment touch 2"\n    sendDelayHours: number;     // hours from flow trigger\n    subjectA: string;           // primary subject\n    subjectAlts: string[];      // 2 alternatives for A/B\n    previewText: string;\n    senderName: string;         // suggest "Mathan from Lunia" when appropriate\n    senderEmail: string;\n    bodyMarkdown: string;       // full body using the [ HEADLINE ] [ BODY ] [ CTA BUTTON ] block tags from the framework, with Inter typography in mind (headline normal 400, body light 300, bold 700 for emphasis only)\n    rationale: string;          // 1 sentence: why this email exists in the flow\n  }[];\n};\n\`\`\``;
+  // Use the lean rubric — no timing / design / strategy rubrics needed here,
+  // just brand voice + copy rules. Trim the existing rewrites to 3 000 chars
+  // max — enough for voice matching without burning unnecessary input tokens.
+  const rewriteSample = args.existingRewritesMarkdown.slice(0, 3_000);
+  return `${ADDITIONAL_EMAIL_RUBRIC}\n\n## Task\n\nThe input flow is short of the canonical count for its flow type. Draft ${args.count} fresh email${args.count === 1 ? "" : "s"} that slot into the sequence and bring the flow up to canon.\n\nUse the suggested-additions table from the original review for positioning. Honour every framework rule (no em dashes, max 1 exclamation per email, allowed compliance language, no banned phrases / badges). Voice-match the existing rewrites so the new emails sound like the same brand.\n\nSuggested positions / purposes:\n\`\`\`json\n${args.suggestedAdditionsJson}\n\`\`\`\n\nExisting rewrites (for voice continuity — do NOT copy verbatim):\n"""\n${rewriteSample}\n"""\n\nOriginal flow:\n\`\`\`json\n${args.flowJson}\n\`\`\`\n\n## Output format\n\nReturn ONLY a valid JSON object matching this TypeScript type. No prose before or after. No markdown fences.\n\n\`\`\`ts\ntype Output = {\n  emails: {\n    id: string;                 // stable id, e.g. "new-e4"\n    position: number;           // where it slots into the sequence\n    role: string;               // e.g. "Day 5 — melatonin problem", "Browse abandonment touch 2"\n    sendDelayHours: number;     // hours from flow trigger\n    subjectA: string;           // primary subject\n    subjectAlts: string[];      // 2 alternatives for A/B\n    previewText: string;\n    senderName: string;         // suggest "Mathan from Lunia" when appropriate\n    senderEmail: string;\n    bodyMarkdown: string;       // full body using the [ HEADLINE ] [ BODY ] [ CTA BUTTON ] block tags, Inter typography in mind\n    rationale: string;          // 1 sentence: why this email exists in the flow\n  }[];\n};\n\`\`\``;
 }
 
 // Used by /api/email-review/regenerate-section. Re-runs the framework on a
@@ -494,28 +606,31 @@ export function buildReviseAdditionalEmailPrompt(args: {
   userComment: string;           // Mathan's revision guidance
   existingRewritesMarkdown: string; // Section 3 body — for voice continuity
 }): string {
-  return `${FRAMEWORK_RUBRIC}
+  // Use lean rubric. Trim rewrite sample to 2 000 chars — enough for voice
+  // matching a single email revision without burning unnecessary input tokens.
+  const rewriteSample = args.existingRewritesMarkdown.slice(0, 2_000);
+  return `${ADDITIONAL_EMAIL_RUBRIC}
 
 ## Task
 
-The user wants to revise one of the previously generated emails for this flow.
-Keep the position, role, and sendDelayHours the same — those structural decisions
-are locked in. Apply the user's revision request to everything else: subject,
-preview, sender, body copy, and rationale.
+Revise one previously generated email for this flow. Keep position, role, and
+sendDelayHours unchanged — those structural decisions are locked in. Apply the
+user's revision request to everything else: subject, preview, sender, body copy,
+and rationale.
 
 USER REVISION REQUEST:
 """
 ${args.userComment}
 """
 
-The email to revise (current version):
+Email to revise:
 \`\`\`json
 ${args.existingEmailJson}
 \`\`\`
 
-Existing flow rewrites (Section 3 of the review, for voice continuity):
+Existing flow rewrites (voice reference — do NOT copy verbatim):
 """
-${args.existingRewritesMarkdown.slice(0, 4000)}
+${rewriteSample}
 """
 
 Original flow:
@@ -544,7 +659,7 @@ type AdditionalEmail = {
 };
 \`\`\`
 
-Follow every framework rule (no em dashes, max 1 exclamation per email, no banned phrases / badges). Honor the user's revision request fully.`;
+Honor every brand rule (no em dashes, max 1 exclamation per email, no banned phrases / badges). Honor the user's revision request fully.`;
 }
 
 // Used by /api/email-review/regen-suggestions. Asks Claude for 3 alternatives
