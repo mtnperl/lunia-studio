@@ -9,12 +9,11 @@ export const maxDuration = 180;
 const VALID_ENGINES: FlowReviewImageEngine[] = ["recraft", "ideogram", "flux2"];
 
 // Engine fallback ladder for the "recraft" slot.
-// fal-ai/recraft/v4/pro requires a paid plan. If it 403s, try v3. If that
-// also 403s (key doesn't have recraft at all), fall through to ideogram which
-// uses a completely different billing pool.
+// Try v4/pro first (same endpoint carousel-v2 uses successfully), then v3,
+// then ideogram as a last resort on a completely different billing pool.
 const RECRAFT_LADDER: string[] = [
-  "fal-ai/recraft-v3",                         // v3 first — most widely accessible
-  FAL_ENDPOINTS["recraft"],                     // v4/pro as second attempt
+  FAL_ENDPOINTS["recraft"],                     // v4/pro — known-working endpoint
+  "fal-ai/recraft-v3",                         // v3 as fallback
   FAL_ENDPOINTS["ideogram"],                    // ideogram as last resort
 ];
 
@@ -27,17 +26,47 @@ function aspectToSize(aspect: string): { width: number; height: number } {
   }
 }
 
-/** True for auth/plan errors — these trigger a fallback to the next engine. */
+/** True for auth/plan/bad-request errors — these trigger a fallback to the next engine. */
 function isAccessError(err: unknown): boolean {
   if (err instanceof Error) {
     // fal SDK's ApiError exposes .status directly on the Error subclass
     const status = (err as Error & { status?: number }).status;
-    if (status === 401 || status === 403) return true;
+    if (status === 401 || status === 403 || status === 422) return true;
     const msg = err.message.toLowerCase();
-    return msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("403") || msg.includes("401");
+    return (
+      msg.includes("forbidden") ||
+      msg.includes("unauthorized") ||
+      msg.includes("unprocessable") ||
+      msg.includes("403") ||
+      msg.includes("401") ||
+      msg.includes("422")
+    );
   }
   const msg = String(err).toLowerCase();
-  return msg.includes("forbidden") || msg.includes("unauthorized") || msg.includes("403") || msg.includes("401");
+  return (
+    msg.includes("forbidden") ||
+    msg.includes("unauthorized") ||
+    msg.includes("unprocessable") ||
+    msg.includes("403") ||
+    msg.includes("401") ||
+    msg.includes("422")
+  );
+}
+
+/** Extract the most useful error string from a fal SDK error. */
+function extractFalError(err: unknown): string {
+  if (!err) return "unknown error";
+  if (err instanceof Error) {
+    const e = err as Error & { body?: unknown; response?: { status?: number; data?: unknown } };
+    if (e.body) {
+      try { return typeof e.body === "string" ? e.body : JSON.stringify(e.body); } catch { /* fallthrough */ }
+    }
+    if (e.response?.data) {
+      try { return JSON.stringify(e.response.data); } catch { /* fallthrough */ }
+    }
+    return err.message || String(err);
+  }
+  try { return JSON.stringify(err); } catch { return String(err); }
 }
 
 async function callRecraftWithFallback(prompt: string, aspect: string): Promise<string | undefined> {
@@ -69,17 +98,18 @@ async function callRecraftWithFallback(prompt: string, aspect: string): Promise<
       }
     } catch (err) {
       if (isAccessError(err)) {
-        console.warn(`[email-review/generate-image] access denied on ${endpoint}, trying next`);
+        const detail = extractFalError(err);
+        console.warn(`[email-review/generate-image] ${endpoint} rejected (auth/422), trying next. detail: ${detail}`);
         lastErr = err;
         continue;
       }
-      throw err; // non-auth error — propagate immediately
+      throw err; // unexpected error — propagate immediately
     }
   }
   // All rungs exhausted
-  const detail = lastErr instanceof Error ? lastErr.message : String(lastErr ?? "unknown");
+  const detail = extractFalError(lastErr);
   throw new Error(
-    `All recraft/ideogram engines returned Forbidden — check FAL_KEY in Vercel env vars and confirm the key has at least one active model quota. Last error: ${detail}`,
+    `All recraft/ideogram engines failed — check FAL_KEY and model quota. Last error: ${detail}`,
   );
 }
 
@@ -89,20 +119,27 @@ async function callFal(engine: ImageEngine, prompt: string, aspect: string): Pro
   }
   const endpoint = FAL_ENDPOINTS[engine];
   const size = aspectToSize(aspect);
-  if (engine === "ideogram") {
-    const ar = aspect === "16:9" ? "16:9" : aspect === "1:1" ? "1:1" : "4:5";
+  try {
+    if (engine === "ideogram") {
+      // Ideogram v3 aspect_ratio values: "1:1", "4:3", "3:4", "16:9", "9:16", "4:5", "5:4"
+      const ar = aspect === "16:9" ? "16:9" : aspect === "1:1" ? "1:1" : "4:5";
+      const result = await fal.subscribe(endpoint, {
+        input: { prompt, aspect_ratio: ar, rendering_speed: "BALANCED", style: "AUTO" },
+        logs: false,
+      });
+      return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+    }
+    // flux2
     const result = await fal.subscribe(endpoint, {
-      input: { prompt, aspect_ratio: ar, rendering_speed: "BALANCED", style: "REALISTIC" },
+      input: { prompt, image_size: size },
       logs: false,
     });
     return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  } catch (err) {
+    const detail = extractFalError(err);
+    console.error(`[email-review/generate-image] ${engine} (${endpoint}) failed: ${detail}`);
+    throw new Error(`fal ${engine} failed: ${detail}`);
   }
-  // flux2
-  const result = await fal.subscribe(endpoint, {
-    input: { prompt, image_size: size },
-    logs: false,
-  });
-  return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
 }
 
 export async function POST(req: Request) {
