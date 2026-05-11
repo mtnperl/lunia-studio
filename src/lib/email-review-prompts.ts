@@ -366,8 +366,13 @@ Section 2 should still produce 3+ subject alternatives.`;
 export function buildAnalyzePrompt(args: {
   flowJson: string;            // serialized EmailFlow
   linterHint: string;          // from lintFindingsToPromptHint
+  /** Set to true on retry attempts — injects a conciseness hint to prevent truncation. */
+  concise?: boolean;
 }): string {
-  return `${FRAMEWORK_RUBRIC}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+  const conciseHint = args.concise
+    ? `\n\n## CONCISENESS CONSTRAINT (active on this run)\nOutput length is tightly limited. For Section 3 (rewrites), keep EACH Version A and Version B body to 180 words maximum. For Section 2 (subjects), limit each email to 3 A/B alternatives maximum. All other sections: trim to the most actionable findings only. The JSON must close completely — an unclosed JSON object is useless. Prioritise a complete, valid JSON response over exhaustive detail.\n`
+    : "";
+  return `${FRAMEWORK_RUBRIC}${conciseHint}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
 // Used by /api/email-review/generate-additional-emails. Asks Claude to

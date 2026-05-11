@@ -4,7 +4,7 @@ import {
   extractText,
   CONTENT_MODEL,
   CONTENT_THINKING,
-  CONTENT_MAX_TOKENS_LONG,
+  CONTENT_MAX_TOKENS_MAX,
 } from "@/lib/anthropic";
 import { checkRateLimit, saveFlowReview } from "@/lib/kv";
 import {
@@ -157,17 +157,43 @@ export async function POST(req: Request) {
     const flowJson = JSON.stringify(preprocessed, null, 2);
 
     const t0 = Date.now();
-    const msg = await createContentMessage({
-      model: CONTENT_MODEL,
-      max_tokens: CONTENT_MAX_TOKENS_LONG,
-      thinking: CONTENT_THINKING,
-      messages: [{ role: "user", content: buildAnalyzePrompt({ flowJson, linterHint }) }],
-    });
-    const text = extractText(msg);
-    const parsed = safeParseJson(text);
-    const valid = validate(parsed);
+
+    // Attempt 1 — full prompt at the model's hard token ceiling.
+    let text: string;
+    let parsed: AnalyzeOutput | null;
+    let valid: { ok: boolean; reason?: string };
+    {
+      const msg = await createContentMessage({
+        model: CONTENT_MODEL,
+        max_tokens: CONTENT_MAX_TOKENS_MAX,
+        thinking: CONTENT_THINKING,
+        messages: [{ role: "user", content: buildAnalyzePrompt({ flowJson, linterHint }) }],
+      });
+      text = extractText(msg);
+      parsed = safeParseJson(text);
+      valid = validate(parsed);
+    }
+
+    // Attempt 2 — if the JSON was truncated (output too long for budget), retry
+    // with a conciseness constraint that trims rewrite bodies to 180 words each
+    // so the full JSON lands inside the 32k ceiling.
+    if (!valid.ok) {
+      console.warn(
+        `[email-review/analyze] attempt 1 failed (${valid.reason}, outputLen=${text.length}) — retrying with concise flag`,
+      );
+      const msg2 = await createContentMessage({
+        model: CONTENT_MODEL,
+        max_tokens: CONTENT_MAX_TOKENS_MAX,
+        thinking: CONTENT_THINKING,
+        messages: [{ role: "user", content: buildAnalyzePrompt({ flowJson, linterHint, concise: true }) }],
+      });
+      text = extractText(msg2);
+      parsed = safeParseJson(text);
+      valid = validate(parsed);
+    }
+
     if (!valid.ok || !parsed) {
-      console.error("[email-review/analyze] invalid output:", valid.reason, "raw:", text.slice(0, 500));
+      console.error("[email-review/analyze] both attempts failed:", valid.reason, "raw:", text.slice(0, 500));
       return Response.json({
         error: `Analyze returned invalid output: ${valid.reason}`,
         raw: text.slice(0, 2000),

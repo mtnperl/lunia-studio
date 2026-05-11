@@ -23,6 +23,10 @@ export const CONTENT_THINKING = { type: "adaptive" as const };
 // caller never has to do the math.
 export const CONTENT_MAX_TOKENS_SHORT = 20_000;   // tight one-shot output (≤4k visible)
 export const CONTENT_MAX_TOKENS_LONG  = 24_000;   // full-carousel / multi-section JSON (≤8k visible)
+// claude-opus-4-7 hard ceiling: thinking + visible text must fit within 32,768.
+// Use this for calls where the output is known to be very large (email review,
+// full-flow rewrites). Never pass a higher value — the API will reject it.
+export const CONTENT_MAX_TOKENS_MAX   = 32_000;
 
 // ─── Draft tier (carousel-v2) ─────────────────────────────────────────────
 // Haiku 4.5 is ~2× faster and ~5× cheaper than Sonnet 4.6. v2 routes use it
