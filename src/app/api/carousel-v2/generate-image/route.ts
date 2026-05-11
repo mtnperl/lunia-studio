@@ -37,9 +37,11 @@ export async function POST(req: Request) {
     const imageStyle: string = body.imageStyle ?? 'realistic';
     const VALID_ASPECTS = ['4:5', '9:16'] as const;
     const imageAspect = VALID_ASPECTS.includes(body.imageAspect) ? (body.imageAspect as '4:5' | '9:16') : '4:5';
+    // Raised to exceed Instagram native (1080×1350 for 4:5, 1080×1920 for 9:16).
+    // Uploading above-native lets Instagram compress down rather than upscale.
     const imageSize = imageAspect === '9:16'
-      ? { width: 864, height: 1536 }
-      : { width: 1024, height: 1280 };
+      ? { width: 1080, height: 1920 }   // 9:16 — Instagram native
+      : { width: 1440, height: 1800 };  // 4:5 — 33% above Instagram native
 
     if (!topic.trim()) return Response.json({ error: 'Topic required' }, { status: 400 });
     if (isNaN(slideIndex) || slideIndex < 0 || slideIndex > 4) {

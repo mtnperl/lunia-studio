@@ -2,15 +2,10 @@ import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 
-// Valid recraft-v3 style values: https://fal.ai/models/fal-ai/recraft-v3
-const FAL_STYLE_MAP: Record<string, string> = {
-  realistic: 'realistic_image',
-  cartoon: 'digital_illustration',
-  anime: 'digital_illustration/2d_art_poster',
-  vector: 'vector_illustration',
-};
-
-export const maxDuration = 60; // seconds — recraft-v3 can take ~20-30s
+// Upgraded to Recraft V4 Pro (same engine as carousel-v2).
+// V4 Pro does not accept V3's style enum — style direction goes into the prompt.
+// maxDuration raised to 120s: V4 Pro takes 40-90s at higher resolutions.
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const ip =
@@ -31,14 +26,15 @@ export async function POST(req: Request) {
     const slideIndex: number = Number(body.slideIndex);
     const topic: string = body.topic ?? '';
     const hook: Hook | undefined = body.hook;
-    const imagePrompt: string | undefined = body.imagePrompt; // Claude-written prompt takes priority
-    const imageStyle: string = body.imageStyle ?? 'realistic';
-    const falStyle = FAL_STYLE_MAP[imageStyle] ?? 'realistic_image';
+    const imagePrompt: string | undefined = body.imagePrompt;
     const VALID_ASPECTS = ['4:5', '9:16'] as const;
     const imageAspect = VALID_ASPECTS.includes(body.imageAspect) ? body.imageAspect as '4:5' | '9:16' : '4:5';
+    // Raised from 1024×1280 / 864×1536 to match or exceed Instagram native
+    // (1080×1350 for 4:5, 1080×1920 for 9:16). Uploading above-native lets
+    // Instagram compress down rather than upscale, keeping edges crisp.
     const imageSize = imageAspect === '9:16'
-      ? { width: 864, height: 1536 }   // 9:16 for Reels (864/1536 = exact 9:16, multiples of 32)
-      : { width: 1024, height: 1280 };  // 4:5 for carousel (default)
+      ? { width: 1080, height: 1920 }   // 9:16 — Instagram native (Stories/Reels)
+      : { width: 1440, height: 1800 };  // 4:5 — 33% above Instagram native (1080×1350)
 
     if (!topic.trim()) {
       return Response.json({ error: 'Topic required' }, { status: 400 });
@@ -47,21 +43,18 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
-    // Use Claude-generated prompt if available, otherwise fall back to keyword-based builder
     const prompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
-    console.log(`[generate-image] slide=${slideIndex} style=${falStyle} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
+    console.log(`[v1/generate-image] slide=${slideIndex} engine=recraft-v4-pro prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 80)}..."`);
 
-    const result = await fal.subscribe('fal-ai/recraft-v3', {
+    const result = await fal.subscribe('fal-ai/recraft/v4/pro/text-to-image', {
       input: {
         prompt,
         image_size: imageSize,
-        style: falStyle,
-        num_images: 1,
       },
       logs: false,
     });
 
-    const url: string | undefined = (result.data as any)?.images?.[0]?.url;
+    const url: string | undefined = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
     if (!url) throw new Error('No image URL in fal.ai response');
 
     return Response.json({ url });
