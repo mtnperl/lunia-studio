@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CopyButton from "@/components/email-review/CopyButton";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
-import type { FlowReviewImageEngine, FlowReviewImagePrompt } from "@/lib/types";
+import type { AssetMetadata, FlowReviewImageEngine, FlowReviewImagePrompt } from "@/lib/types";
 
 type Props = {
   reviewId: string;
@@ -10,12 +10,229 @@ type Props = {
   onUpdate: (next: FlowReviewImagePrompt) => void;
 };
 
+// ─── References sub-panel ─────────────────────────────────────────────────────
+
+type RefPanelProps = {
+  prompt: FlowReviewImagePrompt;
+  assets: AssetMetadata[];
+  /** Toggle a Claude-picked asset on/off (mutates referenceAssetIds in parent state). */
+  onToggleAsset: (assetId: string) => void;
+  /** Append a new ad-hoc reference URL. */
+  onAddReferenceUrl: (url: string) => void;
+  /** Drop one of the ad-hoc URLs. */
+  onRemoveReferenceUrl: (url: string) => void;
+  disabled: boolean;
+};
+
+function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onRemoveReferenceUrl, disabled }: RefPanelProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+
+  const logoAssets = assets.filter((a) => a.assetType === "logo");
+  // Selectable assets = everything else Claude can pick from
+  const selectableAssets = assets.filter((a) => a.assetType !== "logo");
+  const selectedIds = new Set(prompt.referenceAssetIds ?? []);
+  const extraUrls = prompt.referenceImageUrls ?? [];
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("assetType", "other");
+      const res = await fetch("/api/assets/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setUploadErr(data.error ?? `Upload failed (${res.status})`);
+        return;
+      }
+      onAddReferenceUrl(data.url as string);
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUploading(false);
+      // Reset the input so the same file can be re-uploaded if needed
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div style={{ padding: "10px 12px", background: "#fff", border: "1px solid #e8e2d2", borderRadius: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#5b5340", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+          Reference images
+          <span style={{ marginLeft: 6, fontWeight: 500, color: "#8b8270", textTransform: "none", letterSpacing: 0 }}>
+            (fed to GPT Image 2 for brand consistency)
+          </span>
+        </div>
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "4px 10px",
+            fontSize: 11,
+            fontWeight: 700,
+            background: "#102635",
+            color: "#fff",
+            borderRadius: 4,
+            cursor: uploading || disabled ? "wait" : "pointer",
+            opacity: uploading || disabled ? 0.6 : 1,
+          }}
+        >
+          {uploading ? "Uploading…" : "+ Upload"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={handleUpload}
+            disabled={uploading || disabled}
+            style={{ display: "none" }}
+          />
+        </label>
+      </div>
+
+      {uploadErr && (
+        <div style={{ padding: "6px 8px", background: "rgba(176,65,62,0.08)", border: "1px solid rgba(176,65,62,0.3)", borderRadius: 4, fontSize: 11, color: "#B0413E" }}>
+          {uploadErr}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {/* Logo — always attached, locked */}
+        {logoAssets.map((a) => (
+          <Thumb key={a.id} url={a.url} label="logo · auto" locked />
+        ))}
+
+        {/* Claude-picked product/lifestyle assets */}
+        {selectableAssets.map((a) => {
+          const checked = selectedIds.has(a.id);
+          return (
+            <Thumb
+              key={a.id}
+              url={a.url}
+              label={`${a.assetType} · ${a.name.slice(0, 18)}`}
+              checked={checked}
+              onClick={() => !disabled && onToggleAsset(a.id)}
+              disabled={disabled}
+            />
+          );
+        })}
+
+        {/* User-uploaded ad-hoc refs */}
+        {extraUrls.map((u) => (
+          <Thumb
+            key={u}
+            url={u}
+            label="upload · this image only"
+            checked
+            onClick={() => !disabled && onRemoveReferenceUrl(u)}
+            removable
+            disabled={disabled}
+          />
+        ))}
+
+        {logoAssets.length === 0 && selectableAssets.length === 0 && extraUrls.length === 0 && (
+          <div style={{ fontSize: 11, color: "#8b8270", fontStyle: "italic", padding: "4px 0" }}>
+            No brand assets uploaded yet. Upload a Lunia logo + product shots in the Assets tab, or click <strong>+ Upload</strong> above for a one-off reference.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type ThumbProps = {
+  url: string;
+  label: string;
+  checked?: boolean;
+  locked?: boolean;       // logo — can't be toggled off
+  removable?: boolean;    // user upload — × on hover
+  disabled?: boolean;
+  onClick?: () => void;
+};
+
+function Thumb({ url, label, checked, locked, removable, disabled, onClick }: ThumbProps) {
+  const interactive = !!onClick && !disabled && !locked;
+  return (
+    <div
+      onClick={interactive ? onClick : undefined}
+      style={{
+        position: "relative",
+        width: 64,
+        height: 64,
+        borderRadius: 6,
+        overflow: "hidden",
+        border: locked ? "2px solid #102635" : checked === false ? "1px solid #d6cfbe" : "2px solid #1f6f3a",
+        opacity: checked === false ? 0.35 : 1,
+        cursor: interactive ? "pointer" : locked ? "default" : "not-allowed",
+        background: "#fff",
+        transition: "opacity 0.15s, border-color 0.15s",
+      }}
+      title={label}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      {locked && (
+        <div style={{ position: "absolute", top: 2, right: 2, padding: "1px 4px", background: "#102635", color: "#fff", fontSize: 8, fontWeight: 700, borderRadius: 2 }}>
+          LOCK
+        </div>
+      )}
+      {removable && (
+        <div style={{ position: "absolute", top: 2, right: 2, padding: "0 4px", background: "rgba(176,65,62,0.9)", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 2 }}>
+          ×
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main ImagePromptCard ──────────────────────────────────────────────────────
+
 export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
   const [busy, setBusy] = useState(false);
   const [showRegen, setShowRegen] = useState(false);
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [userComment, setUserComment] = useState("");
+  const [assets, setAssets] = useState<AssetMetadata[]>([]);
+
+  // Pull the asset library once per card mount. Light request, cached by browser.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/assets")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!alive) return;
+        if (Array.isArray(data)) setAssets(data as AssetMetadata[]);
+      })
+      .catch(() => { /* silent — UI will show empty refs panel */ });
+    return () => { alive = false; };
+  }, []);
+
+  // Local mutators for the references panel — they update the prompt object
+  // in-place via onUpdate so re-renders persist the change and the next
+  // Generate call picks up the latest selection.
+  function toggleAsset(assetId: string) {
+    const current = prompt.referenceAssetIds ?? [];
+    const next = current.includes(assetId)
+      ? current.filter((id) => id !== assetId)
+      : [...current, assetId];
+    onUpdate({ ...prompt, referenceAssetIds: next });
+  }
+
+  function addReferenceUrl(url: string) {
+    const current = prompt.referenceImageUrls ?? [];
+    if (current.includes(url)) return;
+    onUpdate({ ...prompt, referenceImageUrls: [...current, url] });
+  }
+
+  function removeReferenceUrl(url: string) {
+    const current = prompt.referenceImageUrls ?? [];
+    onUpdate({ ...prompt, referenceImageUrls: current.filter((u) => u !== url) });
+  }
 
   async function generate(engineOverride?: FlowReviewImageEngine, promptOverride?: string) {
     setBusy(true);
@@ -23,7 +240,14 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
       const res = await fetch("/api/email-review/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewId, promptId: prompt.id, engineOverride, promptOverride }),
+        body: JSON.stringify({
+          reviewId,
+          promptId: prompt.id,
+          engineOverride,
+          promptOverride,
+          referenceAssetIds: prompt.referenceAssetIds ?? [],
+          referenceImageUrls: prompt.referenceImageUrls ?? [],
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.prompt) {
@@ -91,6 +315,16 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
       <pre style={{ margin: 0, padding: 12, background: "#fff", border: "1px solid #e8e2d2", borderRadius: 6, fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, lineHeight: 1.55, color: "#1A1A1A", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 240, overflow: "auto" }}>
         {prompt.prompt}
       </pre>
+
+      {/* Reference images panel — always shown so user can adjust before / between renders */}
+      <ReferencesPanel
+        prompt={prompt}
+        assets={assets}
+        onToggleAsset={toggleAsset}
+        onAddReferenceUrl={addReferenceUrl}
+        onRemoveReferenceUrl={removeReferenceUrl}
+        disabled={busy || prompt.status === "generating"}
+      />
 
       {prompt.errorMessage && (
         <div style={{ padding: "8px 12px", background: "rgba(176, 65, 62, 0.08)", border: "1px solid rgba(176, 65, 62, 0.3)", borderRadius: 6, fontSize: 12, color: "#B0413E" }}>

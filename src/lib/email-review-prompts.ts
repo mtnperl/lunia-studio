@@ -270,9 +270,12 @@ flagged — recommend which positions to cut. Equal count → no gap.
 
 ## Image prompt scaffold (8-step structure)
 When the review recommends a new image, write a prompt in this exact
-8-step structure. Mathan's image-gen layer will route to one of three fal
-engines — recraft, ideogram, or flux2 — based on the image's intent. You
-must select the engine in the imagePrompts output.
+8-step structure. Every email image is rendered with OpenAI GPT Image 2
+via fal — no engine selection needed. Lunia's logo is always attached
+as a reference automatically; you only need to decide which product /
+lifestyle / ingredient assets (from the brand asset library, listed
+below in the input) should also be attached as references for THIS
+specific image.
 
 CRITICAL: image models have NO concept of "Lunia". Every product-shot
 prompt must describe the bottle in full detail every time. "A Lunia
@@ -323,11 +326,22 @@ plenty of negative space, no bottle present, no text."
    oversaturation, competitor branding, any legible text on the label
    other than LUNIA LIFE."
 
-Engine selection:
-- Lunia bottle hero or ingredient flat-lay → recraft (most consistent
-  for product shape and label fidelity)
-- Lifestyle editorial / human subject → recraft preferred, ideogram fallback
-- Abstract / textural / mood (no product, no people) → ideogram or flux2
+## Reference asset selection
+For every imagePrompt, choose which assets from the brand asset library
+(supplied in the input as a JSON list of \`{ id, assetType, name }\`)
+should be attached as references for this specific image. Output the
+chosen IDs as \`referenceAssetIds: string[]\`.
+
+Selection rules:
+- The logo is always attached automatically — do NOT include it in
+  referenceAssetIds. (If you accidentally do, it'll be deduped.)
+- For product-hero shots → include the product asset(s) the email
+  actually promotes. If the email mentions Restore, attach the Restore
+  product image. Do not attach unrelated products.
+- For ingredient flat-lays / textural mood / lifestyle shots without
+  the product → leave referenceAssetIds empty (\`[]\`). Forcing a product
+  asset into a non-product image produces cluttered output.
+- If no product is mentioned by name in the email body → empty array.
 
 ## Patterns to kill on sight
 - "Complete your order" subject lines
@@ -374,8 +388,9 @@ type AnalyzeOutput = {
     emailId: string;            // matches the EmailFlowAsset.id from input
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
-    engine: "recraft" | "ideogram" | "flux2";
+    engine: "gpt-image-2";      // always — every email image uses GPT Image 2
     prompt: string;             // full 8-step structured prompt
+    referenceAssetIds: string[];// asset IDs from the brand library (see "Reference asset selection" above). Logo is auto-attached, do NOT include it.
     rationale?: string;         // one-line: why this image, what it replaces
   }[];
 };
@@ -395,11 +410,13 @@ export function buildAnalyzePrompt(args: {
   flowJson: string;
   linterHint: string;
   concise?: boolean;
+  assetCatalog?: AssetCatalogEntry[];
 }): string {
   const conciseHint = args.concise
     ? `\n\n## CONCISENESS CONSTRAINT (active on this run)\nOutput length is tightly limited. For Section 3 (rewrites), keep EACH Version A and Version B body to 180 words maximum. For Section 2 (subjects), limit each email to 3 A/B alternatives maximum. All other sections: trim to the most actionable findings only. The JSON must close completely — an unclosed JSON object is useless. Prioritise a complete, valid JSON response over exhaustive detail.\n`
     : "";
-  return `${FRAMEWORK_RUBRIC}${conciseHint}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+  const catalog = formatAssetCatalog(args.assetCatalog ?? []);
+  return `${FRAMEWORK_RUBRIC}${conciseHint}\n\n${ANALYZE_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Brand asset library\n\n${catalog}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
 // ─── Phase 1 of 2: everything EXCEPT the body rewrites ─────────────────────
@@ -439,8 +456,9 @@ type Phase1Output = {
     emailId: string;
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
-    engine: "recraft" | "ideogram" | "flux2";
+    engine: "gpt-image-2";        // always — every email image uses GPT Image 2
     prompt: string;               // full 8-step structured prompt
+    referenceAssetIds: string[];  // asset IDs from the brand library; logo is auto-attached, do NOT list it here
     rationale?: string;
   }[];
 };
@@ -450,11 +468,27 @@ If the input is a single campaign (one email), Section 1 (timing) should
 write "No findings — single campaign, no flow timing to evaluate." and
 Section 2 should still produce 3+ subject alternatives.`;
 
+/**
+ * Compact representation of a brand asset for prompt injection. Only the
+ * three fields Claude needs to choose references — keeps token cost down.
+ */
+export type AssetCatalogEntry = { id: string; assetType: string; name: string };
+
+function formatAssetCatalog(assets: AssetCatalogEntry[]): string {
+  if (!assets.length) {
+    return `(no brand assets uploaded yet — leave referenceAssetIds as [] for every image)`;
+  }
+  // List as compact JSON; Claude parses this consistently.
+  return `Brand asset library (use these IDs for referenceAssetIds):\n\`\`\`json\n${JSON.stringify(assets, null, 2)}\n\`\`\``;
+}
+
 export function buildAnalyzePhase1Prompt(args: {
   flowJson: string;
   linterHint: string;
+  assetCatalog?: AssetCatalogEntry[];
 }): string {
-  return `${FRAMEWORK_RUBRIC}\n\n${PHASE1_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
+  const catalog = formatAssetCatalog(args.assetCatalog ?? []);
+  return `${FRAMEWORK_RUBRIC}\n\n${PHASE1_OUTPUT_INSTRUCTIONS}\n\n## Linter pre-flight\n\n${args.linterHint}\n\n## Brand asset library\n\n${catalog}\n\n## Flow input\n\nFlow JSON:\n\`\`\`json\n${args.flowJson}\n\`\`\``;
 }
 
 // ─── Phase 2 lean context ─────────────────────────────────────────────────

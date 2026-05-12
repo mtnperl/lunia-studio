@@ -6,11 +6,12 @@ import {
   CONTENT_MAX_TOKENS_MAX,
   CONTENT_THINKING,
 } from "@/lib/anthropic";
-import { checkRateLimit, saveFlowReview } from "@/lib/kv";
+import { checkRateLimit, saveFlowReview, getAssets } from "@/lib/kv";
 import {
   buildAnalyzePhase1Prompt,
   buildAnalyzePhase2Prompt,
   FRAMEWORK_VERSION,
+  type AssetCatalogEntry,
 } from "@/lib/email-review-prompts";
 import { lintLuniaCopy, lintFindingsToPromptHint } from "@/lib/lunia-linter";
 import type {
@@ -197,6 +198,15 @@ export async function POST(req: Request) {
     const linterHint = aggregateLinterFindings(preprocessed);
     const flowJson = JSON.stringify(preprocessed, null, 2);
 
+    // Pull the brand asset library and pass it into the prompt so Claude can
+    // pick reference assets (product/lifestyle/ingredient) for each image.
+    // Logo is auto-attached server-side at generate time so we exclude it here
+    // to avoid Claude listing it (it would just get deduped anyway).
+    const allAssets = await getAssets();
+    const assetCatalog: AssetCatalogEntry[] = allAssets
+      .filter((a) => a.assetType !== "logo")
+      .map((a) => ({ id: a.id, assetType: a.assetType, name: a.name }));
+
     const t0 = Date.now();
 
     // ── Phase 1: timing, subjects, design, strategy + meta + image prompts ──
@@ -210,7 +220,7 @@ export async function POST(req: Request) {
         model: CONTENT_MODEL,
         max_tokens: CONTENT_MAX_TOKENS_MAX,
         thinking: thinking5k,
-        messages: [{ role: "user", content: buildAnalyzePhase1Prompt({ flowJson, linterHint }) }],
+        messages: [{ role: "user", content: buildAnalyzePhase1Prompt({ flowJson, linterHint, assetCatalog }) }],
       });
       p1text = extractText(msg);
       p1 = safeParseJson<Phase1Output>(p1text);
@@ -282,14 +292,23 @@ export async function POST(req: Request) {
       console.warn("[email-review/analyze] Claude omitted flowCompleteness — using server-side fallback");
     }
 
+    // Validate the asset IDs Claude picked. Drop anything that doesn't exist
+    // in the live asset library (Claude can hallucinate IDs).
+    const validAssetIds = new Set(allAssets.map((a) => a.id));
+
     const review: SavedFlowReview = {
       id: randomUUID(),
       flow: preprocessed,
       sections: mergedSections,
-      imagePrompts: p1.imagePrompts.map((p) => ({
-        ...p,
-        status: "pending" as const,
-      })),
+      imagePrompts: p1.imagePrompts.map((p) => {
+        const refAssetIds = (p.referenceAssetIds ?? []).filter((id) => validAssetIds.has(id));
+        return {
+          ...p,
+          engine: "gpt-image-2" as const, // hard-pin — every email image uses GPT Image 2
+          referenceAssetIds: refAssetIds,
+          status: "pending" as const,
+        };
+      }),
       ifYouOnlyDoThree: p1.ifYouOnlyDoThree.slice(0, 3),
       flowCompleteness,
       frameworkVersion: FRAMEWORK_VERSION,

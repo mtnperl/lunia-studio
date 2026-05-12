@@ -729,7 +729,13 @@ export type FlowReviewSection = {
   flags?: FlowReviewFlag[];
 };
 
-export type FlowReviewImageEngine = "recraft" | "ideogram" | "flux2";
+/**
+ * Image engines for email-review image prompts. New reviews always use
+ * "gpt-image-2" (OpenAI GPT Image 2 served via fal). The other engines are
+ * kept in the union for back-compat with reviews saved before the switch —
+ * generate-image will route them through gpt-image-2 on regenerate.
+ */
+export type FlowReviewImageEngine = "gpt-image-2" | "recraft" | "ideogram" | "flux2";
 
 export type FlowReviewImagePrompt = {
   id: string;
@@ -741,6 +747,18 @@ export type FlowReviewImagePrompt = {
   imageUrl?: string;
   status: "pending" | "generating" | "ready" | "error";
   errorMessage?: string;
+  /**
+   * Asset IDs (from AssetMetadata) Claude selected as references for this
+   * image. The logo asset is always implicitly attached server-side; this
+   * list is just the product/lifestyle picks for this specific email.
+   */
+  referenceAssetIds?: string[];
+  /**
+   * Extra reference image URLs the user attached manually (e.g. uploaded
+   * one-off shots for this image only). Combined with referenceAssetIds
+   * server-side before calling gpt-image-2/edit.
+   */
+  referenceImageUrls?: string[];
   // Set by /api/email-review/regen-suggestions before re-render. User picks one
   // → it overwrites prompt + engine and triggers a fresh render.
   regenSuggestions?: { engine: FlowReviewImageEngine; prompt: string; rationale: string }[];
