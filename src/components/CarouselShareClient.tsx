@@ -181,9 +181,13 @@ export default function CarouselShareClient({ carousel }: Props) {
     // `style={{ background: bg }}` from HookSlide / ContentSlide).
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
     const savedDisplays = imgEls.map((img) => img.style.display);
+    const savedSrcs = imgEls.map((img) => img.getAttribute("src") ?? "");
     const savedWrapperBg = innerWrapper?.style.background ?? "";
 
-    imgEls.forEach((img) => { img.style.display = "none"; });
+    // Erase src AND hide — html-to-image crawls every img src it finds in the
+    // cloned DOM (including favicons referenced in computed CSS) and throws a
+    // DOM error event if any fails to load. Clearing src prevents those probes.
+    imgEls.forEach((img) => { img.style.display = "none"; img.removeAttribute("src"); });
     if (innerWrapper) innerWrapper.style.background = "transparent";
 
     let fgDataUrl: string;
@@ -191,9 +195,15 @@ export default function CarouselShareClient({ carousel }: Props) {
       fgDataUrl = await toPng(el, {
         width: 1080, height: exportH, pixelRatio: 2,
         cacheBust: false, backgroundColor: "transparent",
+        // Also tell html-to-image to skip <img> nodes entirely in its clone —
+        // belt-and-suspenders against any img injected outside our imgEls list.
+        filter: (n: Node) => !(n instanceof HTMLImageElement),
       });
     } finally {
-      imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
+      imgEls.forEach((img, i) => {
+        img.style.display = savedDisplays[i] ?? "";
+        if (savedSrcs[i]) img.setAttribute("src", savedSrcs[i]);
+      });
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
@@ -802,16 +812,29 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
       // SlideWrapper DOM: node > outer-div > inner-div(background: #EEEBE3).
       const innerWrapper = node.firstElementChild?.firstElementChild as HTMLElement | null;
       const savedDisplays = imgEls.map((img) => img.style.display);
+      const savedSrcs = imgEls.map((img) => img.getAttribute("src") ?? "");
       const savedBg = innerWrapper?.style.background ?? "";
 
-      imgEls.forEach((img) => { img.style.display = "none"; });
+      // Clear src AND hide — html-to-image probes every img src it finds
+      // (including framework-injected favicons referenced via CSS) and throws
+      // a DOM error event if the fetch fails. Removing src kills the probe.
+      imgEls.forEach((img) => { img.style.display = "none"; img.removeAttribute("src"); });
       if (innerWrapper) innerWrapper.style.background = "transparent";
 
       let fgDataUrl: string;
       try {
-        fgDataUrl = await toPng(node, { width: W, height: H, pixelRatio: PR, cacheBust: false, backgroundColor: "transparent" });
+        fgDataUrl = await toPng(node, {
+          width: W, height: H, pixelRatio: PR, cacheBust: false,
+          backgroundColor: "transparent",
+          // Belt-and-suspenders: also tell html-to-image to skip <img> nodes
+          // in its clone so any injected img (extension, Next.js etc.) is ignored.
+          filter: (n: Node) => !(n instanceof HTMLImageElement),
+        });
       } finally {
-        imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
+        imgEls.forEach((img, i) => {
+          img.style.display = savedDisplays[i] ?? "";
+          if (savedSrcs[i]) img.setAttribute("src", savedSrcs[i]);
+        });
         if (innerWrapper) innerWrapper.style.background = savedBg;
       }
 
