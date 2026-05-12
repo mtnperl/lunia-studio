@@ -733,6 +733,9 @@ export default function CarouselShareClient({ carousel }: Props) {
 
 
 // ── Did You Know share view ───────────────────────────────────────────────────
+// DYK slides contain a <img src="/lunia-logo.png"> inside DidYouKnowSlide.
+// Plain toPng drops <img> contents on mobile Safari (SVG foreignObject bug),
+// so we use the same canvas-compositing pattern as the main carousel path.
 function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const dyk = carousel.didYouKnowContent!;
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
@@ -740,12 +743,125 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [captionCopied, setCaptionCopied] = useState(false);
+  // Pre-built PNG blobs so the download button is instant on mobile.
+  const [slideBlobs, setSlideBlobs] = useState<Array<{ url: string; name: string } | null>>([null, null]);
+  const [preloadDone, setPreloadDone] = useState(0);
+  const [preloadError, setPreloadError] = useState<string | null>(null);
 
+  const imageDataUrlCache = useRef<Map<string, string>>(new Map());
+
+  async function loadDataUrl(src: string): Promise<string> {
+    if (src.startsWith("data:")) return src;
+    const cached = imageDataUrlCache.current.get(src);
+    if (cached) return cached;
+    // Local paths are fine as-is; external URLs go through the image proxy.
+    const target = src.startsWith("/")
+      ? src
+      : `/api/carousel/image-proxy?url=${encodeURIComponent(src)}`;
+    const dataUrl = await fetchAsDataUrl(target);
+    imageDataUrlCache.current.set(src, dataUrl);
+    return dataUrl;
+  }
+
+  /**
+   * Build a PNG for a DYK slide node using canvas compositing.
+   * DYK slides have a solid CSS background (#EEEBE3) and one <img> (the
+   * Lunia logo). html-to-image's SVG foreignObject drops the <img> on
+   * mobile Safari — we handle it the same way as hook / content slides:
+   * capture a transparent foreground, draw bg + images + fg on canvas.
+   */
   async function buildFile(node: HTMLElement | null, filename: string): Promise<File | null> {
     if (!node) return null;
-    const dataUrl = await toPng(node, {
-      width: 1080, height: 1350, pixelRatio: 1, cacheBust: true,
-    });
+
+    const W = 1080, H = 1350, PR = 2;
+
+    const imgEls = Array.from(node.querySelectorAll("img")) as HTMLImageElement[];
+
+    // Wait for any <img> to finish loading before we try to capture.
+    await Promise.all(imgEls.map((img) =>
+      img.complete ? Promise.resolve()
+        : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }),
+    ));
+
+    if (imgEls.length > 0) {
+      const elRect = node.getBoundingClientRect();
+      type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; fit: string };
+      const infos: ImgInfo[] = [];
+
+      for (const img of imgEls) {
+        const src = img.getAttribute("src");
+        if (!src) continue;
+        try {
+          const dataUrl = await loadDataUrl(src);
+          const r = img.getBoundingClientRect();
+          infos.push({ dataUrl, x: r.x - elRect.x, y: r.y - elRect.y, w: r.width, h: r.height, fit: getComputedStyle(img).objectFit || "fill" });
+        } catch { /* skip — fg capture continues */ }
+      }
+
+      // Hide <img>s + clear inner wrapper bg so toPng gets a transparent fg.
+      // SlideWrapper DOM: node > outer-div > inner-div(background: #EEEBE3).
+      const innerWrapper = node.firstElementChild?.firstElementChild as HTMLElement | null;
+      const savedDisplays = imgEls.map((img) => img.style.display);
+      const savedBg = innerWrapper?.style.background ?? "";
+
+      imgEls.forEach((img) => { img.style.display = "none"; });
+      if (innerWrapper) innerWrapper.style.background = "transparent";
+
+      let fgDataUrl: string;
+      try {
+        fgDataUrl = await toPng(node, { width: W, height: H, pixelRatio: PR, cacheBust: false, backgroundColor: "transparent" });
+      } finally {
+        imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
+        if (innerWrapper) innerWrapper.style.background = savedBg;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = W * PR; canvas.height = H * PR;
+      const ctx = canvas.getContext("2d")!;
+
+      // Fill the DYK brand background colour.
+      ctx.fillStyle = "#EEEBE3";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw each image at its actual on-screen position.
+      for (const info of infos) {
+        await new Promise<void>((resolve) => {
+          const im = new Image();
+          im.onload = () => {
+            const dx = info.x * PR, dy = info.y * PR, dw = info.w * PR, dh = info.h * PR;
+            if (info.fit === "cover") {
+              const scale = Math.max(dw / im.width, dh / im.height);
+              const sw = dw / scale, sh = dh / scale;
+              ctx.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, dx, dy, dw, dh);
+            } else if (info.fit === "contain") {
+              const scale = Math.min(dw / im.width, dh / im.height);
+              ctx.drawImage(im, dx + (dw - im.width * scale) / 2, dy + (dh - im.height * scale) / 2, im.width * scale, im.height * scale);
+            } else {
+              ctx.drawImage(im, dx, dy, dw, dh);
+            }
+            resolve();
+          };
+          im.onerror = () => resolve();
+          im.src = info.dataUrl;
+        });
+      }
+
+      // Draw foreground (text, chevrons, etc.) on top.
+      await new Promise<void>((resolve) => {
+        const fg = new Image();
+        fg.onload = () => { ctx.drawImage(fg, 0, 0, canvas.width, canvas.height); resolve(); };
+        fg.onerror = () => resolve();
+        fg.src = fgDataUrl;
+      });
+
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
+      );
+      return new File([blob], filename, { type: "image/png" });
+    }
+
+    // No <img> elements — plain toPng is safe.
+    const dataUrl = await toPng(node, { width: W, height: H, pixelRatio: PR, cacheBust: false });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
@@ -783,13 +899,54 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  // Pre-build both slide PNGs at mount so the download tap is instant.
+  useEffect(() => {
+    setSlideBlobs([null, null]);
+    setPreloadDone(0);
+    setPreloadError(null);
+    const createdUrls: string[] = [];
+    let cancelled = false;
+    const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
+    const refs = [exportSlide1Ref, exportSlide2Ref];
+    const names = [`dyk-${safe}-1.png`, `dyk-${safe}-2.png`];
+
+    const run = async () => {
+      if (document.fonts?.ready) await document.fonts.ready;
+      await new Promise((r) => setTimeout(r, 150));
+      for (let i = 0; i < 2; i++) {
+        if (cancelled) return;
+        try {
+          const file = await buildFile(refs[i].current, names[i]);
+          if (cancelled || !file) return;
+          const url = URL.createObjectURL(file);
+          createdUrls.push(url);
+          setSlideBlobs((prev) => { const next = [...prev]; next[i] = { url, name: file.name }; return next; });
+          setPreloadDone((n) => n + 1);
+        } catch (err) {
+          if (cancelled) return;
+          console.error("[dyk-share] preload failed", i, err);
+          setPreloadError(describeRejection(err));
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+      for (const u of createdUrls) URL.revokeObjectURL(u);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function downloadAll() {
     setError(null); setDownloading(true);
     try {
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      const f1 = await buildFile(exportSlide1Ref.current, `dyk-${safe}-1.png`);
-      const f2 = await buildFile(exportSlide2Ref.current, `dyk-${safe}-2.png`);
+      const f1 = slideBlobs[0]
+        ? await fetch(slideBlobs[0].url).then((r) => r.blob()).then((b) => new File([b], `dyk-${safe}-1.png`, { type: "image/png" }))
+        : await buildFile(exportSlide1Ref.current, `dyk-${safe}-1.png`);
+      const f2 = slideBlobs[1]
+        ? await fetch(slideBlobs[1].url).then((r) => r.blob()).then((b) => new File([b], `dyk-${safe}-2.png`, { type: "image/png" }))
+        : await buildFile(exportSlide2Ref.current, `dyk-${safe}-2.png`);
       const files = [f1, f2].filter((f): f is File => f !== null);
       if (files.length === 0) { setError("Nothing to download."); return; }
 
@@ -799,18 +956,15 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
         navigator.canShare({ files });
 
       if (canShareFiles) {
-        try {
-          await navigator.share({ files, title: "Lunia · Did You Know" });
-          return;
-        } catch (err) {
-          if (err instanceof Error && err.name === "AbortError") return;
-        }
+        try { await navigator.share({ files, title: "Lunia · Did You Know" }); return; }
+        catch (err) { if (err instanceof Error && err.name === "AbortError") return; }
       }
 
       for (const f of files) await saveFile(f);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      console.error(e); setError("Download failed.");
+      console.error(e);
+      setError(`Download failed: ${describeRejection(e)}`);
     } finally {
       setDownloading(false);
     }
@@ -835,7 +989,7 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
         <DidYouKnowSlide slide={dyk.slide2} scale={0.5} />
       </div>
 
-      {/* Hidden full-size slides for accurate PNG export */}
+      {/* Hidden full-size slides for canvas compositing */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
           <DidYouKnowSlide slide={dyk.slide1} scale={1} />
@@ -844,6 +998,65 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
           <DidYouKnowSlide slide={dyk.slide2} scale={1} />
         </div>
       </div>
+
+      {/* Status banners */}
+      {preloadError && (
+        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--error)" }}>
+          ⚠ {preloadError}
+        </div>
+      )}
+      {preloadDone === 2 && !preloadError && (
+        <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 12, color: "#15803d" }}>
+          ✓ Ready. On iPhone: tap the ↓ PNG buttons below → image opens → long-press → Save to Photos.
+        </div>
+      )}
+
+      {/* Per-slide download links (pre-built blob URLs) */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        {[0, 1].map((i) => (
+          slideBlobs[i] ? (
+            <a
+              key={i}
+              href={slideBlobs[i]!.url}
+              download={slideBlobs[i]!.name}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => {
+                const file = new File([], slideBlobs[i]!.name, { type: "image/png" });
+                if (typeof navigator.share === "function" && typeof navigator.canShare === "function") {
+                  fetch(slideBlobs[i]!.url).then((r) => r.blob()).then((b) => {
+                    const f = new File([b], slideBlobs[i]!.name, { type: "image/png" });
+                    if (navigator.canShare({ files: [f] })) {
+                      e.preventDefault();
+                      navigator.share({ files: [f], title: f.name }).catch(() => window.open(slideBlobs[i]!.url, "_blank"));
+                    }
+                  }).catch(() => { void file; });
+                }
+              }}
+              style={{
+                display: "inline-block", padding: "9px 20px", fontSize: 13, fontWeight: 600,
+                background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)",
+                borderRadius: 7, textDecoration: "none", fontFamily: "inherit",
+              }}
+            >
+              ↓ Slide {i + 1} PNG
+            </a>
+          ) : (
+            <span key={i} style={{ display: "inline-block", padding: "9px 20px", fontSize: 13, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 7 }}>
+              {preloadError ? "⚠ Failed" : `Preparing slide ${i + 1}…`}
+            </span>
+          )
+        ))}
+        <button onClick={downloadAll} disabled={downloading} style={{
+          background: "var(--accent)", color: "#fff", border: "none", borderRadius: 7,
+          padding: "9px 20px", fontSize: 13, fontWeight: 700, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit",
+        }}>
+          {downloading ? "Downloading…" : "↓ Download both"}
+        </button>
+      </div>
+
+      {error && <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 16 }}>{error}</div>}
+
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Caption</div>
@@ -852,15 +1065,6 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
           </button>
         </div>
         <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{dyk.caption}</div>
-      </div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <button onClick={downloadAll} disabled={downloading} style={{
-          background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8,
-          padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit",
-        }}>
-          {downloading ? "Downloading..." : "Download both slides"}
-        </button>
-        {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
       </div>
     </div>
   );
