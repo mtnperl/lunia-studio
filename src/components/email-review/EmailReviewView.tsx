@@ -11,7 +11,8 @@ import { AnalyzeLoader } from "@/components/email-review/ReviewLoaders";
 import FlowCompletenessBanner from "@/components/email-review/FlowCompletenessBanner";
 import AdditionalEmailsDeck from "@/components/email-review/AdditionalEmailsDeck";
 import CreateFlowPanel from "@/components/email-review/CreateFlowPanel";
-import type { EmailFlow, SavedFlowReview } from "@/lib/types";
+import CarouselToEmailPanel from "@/components/email-review/CarouselToEmailPanel";
+import type { EmailFlow, SavedCarousel, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
 
@@ -19,6 +20,8 @@ type Props = {
   initialFlow?: EmailFlow | null;
   /** Open a previously saved review by id. Fetched from /api/email-review/[id]. */
   initialReviewId?: string | null;
+  /** Carousel to auto-convert to email flow (handed in from the carousel library). */
+  initialCarousel?: SavedCarousel | null;
   onConsumed?: () => void;
 };
 
@@ -29,14 +32,15 @@ const SECTION_ORDER: SavedFlowReview["sections"][number]["key"][] = [
   "timing", "subjects", "rewrites", "design", "strategy",
 ];
 
-export default function EmailReviewView({ initialFlow, initialReviewId, onConsumed }: Props) {
+export default function EmailReviewView({ initialFlow, initialReviewId, initialCarousel, onConsumed }: Props) {
   const [mode, setMode] = useState<Mode>("input");
   const [flow, setFlow] = useState<EmailFlow | null>(initialFlow ?? null);
   const [review, setReview] = useState<SavedFlowReview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [loadingSaved, setLoadingSaved] = useState(false);
-  const [showInputType, setShowInputType] = useState<"choose" | "klaviyo" | "upload" | "create">("choose");
+  const [showInputType, setShowInputType] = useState<"choose" | "klaviyo" | "upload" | "create" | "carousel">("choose");
+  const [activeCarousel, setActiveCarousel] = useState<SavedCarousel | null>(initialCarousel ?? null);
 
   // Auto-pick the appropriate input mode if a flow was handed in by the
   // parent (e.g. clicking a Klaviyo-loaded flow from the EmailFlowsLibrary).
@@ -56,6 +60,16 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFlow]);
+
+  // Auto-open CarouselToEmailPanel when a carousel is handed in from the library.
+  useEffect(() => {
+    if (!initialCarousel) return;
+    setActiveCarousel(initialCarousel);
+    setShowInputType("carousel");
+    setMode("input");
+    onConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCarousel]);
 
   // Load a saved review by id (clicking a row in EmailFlowsLibrary).
   useEffect(() => {
@@ -147,7 +161,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
         )}
 
         {showInputType === "choose" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <button onClick={() => setShowInputType("klaviyo")} style={inputCardStyle}>
               <span style={cardKickerStyle}>Klaviyo</span>
               <span style={cardTitleStyle}>Review a Klaviyo flow →</span>
@@ -162,6 +176,14 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
               <span style={{ ...cardKickerStyle, color: "#1a6b68" }}>Create</span>
               <span style={cardTitleStyle}>Create a new flow →</span>
               <span style={cardSubStyle}>Describe the use case and Claude drafts a publish-ready flow from scratch.</span>
+            </button>
+            <button
+              onClick={() => setShowInputType("carousel")}
+              style={{ ...inputCardStyle, borderColor: "#FFD800", background: "rgba(255,216,0,0.05)" }}
+            >
+              <span style={{ ...cardKickerStyle, color: "#856c00" }}>Carousel</span>
+              <span style={cardTitleStyle}>✉ From carousel →</span>
+              <span style={cardSubStyle}>Pick a carousel from the library. Claude converts it to a publish-ready email flow instantly.</span>
             </button>
           </div>
         )}
@@ -185,6 +207,29 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
             onCancel={() => setShowInputType("choose")}
             onRunReview={(f) => { setFlow(f); runAnalyze(f); }}
           />
+        )}
+
+        {showInputType === "carousel" && activeCarousel && (
+          <CarouselToEmailPanel
+            carousel={activeCarousel}
+            onConvert={(f) => { setFlow(f); runAnalyze(f); }}
+            onCancel={() => setShowInputType("choose")}
+          />
+        )}
+
+        {showInputType === "carousel" && !activeCarousel && (
+          // Cold-start: user clicked "From carousel" without a pre-loaded carousel.
+          // Show a lightweight picker that populates activeCarousel and mounts the panel.
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#102635", fontFamily: "Arial, sans-serif" }}>Choose a carousel from the library</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>Go to the <strong>Carousel library</strong> tab and click <strong>✉ Make email</strong> on any carousel.</div>
+            <button
+              onClick={() => setShowInputType("choose")}
+              style={{ alignSelf: "flex-start", padding: "7px 14px", fontSize: 12, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              ← Back
+            </button>
+          </div>
         )}
       </div>
     );
@@ -258,6 +303,30 @@ export default function EmailReviewView({ initialFlow, initialReviewId, onConsum
           ))}
         </ol>
       </section>
+
+      {/* E4: Attribution pill — shown when the flow was generated from a carousel */}
+      {review.flow.source === "carousel" && review.flow.carouselId && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignSelf: "flex-start",
+            alignItems: "center",
+            gap: 7,
+            padding: "5px 12px",
+            background: "rgba(255,216,0,0.10)",
+            border: "1px solid rgba(255,216,0,0.40)",
+            borderRadius: 20,
+            fontSize: 11,
+            fontFamily: "Arial, sans-serif",
+            color: "#856c00",
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+          }}
+        >
+          <span>✉</span>
+          <span>From carousel: {review.flow.flowName.split("—")[0]?.trim() || review.flow.carouselId}</span>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {sections.map((s) => (

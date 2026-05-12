@@ -523,7 +523,10 @@ export default function Page() {
             <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
               <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Carousel Library</h1>
             </div>
-            <CarouselLibraryView onOpen={(c) => { setPendingCarousel(c); setTab("carousel-v2"); }} />
+            <CarouselLibraryView
+              onOpen={(c) => { setPendingCarousel(c); setTab("carousel-v2"); }}
+              onConvertToEmail={(c) => { setPendingCarousel(c); setTab("email-reviews"); }}
+            />
           </div>
         )}
         {tab === "email-panels" && <EmailPanelBuilderView />}
@@ -533,7 +536,8 @@ export default function Page() {
           <EmailReviewView
             initialFlow={pendingEmailFlow}
             initialReviewId={pendingReviewId}
-            onConsumed={() => { setPendingEmailFlow(null); setPendingReviewId(null); }}
+            initialCarousel={pendingCarousel}
+            onConsumed={() => { setPendingEmailFlow(null); setPendingReviewId(null); setPendingCarousel(null); }}
           />
         )}
         {tab === "email-flows" && (

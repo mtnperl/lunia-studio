@@ -697,8 +697,10 @@ export type EmailFlowAsset = {
 
 export type EmailFlow = {
   id: string;
-  source: "klaviyo" | "upload";
+  source: "klaviyo" | "upload" | "carousel";
   klaviyoFlowId?: string;
+  /** Set when source === "carousel" — the SavedCarousel.id this flow was generated from. */
+  carouselId?: string;
   flowType: EmailFlowType;
   flowName: string;
   trigger: string;              // "Started Checkout event"

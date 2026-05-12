@@ -536,7 +536,7 @@ always the default action, Version B is always the fallback.`;
 // ─── Lean context for additional-email generation and single-email revision ──
 // Same principle as PHASE2_REWRITE_RUBRIC — these calls write email copy, not
 // analysis. Strip the analysis-only sections so the prompt stays tight.
-const ADDITIONAL_EMAIL_RUBRIC = `# LUNIA LIFE — Email Drafting Context (Brand Guidelines v${BRAND_VERSION})
+export const ADDITIONAL_EMAIL_RUBRIC = `# LUNIA LIFE — Email Drafting Context (Brand Guidelines v${BRAND_VERSION})
 
 You are drafting email copy for Lunia Life, a science-first sleep supplement brand.
 Write for the audience the flow's own copy signals. Do not infer demographics
@@ -707,7 +707,7 @@ export function buildRegenSuggestionsPrompt(args: {
 // Used by /api/email-review/create-flow. Takes a plain-English use case and
 // generates a complete, publish-ready EmailFlow following all framework rules.
 
-const CREATE_FLOW_OUTPUT_INSTRUCTIONS = `## Output format
+export const CREATE_FLOW_OUTPUT_INSTRUCTIONS = `## Output format
 
 Return ONLY a valid JSON object. No prose before or after. No markdown fences.
 
@@ -763,5 +763,65 @@ USER USE CASE:
 ${args.useCase}
 """
 
+${CREATE_FLOW_OUTPUT_INSTRUCTIONS}`;
+}
+
+// ─── Carousel → Email prompt ──────────────────────────────────────────────────
+// Used by /api/email-review/carousel-to-email. Takes a SavedCarousel and converts
+// its content into a publish-ready EmailFlow. The carousel content is the source
+// of truth — Claude adapts it, doesn't reinvent it.
+
+import type { SavedCarousel } from "@/lib/types";
+
+export function buildCarouselToEmailPrompt(args: {
+  carousel: SavedCarousel;
+  userComment?: string;
+}): string {
+  const { carousel, userComment } = args;
+  const hook = carousel.content.hooks[carousel.selectedHook] ?? carousel.content.hooks[0];
+
+  // Build slide section — branches on did_you_know vs standard/engagement
+  let slidesSection: string;
+  if (carousel.format === "did_you_know" && carousel.didYouKnowContent) {
+    const dyk = carousel.didYouKnowContent;
+    const tokenExcerpt = dyk.slide1.body1
+      .slice(0, 8)
+      .map((t) => t.text)
+      .join(", ");
+    slidesSection = `Slides:
+  - S1: "${dyk.slide1.header}" — ${tokenExcerpt}`;
+  } else {
+    const slides = carousel.content.slides;
+    const s1 = slides[0];
+    const s2 = slides[1];
+    const s3 = slides[2];
+    const lines: string[] = [];
+    if (s1) lines.push(`  - S1: "${s1.headline}" — ${s1.body}`);
+    if (s2) lines.push(`  - S2: "${s2.headline}" — ${s2.body}`);
+    if (s3) lines.push(`  - S3: "${s3.headline}" — ${s3.body}`);
+    slidesSection = `Slides:\n${lines.join("\n")}`;
+  }
+
+  const cta = carousel.content.cta;
+  const commentSection = userComment?.trim()
+    ? `\nADDITIONAL INSTRUCTIONS: ${userComment.trim()}\n`
+    : "";
+
+  return `${ADDITIONAL_EMAIL_RUBRIC}
+
+## Task
+
+Convert this Instagram carousel into a publish-ready Lunia Life email flow.
+Use the carousel's hook, slides, and CTA as the creative brief. Adapt the same
+angle, science, and voice into email format. Do not invent claims or angles not
+present in the carousel. Default to a single campaign email unless the content
+clearly warrants a 2-email sequence.
+
+CAROUSEL SOURCE:
+Topic: ${carousel.topic}
+Hook: "${hook?.headline ?? ""}" / "${hook?.subline ?? ""}"
+${slidesSection}
+CTA: "${cta.headline}" — ${cta.followLine}
+${commentSection}
 ${CREATE_FLOW_OUTPUT_INSTRUCTIONS}`;
 }

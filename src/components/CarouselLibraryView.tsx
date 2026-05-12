@@ -132,7 +132,7 @@ function SkeletonCard() {
 }
 
 // ── CarouselCard ───────────────────────────────────────────────────────────────
-function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () => void; onDelete: () => void }) {
+function CarouselCard({ c, onClick, onDelete, onConvertToEmail }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onConvertToEmail?: (c: SavedCarousel) => void }) {
   const [hovered, setHovered] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -307,6 +307,38 @@ function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () 
           ) : (
             <>
               <CopyButton text={caption} />
+              {onConvertToEmail && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onConvertToEmail(c); }}
+                  title="Make email flow from this carousel"
+                  style={{
+                    flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: 4,
+                    padding: "9px 10px",
+                    background: "var(--surface-r)", border: "1px solid var(--border)",
+                    borderRadius: 8, cursor: "pointer",
+                    fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                    fontFamily: "var(--font-ui)",
+                    whiteSpace: "nowrap",
+                    transition: "color 0.14s, border-color 0.14s, background 0.14s",
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLButtonElement;
+                    el.style.color = "#102635";
+                    el.style.borderColor = "#FFD800";
+                    el.style.background = "rgba(255,216,0,0.10)";
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLButtonElement;
+                    el.style.color = "var(--muted)";
+                    el.style.borderColor = "var(--border)";
+                    el.style.background = "var(--surface-r)";
+                  }}
+                >
+                  ✉
+                </button>
+              )}
               <DownloadIconButton href={shareHref} />
               {/* Trash */}
               <button
@@ -335,7 +367,7 @@ function CarouselCard({ c, onClick, onDelete }: { c: SavedCarousel; onClick: () 
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
-export default function CarouselLibraryView({ onOpen }: { onOpen?: (c: SavedCarousel) => void }) {
+export default function CarouselLibraryView({ onOpen, onConvertToEmail }: { onOpen?: (c: SavedCarousel) => void; onConvertToEmail?: (c: SavedCarousel) => void }) {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -387,6 +419,7 @@ export default function CarouselLibraryView({ onOpen }: { onOpen?: (c: SavedCaro
                 c={c}
                 onClick={() => onOpen?.(c)}
                 onDelete={() => setCarousels(prev => prev.filter(x => x.id !== c.id))}
+                onConvertToEmail={onConvertToEmail}
               />
             ))}
         </div>
