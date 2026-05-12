@@ -4,6 +4,7 @@ import {
   extractText,
   CONTENT_MODEL,
   CONTENT_MAX_TOKENS_MAX,
+  CONTENT_THINKING,
 } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { buildCreateFlowPrompt } from "@/lib/email-review-prompts";
@@ -89,9 +90,7 @@ export async function POST(req: Request) {
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_MAX,
-      // 3 000 thinking tokens: create-flow is generative (not analytical), so
-      // deep reasoning adds little. Keeps thinking cost proportionate to output.
-      thinking: { type: "enabled", budget_tokens: 3_000 },
+      thinking: CONTENT_THINKING,
       messages: [{ role: "user", content: buildCreateFlowPrompt({ useCase }) }],
     });
 

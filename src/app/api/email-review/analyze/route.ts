@@ -4,6 +4,7 @@ import {
   extractText,
   CONTENT_MODEL,
   CONTENT_MAX_TOKENS_MAX,
+  CONTENT_THINKING,
 } from "@/lib/anthropic";
 import { checkRateLimit, saveFlowReview } from "@/lib/kv";
 import {
@@ -199,12 +200,8 @@ export async function POST(req: Request) {
     const t0 = Date.now();
 
     // ── Phase 1: timing, subjects, design, strategy + meta + image prompts ──
-    // Phase 1 is analytical — 5 000 thinking tokens for thorough cross-section reasoning.
-    // Phase 2 is purely generative (rewriting copy) — 4 000 tokens is enough since
-    // the analytical work is already captured in the Phase 1 brief. Keeping it tight
-    // leaves more room for visible output and cuts billing cost on thinking tokens.
-    const thinking5k = { type: "enabled" as const, budget_tokens: 5_000 };
-    const thinking4k = { type: "enabled" as const, budget_tokens: 4_000 };
+    const thinking5k = CONTENT_THINKING;
+    const thinking4k = CONTENT_THINKING;
 
     let p1text: string;
     let p1: Phase1Output | null;
