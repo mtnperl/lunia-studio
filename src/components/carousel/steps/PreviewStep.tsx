@@ -754,8 +754,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         }),
       });
-      const imgData = await imgRes.json();
-      if (!imgRes.ok || imgData.error) throw new Error(imgData.error ?? "Image generation failed");
+      // Read as text first so Vercel gateway HTML (e.g. on timeout) doesn't crash JSON.parse.
+      const imgText = await imgRes.text();
+      let imgData: { url?: string; error?: string };
+      try { imgData = JSON.parse(imgText); }
+      catch {
+        throw new Error(
+          imgRes.status === 504 || /timeout|timed out/i.test(imgText)
+            ? "Image generation timed out — GPT Image 2 sometimes takes 2-3 min. Try again or switch back to Auto."
+            : `Server returned non-JSON (HTTP ${imgRes.status}): ${imgText.slice(0, 120)}`
+        );
+      }
+      if (!imgRes.ok || imgData.error || !imgData.url) throw new Error(imgData.error ?? `Image generation failed (HTTP ${imgRes.status})`);
 
       // Update slideImages[0] in config and track the aspect of the new image
       const newSlideImages = [...(config.slideImages ?? [null, null, null, null, null])];

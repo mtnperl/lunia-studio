@@ -13,9 +13,10 @@ const IDEOGRAM_STYLE_MAP: Record<string, string> = {
 };
 
 // Recraft V4 Pro consistently takes 40-90s on fal.ai (slower than V3's
-// 20-30s). 60s was clipping the long tail and producing 504s. 120s gives
-// headroom without inviting hung requests.
-export const maxDuration = 120;
+// 20-30s). 60s was clipping the long tail and producing 504s. 120s was the
+// previous setting. GPT Image 2 at quality:high routinely takes 90-180s,
+// so we raise the cap to 300s to cover the slowest engine in the mix.
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const ip =
