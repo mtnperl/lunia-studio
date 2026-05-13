@@ -1,3 +1,3 @@
 #!/bin/sh
 export PATH="/usr/local/bin:$PATH"
-exec /usr/local/bin/node ./node_modules/.bin/next dev --port 3000
+exec /usr/local/bin/node ./node_modules/.bin/next dev --port 3030

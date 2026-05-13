@@ -5,7 +5,7 @@
       "name": "lunia-studio",
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": [".claude/start-dev.sh"],
-      "port": 3000,
+      "port": 3030,
       "autoPort": false
     }
   ]

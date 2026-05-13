@@ -13,9 +13,6 @@ import BusinessView from "@/components/business/BusinessView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
-import EmailLibraryView from "@/components/EmailLibraryView";
-import EmailSubjectsView from "@/components/EmailSubjectsView";
-import EmailPanelBuilderView from "@/components/email/EmailPanelBuilderView";
 import EmailReviewView from "@/components/email-review/EmailReviewView";
 import EmailFlowsLibrary from "@/components/email-review/EmailFlowsLibrary";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
@@ -26,13 +23,13 @@ import {
   IconVideo, IconImage, IconSearch, IconPlus, IconChevronDown,
   IconSun, IconMoon,
 } from "@/components/Icons";
-import { Script, EmailSection } from "@/lib/types";
+import { Script } from "@/lib/types";
 import { getLibrary, saveScript } from "@/lib/storage";
 
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-library" | "email-subjects" | "email-panels" | "email-reviews" | "email-flows" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -67,9 +64,6 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   batch: IconStack,
   subjects: IconHash,
   "carousel-library": IconFolder,
-  "email-panels": IconMail,
-  "email-subjects": IconHash,
-  "email-library": IconFolder,
   "email-reviews": IconSparkles,
   "email-flows": IconBoard,
   video: IconVideo,
@@ -94,9 +88,6 @@ const TAB_TITLES: Record<string, string> = {
   batch: "Batch carousels",
   subjects: "Subjects",
   "carousel-library": "Carousel library",
-  "email-panels": "Email panels",
-  "email-subjects": "Email subjects",
-  "email-library": "Email library",
   "email-reviews": "Email flow reviews",
   "email-flows": "Saved flow reviews",
   video: "Video builder",
@@ -135,9 +126,6 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
     items: [
       { key: "email-reviews", product: "carousel", label: "Flow reviews" },
       { key: "email-flows",   product: "carousel", label: "Saved reviews" },
-      { key: "email-panels",  product: "carousel", label: "Panels (legacy)"   },
-      { key: "email-subjects", product: "carousel", label: "Subjects (legacy)" },
-      { key: "email-library",  product: "carousel", label: "Library (legacy)"  },
     ],
   },
   ...(SHOW_VIDEO ? [{
@@ -229,28 +217,6 @@ export default function Page() {
   function navigate(t: Tab) {
     setTab(t);
     setMobileNavOpen(false);
-  }
-
-  function handleEmailToCarousel(data: { frameworkLabel: string; subjectLines: string[]; preheader: string; sections: EmailSection[] }) {
-    const synthetic: import("@/lib/types").SavedCarousel = {
-      id: "email-bridge-" + Date.now(),
-      topic: data.frameworkLabel + " — " + data.subjectLines[0],
-      hookTone: "educational",
-      content: {
-        hooks: [{ headline: data.subjectLines[0], subline: data.preheader }],
-        slides: data.sections.slice(0, 3).map(s => ({
-          headline: s.heading ?? "",
-          body: s.body,
-          citation: "",
-        })),
-        cta: { headline: "Follow for more", followLine: "@lunia_life" },
-        caption: "",
-      },
-      selectedHook: 0,
-      savedAt: new Date().toISOString(),
-    };
-    setPendingCarousel(synthetic);
-    navigate("carousel-v2");
   }
 
   const [navQuery, setNavQuery] = useState("");
@@ -529,9 +495,6 @@ export default function Page() {
             />
           </div>
         )}
-        {tab === "email-panels" && <EmailPanelBuilderView />}
-        {tab === "email-subjects" && <EmailSubjectsView />}
-        {tab === "email-library" && <EmailPanelBuilderView initialStep="library" />}
         {tab === "email-reviews" && (
           <EmailReviewView
             initialFlow={pendingEmailFlow}
