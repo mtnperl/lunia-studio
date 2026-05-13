@@ -12,6 +12,7 @@ import FlowCompletenessBanner from "@/components/email-review/FlowCompletenessBa
 import AdditionalEmailsDeck from "@/components/email-review/AdditionalEmailsDeck";
 import CreateFlowPanel from "@/components/email-review/CreateFlowPanel";
 import CarouselToEmailPanel from "@/components/email-review/CarouselToEmailPanel";
+import EmailPreviewPanel from "@/components/email-review/EmailPreviewPanel";
 import type { EmailFlow, SavedCarousel, SavedFlowReview } from "@/lib/types";
 
 type Mode = "input" | "running" | "review";
@@ -281,6 +282,9 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
           </button>
         </div>
       </header>
+
+      {/* Email content preview — subject / preview / body with copy buttons */}
+      <EmailPreviewPanel emails={review.flow.emails} />
 
       {/* Flow completeness banner — top of review, drives "generate more emails" */}
       {review.flowCompleteness && (

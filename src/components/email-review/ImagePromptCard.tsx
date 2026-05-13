@@ -236,6 +236,9 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
 
   async function generate(engineOverride?: FlowReviewImageEngine, promptOverride?: string) {
     setBusy(true);
+    // Optimistically mark as generating so the MiniReviewLoader shows immediately
+    // (the batch path in FlowImagesGrid does the same — keep consistent).
+    onUpdate({ ...prompt, status: "generating", errorMessage: undefined });
     try {
       const res = await fetch("/api/email-review/generate-image", {
         method: "POST",
