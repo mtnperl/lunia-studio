@@ -4,12 +4,13 @@
 // Ideogram and FLUX.2 [flex] are wired for slide types that render text
 // inside the image (quote cards, poster slides) when those land.
 
-export type ImageEngine = "recraft" | "ideogram" | "flux2";
+export type ImageEngine = "recraft" | "ideogram" | "flux2" | "gpt-image-2";
 
 export const FAL_ENDPOINTS: Record<ImageEngine, string> = {
   recraft: "fal-ai/recraft/v4/pro/text-to-image",
   ideogram: "fal-ai/ideogram/v3",
   flux2: "fal-ai/flux-2/flex",
+  "gpt-image-2": "openai/gpt-image-2",
 };
 
 export type ChooseEngineInput = {

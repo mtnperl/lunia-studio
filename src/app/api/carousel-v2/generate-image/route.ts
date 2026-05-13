@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
-    const override = (body.imageEngine && ['recraft', 'ideogram', 'flux2'].includes(body.imageEngine))
+    const override = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2'].includes(body.imageEngine))
       ? (body.imageEngine as ImageEngine)
       : undefined;
     const textInImage: boolean = Boolean(body.textInImage);
@@ -132,6 +132,18 @@ async function runEngine(engine: ImageEngine, input: RunInput): Promise<string |
         aspect_ratio: input.imageAspect === '9:16' ? '9:16' : '4:5',
         rendering_speed: 'BALANCED',
         style: IDEOGRAM_STYLE_MAP[input.imageStyle] ?? 'AUTO',
+      },
+      logs: false,
+    });
+    return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
+  }
+
+  if (engine === 'gpt-image-2') {
+    const result = await fal.subscribe(endpoint, {
+      input: {
+        prompt: input.prompt,
+        image_size: input.imageSize,
+        quality: 'high',
       },
       logs: false,
     });

@@ -210,6 +210,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [promptAlternatives, setPromptAlternatives] = useState<string[]>([]);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
+  // Regenerate-only override: "auto" lets the server pick (Recraft default).
+  // "gpt-image-2" forces OpenAI GPT Image 2 via fal for higher fidelity / text rendering.
+  const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2">("auto");
 
   // Derive vector mode from actual graphic data rather than ephemeral UI state
   function isVectorSlide(slideIndex: number): boolean {
@@ -741,7 +744,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const imgRes = await fetch(`${apiBase}/generate-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slideIndex: 0, topic: topic ?? "", hook, imagePrompt: finalPrompt, imageStyle, imageAspect: targetAspect }),
+        body: JSON.stringify({
+          slideIndex: 0,
+          topic: topic ?? "",
+          hook,
+          imagePrompt: finalPrompt,
+          imageStyle,
+          imageAspect: targetAspect,
+          ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
+        }),
       });
       const imgData = await imgRes.json();
       if (!imgRes.ok || imgData.error) throw new Error(imgData.error ?? "Image generation failed");
@@ -2176,6 +2187,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               </div>
             )}
 
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+              Model
+            </label>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {([
+                { value: "auto", label: "Auto (Recraft)" },
+                { value: "gpt-image-2", label: "GPT Image 2" },
+              ] as const).map((opt) => {
+                const active = regenEngine === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setRegenEngine(opt.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
             {imageRegenError && (
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
             )}
