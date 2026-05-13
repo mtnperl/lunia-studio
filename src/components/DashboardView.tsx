@@ -13,7 +13,7 @@ import DateRangePicker, { type DateRange } from "./dashboard/DateRangePicker";
 function defaultRange(): DateRange {
   const now = new Date();
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const since = new Date(today.getTime() - 29 * 86_400_000);
+  const since = new Date(today.getTime() - 6 * 86_400_000);
   return {
     since: since.toISOString().slice(0, 10),
     until: today.toISOString().slice(0, 10),
