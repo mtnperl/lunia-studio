@@ -289,28 +289,76 @@ bottle" produces a random supplement bottle. Use the canonical spec below.
 
   ${BOTTLE_PHOTOGRAPHY_STYLE}
 
-### When to use product shots vs. other imagery
+### Lifestyle-first visual philosophy
 
-DEFAULT to non-product imagery (ingredient flat-lay, lifestyle, mood,
-abstract) unless the email specifically needs to drive product
-recognition. Reasons to use a product shot:
-- The current hero image is generic stock or missing the product entirely
-- The email's primary goal is first-purchase conversion (first touch in
-  welcome or checkout abandonment flows)
-- The email explicitly describes the bottle, dose, or ingredients
+Lunia Life emails are ALWAYS lifestyle by default. The product bottle
+is a rare exception, not the default. Every image should feel like it
+belongs in Kinfolk or Aesop's editorial — warm, textural, slow, human.
 
-Ingredient flat-lay reference: "scattered dried botanicals — chamomile
-flowers, ashwagandha root slices, whole magnesium crystals — on a soft
-ivory linen surface, top-down composition, loose intentional arrangement,
-plenty of negative space, no bottle present, no text."
+**Default: lifestyle imagery. Always.**
+Product shots are reserved for one narrow case: the single first-touch
+conversion email where the body copy explicitly discusses the bottle,
+dose, or formulation. Every other email in every flow gets a lifestyle
+or ingredient image.
+
+### Lifestyle scene taxonomy (6 archetypes — always pick from these)
+
+1. **Morning light ritual** — diffused early morning window light,
+   hands cupping a ceramic mug, soft linen robe, steam rising, bedside
+   table with a journal and amber glass. Mood: unhurried, optimistic.
+
+2. **Evening wind-down** — low warm lamplight, person reading or lying
+   in white linen sheets, dim room, soft shadow gradients, candle glow
+   in the background. Mood: restorative, quiet, anticipatory of rest.
+
+3. **Restorative stillness** — close crop of a face in repose or a
+   person's hands folded on a duvet, eyes closed, natural light from a
+   single direction, breath implied by stillness. Mood: deep calm.
+
+4. **Botanical close-up** — macro or near-macro of chamomile flowers,
+   ashwagandha root slices, or magnesium crystals on linen, ivory
+   marble, or aged wood. Loose arrangement, plenty of negative space,
+   no bottle present, no text, top-down or 30° angle.
+
+5. **Body in rest** — editorial crop of bare shoulders, a forearm
+   draped over a pillow, or feet in soft socks on linen — no face
+   required. Cinematic, tasteful, human without being clinical.
+
+6. **Ambient nature texture** — moonlit botanical garden at dusk,
+   mist over tall grass at dawn, or macro of dried herbs in a ceramic
+   bowl. Abstract and evocative, zero product presence.
+
+**When a product shot IS justified:**
+Only use a product shot if ALL three conditions are true:
+- This is the first touch in a welcome or checkout-abandonment flow
+- The email body explicitly references the bottle, dose, or formulation
+- No lifestyle scene meaningfully reinforces the email's message
+
+Ingredient flat-lay reference (use for archetype 4):
+"scattered dried botanicals — chamomile flowers, ashwagandha root
+slices, whole magnesium crystals — on a soft ivory linen surface,
+top-down composition, loose intentional arrangement, plenty of negative
+space, no bottle present, no text."
+
+### Two image prompts per email — always
+
+Generate EXACTLY 2 imagePrompts for every email:
+- **hero** placement: the emotional/aspirational opener — pick the
+  lifestyle archetype that best matches the email's emotional register.
+- **above_cta** or **below_cta** placement: a supporting lifestyle
+  shot that reinforces the closing message or CTA context.
+
+Both prompts must be lifestyle unless the email meets all three
+product-shot conditions above.
 
 ### 8-step prompt structure
 
 1. Opening descriptor (always start with this exact phrase):
    "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject. If the Lunia bottle: paste the canonical spec above
-   in full. Do not abbreviate or paraphrase it.
-   If styled scene: also include the photography style reference above.
+2. Concrete subject. Choose a lifestyle archetype from the taxonomy above
+   and describe it with vivid scene-specific detail. If a product shot is
+   genuinely justified: paste the canonical bottle spec above in full —
+   do not abbreviate. Also include the photography style reference.
 3. Lighting (direction + quality — e.g. "soft diffused north-facing
    window light, no hard shadows")
 4. Camera + lens (e.g. "Hasselblad medium format, 80mm lens, f/2.8,
@@ -324,7 +372,9 @@ plenty of negative space, no bottle present, no text."
    contrast, AI rendering artifacts (extra fingers, gibberish label text,
    melted edges), purple or magenta tones, gradient backgrounds, neon,
    oversaturation, competitor branding, any legible text on the label
-   other than LUNIA LIFE."
+   other than LUNIA LIFE, stock-photo bedroom sets, fake-smiling wellness
+   models, product-on-plinth compositions, clinical white seamless
+   backgrounds, busy flat-lays with 12+ ingredients."
 
 ## Reference asset selection
 For every imagePrompt, choose which assets from the brand asset library
@@ -384,15 +434,18 @@ type AnalyzeOutput = {
     flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
   }[];                          // exactly 5 entries, in order: timing, subjects, rewrites, design, strategy
   imagePrompts: {
-    id: string;                 // stable id like "img-e1-hero"
+    id: string;                 // stable id like "img-e1-hero" or "img-e1-above_cta"
     emailId: string;            // matches the EmailFlowAsset.id from input
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";      // always — every email image uses GPT Image 2
-    prompt: string;             // full 8-step structured prompt
-    referenceAssetIds: string[];// asset IDs from the brand library (see "Reference asset selection" above). Logo is auto-attached, do NOT include it.
-    rationale?: string;         // one-line: why this image, what it replaces
+    prompt: string;             // full 8-step structured prompt, lifestyle archetype by default
+    referenceAssetIds: string[];// asset IDs from the brand library (see "Reference asset selection" above). Logo is auto-attached, do NOT include it. For lifestyle shots: empty array [].
+    rationale?: string;         // one-line: why this image, which lifestyle archetype was chosen
   }[];
+  // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
+  // "above_cta" or "below_cta". Both must be lifestyle unless the email is a
+  // confirmed first-touch conversion email with explicit product copy.
 };
 \`\`\`
 
@@ -452,15 +505,18 @@ type Phase1Output = {
     flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
   }[];                            // exactly 4 entries: timing, subjects, design, strategy
   imagePrompts: {
-    id: string;                   // e.g. "img-e1-hero"
+    id: string;                   // e.g. "img-e1-hero" or "img-e1-above_cta"
     emailId: string;
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";        // always — every email image uses GPT Image 2
-    prompt: string;               // full 8-step structured prompt
-    referenceAssetIds: string[];  // asset IDs from the brand library; logo is auto-attached, do NOT list it here
-    rationale?: string;
+    prompt: string;               // full 8-step structured prompt, lifestyle archetype by default
+    referenceAssetIds: string[];  // asset IDs from the brand library; logo is auto-attached, do NOT list it here. For lifestyle shots: [].
+    rationale?: string;           // which lifestyle archetype was chosen and why
   }[];
+  // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
+  // "above_cta" or "below_cta". Both must be lifestyle unless the email is a
+  // confirmed first-touch conversion email with explicit product copy.
 };
 \`\`\`
 
@@ -734,7 +790,7 @@ export function buildRegenSuggestionsPrompt(args: {
   const comment = args.userComment?.trim()
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
-  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia Restore bottle — canonical visual spec\nIf any alternative includes the product bottle, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. Vary at least 2 of: composition angle, lighting direction, camera choice, color emphasis, engine. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. If a prompt includes the bottle, paste the canonical spec above in full — do not abbreviate.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence describing how this alternative differs from the current.`;
+  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lifestyle-first visual philosophy\nLunia Life email images are ALWAYS lifestyle by default. The 6 approved lifestyle archetypes are:\n1. Morning light ritual — hands on ceramic mug, linen robe, bedside table, steam, amber glass\n2. Evening wind-down — low warm lamplight, white linen sheets, candle glow, person reading or at rest\n3. Restorative stillness — close crop of face in repose or hands on a duvet, eyes closed, natural light\n4. Botanical close-up — macro chamomile flowers / ashwagandha root / magnesium crystals on linen or marble, no bottle\n5. Body in rest — editorial crop of bare shoulders, forearm on pillow, or feet in socks on linen; cinematic\n6. Ambient nature texture — moonlit botanical garden, mist over grass at dawn, dried herbs in ceramic bowl\n\nProduct shots are ONLY justified when the email is a confirmed first-touch conversion email that explicitly discusses the bottle, dose, or formulation. All other regeneration suggestions must use lifestyle archetypes.\n\n## Lunia Restore bottle — canonical visual spec\nIf (and only if) a product shot is truly warranted, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. At least 2 of the 3 alternatives must use a lifestyle archetype from the list above (name which archetype in the rationale). Vary at least 2 of: archetype choice, composition angle, lighting direction, camera choice, color emphasis. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. No stock-photo bedroom sets, fake-smiling wellness models, product-on-plinth, clinical white backgrounds, or busy flat-lays.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence naming the lifestyle archetype used and how this alternative differs from the current.`;
 }
 
 // ─── Create-flow prompt ────────────────────────────────────────────────────────
