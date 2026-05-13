@@ -284,9 +284,10 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
   // ── Recomputed KPI totals when filter is active ────────────────────────────
   const displaySpend   = isFiltered ? filteredCampaigns.reduce((s, c) => s + c.spend,   0) : (metaData?.summary.spend   ?? 0);
   const displayRevenue = isFiltered ? filteredCampaigns.reduce((s, c) => s + c.revenue, 0) : (metaData?.summary.revenue ?? 0);
-  // Meta is the only paid channel, so blended ROAS = total Shopify revenue ÷ ad spend.
-  // When filtering by objective, fall back to Meta-attributed revenue so the ratio matches the filtered slice.
-  const roasNumerator  = isFiltered ? displayRevenue : (shopifyData?.summary.revenue ?? displayRevenue);
+  // Meta is the only paid channel, so blended ROAS = total Shopify revenue ÷ ad spend
+  // regardless of objective filter. The spend narrows when filtered; the revenue numerator
+  // stays at total Shopify so the ratio answers "what's the return on this slice of spend".
+  const roasNumerator  = shopifyData?.summary.revenue ?? 0;
   const displayROAS    = displaySpend > 0 ? roasNumerator / displaySpend : 0;
 
   function toggleObjective(obj: string) {
@@ -560,7 +561,7 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
             suffix="x"
             decimals={2}
             loading={metaLoading}
-            tooltip="Return on Ad Spend = Total Shopify Revenue ÷ Meta Ad Spend (Meta is the only paid channel)"
+            tooltip="Return on Ad Spend = Total Shopify Revenue ÷ Meta Ad Spend. When a campaign objective filter is active, the denominator narrows to that slice of spend; the Shopify revenue numerator stays whole."
           />
         </div>
       </div>
