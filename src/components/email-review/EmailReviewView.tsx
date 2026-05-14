@@ -431,7 +431,15 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
         />
       )}
 
-      <FlowImagesGrid review={review} onReviewUpdate={setReview} />
+      <FlowImagesGrid
+        review={review}
+        onReviewUpdate={(next) =>
+          setReview((prev) => {
+            if (!prev) return prev;
+            return typeof next === "function" ? next(prev) : next;
+          })
+        }
+      />
 
       {/* Per-email Klaviyo writeback row — only meaningful for Klaviyo-sourced flows */}
       {review.flow.source === "klaviyo" && (

@@ -5,7 +5,10 @@ import type { FlowReviewImagePrompt, SavedFlowReview } from "@/lib/types";
 
 type Props = {
   review: SavedFlowReview;
-  onReviewUpdate: (next: SavedFlowReview) => void;
+  // Accept both the value form (polling, batch re-fetch) and the functional
+  // form (single-card updates) so closures captured in long async calls
+  // always apply against the latest state rather than a stale snapshot.
+  onReviewUpdate: (next: SavedFlowReview | ((prev: SavedFlowReview) => SavedFlowReview)) => void;
 };
 
 export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
@@ -101,11 +104,16 @@ export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
     setBatching(false);
   }
 
+  // Use functional setState so that long-running generate() calls (30-180s)
+  // always merge against the CURRENT imagePrompts list, not the snapshot
+  // captured when generate() started. Without this, a stale closure would
+  // call onReviewUpdate with an old review that may have fewer prompts,
+  // making any newly-added cards disappear after the fetch completes.
   function updatePrompt(next: FlowReviewImagePrompt) {
-    onReviewUpdate({
-      ...review,
-      imagePrompts: review.imagePrompts.map((p) => (p.id === next.id ? next : p)),
-    });
+    onReviewUpdate((prev) => ({
+      ...prev,
+      imagePrompts: prev.imagePrompts.map((p) => (p.id === next.id ? next : p)),
+    }));
   }
 
   const total = review.imagePrompts.length;
