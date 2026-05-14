@@ -11,7 +11,9 @@ import type { FlowReviewImageEngine } from "@/lib/types";
 
 export const maxDuration = 120;
 
-const VALID_ENGINES: FlowReviewImageEngine[] = ["recraft", "ideogram", "flux2"];
+// Email review images always use gpt-image-2. Regen suggestions must also
+// use gpt-image-2 — accept it as primary, fall back to it for anything unexpected.
+const VALID_ENGINES: FlowReviewImageEngine[] = ["gpt-image-2", "recraft", "ideogram", "flux2"];
 
 type Suggestion = { engine: FlowReviewImageEngine; prompt: string; rationale: string };
 
@@ -33,9 +35,10 @@ function safeParseSuggestions(raw: string): Suggestion[] | null {
     const promptRaw = (c as { prompt?: string }).prompt;
     const rationaleRaw = (c as { rationale?: string }).rationale;
     if (typeof promptRaw !== "string" || promptRaw.trim().length < 50) continue;
+    // Always default to gpt-image-2 — that's the only engine email review uses.
     const engine: FlowReviewImageEngine = VALID_ENGINES.includes(engineRaw as FlowReviewImageEngine)
       ? (engineRaw as FlowReviewImageEngine)
-      : "recraft";
+      : "gpt-image-2";
     out.push({ engine, prompt: promptRaw.trim(), rationale: typeof rationaleRaw === "string" ? rationaleRaw : "" });
   }
   return out.length === 3 ? out : null;
@@ -61,8 +64,19 @@ export async function POST(req: Request) {
     const prompt = review.imagePrompts[idx];
 
     const email = review.flow.emails.find((e) => e.id === prompt.emailId);
+    // Build a rich context block so the content-first anchoring logic has
+    // the same signals Claude had when writing the original prompt.
     const emailContext = email
-      ? `Email ${email.position}: ${email.subject}\n${email.bodyText?.slice(0, 600) ?? ""}\nIntent: replacement image at ${prompt.placement} (${prompt.aspect})`
+      ? [
+          `Email ${email.position} — ${email.role ?? ""}`,
+          `Subject: ${email.subject}`,
+          email.previewText ? `Preview text: ${email.previewText}` : "",
+          `Flow type: ${review.flow.flowType}`,
+          `Image slot: ${prompt.placement} placement, ${prompt.aspect} aspect`,
+          ``,
+          `Email body copy (first 800 chars):`,
+          (email.bodyText ?? email.html ?? "").slice(0, 800),
+        ].filter(Boolean).join("\n")
       : `Replacement image at ${prompt.placement} (${prompt.aspect})`;
 
     const msg = await createContentMessage({
