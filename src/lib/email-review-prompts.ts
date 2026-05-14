@@ -343,22 +343,72 @@ space, no bottle present, no text."
 ### Two image prompts per email — always
 
 Generate EXACTLY 2 imagePrompts for every email:
-- **hero** placement: the emotional/aspirational opener — pick the
-  lifestyle archetype that best matches the email's emotional register.
-- **above_cta** or **below_cta** placement: a supporting lifestyle
-  shot that reinforces the closing message or CTA context.
+- **hero** placement: the emotional/aspirational opener — anchored to
+  the email's specific opening moment or core promise.
+- **above_cta** or **below_cta** placement: a supporting shot that
+  visually resolves what the CTA delivers — the feeling after clicking.
 
 Both prompts must be lifestyle unless the email meets all three
 product-shot conditions above.
+
+### Content-first anchoring — MANDATORY before writing any image prompt
+
+Before choosing any archetype or writing any prompt, read the email's:
+- **Subject line** — what emotional hook is being made?
+- **Preview text** — what specific moment or benefit is teased?
+- **Headline** — what is the single core promise?
+- **Body copy** — what specific imagery, metaphors, or moments does the
+  copy invoke? (e.g. "nights you finally rest," "the hour before bed,"
+  "your body rebuilding overnight")
+- **CTA** — what action and implied outcome is the email driving toward?
+
+Derive the scene from the copy, not from a generic archetype label.
+The archetype is a starting constraint, not the final answer. Specific
+words in the email should appear or be reflected in the prompt's scene
+detail.
+
+**Content → archetype decision guide:**
+
+| Email moment / message               | Hero archetype          | CTA-area archetype        |
+|--------------------------------------|-------------------------|---------------------------|
+| Urgency / cart left behind           | Evening wind-down       | Morning light (the ritual they almost skipped) |
+| "You haven't slept well"             | Body in rest (longing)  | Restorative stillness (the promise) |
+| Science / ingredient education       | Botanical close-up      | Restorative stillness     |
+| Shipping / product on the way        | Morning light ritual    | Body in rest (anticipation) |
+| Subscription / ritual continuity     | Evening wind-down       | Morning light (streak maintained) |
+| Social proof / testimonial           | Restorative stillness   | Ambient nature texture    |
+| Lapsed / re-engagement               | Body in rest (absence)  | Evening wind-down (return)|
+| Welcome / brand intro                | Morning light ritual    | Botanical close-up        |
+
+The table is a guide, not a rigid rule. If the email copy strongly
+invokes a different scene, follow the copy.
+
+**Scene specificity rule:** every prompt must contain at least one
+detail that could ONLY belong to this specific email — a prop, a
+time-of-day cue, a texture, a body posture — drawn directly from the
+copy. Generic scenes that could illustrate any email are rejected.
+
+Examples of copy-grounded scene details:
+- Subject "The hour before bed matters" → scene centres on the 45-minute
+  wind-down window: dim lamp, book face-down, the act of setting a glass
+  down on a nightstand — not just "person in bed."
+- Subject "Your sleep is different after 35" → body detail: a forearm
+  with subtle age texture resting on linen, morning light, journal open
+  to a blank page — implies the chapter-of-life angle without saying it.
+- CTA "Start your ritual tonight" → CTA-area image: hands laying out
+  items on a bedside table at dusk — staging, not sleeping.
 
 ### 8-step prompt structure
 
 1. Opening descriptor (always start with this exact phrase):
    "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject. Choose a lifestyle archetype from the taxonomy above
-   and describe it with vivid scene-specific detail. If a product shot is
-   genuinely justified: paste the canonical bottle spec above in full —
-   do not abbreviate. Also include the photography style reference.
+2. Concrete subject — derived from the email's copy (see content-first
+   anchoring above). Name the archetype in brackets, then describe the
+   specific scene: who/what, what they're doing, what objects are present,
+   what moment in time. Minimum 2 copy-grounded scene details.
+   If a product shot is genuinely justified: paste the canonical bottle
+   spec above in full — do not abbreviate. Also include the photography
+   style reference.
 3. Lighting (direction + quality — e.g. "soft diffused north-facing
    window light, no hard shadows")
 4. Camera + lens (e.g. "Hasselblad medium format, 80mm lens, f/2.8,
@@ -790,7 +840,7 @@ export function buildRegenSuggestionsPrompt(args: {
   const comment = args.userComment?.trim()
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
-  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lifestyle-first visual philosophy\nLunia Life email images are ALWAYS lifestyle by default. The 6 approved lifestyle archetypes are:\n1. Morning light ritual — hands on ceramic mug, linen robe, bedside table, steam, amber glass\n2. Evening wind-down — low warm lamplight, white linen sheets, candle glow, person reading or at rest\n3. Restorative stillness — close crop of face in repose or hands on a duvet, eyes closed, natural light\n4. Botanical close-up — macro chamomile flowers / ashwagandha root / magnesium crystals on linen or marble, no bottle\n5. Body in rest — editorial crop of bare shoulders, forearm on pillow, or feet in socks on linen; cinematic\n6. Ambient nature texture — moonlit botanical garden, mist over grass at dawn, dried herbs in ceramic bowl\n\nProduct shots are ONLY justified when the email is a confirmed first-touch conversion email that explicitly discusses the bottle, dose, or formulation. All other regeneration suggestions must use lifestyle archetypes.\n\n## Lunia Restore bottle — canonical visual spec\nIf (and only if) a product shot is truly warranted, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. At least 2 of the 3 alternatives must use a lifestyle archetype from the list above (name which archetype in the rationale). Vary at least 2 of: archetype choice, composition angle, lighting direction, camera choice, color emphasis. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. No stock-photo bedroom sets, fake-smiling wellness models, product-on-plinth, clinical white backgrounds, or busy flat-lays.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale must be one short sentence naming the lifestyle archetype used and how this alternative differs from the current.`;
+  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lifestyle-first visual philosophy\nLunia Life email images are ALWAYS lifestyle by default. The 6 approved lifestyle archetypes are:\n1. Morning light ritual — hands on ceramic mug, linen robe, bedside table, steam, amber glass\n2. Evening wind-down — low warm lamplight, white linen sheets, candle glow, person reading or at rest\n3. Restorative stillness — close crop of face in repose or hands on a duvet, eyes closed, natural light\n4. Botanical close-up — macro chamomile flowers / ashwagandha root / magnesium crystals on linen or marble, no bottle\n5. Body in rest — editorial crop of bare shoulders, forearm on pillow, or feet in socks on linen; cinematic\n6. Ambient nature texture — moonlit botanical garden, mist over grass at dawn, dried herbs in ceramic bowl\n\nProduct shots are ONLY justified when the email is a confirmed first-touch conversion email that explicitly discusses the bottle, dose, or formulation. All other regeneration suggestions must use lifestyle archetypes.\n\n## Lunia Restore bottle — canonical visual spec\nIf (and only if) a product shot is truly warranted, use this description verbatim:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nBEFORE generating alternatives, identify from the email slot context: (1) the core emotional moment or promise the email makes, (2) any specific imagery or metaphors in the copy, (3) what outcome the CTA implies. Use those specifics to ground each alternative in this email's content — not in a generic interpretation of the archetype.\n\nReturn ONLY a JSON array of 3 alternatives, each meaningfully different from the current prompt and from each other. At least 2 of the 3 alternatives must use a lifestyle archetype (name which archetype in the rationale). Each alternative must contain at least one scene detail drawn directly from the email copy. Vary at least 2 of: archetype, composition angle, lighting direction, camera choice, color emphasis. Each alternative must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. No stock-photo bedroom sets, fake-smiling wellness models, product-on-plinth, clinical white backgrounds, or busy flat-lays.\n\nJSON shape:\n\`\`\`ts\n{ engine: "recraft" | "ideogram" | "flux2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale: one sentence naming the archetype and citing the specific email copy element it's grounded in.`;
 }
 
 // ─── Create-flow prompt ────────────────────────────────────────────────────────
