@@ -2,7 +2,7 @@
 // FRAMEWORK_VERSION should bump whenever the underlying framework doc changes.
 // Brand guidelines are in lunia-brand-guidelines.ts — always import from there.
 
-import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BOTTLE_PHOTOGRAPHY_STYLE, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
+import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
 
 export const FRAMEWORK_VERSION = "v1.0";
 
@@ -268,137 +268,118 @@ flagged with a specific rationale in flowCompleteness.rationale. A flow
 with MORE than the canonical count is overbuilt and should also be
 flagged — recommend which positions to cut. Equal count → no gap.
 
-## Image prompt scaffold (8-step structure)
-When the review recommends a new image, write a prompt in this exact
-8-step structure. Every email image is rendered with OpenAI GPT Image 2
-via fal — no engine selection needed. Lunia's logo is always attached
-as a reference automatically; you only need to decide which product /
-lifestyle / ingredient assets (from the brand asset library, listed
-below in the input) should also be attached as references for THIS
-specific image.
+## Image prompt scaffold — Lunia editorial template (FIXED STRUCTURE)
 
-CRITICAL: image models have NO concept of "Lunia". Every product-shot
-prompt must describe the bottle in full detail every time. "A Lunia
-bottle" produces a random supplement bottle. Use the canonical spec below.
+Every email image is rendered with OpenAI GPT Image 2 via fal. GPT Image 2
+renders typography accurately, so the image carries its OWN headline, body,
+and overlay text — this is intentional and required. Do NOT write "no text"
+prompts. The text IS the design.
 
-### Lunia Restore bottle — canonical visual spec (paste verbatim into every product prompt)
+Write EVERY imagePrompt using this exact template. Only the *content*
+changes per email (headline, body, overlay, the woman's expression and
+the reason for it, the flat-lay objects) — the structure, colours, fonts,
+and brand framing are fixed and must appear verbatim every time.
 
-  ${BOTTLE_VISUAL_SPEC}
+### The template (fill the [BRACKETS], keep everything else verbatim)
 
-### Lunia bottle photography style (use for styled scene prompts)
+"""
+Create an image for Lunia Life. It should feel exclusive, calm,
+aspirational, premium. Show half of a woman's face (she is in her late
+30s), [EXPRESSION + REASON tied to this email's topic — e.g. "calm and
+clear-eyed because she finally sleeps deeply", "radiant because her skin
+repaired overnight"].
 
-  ${BOTTLE_PHOTOGRAPHY_STYLE}
+Headline (Inter Regular): [HEADLINE — short, declarative, max ~6 words,
+drawn from this email's core promise]
 
-### Visual philosophy
+Body (Inter Light 300): [BODY — 2–3 sentences, the email's central
+science/benefit in plain language, always ending with a sentence that
+names "Lunia Restore" and what it does, e.g. "Lunia Restore supports
+deeper, more restorative sleep without melatonin."]
 
-Every image must make sense when someone reads the email. That is the
-only test. If a person reads the subject line, the headline, and the
-body — and then sees the image — it should feel inevitable, not
-decorative.
+Overlay (Inter Regular): [OVERLAY — a 3–5 word phrase naming the
+"window" or "moment" this email is about, e.g. "The overnight repair
+window."]
 
-How you get there is open. Use lifestyle scenes, abstract textures,
-object vignettes, botanical macro, light studies, or a blend. No single
-approach is required. The constraint is coherence with the copy, not
-adherence to a category.
+Composition: Editorial flat lay with [3–5 OBJECTS chosen for this
+topic — always include the Lunia Restore bottle; pair it with topic-
+appropriate props such as pillow, ceramic mug, single dried flower,
+linen, folded eye mask, sprig of botanical].
 
-**Lean abstract before literal.** A beam of amber light dissolving into
-shadow often communicates "finally resting" more powerfully than a
-person in bed. Scattered chamomile petals on linen reads "formulated for
-sleep" without stating it. Reach for the visual idea before the visual
-scene. People and bedrooms are a last resort, not a default.
+Colours: background #EFEFF4, main #01253f, secondary #2C3F51. No other
+brand colours. No purple, magenta, lavender, or neon.
 
-**The product bottle is a rare exception.** Use it only when the email
-body explicitly discusses the bottle, dose, or formulation AND this is
-a first-touch conversion email. Every other email gets a non-product
-image.
+Fonts: Inter — Regular (400) for headline and overlay, Light (300) for
+body. Crisp, perfectly legible, correctly spelled typography. Do not
+invent letterforms.
 
-**What to read before writing any prompt:**
-Subject line, preview text, headline, body copy, and CTA. Ask: what
-is this email trying to make the reader feel? What single image would
-someone nod at after reading this? Write that.
+Use relevant minimal line icons to the right of each body line — each
+icon must visually match what that line says (e.g. a moon for deep
+sleep, a droplet for hydration, a leaf for botanicals). Thin stroke,
+#01253f, consistent weight.
 
-**Quick examples of email → image thinking:**
-- "You left something behind" (cart abandonment) → a single object
-  left on a nightstand in warm lamplight, slightly out of focus, the
-  suggestion of absence
-- "Your cortisol is working against your sleep" → sharp angular
-  shadows softening at the edges into warm diffused light — tension
-  releasing
-- "Night 1. Night 7. Night 30." (progression email) → a macro of
-  chamomile crystals catching light at three intensities, or linen
-  fabric with three different depths of shadow
-- "We miss you" (lapsed) → an empty ceramic mug on a cold stone
-  surface, morning light just beginning to reach it
-- "Your order is on its way" → botanical ingredients arranged as if
-  being unpacked from tissue paper, warm overhead light, anticipation
-  implied through staging not action
-- Science/education email → extreme macro of an ashwagandha root cross-
-  section, geological and precise, no product, no person
+Use the uploaded reference image for the Lunia Restore bottle — match
+its exact shape, label, and proportions. Do not redesign the bottle.
+Use the uploaded reference image for the Lunia logo, placed small and
+discreet (top-left or bottom-centre). Render the logo exactly as
+supplied — do not redraw or restyle it.
+"""
+
+### Filling the template — rules
+
+- "change the content according to the topic of the prompt": read the
+  subject line, preview, headline, body, and CTA of THIS email. The
+  headline / body / overlay / woman's expression / flat-lay objects all
+  derive from that email's specific message. Two emails never get the
+  same headline or body.
+- The woman is a brand constant: always present, always half-face,
+  always late 30s. Only her expression and the *reason* for it changes
+  with the topic. Never omit her, never change her age band.
+- The Restore bottle is ALWAYS in the flat lay and ALWAYS comes from
+  the uploaded reference (see Reference asset selection below). Mention
+  it in the Composition line so GPT Image 2 places it correctly.
+- Never use em dashes inside the generated headline/body/overlay copy.
+- Body must always end naming "Lunia Restore" and a concrete benefit.
 
 ### Two image prompts per email — always
 
-Generate EXACTLY 2 imagePrompts for every email:
-- **hero** placement: opens the email — lead with the emotional core
-  of the subject line. Aspirational, arresting, connected to the hook.
-- **above_cta** or **below_cta** placement: closes the argument —
-  visually expresses what clicking the CTA delivers or feels like.
+Generate EXACTLY 2 imagePrompts for every email, both using the template
+above:
+- **hero** placement: opens the email. Headline + body lead with the
+  emotional core of the subject line.
+- **above_cta** or **below_cta** placement: closes the argument. Same
+  template, but headline/body/overlay reframed to express what clicking
+  the CTA delivers.
 
-Both should feel like they belong to the same email but not to each
-other. Vary the register (one abstract, one more grounded; one wide,
-one macro; one warm, one cooler) so the email has visual rhythm.
-
-**When a product shot IS justified** (all three must be true):
-- First touch in a welcome or checkout-abandonment flow
-- Email body explicitly references the bottle, dose, or formulation
-- An abstract or lifestyle image would genuinely make less sense here
-
-### 8-step prompt structure
-
-1. Opening descriptor (always start with this exact phrase):
-   "Editorial wellness photograph for email marketing, [aspect ratio]"
-2. Concrete subject — derived from reading the email (see philosophy
-   above). Describe exactly what is in the frame: objects, materials,
-   light sources, spatial relationships. Be specific — name the surface,
-   the vessel, the botanical, the quality of shadow. Avoid naming people
-   unless the copy demands a human presence; lean into objects, textures,
-   and light as the primary carriers of meaning. Minimum 2 details that
-   could only belong to this email's specific message.
-   If a product shot is genuinely justified: paste the canonical bottle
-   spec above in full — do not abbreviate. Also include the photography
-   style reference.
-3. Lighting (direction + quality — e.g. "soft diffused north-facing
-   window light, no hard shadows")
-4. Camera + lens (e.g. "Hasselblad medium format, 80mm lens, f/2.8,
-   shallow depth of field")
-5. Style references (1–2 max from: Kinfolk, Aesop, Cereal, NYT T Magazine)
-6. Color palette (warm cream, natural stone, amber glass, soft sage —
-   never purple, magenta, lavender, neon)
-7. Composition note (where negative space sits for headline / CTA overlay)
-8. Negative prompt:
-   "Avoid: generic supplement stock, clinical pharmacy aesthetic, harsh
-   contrast, AI rendering artifacts (extra fingers, gibberish label text,
-   melted edges), purple or magenta tones, gradient backgrounds, neon,
-   oversaturation, competitor branding, any legible text on the label
-   other than LUNIA LIFE, stock-photo bedroom sets, fake-smiling wellness
-   models, product-on-plinth compositions, clinical white seamless
-   backgrounds, busy flat-lays with 12+ ingredients."
+Vary the woman's expression and the flat-lay objects between the two so
+the email has visual rhythm, but keep the structure identical.
 
 ## Reference asset selection
 For every imagePrompt, choose which assets from the brand asset library
 (supplied in the input as a JSON list of \`{ id, assetType, name }\`)
-should be attached as references for this specific image. Output the
-chosen IDs as \`referenceAssetIds: string[]\`.
+should be attached as references. Output the chosen IDs as
+\`referenceAssetIds: string[]\`.
 
 Selection rules:
 - The logo is always attached automatically — do NOT include it in
-  referenceAssetIds. (If you accidentally do, it'll be deduped.)
-- For product-hero shots → include the product asset(s) the email
-  actually promotes. If the email mentions Restore, attach the Restore
-  product image. Do not attach unrelated products.
-- For ingredient flat-lays / textural mood / lifestyle shots without
-  the product → leave referenceAssetIds empty (\`[]\`). Forcing a product
-  asset into a non-product image produces cluttered output.
-- If no product is mentioned by name in the email body → empty array.
+  referenceAssetIds (it would just be deduped).
+- The template ALWAYS contains the Restore bottle, so ALWAYS include
+  the product / bottle asset (the asset whose assetType is
+  "product-image", or whose name references Restore / the bottle). If
+  several product images exist, pick the one that best matches the
+  email's product focus.
+- If NO product-image asset exists in the library, return \`[]\` and
+  describe the bottle textually using the canonical spec below as a
+  fallback — but the uploaded reference is strongly preferred.
+- Do not attach unrelated lifestyle assets unless the email's topic
+  specifically calls for one as an extra reference.
+
+### Lunia Restore bottle — canonical visual spec (TEXT FALLBACK ONLY)
+Only used when no product-image asset is available to attach as a
+reference. When a reference image exists, the reference wins — do not
+contradict it with this text.
+
+  ${BOTTLE_VISUAL_SPEC}
 
 ## Patterns to kill on sight
 - "Complete your order" subject lines
@@ -797,7 +778,7 @@ export function buildRegenSuggestionsPrompt(args: {
   const comment = args.userComment?.trim()
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
-  return `You are a senior editorial photo director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Visual philosophy\nEvery image must make sense when someone reads the email. That is the only test. Use whatever visual approach best passes it — abstract texture, object vignette, botanical macro, light study, atmospheric space, a lifestyle fragment, or a blend. No single approach is required.\n\nLean abstract before literal. A shaft of warm light dissolving into shadow often communicates "finally resting" more powerfully than a person in bed. Reach for the visual idea before the visual scene. People and bedrooms are a last resort.\n\nThe product bottle is a rare exception — only when the email body explicitly discusses the bottle, dose, or formulation AND this is a first-touch conversion email.\n\n## Lunia Restore bottle — canonical visual spec\nIf (and only if) a product shot is genuinely warranted:\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\n\n## Lunia photography style\n"""\n${BOTTLE_PHOTOGRAPHY_STYLE}\n"""\n\nBefore writing alternatives: read the email slot context and identify the core idea the email is trying to communicate — not the setting, the IDEA. Then find three meaningfully different visual expressions of that idea.\n\nReturn ONLY a JSON array of 3 alternatives. Each must: (1) pass the "makes sense when you read the email" test, (2) be meaningfully different from the current prompt and from each other, (3) vary at least 2 of: subject type (abstract/concrete), composition angle, lighting direction, camera, color emphasis. Each must follow the 8-step Lunia prompt scaffold (descriptor, subject, lighting, camera, style, palette, composition, negative). Never purple / magenta / lavender / neon. No text overlays. No stock-photo bedroom sets, fake-smiling wellness models, product-on-plinth, clinical white backgrounds.\n\nAll email review images use GPT Image 2 — always set engine to "gpt-image-2".\n\nJSON shape:\n\`\`\`ts\n{ engine: "gpt-image-2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale: one sentence — what visual idea this expresses and why it fits this specific email.`;
+  return `You are a senior editorial art director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia editorial template (FIXED — every alternative must follow this)\nAll email images are rendered with GPT Image 2 and carry their OWN headline, body, and overlay text — text rendering is intentional and required. Every alternative must use this exact template; only the bracketed content changes between alternatives:\n\n"""\nCreate an image for Lunia Life. It should feel exclusive, calm, aspirational, premium. Show half of a woman's face (she is in her late 30s), [EXPRESSION + REASON tied to this email's topic].\n\nHeadline (Inter Regular): [HEADLINE — short, declarative, max ~6 words, from this email's core promise]\n\nBody (Inter Light 300): [BODY — 2–3 sentences, the email's central science/benefit, always ending with a sentence naming "Lunia Restore" and what it does]\n\nOverlay (Inter Regular): [OVERLAY — 3–5 word phrase naming the "window"/"moment" this email is about]\n\nComposition: Editorial flat lay with [3–5 topic-appropriate objects — ALWAYS include the Lunia Restore bottle].\n\nColours: background #EFEFF4, main #01253f, secondary #2C3F51. No purple, magenta, lavender, or neon.\n\nFonts: Inter — Regular (400) for headline and overlay, Light (300) for body. Crisp, perfectly legible, correctly spelled typography.\n\nUse relevant minimal line icons to the right of each body line, thin stroke #01253f, each matching what its line says.\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Use the uploaded reference image for the Lunia logo, small and discreet, rendered exactly as supplied.\n"""\n\n## How the 3 alternatives must differ\nKeep the template structure identical. Vary at least 2 of: the woman's expression + reason, the headline angle, the flat-lay object set, the overlay phrasing, hero vs. closing framing. Each alternative must still pass the test "this makes sense when you read the email", and must keep the fixed colours, Inter fonts, bottle reference, and logo reference. Never use em dashes inside generated copy. Body always ends naming "Lunia Restore".\n\n## Bottle text fallback (only if no product reference image is attached)\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\nWhen a reference image exists, the reference wins — do not contradict it.\n\nAll email review images use GPT Image 2 — always set engine to "gpt-image-2".\n\nJSON shape:\n\`\`\`ts\n{ engine: "gpt-image-2"; prompt: string; rationale: string }[]\n\`\`\`\n\nRationale: one sentence — what this alternative changes and why it fits this specific email.`;
 }
 
 // ─── Create-flow prompt ────────────────────────────────────────────────────────
