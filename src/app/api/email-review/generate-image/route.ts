@@ -1,4 +1,4 @@
-import { checkRateLimit, getFlowReviewById, saveFlowReview, getAssets } from "@/lib/kv";
+import { checkRateLimit, getFlowReviewById, mutateFlowReview, getAssets } from "@/lib/kv";
 import { mirrorImageToBlob } from "@/lib/blob-mirror";
 import { generateEmailImage, type EmailImageAspect } from "@/lib/email-image-engine";
 import type { FlowReviewImagePrompt } from "@/lib/types";
@@ -90,31 +90,40 @@ export async function POST(req: Request) {
     promptId = body.promptId as string | undefined;
     if (!reviewId || !promptId) return Response.json({ error: "missing reviewId or promptId" }, { status: 400 });
 
+    // Initial (unlocked) read just to resolve prompt text + reference inputs.
     const review = await getFlowReviewById(reviewId);
     if (!review) return Response.json({ error: "review not found" }, { status: 404 });
+    const prompt0 = review.imagePrompts.find((p) => p.id === promptId);
+    if (!prompt0) return Response.json({ error: "prompt not found in review" }, { status: 404 });
 
-    const idx = review.imagePrompts.findIndex((p) => p.id === promptId);
-    if (idx < 0) return Response.json({ error: "prompt not found in review" }, { status: 404 });
-    const prompt = review.imagePrompts[idx];
-
-    const promptText = (body.promptOverride as string | undefined) ?? prompt.prompt;
+    const promptText = (body.promptOverride as string | undefined) ?? prompt0.prompt;
     // Caller can override Claude's asset picks (UI toggles) or the persisted overrides.
     const refAssetIdsOverride = body.referenceAssetIds as string[] | undefined;
     const refUrlsOverride = body.referenceImageUrls as string[] | undefined;
-    const refAssetIds = refAssetIdsOverride ?? prompt.referenceAssetIds ?? [];
-    const refUrls = refUrlsOverride ?? prompt.referenceImageUrls ?? [];
+    const refAssetIds = refAssetIdsOverride ?? prompt0.referenceAssetIds ?? [];
+    const refUrls = refUrlsOverride ?? prompt0.referenceImageUrls ?? [];
 
-    // Mark generating + persist current reference selections so the next reload reflects the user's choices.
-    review.imagePrompts[idx] = {
-      ...prompt,
-      engine: "gpt-image-2",
-      prompt: promptText,
-      referenceAssetIds: refAssetIds,
-      referenceImageUrls: refUrls,
-      status: "generating",
-      errorMessage: undefined,
-    };
-    await saveFlowReview(review);
+    // ── Atomic write #1: mark this one prompt generating ──────────────────
+    // mutateFlowReview re-reads the freshest review inside a per-review lock
+    // and writes only after merging, so a parallel "Generate all" no longer
+    // clobbers sibling prompts (root cause: only 1 image survived a batch).
+    const marked = await mutateFlowReview(reviewId, (r) => ({
+      ...r,
+      imagePrompts: r.imagePrompts.map((p) =>
+        p.id === promptId
+          ? {
+              ...p,
+              engine: "gpt-image-2" as const,
+              prompt: promptText,
+              referenceAssetIds: refAssetIds,
+              referenceImageUrls: refUrls,
+              status: "generating" as const,
+              errorMessage: undefined,
+            }
+          : p,
+      ),
+    }));
+    if (!marked) return Response.json({ error: "review not found" }, { status: 404 });
 
     // Resolve the full reference URL list (logo + selected assets + user uploads).
     const referenceImageUrls = await resolveReferenceUrls({
@@ -122,26 +131,34 @@ export async function POST(req: Request) {
       extraUrls: refUrls,
     });
 
+    // ── Slow work OUTSIDE the lock so parallel renders still overlap ──────
     let url: string | undefined;
     try {
       url = await generateEmailImage({
         prompt: promptText,
-        aspect: prompt.aspect as EmailImageAspect,
+        aspect: prompt0.aspect as EmailImageAspect,
         referenceImageUrls,
         quality: "medium",
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      const updated: FlowReviewImagePrompt = { ...review.imagePrompts[idx], status: "error", errorMessage: detail };
-      review.imagePrompts[idx] = updated;
-      await saveFlowReview(review);
+      await mutateFlowReview(reviewId, (r) => ({
+        ...r,
+        imagePrompts: r.imagePrompts.map((p) =>
+          p.id === promptId ? { ...p, status: "error" as const, errorMessage: detail } : p,
+        ),
+      }));
       console.error(`[email-review/generate-image] gpt-image-2 failed:`, detail);
       return Response.json({ error: detail }, { status: 502 });
     }
     if (!url) {
       const errMsg = `No URL returned from gpt-image-2`;
-      review.imagePrompts[idx] = { ...review.imagePrompts[idx], status: "error", errorMessage: errMsg };
-      await saveFlowReview(review);
+      await mutateFlowReview(reviewId, (r) => ({
+        ...r,
+        imagePrompts: r.imagePrompts.map((p) =>
+          p.id === promptId ? { ...p, status: "error" as const, errorMessage: errMsg } : p,
+        ),
+      }));
       return Response.json({ error: errMsg }, { status: 502 });
     }
 
@@ -149,35 +166,43 @@ export async function POST(req: Request) {
     const mirrored = await mirrorImageToBlob(url, `${reviewId}-${promptId}-${Date.now()}`);
     const finalUrl = mirrored ?? url;
 
-    // Push prior image into history (if there was one)
-    const history = [...(prompt.history ?? [])];
-    if (prompt.imageUrl) {
-      history.unshift({
-        prompt: prompt.prompt,
-        engine: prompt.engine,
-        imageUrl: prompt.imageUrl,
-        renderedAt: new Date().toISOString(),
-      });
-    }
-
-    const updated: FlowReviewImagePrompt = {
-      ...review.imagePrompts[idx],
-      engine: "gpt-image-2",
-      prompt: promptText,
-      referenceAssetIds: refAssetIds,
-      referenceImageUrls: refUrls,
-      imageUrl: finalUrl,
-      status: "ready",
-      errorMessage: undefined,
-      history: history.slice(0, 8),
-      regenSuggestions: undefined,
-    };
-    review.imagePrompts[idx] = updated;
-    await saveFlowReview(review);
+    // ── Atomic write #2: merge the result onto the FRESH prompt ───────────
+    // History is computed inside the mutator from the current stored prompt,
+    // not the stale snapshot, so concurrent runs can't resurrect old images.
+    let updatedPrompt: FlowReviewImagePrompt | undefined;
+    const saved = await mutateFlowReview(reviewId, (r) => ({
+      ...r,
+      imagePrompts: r.imagePrompts.map((p) => {
+        if (p.id !== promptId) return p;
+        const history = [...(p.history ?? [])];
+        if (p.imageUrl) {
+          history.unshift({
+            prompt: p.prompt,
+            engine: p.engine,
+            imageUrl: p.imageUrl,
+            renderedAt: new Date().toISOString(),
+          });
+        }
+        updatedPrompt = {
+          ...p,
+          engine: "gpt-image-2" as const,
+          prompt: promptText,
+          referenceAssetIds: refAssetIds,
+          referenceImageUrls: refUrls,
+          imageUrl: finalUrl,
+          status: "ready" as const,
+          errorMessage: undefined,
+          history: history.slice(0, 8),
+          regenSuggestions: undefined,
+        };
+        return updatedPrompt;
+      }),
+    }));
+    if (!saved || !updatedPrompt) return Response.json({ error: "review not found" }, { status: 404 });
 
     const elapsed = Date.now() - t0;
     console.log(`[email-review/generate-image] reviewId=${reviewId} promptId=${promptId} refs=${referenceImageUrls.length} elapsed=${elapsed}ms`);
-    return Response.json({ prompt: updated });
+    return Response.json({ prompt: updatedPrompt });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[email-review/generate-image]", msg, { reviewId, promptId });

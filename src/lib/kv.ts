@@ -383,6 +383,73 @@ export async function getFlowReviewById(id: string): Promise<SavedFlowReview | n
   return all.find((r) => r.id === id) ?? null;
 }
 
+/**
+ * Per-review distributed lock. Reviews live in a single Redis key holding
+ * the whole array, so concurrent read-modify-write (e.g. "Generate all
+ * images" firing N parallel /generate-image calls) loses updates: each
+ * request reads the array, sets its own prompt, and writes the whole thing
+ * back — last writer wins, so only one image survives.
+ *
+ * This serialises the *write* critical section per review. Callers must
+ * keep slow work (fal renders, blob mirroring) OUTSIDE the lock so parallel
+ * renders still overlap — only the fast KV merge is serialised.
+ */
+async function withFlowReviewLock<T>(reviewId: string, fn: () => Promise<T>): Promise<T> {
+  const r = getRedis();
+  const lockKey = `lunia:flow_review_lock:${reviewId}`;
+  const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const lockTtlMs = 10_000;          // auto-expires if a holder crashes
+  const maxWaitMs = 20_000;          // give up acquiring after this
+  const deadline = Date.now() + maxWaitMs;
+
+  // Spin-acquire with small jittered backoff. The critical section is a
+  // couple of Redis round-trips (~ms), so contention clears fast.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const ok = await r.set(lockKey, token, "PX", lockTtlMs, "NX");
+    if (ok === "OK") break;
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out acquiring flow-review lock for ${reviewId}`);
+    }
+    await new Promise((res) => setTimeout(res, 80 + Math.random() * 170));
+  }
+
+  try {
+    return await fn();
+  } finally {
+    // Release only if we still own the lock (compare-and-delete via Lua so
+    // we never delete a lock a later holder acquired after our TTL lapsed).
+    const lua =
+      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+    try {
+      await r.eval(lua, 1, lockKey, token);
+    } catch {
+      /* lock will expire on its own via PX TTL */
+    }
+  }
+}
+
+/**
+ * Atomic read-modify-write of one review. The mutator receives the FRESHEST
+ * stored copy (re-read inside the lock, so it includes images other parallel
+ * requests already persisted) and returns the next state. Return null to
+ * signal "review not found" without writing.
+ */
+export async function mutateFlowReview(
+  id: string,
+  mutator: (review: SavedFlowReview) => SavedFlowReview,
+): Promise<SavedFlowReview | null> {
+  return withFlowReviewLock(id, async () => {
+    const all = await getFlowReviews();
+    const idx = all.findIndex((r) => r.id === id);
+    if (idx < 0) return null;
+    const next = mutator(all[idx]);
+    all[idx] = next;
+    await redis.set(FLOW_REVIEWS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+    return next;
+  });
+}
+
 export async function deleteFlowReviewKv(id: string): Promise<void> {
   const all = await getFlowReviews();
   await redis.set(FLOW_REVIEWS_KEY, all.filter((r) => r.id !== id), { ex: TTL_SECONDS });
