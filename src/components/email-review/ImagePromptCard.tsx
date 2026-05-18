@@ -28,9 +28,11 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  const logoAssets = assets.filter((a) => a.assetType === "logo");
-  // Selectable assets = everything else Claude can pick from
-  const selectableAssets = assets.filter((a) => a.assetType !== "logo");
+  // Logo + product (the Lunia bottle) are ALWAYS auto-attached server-side,
+  // exactly like each other. Both render locked.
+  const autoAssets = assets.filter((a) => a.assetType === "logo" || a.assetType === "product-image");
+  // Selectable = lifestyle / other — opt-in per image.
+  const selectableAssets = assets.filter((a) => a.assetType !== "logo" && a.assetType !== "product-image");
   const selectedIds = new Set(prompt.referenceAssetIds ?? []);
   const extraUrls = prompt.referenceImageUrls ?? [];
 
@@ -101,12 +103,17 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {/* Logo — always attached, locked */}
-        {logoAssets.map((a) => (
-          <Thumb key={a.id} url={a.url} label="logo · auto" locked />
+        {/* Logo + bottle — always attached, locked */}
+        {autoAssets.map((a) => (
+          <Thumb
+            key={a.id}
+            url={a.url}
+            label={`${a.assetType === "logo" ? "logo" : "bottle"} · auto`}
+            locked
+          />
         ))}
 
-        {/* Claude-picked product/lifestyle assets */}
+        {/* Lifestyle / other — opt-in per image */}
         {selectableAssets.map((a) => {
           const checked = selectedIds.has(a.id);
           return (
@@ -134,9 +141,9 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
           />
         ))}
 
-        {logoAssets.length === 0 && selectableAssets.length === 0 && extraUrls.length === 0 && (
+        {autoAssets.length === 0 && selectableAssets.length === 0 && extraUrls.length === 0 && (
           <div style={{ fontSize: 11, color: "#8b8270", fontStyle: "italic", padding: "4px 0" }}>
-            No brand assets uploaded yet. Upload a Lunia logo + product shots in the Assets tab, or click <strong>+ Upload</strong> above for a one-off reference.
+            No brand assets uploaded yet. Upload the Lunia logo (tag <strong>logo</strong>) and the Restore bottle (tag <strong>product-image</strong>) in the Assets tab — both auto-attach to every email image. Or click <strong>+ Upload</strong> for a one-off reference.
           </div>
         )}
       </div>

@@ -361,18 +361,15 @@ should be attached as references. Output the chosen IDs as
 \`referenceAssetIds: string[]\`.
 
 Selection rules:
-- The logo is always attached automatically — do NOT include it in
-  referenceAssetIds (it would just be deduped).
-- The template ALWAYS contains the Restore bottle, so ALWAYS include
-  the product / bottle asset (the asset whose assetType is
-  "product-image", or whose name references Restore / the bottle). If
-  several product images exist, pick the one that best matches the
-  email's product focus.
-- If NO product-image asset exists in the library, return \`[]\` and
-  describe the bottle textually using the canonical spec below as a
-  fallback — but the uploaded reference is strongly preferred.
-- Do not attach unrelated lifestyle assets unless the email's topic
-  specifically calls for one as an extra reference.
+- The logo AND the Restore bottle (any "product-image" asset) are BOTH
+  attached automatically server-side for every email image. Do NOT list
+  either in referenceAssetIds — they are always present regardless.
+- referenceAssetIds is therefore ONLY for occasional extra lifestyle /
+  "other" assets when this specific email's topic genuinely calls for
+  one (rare). Default to \`[]\`.
+- If no product-image asset exists in the library, the bottle falls back
+  to the canonical text spec below. Either way, still return \`[]\` unless
+  adding a lifestyle extra.
 
 ### Lunia Restore bottle — canonical visual spec (TEXT FALLBACK ONLY)
 Only used when no product-image asset is available to attach as a
@@ -428,7 +425,7 @@ type AnalyzeOutput = {
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";      // always — every email image uses GPT Image 2
     prompt: string;             // full 8-step structured prompt, lifestyle archetype by default
-    referenceAssetIds: string[];// asset IDs from the brand library (see "Reference asset selection" above). Logo is auto-attached, do NOT include it. For lifestyle shots: empty array [].
+    referenceAssetIds: string[];// logo + bottle (product-image) auto-attach server-side; do NOT list them. Almost always []. Only list a lifestyle/other asset id when the email specifically needs one.
     rationale?: string;         // one-line: why this image, which lifestyle archetype was chosen
   }[];
   // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
@@ -499,7 +496,7 @@ type Phase1Output = {
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";        // always — every email image uses GPT Image 2
     prompt: string;               // full 8-step structured prompt, lifestyle archetype by default
-    referenceAssetIds: string[];  // asset IDs from the brand library; logo is auto-attached, do NOT list it here. For lifestyle shots: [].
+    referenceAssetIds: string[];  // logo + bottle (product-image) auto-attach server-side; do NOT list them. Almost always []. Only a lifestyle/other id when the email truly needs one.
     rationale?: string;           // which lifestyle archetype was chosen and why
   }[];
   // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
@@ -780,7 +777,7 @@ export function buildRegenSuggestionsPrompt(args: {
     ? `\nUser comment on what to change:\n"${args.userComment}"\n`
     : "";
   const catalog = formatAssetCatalog(args.assetCatalog ?? []);
-  return `You are a senior editorial art director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia editorial template (FIXED — every alternative must follow this)\nAll email images are rendered with GPT Image 2 and carry their OWN headline, body, and overlay text — text rendering is intentional and required. Every alternative must use this exact template; only the bracketed content changes between alternatives:\n\n"""\nCreate an image for Lunia Life. It should feel exclusive, calm, aspirational, premium. Show half of a woman's face (she is in her late 30s), [EXPRESSION + REASON tied to this email's topic].\n\nHeadline (Inter Regular): [HEADLINE — short, declarative, max ~6 words, from this email's core promise]\n\nBody (Inter Light 300): [BODY — 2–3 sentences, the email's central science/benefit, always ending with a sentence naming "Lunia Restore" and what it does]\n\nOverlay (Inter Regular): [OVERLAY — 3–5 word phrase naming the "window"/"moment" this email is about]\n\nComposition: Editorial flat lay with [3–5 topic-appropriate objects — ALWAYS include the Lunia Restore bottle].\n\nColours: background #EFEFF4, main #01253f, secondary #2C3F51. No purple, magenta, lavender, or neon.\n\nFonts: Inter — Regular (400) for headline and overlay, Light (300) for body. Crisp, perfectly legible, correctly spelled typography.\n\nUse relevant minimal line icons to the right of each body line, thin stroke #01253f, each matching what its line says.\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Use the uploaded reference image for the Lunia logo, small and discreet, rendered exactly as supplied.\n"""\n\n## How the 3 alternatives must differ\nKeep the template structure identical. Vary at least 2 of: the woman's expression + reason, the headline angle, the flat-lay object set, the overlay phrasing, hero vs. closing framing. Each alternative must still pass the test "this makes sense when you read the email", and must keep the fixed colours, Inter fonts, bottle reference, and logo reference. Never use em dashes inside generated copy. Body always ends naming "Lunia Restore".\n\n## Brand asset library — pick references for EACH alternative\n${catalog}\n\nFor every alternative, set \`referenceAssetIds\` to the asset IDs that should be attached as references:\n- The logo is auto-attached server-side — do NOT list it.\n- The template ALWAYS shows the Restore bottle, so ALWAYS include the product / bottle asset (assetType "product-image", or the asset whose name references Restore / the bottle). If several exist, pick the best match for this email.\n- If no product-image asset exists in the library, return an empty array and rely on the bottle text fallback below.\n\n## Bottle text fallback (only if no product reference image is attached)\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\nWhen a reference image exists, the reference wins — do not contradict it.\n\nAll email review images use GPT Image 2 — always set engine to "gpt-image-2".\n\nJSON shape:\n\`\`\`ts\n{ engine: "gpt-image-2"; prompt: string; rationale: string; referenceAssetIds: string[] }[]\n\`\`\`\n\nRationale: one sentence — what this alternative changes and why it fits this specific email.`;
+  return `You are a senior editorial art director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia editorial template (FIXED — every alternative must follow this)\nAll email images are rendered with GPT Image 2 and carry their OWN headline, body, and overlay text — text rendering is intentional and required. Every alternative must use this exact template; only the bracketed content changes between alternatives:\n\n"""\nCreate an image for Lunia Life. It should feel exclusive, calm, aspirational, premium. Show half of a woman's face (she is in her late 30s), [EXPRESSION + REASON tied to this email's topic].\n\nHeadline (Inter Regular): [HEADLINE — short, declarative, max ~6 words, from this email's core promise]\n\nBody (Inter Light 300): [BODY — 2–3 sentences, the email's central science/benefit, always ending with a sentence naming "Lunia Restore" and what it does]\n\nOverlay (Inter Regular): [OVERLAY — 3–5 word phrase naming the "window"/"moment" this email is about]\n\nComposition: Editorial flat lay with [3–5 topic-appropriate objects — ALWAYS include the Lunia Restore bottle].\n\nColours: background #EFEFF4, main #01253f, secondary #2C3F51. No purple, magenta, lavender, or neon.\n\nFonts: Inter — Regular (400) for headline and overlay, Light (300) for body. Crisp, perfectly legible, correctly spelled typography.\n\nUse relevant minimal line icons to the right of each body line, thin stroke #01253f, each matching what its line says.\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Use the uploaded reference image for the Lunia logo, small and discreet, rendered exactly as supplied.\n"""\n\n## How the 3 alternatives must differ\nKeep the template structure identical. Vary at least 2 of: the woman's expression + reason, the headline angle, the flat-lay object set, the overlay phrasing, hero vs. closing framing. Each alternative must still pass the test "this makes sense when you read the email", and must keep the fixed colours, Inter fonts, bottle reference, and logo reference. Never use em dashes inside generated copy. Body always ends naming "Lunia Restore".\n\n## Brand asset library — pick references for EACH alternative\n${catalog}\n\nThe logo AND the Restore bottle (any "product-image" asset) are BOTH auto-attached server-side for every email image — do NOT list either in \`referenceAssetIds\`. Set \`referenceAssetIds\` to \`[]\` unless this specific email genuinely needs an extra lifestyle/other asset (rare), in which case list only that id.\n\n## Bottle text fallback (only if no product reference image exists in the library)\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\nWhen a reference image exists, the reference wins — do not contradict it.\n\nAll email review images use GPT Image 2 — always set engine to "gpt-image-2".\n\nJSON shape:\n\`\`\`ts\n{ engine: "gpt-image-2"; prompt: string; rationale: string; referenceAssetIds: string[] }[]\n\`\`\`\n\nRationale: one sentence — what this alternative changes and why it fits this specific email.`;
 }
 
 // ─── Create-flow prompt ────────────────────────────────────────────────────────
