@@ -10,6 +10,12 @@ export const maxDuration = 180;
  * IDs are silently dropped (the asset may have been deleted between analyze
  * and generate). The Lunia logo is always included implicitly so every
  * email image carries brand identity.
+ *
+ * Safety net: the Lunia editorial template ALWAYS shows the Restore bottle.
+ * If nothing product-related got attached (e.g. an old review predating the
+ * reference system, or a plain "Re-render this prompt" on a stale prompt),
+ * auto-attach the best available product-image asset so GPT Image 2 matches
+ * the real bottle instead of hallucinating one from the text fallback.
  */
 async function resolveReferenceUrls(opts: {
   assetIds?: string[];
@@ -26,12 +32,32 @@ async function resolveReferenceUrls(opts: {
     .map((a) => a.url);
 
   // 2. Include any explicitly-selected assets (product-image, lifestyle, etc.)
-  const selectedUrls = allAssets
-    .filter((a) => idSet.has(a.id))
-    .map((a) => a.url);
+  const selectedAssets = allAssets.filter((a) => idSet.has(a.id));
+  const selectedUrls = selectedAssets.map((a) => a.url);
 
-  // 3. Append any user-uploaded one-off URLs
-  const all = [...logoUrls, ...selectedUrls, ...extras.filter(Boolean)];
+  // 3. Safety net — guarantee a product reference for the bottle.
+  // Only kicks in when the caller selected NO product-image asset (and the
+  // user didn't already attach a one-off upload). Picks the most recently
+  // uploaded product-image so the bottle is always reference-locked.
+  const hasProductSelected = selectedAssets.some((a) => a.assetType === "product-image");
+  let fallbackProductUrls: string[] = [];
+  if (!hasProductSelected && extras.length === 0) {
+    const productAssets = allAssets
+      .filter((a) => a.assetType === "product-image")
+      .sort((a, b) => (b.uploadedAt ?? "").localeCompare(a.uploadedAt ?? ""));
+    if (productAssets[0]) {
+      fallbackProductUrls = [productAssets[0].url];
+      console.log(`[email-review/generate-image] no product ref selected — auto-attaching "${productAssets[0].name}"`);
+    }
+  }
+
+  // 4. Append any user-uploaded one-off URLs
+  const all = [
+    ...logoUrls,
+    ...selectedUrls,
+    ...fallbackProductUrls,
+    ...extras.filter(Boolean),
+  ];
 
   // Dedupe, cap at 10 (GPT Image 2 edit limit)
   const seen = new Set<string>();

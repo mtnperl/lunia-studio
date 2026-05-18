@@ -760,8 +760,8 @@ export type FlowReviewImagePrompt = {
    */
   referenceImageUrls?: string[];
   // Set by /api/email-review/regen-suggestions before re-render. User picks one
-  // → it overwrites prompt + engine and triggers a fresh render.
-  regenSuggestions?: { engine: FlowReviewImageEngine; prompt: string; rationale: string }[];
+  // → it overwrites prompt + engine + referenceAssetIds and triggers a fresh render.
+  regenSuggestions?: { engine: FlowReviewImageEngine; prompt: string; rationale: string; referenceAssetIds?: string[] }[];
   // Previously rendered images stay accessible so the user can compare. Newest first.
   history?: { prompt: string; engine: FlowReviewImageEngine; imageUrl: string; renderedAt: string }[];
 };

@@ -5,8 +5,8 @@ import {
   CONTENT_THINKING,
   CONTENT_MAX_TOKENS_SHORT,
 } from "@/lib/anthropic";
-import { checkRateLimit, getFlowReviewById, saveFlowReview } from "@/lib/kv";
-import { buildRegenSuggestionsPrompt } from "@/lib/email-review-prompts";
+import { checkRateLimit, getFlowReviewById, saveFlowReview, getAssets } from "@/lib/kv";
+import { buildRegenSuggestionsPrompt, type AssetCatalogEntry } from "@/lib/email-review-prompts";
 import type { FlowReviewImageEngine } from "@/lib/types";
 
 export const maxDuration = 120;
@@ -15,9 +15,9 @@ export const maxDuration = 120;
 // use gpt-image-2 — accept it as primary, fall back to it for anything unexpected.
 const VALID_ENGINES: FlowReviewImageEngine[] = ["gpt-image-2", "recraft", "ideogram", "flux2"];
 
-type Suggestion = { engine: FlowReviewImageEngine; prompt: string; rationale: string };
+type Suggestion = { engine: FlowReviewImageEngine; prompt: string; rationale: string; referenceAssetIds: string[] };
 
-function safeParseSuggestions(raw: string): Suggestion[] | null {
+function safeParseSuggestions(raw: string, validAssetIds: Set<string>): Suggestion[] | null {
   const stripped = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   let candidate: unknown;
   try {
@@ -34,12 +34,22 @@ function safeParseSuggestions(raw: string): Suggestion[] | null {
     const engineRaw = (c as { engine?: string }).engine;
     const promptRaw = (c as { prompt?: string }).prompt;
     const rationaleRaw = (c as { rationale?: string }).rationale;
+    const refIdsRaw = (c as { referenceAssetIds?: unknown }).referenceAssetIds;
     if (typeof promptRaw !== "string" || promptRaw.trim().length < 50) continue;
     // Always default to gpt-image-2 — that's the only engine email review uses.
     const engine: FlowReviewImageEngine = VALID_ENGINES.includes(engineRaw as FlowReviewImageEngine)
       ? (engineRaw as FlowReviewImageEngine)
       : "gpt-image-2";
-    out.push({ engine, prompt: promptRaw.trim(), rationale: typeof rationaleRaw === "string" ? rationaleRaw : "" });
+    // Validate Claude's asset IDs against the live library (it can hallucinate).
+    const referenceAssetIds = Array.isArray(refIdsRaw)
+      ? (refIdsRaw.filter((id): id is string => typeof id === "string" && validAssetIds.has(id)))
+      : [];
+    out.push({
+      engine,
+      prompt: promptRaw.trim(),
+      rationale: typeof rationaleRaw === "string" ? rationaleRaw : "",
+      referenceAssetIds,
+    });
   }
   return out.length === 3 ? out : null;
 }
@@ -79,6 +89,14 @@ export async function POST(req: Request) {
         ].filter(Boolean).join("\n")
       : `Replacement image at ${prompt.placement} (${prompt.aspect})`;
 
+    // Asset catalog for reference selection (logos auto-attach server-side,
+    // so exclude them — same convention as the analyze route).
+    const allAssets = await getAssets();
+    const assetCatalog: AssetCatalogEntry[] = allAssets
+      .filter((a) => a.assetType !== "logo")
+      .map((a) => ({ id: a.id, assetType: a.assetType, name: a.name }));
+    const validAssetIds = new Set(allAssets.map((a) => a.id));
+
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
@@ -90,11 +108,12 @@ export async function POST(req: Request) {
           currentEngine: prompt.engine,
           emailContext,
           userComment,
+          assetCatalog,
         }),
       }],
     });
     const text = extractText(msg);
-    const suggestions = safeParseSuggestions(text);
+    const suggestions = safeParseSuggestions(text, validAssetIds);
     if (!suggestions) {
       console.error("[email-review/regen-suggestions] invalid output, raw:", text.slice(0, 500));
       return Response.json({ error: "Could not parse 3 suggestions from model", raw: text.slice(0, 1500) }, { status: 502 });

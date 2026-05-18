@@ -234,11 +234,19 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
     onUpdate({ ...prompt, referenceImageUrls: current.filter((u) => u !== url) });
   }
 
-  async function generate(engineOverride?: FlowReviewImageEngine, promptOverride?: string) {
+  async function generate(
+    engineOverride?: FlowReviewImageEngine,
+    promptOverride?: string,
+    referenceAssetIdsOverride?: string[],
+  ) {
     setBusy(true);
+    // When rendering a regen alternative, the suggestion carries its own
+    // referenceAssetIds (it always re-picks the bottle for the new template).
+    // Otherwise fall back to whatever's currently on the prompt.
+    const refAssetIds = referenceAssetIdsOverride ?? prompt.referenceAssetIds ?? [];
     // Optimistically mark as generating so the MiniReviewLoader shows immediately
     // (the batch path in FlowImagesGrid does the same — keep consistent).
-    onUpdate({ ...prompt, status: "generating", errorMessage: undefined });
+    onUpdate({ ...prompt, status: "generating", errorMessage: undefined, referenceAssetIds: refAssetIds });
     try {
       const res = await fetch("/api/email-review/generate-image", {
         method: "POST",
@@ -248,7 +256,7 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
           promptId: prompt.id,
           engineOverride,
           promptOverride,
-          referenceAssetIds: prompt.referenceAssetIds ?? [],
+          referenceAssetIds: refAssetIds,
           referenceImageUrls: prompt.referenceImageUrls ?? [],
         }),
       });
@@ -436,7 +444,7 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
                       <span style={{ fontSize: 11, fontWeight: 700, color: "#102635" }}>Alternative {i + 1}</span>
                     </div>
                     <button
-                      onClick={() => generate(s.engine, s.prompt)}
+                      onClick={() => generate(s.engine, s.prompt, s.referenceAssetIds)}
                       style={{
                         padding: "5px 10px",
                         fontSize: 11,
