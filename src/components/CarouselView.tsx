@@ -405,6 +405,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
                 next[selectedVariant] = { ...content, imagePrompt: prompt };
                 setVariants(next);
               }}
+              onHooksChange={(hooks) => {
+                const next = [...variants];
+                next[selectedVariant] = { ...content, hooks };
+                setVariants(next);
+                setSelectedHook(0);
+              }}
+              hookTone={hookTone}
               brandStyle={brandStyle}
               backgroundImageUrl={hookImageUrl}
               topic={topic}

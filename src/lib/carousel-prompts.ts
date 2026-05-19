@@ -27,6 +27,44 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "smart-tip": "Smart-tip tone: frame the hook as 'BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]'. Be specific with numbers, durations, or mechanisms. The subline adds the science backing. Content slides should each deliver one actionable, evidence-based tip.",
 };
 
+/**
+ * Prompt for regenerating ONLY the hook copy of an existing carousel — the
+ * 3 content slides and CTA stay as-is, so the new hooks must stay on-topic and
+ * consistent with the deck the user already has. Hook format rules mirror
+ * GENERATE_CAROUSEL_PROMPT exactly so output is interchangeable.
+ */
+export const REGENERATE_HOOKS_PROMPT = (
+  topic: string,
+  hookTone = "educational",
+  slides: { headline: string; body: string }[] = [],
+  guidelines = "",
+): string => {
+  const deck = slides
+    .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
+    .join("\n");
+  return `You are a content strategist for Lunia Life, a sleep supplement brand. Write 3 NEW, distinct hook options (the opening slide of an Instagram carousel) for the carousel below. The content slides and CTA are FIXED — your hooks must set up THIS exact deck, stay on-topic, and not promise content the slides don't deliver. The 3 hooks should be genuinely different angles, not rewordings of one idea.
+
+Topic: ${topic}
+Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
+
+The deck the hook must introduce:
+${deck || "(no slide content provided — base hooks on the topic)"}
+${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}\n` : ""}
+Output STRICT JSON, no markdown, no commentary, exactly this shape:
+{
+  "hooks": [
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" }
+  ]
+}
+
+Hook format rules (hard):
+- headline: UPPERCASE, punchy, max 8 words
+- subline: italic-style sentence fragment, max 10 words, creates mild tension or curiosity. No period at the end.
+- sourceNote: MANDATORY — every hook MUST have a non-empty sourceNote. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on". Reference the most relevant REAL research supporting the hook's claim. NEVER fabricate a source. NEVER omit or leave empty.`;
+};
+
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
 
 function buildTemplateSection(template: CarouselTemplate): string {

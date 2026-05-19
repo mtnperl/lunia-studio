@@ -23,17 +23,53 @@ type Props = {
   topic?: string;
   imageStyle?: CarouselImageStyle;
   onImageStyleChange?: (style: CarouselImageStyle) => void;
+  onHooksChange?: (hooks: { headline: string; subline: string; sourceNote?: string }[]) => void;
+  hookTone?: string;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange, onHooksChange, hookTone = "educational" }: Props) {
   const apiBase = useCarouselApi();
   const [promptOpen, setPromptOpen] = useState(false);
   const [guidelines, setGuidelines] = useState("");
   const [regenerating, setRegenerating] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [alternatives, setAlternatives] = useState<string[]>([]);
+  const [hooksPanelOpen, setHooksPanelOpen] = useState(false);
+  const [hooksGuidelines, setHooksGuidelines] = useState("");
+  const [regeneratingHooks, setRegeneratingHooks] = useState(false);
+  const [hooksRegenError, setHooksRegenError] = useState<string | null>(null);
   const imagePrompt = content.imagePrompt ?? "";
   const hook = content.hooks[selectedHook];
+
+  async function handleRegenerateHooks() {
+    setRegeneratingHooks(true);
+    setHooksRegenError(null);
+    try {
+      const res = await fetch(`${apiBase}/regenerate-hooks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          hookTone,
+          content: { slides: content.slides },
+          guidelines: hooksGuidelines.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setHooksRegenError(data.error ?? "Failed to regenerate hooks");
+      } else if (Array.isArray(data.hooks) && data.hooks.length > 0) {
+        onHooksChange?.(data.hooks);
+        setAlternatives([]);
+      } else {
+        setHooksRegenError("No hooks returned — please try again");
+      }
+    } catch {
+      setHooksRegenError("Network error — please try again");
+    } finally {
+      setRegeneratingHooks(false);
+    }
+  }
 
   async function handleRegeneratePrompt() {
     setRegenerating(true);
@@ -122,6 +158,95 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
             </div>
           );
         })}
+      </div>
+
+      {/* Rewrite hook copy — expandable */}
+      <div style={{ marginBottom: 28, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          onClick={() => setHooksPanelOpen((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "var(--surface)", border: "none", padding: "10px 14px",
+            fontSize: 12, fontWeight: 600, color: "var(--muted)", cursor: "pointer",
+            fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            Rewrite hook copy
+            <span style={{ fontWeight: 400, color: "var(--subtle)", marginLeft: 4 }}>
+              — 3 fresh hooks for this same deck
+            </span>
+          </span>
+          <span style={{ fontSize: 16, lineHeight: 1, transform: hooksPanelOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+            ›
+          </span>
+        </button>
+
+        {hooksPanelOpen && (
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
+              Keeps your 3 content slides and CTA. Replaces the hook options above with 3 new ones, then pick your favourite.
+            </p>
+
+            <div style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              padding: "10px 12px",
+              marginBottom: 8,
+            }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 6,
+              }}>
+                Guidelines (optional)
+              </label>
+              <textarea
+                value={hooksGuidelines}
+                onChange={(e) => setHooksGuidelines(e.target.value)}
+                rows={2}
+                placeholder="e.g. punchier, lead with a number, more myth-busting, less clickbait..."
+                style={{
+                  width: "100%", fontSize: 12, lineHeight: 1.5,
+                  resize: "vertical", fontFamily: "inherit",
+                  color: "var(--text)", background: "transparent",
+                  border: "none", outline: "none", padding: 0,
+                }}
+              />
+            </div>
+
+            {hooksRegenError && (
+              <p style={{ fontSize: 12, color: "var(--error)", margin: "0 0 8px" }}>{hooksRegenError}</p>
+            )}
+
+            <button
+              onClick={handleRegenerateHooks}
+              disabled={regeneratingHooks}
+              style={{
+                background: regeneratingHooks ? "var(--surface)" : "var(--text)",
+                color: regeneratingHooks ? "var(--muted)" : "var(--bg)",
+                border: "none", borderRadius: 6,
+                padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                fontFamily: "inherit", cursor: regeneratingHooks ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
+              }}
+            >
+              {regeneratingHooks ? (
+                <>
+                  <span style={{
+                    display: "inline-block", width: 12, height: 12,
+                    border: "2px solid var(--muted)", borderTopColor: "transparent",
+                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                  }} />
+                  Writing 3 new hooks...
+                </>
+              ) : (
+                "Regenerate 3 hooks"
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Image prompt — expandable */}
