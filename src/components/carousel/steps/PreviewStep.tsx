@@ -9,7 +9,7 @@ import { BrandStyle, CarouselConfig, CarouselFormat, HookTone } from "@/lib/type
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
-import { DEFAULT_HOOK_OVERLAYS, type HookOverlaySettings } from "@/components/carousel/shared/HookOverlays";
+import { DEFAULT_HOOK_OVERLAYS, SOFT_WHITE, type HookOverlaySettings, type BackgroundWash } from "@/components/carousel/shared/HookOverlays";
 import FeedPreview, { type FeedMode } from "@/components/carousel/preview/FeedPreview";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
@@ -123,6 +123,44 @@ function SliderControl({ label, min, max, step, value, onChange }: {
   );
 }
 
+
+function Segmented<T extends string>({ label, options, value, onChange }: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
+      <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 5, overflow: "hidden" }}>
+        {options.map((o, i) => (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            style={{
+              background: value === o.value ? "var(--accent)" : "transparent",
+              color: value === o.value ? "#fff" : "var(--muted)",
+              border: "none",
+              borderLeft: i === 0 ? "none" : "1px solid var(--border)",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              padding: "4px 9px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
 export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, carouselFormat = "standard" }: Props) {
   const apiBase = useCarouselApi();
@@ -2080,6 +2118,60 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 onChange={(v) => setHookOverlays((s) => ({ ...s, grain: { ...s.grain, opacity: v } }))}
               />
             </OverlayRow>
+
+            {/* Background wash */}
+            {(() => {
+              const wash = hookOverlays.backgroundWash ?? WASH_SEED;
+              const setWash = (patch: Partial<BackgroundWash>) =>
+                setHookOverlays((s) => ({ ...s, backgroundWash: { ...(s.backgroundWash ?? WASH_SEED), ...patch } }));
+              return (
+                <div style={{ display: "grid", gap: 10, padding: "8px 0", borderTop: "1px dashed var(--border)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap" }}>Background wash</span>
+                    <span style={{ fontSize: 10, color: "var(--subtle)", letterSpacing: "0.02em" }}>Veil between image and text</span>
+                    <Segmented
+                      label="Mode"
+                      value={wash.mode}
+                      options={[
+                        { value: "dark", label: "Dark" },
+                        { value: "light", label: "Light" },
+                        { value: "none", label: "None" },
+                      ]}
+                      onChange={(mode) => setWash({ mode })}
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", opacity: wash.mode === "none" ? 0.5 : 1, pointerEvents: wash.mode === "none" ? "none" : "auto" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: wash.mode === "light" ? 1 : 0.4 }}>
+                      <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Color</label>
+                      <input
+                        type="color"
+                        value={wash.color}
+                        disabled={wash.mode !== "light"}
+                        onChange={(e) => setWash({ color: e.target.value })}
+                        style={{ width: 28, height: 22, border: "1px solid var(--border)", borderRadius: 4, padding: 0, background: "transparent", cursor: wash.mode === "light" ? "pointer" : "not-allowed" }}
+                      />
+                    </div>
+                    <SliderControl
+                      label="Opacity"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={wash.opacity}
+                      onChange={(v) => setWash({ opacity: v })}
+                    />
+                    <Segmented
+                      label="Style"
+                      value={wash.gradient ? "gradient" : "flat"}
+                      options={[
+                        { value: "flat", label: "Flat" },
+                        { value: "gradient", label: "Gradient" },
+                      ]}
+                      onChange={(v) => setWash({ gradient: v === "gradient" })}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

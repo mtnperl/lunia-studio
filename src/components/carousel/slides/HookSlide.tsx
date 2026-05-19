@@ -4,7 +4,7 @@ import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle } from '@/lib/types';
-import { FrameOverlay, VignetteOverlay, GrainOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
+import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -62,12 +62,18 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
               filter: overlays?.colorGrade.enabled ? buildColorGradeFilter(overlays.colorGrade.intensity) : undefined,
             }}
           />
-          {/* Overlay: lighter (0.45) for fal images to show more drama; heavier (0.82) for template images */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: bg,
-            opacity: isFalImage ? 0.45 : 0.82,
-          }} />
+          {/* Background wash. When configured, the user controls dark/light/none;
+              otherwise legacy scrim: lighter (0.45) for fal images to show more
+              drama, heavier (0.82) for template images. */}
+          {overlays?.backgroundWash ? (
+            <BackgroundWashOverlay darkColor={bg} wash={overlays.backgroundWash} />
+          ) : (
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: bg,
+              opacity: isFalImage ? 0.45 : 0.82,
+            }} />
+          )}
           {overlays?.vignette.enabled && <VignetteOverlay intensity={overlays.vignette.intensity} />}
           {overlays?.grain.enabled && <GrainOverlay opacity={overlays.grain.opacity} />}
           {overlays?.frame.enabled && (

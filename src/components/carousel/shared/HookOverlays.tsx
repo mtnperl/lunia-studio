@@ -2,11 +2,25 @@
 // Each overlay is independent — toggle, recolor, or adjust opacity per
 // overlay via the controls in PreviewStep.
 
+// Soft off-white default for the "light" wash — matches the brand cream
+// already used for the hook subline color.
+export const SOFT_WHITE = "#F7F4EF";
+
+export type BackgroundWash = {
+  mode: "dark" | "light" | "none";
+  color: string;     // used in "light" mode
+  opacity: number;   // 0..1
+  gradient: boolean; // false = flat veil, true = bottom-weighted gradient
+};
+
 export type HookOverlaySettings = {
   frame: { enabled: boolean; color: string; opacity: number; inset: number };
   vignette: { enabled: boolean; intensity: number };
   colorGrade: { enabled: boolean; intensity: number };
   grain: { enabled: boolean; opacity: number };
+  // Optional: when undefined, HookSlide renders the legacy hardcoded scrim
+  // (auto fal/template opacity). Set only once the user engages the control.
+  backgroundWash?: BackgroundWash;
 };
 
 export const DEFAULT_HOOK_OVERLAYS: HookOverlaySettings = {
@@ -28,6 +42,39 @@ export function FrameOverlay({ color, opacity, inset }: { color: string; opacity
         opacity,
         pointerEvents: "none",
         borderRadius: 2,
+      }}
+    />
+  );
+}
+
+// ─── Background wash ──────────────────────────────────────────────────────────
+// The scrim between the hook image and the text. "dark" uses the brand bg
+// color (legacy look), "light" uses a soft white/cream veil, "none" hides it.
+// Flat = uniform; gradient = strongest at the bottom (behind the headline),
+// clearing toward the top so the image keeps its drama up top.
+function hexToRgb(hex: string): [number, number, number] {
+  let h = hex.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+export function BackgroundWashOverlay({ darkColor, wash }: { darkColor: string; wash: BackgroundWash }) {
+  if (wash.mode === "none") return null;
+  const color = wash.mode === "light" ? wash.color : darkColor;
+  const a = Math.max(0, Math.min(1, wash.opacity));
+  const [r, g, b] = hexToRgb(color);
+  const background = wash.gradient
+    ? `linear-gradient(to top, rgba(${r},${g},${b},${a}) 0%, rgba(${r},${g},${b},${(a * 0.55).toFixed(3)}) 45%, rgba(${r},${g},${b},0) 100%)`
+    : color;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        background,
+        opacity: wash.gradient ? 1 : a,
       }}
     />
   );
