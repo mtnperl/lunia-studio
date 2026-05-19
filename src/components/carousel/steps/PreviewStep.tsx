@@ -43,7 +43,7 @@ type Props = {
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
-const PREVIEW_SCALE = 0.48;
+const PREVIEW_SCALE = 0.62;
 
 // ─── Toolbar button style (v2 toolbar) ────────────────────────────────────────
 function toolbarBtnStyle(active: boolean): React.CSSProperties {
@@ -187,6 +187,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
   }));
   const [overlaysPanelOpen, setOverlaysPanelOpen] = useState(false);
+  // Collapsible "Slide controls" drawer — open by default, collapse to bring the
+  // preview up and clear the screen.
+  const [controlsOpen, setControlsOpen] = useState(true);
   // v2-only: feed view (single-slide phone mockup) toggle + current index
   const [viewMode, setViewMode] = useState<"strip" | "feed">("feed");
   const [feedIndex, setFeedIndex] = useState(0);
@@ -1090,8 +1093,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
-      {/* Slide controls toolbar — two explicit rows, always fully visible */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+      {/* Slide controls — collapsible, grouped */}
+      <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 14, overflow: "hidden" }}>
+        <button
+          onClick={() => setControlsOpen((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "var(--surface)", border: "none", padding: "9px 14px",
+            fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase",
+            letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit",
+          }}
+        >
+          <span>Slide controls{!controlsOpen && <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: "normal", color: "var(--subtle)", marginLeft: 8 }}>— collapsed</span>}</span>
+          <span style={{ fontSize: 15, lineHeight: 1, transform: controlsOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>›</span>
+        </button>
+        {controlsOpen && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+        <div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Branding &amp; format</div>
         {/* Row 1: decorative controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {/* Logo size */}
@@ -1156,6 +1175,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             }}>9:16</button>
           </div>
         </div>
+        </div>
+        <div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Text &amp; content</div>
         {/* Row 2: content style controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {/* Slide background — presets + free color picker. Custom color auto-derives ink from luminance. */}
@@ -1304,6 +1326,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             })}
           </div>
         </div>
+        </div>
+        </div>
+        )}
       </div>
 
       {/* Text editor panel — active content slide's headline + body */}
@@ -1536,7 +1561,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       {/* Slide strip */}
       {(!isV2 || viewMode === "strip") && (
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 16, scrollSnapType: "x mandatory" }}>
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingTop: 8, paddingBottom: 16, scrollSnapType: "x mandatory", position: "sticky", top: 0, background: "var(--bg)", zIndex: 5 }}>
         {slideNodes.map((slide, i) => {
           const isActive = activeSlide === i;
           const isDownloading = downloading === i;
