@@ -4,12 +4,19 @@ import HookSlide from "@/components/carousel/slides/HookSlide";
 import { BrandStyle, CarouselContent } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { useCarouselApi } from "@/components/carousel/api-context";
+import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
   { value: "cartoon", label: "Illustration" },
   { value: "anime", label: "Anime" },
   { value: "vector", label: "Vector" },
+];
+
+// First chip = "Auto" → moodId = null → server picks randomly (today's behavior).
+const MOOD_CHIPS: { value: string | null; label: string }[] = [
+  { value: null, label: "Auto" },
+  ...VISUAL_MOODS.map((m) => ({ value: m.id, label: m.label })),
 ];
 
 type Props = {
@@ -25,9 +32,11 @@ type Props = {
   onImageStyleChange?: (style: CarouselImageStyle) => void;
   onHooksChange?: (hooks: { headline: string; subline: string; sourceNote?: string }[]) => void;
   hookTone?: string;
+  moodId?: string | null;
+  onMoodChange?: (id: string | null) => void;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange, onHooksChange, hookTone = "educational" }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange, onHooksChange, hookTone = "educational", moodId = null, onMoodChange }: Props) {
   const apiBase = useCarouselApi();
   const [promptOpen, setPromptOpen] = useState(false);
   const [guidelines, setGuidelines] = useState("");
@@ -283,6 +292,34 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                   <button
                     key={chip.value}
                     onClick={() => onImageStyleChange?.(chip.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Mood chips — controls the styleBlock appended after Claude's subject prompt. */}
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Mood:</span>
+              {MOOD_CHIPS.map((chip) => {
+                const active = moodId === chip.value || (chip.value === null && !moodId);
+                return (
+                  <button
+                    key={chip.value ?? "auto"}
+                    onClick={() => onMoodChange?.(chip.value)}
                     style={{
                       padding: "4px 10px",
                       borderRadius: 20,

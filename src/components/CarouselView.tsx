@@ -91,6 +91,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
 
   // ─── fal.ai status ────────────────────────────────────────────────────────
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
+  // null = "Auto" → server picks a random VISUAL_MOODS entry per call.
+  const [moodId, setMoodId] = useState<string | null>(null);
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [didYouKnowVariants, setDidYouKnowVariants] = useState<DidYouKnowContent[]>([]);
@@ -118,7 +120,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const FAL_SLIDE_INDICES = [0] as const;
   const FAL_TOTAL = FAL_SLIDE_INDICES.length;
 
-  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number, currentImageStyle: CarouselImageStyle = "realistic") {
+  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number, currentImageStyle: CarouselImageStyle = "realistic", currentMoodId: string | null = null) {
     setSlideImages([null, null, null, null, null]);
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
@@ -130,7 +132,14 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
       fetch(`${apiBase}/generate-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slideIndex: i, topic: currentTopic, hook, imagePrompt: currentContent.imagePrompt, imageStyle: currentImageStyle }),
+        body: JSON.stringify({
+          slideIndex: i,
+          topic: currentTopic,
+          hook,
+          imagePrompt: currentContent.imagePrompt,
+          imageStyle: currentImageStyle,
+          ...(currentMoodId ? { moodId: currentMoodId } : {}),
+        }),
       })
         .then(async (r) => {
           // Read body as text first so we can surface non-JSON errors
@@ -389,7 +398,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               onSelectHook={setSelectedHook}
               onNext={() => {
                 setStep(4);
-                generateSlideImages(topic, content, selectedHook, imageStyle);
+                generateSlideImages(topic, content, selectedHook, imageStyle, moodId);
                 // Persist draft so HomeView can reopen it (30-min window)
                 try {
                   const draftId = draftIdRef.current || `draft_${Date.now()}`;
@@ -417,6 +426,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               topic={topic}
               imageStyle={imageStyle}
               onImageStyleChange={setImageStyle}
+              moodId={moodId}
+              onMoodChange={setMoodId}
             />
           )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
@@ -437,7 +448,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
               ]}
-              onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle)}
+              onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle, moodId)}
               modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"}
             />
           )}
@@ -448,6 +459,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               onRestart={handleRestart}
               onChangeHook={() => setStep(3)}
               initialImageStyle={imageStyle}
+              initialMoodId={moodId}
               initialReelsMode={initialCarousel?.reelsMode}
               initialCitationFontSize={initialCarousel?.citationFontSize}
               initialSlideBgColor={initialCarousel?.slideBgColor}

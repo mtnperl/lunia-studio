@@ -29,6 +29,7 @@ type Props = {
   onChangeHook?: () => void;
   onContentChange: (config: CarouselConfig) => void;
   initialImageStyle?: CarouselImageStyle;
+  initialMoodId?: string | null;
   initialReelsMode?: boolean;
   initialCitationFontSize?: number;
   initialSlideBgColor?: string;
@@ -162,7 +163,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, carouselFormat = "standard" }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, carouselFormat = "standard" }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -243,6 +244,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Hook image refinement state
   const [imageRefineOpen, setImageRefineOpen] = useState(false);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>(initialImageStyle ?? "realistic");
+  const [moodId] = useState<string | null>(initialMoodId ?? null);
   const [imageGuidelines, setImageGuidelines] = useState("");
   const [imagePromptDraft, setImagePromptDraft] = useState<string>("");
   const [regeneratingImage, setRegeneratingImage] = useState(false);
@@ -792,6 +794,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           imagePrompt: finalPrompt,
           imageStyle,
           imageAspect: targetAspect,
+          ...(moodId ? { moodId } : {}),
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         }),
       });

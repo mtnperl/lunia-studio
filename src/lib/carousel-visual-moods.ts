@@ -41,6 +41,12 @@ export const VISUAL_MOODS: VisualMood[] = [
     styleBlock:
       "organic natural textures (linen, wood grain, stone, botanical detail), warm earth tones with golden-hour lighting, matte natural materials, calm grounded wellness aesthetic, slight film grain, no text, no logos",
   },
+  {
+    id: "lifestyle-health",
+    label: "Lifestyle Health",
+    styleBlock:
+      "bright, sunlit lifestyle photography in the spirit of premium DTC wellness brands (Tally Health, Ritual, AG1), warm natural daylight through a window, soft cream / sand / sage / honey palette, real-world moments — kitchen counters, breakfast tables, linen, ceramic, fresh produce, hands in soft focus, gentle film grain, approachable and human, no moody chiaroscuro, no dark blue, no text, no logos",
+  },
 ];
 
 export function pickRandomMood(seed?: string): VisualMood {
