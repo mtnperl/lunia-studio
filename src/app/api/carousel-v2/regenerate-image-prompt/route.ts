@@ -20,12 +20,13 @@ export async function POST(req: Request) {
     const subline: string = body.subline ?? "";
     const guidelines: string = (body.guidelines ?? "").slice(0, 400); // cap to prevent prompt injection
     const currentPrompt: string = body.currentPrompt ?? "";
+    const moodId: string = typeof body.moodId === "string" ? body.moodId : "";
 
     if (!topic && !headline) {
       return Response.json({ error: "topic or headline required" }, { status: 400 });
     }
 
-    const systemPrompt = `You are a top-tier visual creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
+    const EDITORIAL_SYSTEM_PROMPT = `You are a top-tier visual creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
 
 Your output is THREE Recraft V3 prompts for a hook slide background image. Each must be a distinct creative direction — different concept, different mood, different visual metaphor. They should feel like three completely separate pitches, not variations of the same idea.
 
@@ -44,6 +45,39 @@ Rules (hard):
 - Max 55 words per prompt
 - Output ONLY a JSON array with exactly 3 strings — no explanation, no labels, no markdown
 - Format: ["prompt one here","prompt two here","prompt three here"]`;
+
+    // Lifestyle Health mood needs Tally / Ritual / AG1 style subjects, not the
+    // moody editorial defaults above. The styleBlock alone can't rescue a
+    // "dark water + surreal" subject into a sunlit kitchen — the subject
+    // itself has to be a real lifestyle moment.
+    const LIFESTYLE_SYSTEM_PROMPT = `You are a creative director writing image generation prompts for premium DTC wellness brand content (think Tally Health, Ritual, AG1). Real-world, sunlit, human, approachable — NOT editorial, NOT cinematic, NOT moody.
+
+Your output is THREE prompts for a hook slide background image. Each is a distinct lifestyle direction — different setting, different moment, different framing. They should feel like three real photographs a wellness brand might post, not three art-direction concepts.
+
+The hook headline is your brief — translate it into a real human moment a viewer might actually live (morning, kitchen, bathroom, bedroom, yoga corner, walk, breakfast). Anchor in everyday objects and natural daylight, not metaphors.
+
+Direction types (pick three different ones):
+- PRODUCT-IN-HAND: a hand holding / cradling / pouring a supplement, glass of water, mug, or simple wellness tool, soft natural light, partial framing of the person
+- MORNING RITUAL: a real unposed moment at a kitchen counter, breakfast table, or bedside — props in soft focus, daylight from a window
+- TABLETOP STILL LIFE: linen, ceramic, fresh produce, a water glass, an open notebook or book — composed but unstaged, like a Sunday morning
+- GENTLE LIFESTYLE WIDE: a person (back-of-head, silhouette, over-the-shoulder, or partial body) in a sunlit bedroom / kitchen / living room / yoga space — calm posture, no drama
+- CLOSE TEXTURE: an inviting close-up of food, fabric, skin, plant, or steam in warm daylight — feels touchable, not clinical
+
+Examples of headline-to-image translation:
+- "MAGNESIUM IS YOUR BRAIN'S OFF SWITCH" → a hand setting a glass of water and a single supplement on a linen-draped bedside table, warm bedside lamp + soft window dawn, partial blanket in frame
+- "YOU'RE WIRED BUT TIRED" → over-the-shoulder of a person at a sunlit kitchen counter with a steaming mug, morning daylight, soft focus on the back of their robe
+- "ADENOSINE IS DROWNING YOUR BRAIN" → a slow morning pour of water from a ceramic carafe into a glass on a wooden counter, late-morning daylight, condensation, calm hand
+
+Rules (hard):
+- People are encouraged: hands, partial faces, silhouettes, over-the-shoulder, back-of-head — natural and unposed. No full studio portraits. No direct eye contact with camera.
+- Warm natural daylight is the default. Absolutely no chiaroscuro, no dark blue palette, no cinematic shadow, no surreal juxtaposition.
+- Soft, real, human, approachable; never editorial, never moody.
+- No text, no logos, no fake supplement labels or branded mockups.
+- Max 55 words per prompt.
+- Output ONLY a JSON array with exactly 3 strings — no explanation, no labels, no markdown.
+- Format: ["prompt one here","prompt two here","prompt three here"]`;
+
+    const systemPrompt = moodId === "lifestyle-health" ? LIFESTYLE_SYSTEM_PROMPT : EDITORIAL_SYSTEM_PROMPT;
 
     const userMessage = [
       `Hook headline: "${headline}"`,

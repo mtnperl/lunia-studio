@@ -94,6 +94,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           subline: hook?.subline ?? "",
           currentPrompt: imagePrompt,
           guidelines: guidelines.trim(),
+          ...(moodId ? { moodId } : {}),
         }),
       });
       const data = await res.json();
@@ -387,31 +388,36 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{regenError}</p>
             )}
 
-            <button
-              onClick={handleRegeneratePrompt}
-              disabled={regenerating}
-              style={{
-                background: regenerating ? "var(--surface)" : "var(--text)",
-                color: regenerating ? "var(--muted)" : "var(--bg)",
-                border: "none", borderRadius: 6,
-                padding: "8px 16px", fontSize: 12, fontWeight: 700,
-                fontFamily: "inherit", cursor: regenerating ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
-              }}
-            >
-              {regenerating ? (
-                <>
-                  <span style={{
-                    display: "inline-block", width: 12, height: 12,
-                    border: "2px solid var(--muted)", borderTopColor: "transparent",
-                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
-                  }} />
-                  Generating 3 directions...
-                </>
-              ) : (
-                <>↺ Generate 3 prompt directions</>
-              )}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleRegeneratePrompt}
+                disabled={regenerating}
+                style={{
+                  background: regenerating ? "var(--surface)" : "var(--text)",
+                  color: regenerating ? "var(--muted)" : "var(--bg)",
+                  border: "none", borderRadius: 6,
+                  padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "inherit", cursor: regenerating ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
+                }}
+              >
+                {regenerating ? (
+                  <>
+                    <span style={{
+                      display: "inline-block", width: 12, height: 12,
+                      border: "2px solid var(--muted)", borderTopColor: "transparent",
+                      borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                    }} />
+                    Generating 3 directions...
+                  </>
+                ) : (
+                  <>↺ Generate 3 prompt directions</>
+                )}
+              </button>
+              <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+                Prompts retune to the selected mood.
+              </span>
+            </div>
 
             {/* Alternative prompt suggestions */}
             {alternatives.length > 0 && (

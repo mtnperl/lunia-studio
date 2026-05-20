@@ -772,6 +772,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             subline: hook.subline,
             currentPrompt: finalPrompt,
             guidelines: imageGuidelines.trim(),
+            ...(moodId ? { moodId } : {}),
           }),
         });
         const promptData = await promptRes.json();
@@ -838,6 +839,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           subline: hook.subline,
           currentPrompt: currentImagePrompt,
           guidelines: imageGuidelines.trim(),
+          ...(moodId ? { moodId } : {}),
         }),
       });
       const data = await res.json();
@@ -866,6 +868,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           headline: hook.headline,
           subline: hook.subline,
           // No currentPrompt — so Claude generates fresh divergent concepts
+          ...(moodId ? { moodId } : {}),
         }),
       });
       const data = await res.json();
