@@ -333,7 +333,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
               </div>
               {/* Category tabs */}
               <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
-                {(["sleep", "health", "lifestyle", "fitness", "mind"] as IconCategory[]).map((cat) => (
+                {(["sleep", "health", "lifestyle", "fitness", "mind", "daily"] as IconCategory[]).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setIconPickerCategory(cat)}

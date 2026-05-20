@@ -279,6 +279,7 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
     data: z.object({
       icons: z.array(z.object({ id: z.string() })).min(1).max(4),
       layout: z.enum(['row', 'column', 'grid', 'scattered']),
+      showLabels: z.boolean().optional(),
     }),
   }),
 ]);

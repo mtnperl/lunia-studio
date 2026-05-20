@@ -11,6 +11,7 @@ type Props = {
   icons: IconEntry[];
   layout: LayoutMode;
   brandStyle?: BrandStyle;
+  showLabels?: boolean;
 };
 
 // Scattered positions for 1–4 icons: [x%, y%, size, rotate]
@@ -50,28 +51,30 @@ function IconSvg({ id, size, color }: { id: string; size: number; color: string 
   );
 }
 
-function IconCell({ id, size, color, textColor }: { id: string; size: number; color: string; textColor: string }) {
+function IconCell({ id, size, color, textColor, showLabels }: { id: string; size: number; color: string; textColor: string; showLabels: boolean }) {
   const icon = getIconById(id);
   if (!icon) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: showLabels ? 10 : 0 }}>
       <IconSvg id={id} size={size} color={color} />
-      <div style={{
-        fontFamily: 'Jost, Montserrat, sans-serif',
-        fontWeight: 600,
-        fontSize: Math.round(size * 0.2),
-        color: textColor,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
-        textAlign: 'center',
-      }}>
-        {icon.label}
-      </div>
+      {showLabels && (
+        <div style={{
+          fontFamily: 'Jost, Montserrat, sans-serif',
+          fontWeight: 600,
+          fontSize: Math.round(size * 0.2),
+          color: textColor,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          textAlign: 'center',
+        }}>
+          {icon.label}
+        </div>
+      )}
     </div>
   );
 }
 
-export function IconLayout({ icons, layout, brandStyle }: Props) {
+export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Props) {
   const color = brandStyle?.accent ?? '#1e7a8a';
   const textColor = brandStyle?.headline ?? '#1a2535';
   const count = icons.length;
@@ -88,7 +91,7 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         padding: '20px 0',
       }}>
         {icons.map((ic) => (
-          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} />
+          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} showLabels={showLabels} />
         ))}
       </div>
     );
@@ -108,18 +111,20 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         {icons.map((ic) => {
           const icon = getIconById(ic.id);
           return (
-            <div key={ic.id} style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div key={ic.id} style={{ display: 'flex', alignItems: 'center', gap: showLabels ? 20 : 0 }}>
               <IconSvg id={ic.id} size={iconSize} color={color} />
-              <div style={{
-                fontFamily: 'Jost, Montserrat, sans-serif',
-                fontWeight: 600,
-                fontSize: Math.round(iconSize * 0.22),
-                color: textColor,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}>
-                {icon?.label}
-              </div>
+              {showLabels && (
+                <div style={{
+                  fontFamily: 'Jost, Montserrat, sans-serif',
+                  fontWeight: 600,
+                  fontSize: Math.round(iconSize * 0.22),
+                  color: textColor,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}>
+                  {icon?.label}
+                </div>
+              )}
             </div>
           );
         })}
@@ -140,7 +145,7 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
         justifyItems: 'center',
       }}>
         {icons.map((ic) => (
-          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} />
+          <IconCell key={ic.id} id={ic.id} size={iconSize} color={color} textColor={textColor} showLabels={showLabels} />
         ))}
       </div>
     );
@@ -162,21 +167,23 @@ export function IconLayout({ icons, layout, brandStyle }: Props) {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 8,
+            gap: showLabels ? 8 : 0,
           }}>
             <IconSvg id={ic.id} size={cfg.size} color={color} />
-            <div style={{
-              fontFamily: 'Jost, Montserrat, sans-serif',
-              fontWeight: 600,
-              fontSize: Math.round(cfg.size * 0.18),
-              color: textColor,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              opacity: 0.85,
-            }}>
-              {icon?.label}
-            </div>
+            {showLabels && (
+              <div style={{
+                fontFamily: 'Jost, Montserrat, sans-serif',
+                fontWeight: 600,
+                fontSize: Math.round(cfg.size * 0.18),
+                color: textColor,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                opacity: 0.85,
+              }}>
+                {icon?.label}
+              </div>
+            )}
           </div>
         );
       })}

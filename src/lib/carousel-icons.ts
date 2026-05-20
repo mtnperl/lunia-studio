@@ -1,4 +1,4 @@
-export type IconCategory = "sleep" | "health" | "lifestyle" | "fitness" | "mind";
+export type IconCategory = "sleep" | "health" | "lifestyle" | "fitness" | "mind" | "daily";
 
 export type CarouselIcon = {
   id: string;
@@ -583,6 +583,366 @@ export const CAROUSEL_ICONS: CarouselIcon[] = [
     label: "Growth",
     category: "mind",
     svg: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  },
+
+  // ── Sleep extras 2 (8) ─────────────────────────────────────────────────────
+  {
+    id: "pillow-stack",
+    label: "Pillows",
+    category: "sleep",
+    svg: '<rect x="3" y="6" width="18" height="6" rx="3"/><rect x="3" y="13" width="18" height="6" rx="3"/>',
+  },
+  {
+    id: "lamp-bedside",
+    label: "Bedside Lamp",
+    category: "sleep",
+    svg: '<path d="M8 4h8l-2 6h-4z"/><path d="M12 10v8"/><path d="M9 22h6"/>',
+  },
+  {
+    id: "tea-warm",
+    label: "Warm Tea",
+    category: "sleep",
+    svg: '<path d="M5 11h12v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M17 13h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2"/><path d="M9 4v3M12 3v4M15 4v3"/>',
+  },
+  {
+    id: "candle-flame",
+    label: "Candle Flame",
+    category: "sleep",
+    svg: '<path d="M12 3c-1 2.5 2 4 2 6a2 2 0 0 1-4 0c0-2 1.5-3 2-6z"/><rect x="9" y="11" width="6" height="9" rx="1"/><path d="M8 20h8"/>',
+  },
+  {
+    id: "owl",
+    label: "Night Owl",
+    category: "sleep",
+    svg: '<circle cx="12" cy="13" r="8"/><circle cx="9" cy="11" r="1.5"/><circle cx="15" cy="11" r="1.5"/><path d="M12 15v2"/><path d="M6 6l2 3M18 6l-2 3"/>',
+  },
+  {
+    id: "night-window",
+    label: "Night Window",
+    category: "sleep",
+    svg: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M4 12h16M12 3v18"/><circle cx="8" cy="7" r="1"/>',
+  },
+  {
+    id: "breathing-curve",
+    label: "Slow Breath",
+    category: "sleep",
+    svg: '<path d="M2 12c3-6 6-6 10 0s7 6 10 0"/>',
+  },
+  {
+    id: "do-not-disturb",
+    label: "Quiet Hours",
+    category: "sleep",
+    svg: '<circle cx="12" cy="12" r="9"/><path d="M7 12h10"/>',
+  },
+
+  // ── Health extras 2 (8) ────────────────────────────────────────────────────
+  {
+    id: "vitamin",
+    label: "Vitamin",
+    category: "health",
+    svg: '<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M12 8v8"/>',
+  },
+  {
+    id: "supplement-bottle",
+    label: "Supplement",
+    category: "health",
+    svg: '<rect x="7" y="3" width="10" height="3" rx="0.5"/><rect x="5" y="6" width="14" height="15" rx="2"/><path d="M9 13h6M12 10v6"/>',
+  },
+  {
+    id: "pill",
+    label: "Pill",
+    category: "health",
+    svg: '<rect x="3" y="9" width="18" height="6" rx="3"/><path d="M12 9v6"/>',
+  },
+  {
+    id: "bone",
+    label: "Bone Health",
+    category: "health",
+    svg: '<path d="M4 8a2 2 0 0 1 2-3 2 2 0 0 1 3 1 2 2 0 0 1 1 3l9 9a2 2 0 0 1 1 3 2 2 0 0 1-3 1 2 2 0 0 1-3-1l-9-9a2 2 0 0 1-3-1 2 2 0 0 1 1-3 2 2 0 0 1 1-1z"/>',
+  },
+  {
+    id: "first-aid",
+    label: "First Aid",
+    category: "health",
+    svg: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M12 10v6M9 13h6"/><path d="M9 6V4h6v2"/>',
+  },
+  {
+    id: "stethoscope",
+    label: "Checkup",
+    category: "health",
+    svg: '<path d="M6 3v8a5 5 0 0 0 10 0V3"/><path d="M6 3h2M14 3h2"/><circle cx="19" cy="16" r="2"/><path d="M11 16v-2"/><path d="M11 14a4 4 0 0 1 8 0v2"/>',
+  },
+  {
+    id: "bandage",
+    label: "Recovery",
+    category: "health",
+    svg: '<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-25 12 12)"/><path d="M9 10l1 1M10 13l1 1M13 9l1 1M14 12l1 1"/>',
+  },
+  {
+    id: "mortar",
+    label: "Apothecary",
+    category: "health",
+    svg: '<path d="M4 9h16l-2 8a3 3 0 0 1-3 2H9a3 3 0 0 1-3-2z"/><path d="M14 3l-2 6"/>',
+  },
+
+  // ── Lifestyle extras 2 (10) ────────────────────────────────────────────────
+  {
+    id: "home",
+    label: "Home",
+    category: "lifestyle",
+    svg: '<path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  },
+  {
+    id: "plant-pot",
+    label: "Houseplant",
+    category: "lifestyle",
+    svg: '<path d="M5 14h14l-2 8H7z"/><path d="M12 14V6"/><path d="M12 10c-3 0-4-3-2-5 2 1 3 3 2 5z"/><path d="M12 8c2-1 5 0 5 3-2 0-4-1-5-3z"/>',
+  },
+  {
+    id: "flower",
+    label: "Flower",
+    category: "lifestyle",
+    svg: '<circle cx="12" cy="12" r="2.5"/><path d="M12 5a3 3 0 1 1 0-1z"/><path d="M12 22v-7"/><path d="M19 12a3 3 0 1 1-1 0z"/><path d="M5 12a3 3 0 1 1 1 0z"/><path d="M17 7a3 3 0 1 1-1 1z"/><path d="M7 7a3 3 0 1 1 1 1z"/>',
+  },
+  {
+    id: "music",
+    label: "Music",
+    category: "lifestyle",
+    svg: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  },
+  {
+    id: "book-open",
+    label: "Reading",
+    category: "lifestyle",
+    svg: '<path d="M2 4h7a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H2z"/><path d="M22 4h-7a3 3 0 0 0-3 3v14a3 3 0 0 1 3-3h7z"/>',
+  },
+  {
+    id: "journal-pen",
+    label: "Journal",
+    category: "lifestyle",
+    svg: '<rect x="4" y="3" width="14" height="18" rx="1"/><path d="M8 7h6M8 11h6M8 15h4"/><path d="M19 14l3 3-2 3-3-1z"/>',
+  },
+  {
+    id: "thermos",
+    label: "Thermos",
+    category: "lifestyle",
+    svg: '<rect x="8" y="2" width="8" height="3" rx="0.5"/><rect x="7" y="5" width="10" height="17" rx="2"/><path d="M7 10h10"/>',
+  },
+  {
+    id: "yoga-mat",
+    label: "Yoga Mat",
+    category: "lifestyle",
+    svg: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M3 15h18"/>',
+  },
+  {
+    id: "beach",
+    label: "Beach",
+    category: "lifestyle",
+    svg: '<path d="M12 3v6"/><path d="M8 9c1-3 7-3 8 0"/><path d="M3 18c2 1 4 1 6 0s4-1 6 0 4 1 6 0"/><path d="M3 21c2 1 4 1 6 0s4-1 6 0 4 1 6 0"/>',
+  },
+  {
+    id: "incense",
+    label: "Calm",
+    category: "lifestyle",
+    svg: '<path d="M12 3v3M12 8v3M12 13v3"/><rect x="6" y="17" width="12" height="3" rx="0.5"/>',
+  },
+
+  // ── Fitness extras 2 (8) ───────────────────────────────────────────────────
+  {
+    id: "barbell",
+    label: "Barbell",
+    category: "fitness",
+    svg: '<path d="M3 9v6M6 7v10M21 9v6M18 7v10M6 12h12"/>',
+  },
+  {
+    id: "kettlebell",
+    label: "Kettlebell",
+    category: "fitness",
+    svg: '<path d="M9 4h6v2a2 2 0 0 0 2 2v0a5 5 0 0 1 1 4 6 6 0 0 1-12 0 5 5 0 0 1 1-4v0a2 2 0 0 0 2-2z"/>',
+  },
+  {
+    id: "pushup",
+    label: "Push-up",
+    category: "fitness",
+    svg: '<circle cx="18" cy="6" r="2"/><path d="M3 18h13l-2-4-4 1-3-2z"/><path d="M16 14l2-6"/>',
+  },
+  {
+    id: "jump-rope",
+    label: "Jump Rope",
+    category: "fitness",
+    svg: '<path d="M5 6c0-1 1-2 2-2s2 1 2 2c0 6-4 8-4 14"/><path d="M19 6c0-1-1-2-2-2s-2 1-2 2c0 6 4 8 4 14"/><path d="M9 6h6"/>',
+  },
+  {
+    id: "treadmill",
+    label: "Treadmill",
+    category: "fitness",
+    svg: '<rect x="2" y="14" width="20" height="5" rx="1"/><path d="M2 16h20"/><path d="M5 14V9h5l3-5h4"/>',
+  },
+  {
+    id: "sneaker",
+    label: "Sneakers",
+    category: "fitness",
+    svg: '<path d="M3 17v-3l4-2 2-4h5l1 4 6 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M7 12l3 3M12 8l1 7"/>',
+  },
+  {
+    id: "stretch-floor",
+    label: "Stretch",
+    category: "fitness",
+    svg: '<circle cx="6" cy="6" r="2"/><path d="M6 8l3 5 6-1 4 5"/><path d="M9 13l-3 5"/>',
+  },
+  {
+    id: "yoga-block",
+    label: "Yoga Block",
+    category: "fitness",
+    svg: '<rect x="4" y="8" width="16" height="8" rx="1.5"/><path d="M4 12h16"/>',
+  },
+
+  // ── Mind extras 2 (6) ──────────────────────────────────────────────────────
+  {
+    id: "thought-bubble",
+    label: "Thoughts",
+    category: "mind",
+    svg: '<path d="M5 13a5 5 0 0 1 4-7 6 6 0 0 1 11 4 4 4 0 0 1-2 7H9a4 4 0 0 1-4-4z"/><circle cx="6" cy="19" r="1.5"/><circle cx="3" cy="22" r="0.8"/>',
+  },
+  {
+    id: "balance-scale",
+    label: "Balance",
+    category: "mind",
+    svg: '<path d="M12 4v16"/><path d="M6 20h12"/><path d="M3 9l3-5 3 5"/><path d="M15 9l3-5 3 5"/><path d="M3 9a3 3 0 0 0 6 0"/><path d="M15 9a3 3 0 0 0 6 0"/>',
+  },
+  {
+    id: "smile",
+    label: "Joy",
+    category: "mind",
+    svg: '<circle cx="12" cy="12" r="9"/><path d="M8 14c1 2 7 2 8 0"/><circle cx="9" cy="10" r="0.8"/><circle cx="15" cy="10" r="0.8"/>',
+  },
+  {
+    id: "lotus",
+    label: "Calm Mind",
+    category: "mind",
+    svg: '<path d="M12 20c-5 0-9-3-9-7 3 0 5 1 6 3 0-3 1-6 3-8 2 2 3 5 3 8 1-2 3-3 6-3 0 4-4 7-9 7z"/>',
+  },
+  {
+    id: "puzzle",
+    label: "Insight",
+    category: "mind",
+    svg: '<path d="M10 3h4v3a2 2 0 0 0 4 0V3h3v4h-3a2 2 0 0 0 0 4h3v4h-3a2 2 0 0 1-2 2v3h-4v-3a2 2 0 0 0-4 0v3H4v-4h3a2 2 0 0 0 0-4H4V8h3a2 2 0 0 1 2-2V3z"/>',
+  },
+  {
+    id: "spark",
+    label: "Spark",
+    category: "mind",
+    svg: '<path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4"/>',
+  },
+
+  // ── Daily (NEW category, 18) ───────────────────────────────────────────────
+  {
+    id: "mug",
+    label: "Mug",
+    category: "daily",
+    svg: '<path d="M4 7h13v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M17 10h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2"/>',
+  },
+  {
+    id: "kettle",
+    label: "Kettle",
+    category: "daily",
+    svg: '<path d="M5 11h14v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/><path d="M9 11V8h6v3"/><path d="M15 8h3v-2"/><path d="M9 8c-1-1-2-2-2-3"/>',
+  },
+  {
+    id: "plate",
+    label: "Plate",
+    category: "daily",
+    svg: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>',
+  },
+  {
+    id: "bowl",
+    label: "Bowl",
+    category: "daily",
+    svg: '<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M5 11c1-2 5-4 7-4s6 2 7 4"/>',
+  },
+  {
+    id: "fork-knife",
+    label: "Meal",
+    category: "daily",
+    svg: '<path d="M7 3v8a2 2 0 0 0 2 2v8"/><path d="M11 3v8a2 2 0 0 1-2 2"/><path d="M16 3c2 2 2 6 0 8v10"/>',
+  },
+  {
+    id: "spoon",
+    label: "Spoon",
+    category: "daily",
+    svg: '<ellipse cx="12" cy="6" rx="4" ry="5"/><path d="M12 11v10"/>',
+  },
+  {
+    id: "egg",
+    label: "Egg",
+    category: "daily",
+    svg: '<path d="M12 3c-4 0-7 5-7 11a7 7 0 0 0 14 0c0-6-3-11-7-11z"/>',
+  },
+  {
+    id: "apple",
+    label: "Apple",
+    category: "daily",
+    svg: '<path d="M12 7c-2-3-7-2-7 3 0 6 4 11 7 11s7-5 7-11c0-5-5-6-7-3z"/><path d="M12 7V4"/><path d="M12 4l3-1"/>',
+  },
+  {
+    id: "berries",
+    label: "Berries",
+    category: "daily",
+    svg: '<circle cx="9" cy="14" r="4"/><circle cx="15" cy="14" r="4"/><path d="M11 10c0-2 1-4 1-6"/><path d="M12 4l2-1M12 4l-2-1"/>',
+  },
+  {
+    id: "toast",
+    label: "Toast",
+    category: "daily",
+    svg: '<path d="M4 9c0-3 4-4 8-4s8 1 8 4v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M7 12h10M7 16h7"/>',
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    category: "daily",
+    svg: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/>',
+  },
+  {
+    id: "alarm-clock",
+    label: "Alarm Clock",
+    category: "daily",
+    svg: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 4 2 7M22 7l-3-3M6 21l-2 2M18 21l2 2"/>',
+  },
+  {
+    id: "key",
+    label: "Key",
+    category: "daily",
+    svg: '<circle cx="7" cy="17" r="3"/><path d="M9 15l11-11M16 8l3 3M14 10l3 3"/>',
+  },
+  {
+    id: "phone-off",
+    label: "Phone Off",
+    category: "daily",
+    svg: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 18h4"/><path d="M3 3l18 18"/>',
+  },
+  {
+    id: "laptop",
+    label: "Laptop",
+    category: "daily",
+    svg: '<rect x="4" y="4" width="16" height="11" rx="1"/><path d="M2 18h20l-1 2H3z"/>',
+  },
+  {
+    id: "robe",
+    label: "Robe",
+    category: "daily",
+    svg: '<path d="M8 3l-3 5 3 1v12h8V9l3-1-3-5"/><path d="M10 3l2 6 2-6"/>',
+  },
+  {
+    id: "slippers",
+    label: "Slippers",
+    category: "daily",
+    svg: '<path d="M3 16c0-3 4-4 6-4s5 1 5 4-3 4-5 4-6-1-6-4z"/><path d="M14 16c0-3 4-4 5-4s2 1 2 4-2 4-3 4-4-1-4-4z"/>',
+  },
+  {
+    id: "tap-water",
+    label: "Hydration Glass",
+    category: "daily",
+    svg: '<path d="M7 4h10l-1 17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><path d="M8 10c1 1 3 1 4 0s3-1 4 0"/>',
   },
 ];
 

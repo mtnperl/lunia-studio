@@ -231,6 +231,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
   const [iconPickerCategory, setIconPickerCategory] = useState<IconCategory>("sleep");
   const [iconPickerLayout, setIconPickerLayout] = useState<"row" | "column" | "grid" | "scattered">("row");
+  const [suggestingIcons, setSuggestingIcons] = useState<number | null>(null);
 
   // Text editor state (content slides 1–3, i.e. slideIndex 0–2)
   const [textEditOpen, setTextEditOpen] = useState<number | null>(null);
@@ -642,6 +643,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     return [];
   }
 
+  // Defaults to true so existing carousels render with labels — matches v1 behavior.
+  function getShowLabels(slideIndex: number): boolean {
+    try {
+      const g = content.slides[slideIndex]?.graphic ?? "";
+      if (!g) return true;
+      const parsed = JSON.parse(g);
+      if (parsed.component === "iconLayout" && typeof parsed.data?.showLabels === "boolean") {
+        return parsed.data.showLabels;
+      }
+    } catch { /* ignore */ }
+    return true;
+  }
+
+  function writeIconGraphic(slideIndex: number, ids: string[], layout: "row" | "column" | "grid" | "scattered", showLabels: boolean) {
+    const graphic = ids.length === 0
+      ? ""
+      : JSON.stringify({ component: "iconLayout", data: { icons: ids.map((id) => ({ id })), layout, showLabels } });
+    const slides = [...content.slides];
+    slides[slideIndex] = { ...slides[slideIndex], graphic };
+    onContentChange({ ...config, content: { ...content, slides } });
+  }
+
   function toggleSlideIcon(slideIndex: number, iconId: string) {
     const current = getSelectedIcons(slideIndex);
     let next: string[];
@@ -652,28 +675,66 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     } else {
       return;
     }
-    const graphic = next.length === 0
-      ? ""
-      : JSON.stringify({ component: "iconLayout", data: { icons: next.map((id) => ({ id })), layout: iconPickerLayout } });
-    const slides = [...content.slides];
-    slides[slideIndex] = { ...slides[slideIndex], graphic };
-    onContentChange({ ...config, content: { ...content, slides } });
+    writeIconGraphic(slideIndex, next, iconPickerLayout, getShowLabels(slideIndex));
   }
 
   function applyIconLayout(slideIndex: number, layout: "row" | "column" | "grid" | "scattered") {
     setIconPickerLayout(layout);
     const current = getSelectedIcons(slideIndex);
     if (current.length === 0) return;
-    const graphic = JSON.stringify({ component: "iconLayout", data: { icons: current.map((id) => ({ id })), layout } });
-    const slides = [...content.slides];
-    slides[slideIndex] = { ...slides[slideIndex], graphic };
-    onContentChange({ ...config, content: { ...content, slides } });
+    writeIconGraphic(slideIndex, current, layout, getShowLabels(slideIndex));
+  }
+
+  function toggleShowLabels(slideIndex: number) {
+    const current = getSelectedIcons(slideIndex);
+    if (current.length === 0) return;
+    writeIconGraphic(slideIndex, current, iconPickerLayout, !getShowLabels(slideIndex));
   }
 
   function clearSlideIcons(slideIndex: number) {
     const slides = [...content.slides];
     slides[slideIndex] = { ...slides[slideIndex], graphic: "" };
     onContentChange({ ...config, content: { ...content, slides } });
+  }
+
+  async function handleSuggestIcons(slideIndex: number, opts?: { force?: boolean }) {
+    if (suggestingIcons !== null) return;
+    const slide = content.slides[slideIndex];
+    if (!slide) return;
+    setSuggestingIcons(slideIndex);
+    try {
+      const res = await fetch(`${apiBase}/suggest-icons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          headline: slide.headline,
+          body: slide.body,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.icons) && data.icons.length > 0) {
+        // Auto-pick is always label-free — that's the whole reason the user
+        // reaches for it. Manual override (toggle, regen) still works.
+        writeIconGraphic(slideIndex, data.icons.slice(0, 4), iconPickerLayout, false);
+      } else if (!opts?.force) {
+        // Silent failure on first-click auto-suggest; surface only if user explicitly clicked ✨.
+      }
+    } catch { /* ignore — first-click suggestion is best-effort */ }
+    finally {
+      setSuggestingIcons(null);
+    }
+  }
+
+  function onIconButtonClick(slideIndex: number) {
+    // Toggle the panel as today.
+    const willOpen = iconPickerOpen !== slideIndex;
+    setIconPickerOpen(willOpen ? slideIndex : null);
+    // Auto-suggest only when (a) opening, (b) slide has no icons yet. Existing
+    // manual picks are never overwritten without an explicit ✨ click.
+    if (willOpen && getSelectedIcons(slideIndex).length === 0) {
+      void handleSuggestIcons(slideIndex);
+    }
   }
 
   async function handleRegenerateSlide(slideIndex: number) {
@@ -1840,8 +1901,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       );
                     })()}
                     <button
-                      onClick={(e) => { e.stopPropagation(); setIconPickerOpen(iconPickerOpen === i - 1 ? null : i - 1); }}
-                      title="Pick an icon graphic"
+                      onClick={(e) => { e.stopPropagation(); onIconButtonClick(i - 1); }}
+                      disabled={suggestingIcons === i - 1}
+                      title={getSelectedIcons(i - 1).length === 0 ? "Pick an icon graphic — AI suggests 3 on open" : "Pick an icon graphic"}
                       style={{
                         background: iconPickerOpen === i - 1 ? "var(--accent-dim)" : "var(--surface)",
                         color: iconPickerOpen === i - 1 ? "var(--accent)" : "var(--muted)",
@@ -1850,14 +1912,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                         padding: "7px 10px",
                         fontSize: 11,
                         fontFamily: "inherit",
-                        cursor: "pointer",
+                        cursor: suggestingIcons === i - 1 ? "not-allowed" : "pointer",
+                        opacity: suggestingIcons === i - 1 ? 0.6 : 1,
                         transition: "background 0.15s",
                         letterSpacing: "0.01em",
                         fontWeight: 600,
                         whiteSpace: "nowrap",
                       }}
                     >
-                      🔷 icon
+                      {suggestingIcons === i - 1 ? "🔷 …" : "🔷 icon"}
                     </button>
                     {isV2 && (() => {
                       const slideIdx = i - 1;
@@ -1918,9 +1981,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icons</span>
                     <span style={{ fontSize: 10, color: "var(--subtle)" }}>{getSelectedIcons(i - 1).length}/4</span>
+                    <button
+                      onClick={() => handleSuggestIcons(i - 1, { force: true })}
+                      disabled={suggestingIcons === i - 1}
+                      title="Let Claude pick 3 icons that fit this slide"
+                      style={{ background: "transparent", border: "1px solid var(--accent-mid)", borderRadius: 3, fontSize: 9, color: "var(--accent)", cursor: suggestingIcons === i - 1 ? "not-allowed" : "pointer", fontFamily: "inherit", padding: "1px 6px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                    >
+                      {suggestingIcons === i - 1 ? "✨ …" : "✨ Suggest 3"}
+                    </button>
+                    {getSelectedIcons(i - 1).length > 0 && (
+                      <button
+                        onClick={() => toggleShowLabels(i - 1)}
+                        title="Show or hide the text label beneath each icon"
+                        style={{ background: getShowLabels(i - 1) ? "var(--accent-dim)" : "transparent", border: `1px solid ${getShowLabels(i - 1) ? "var(--accent-mid)" : "var(--border)"}`, borderRadius: 3, fontSize: 9, color: getShowLabels(i - 1) ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "1px 6px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                      >
+                        Labels {getShowLabels(i - 1) ? "On" : "Off"}
+                      </button>
+                    )}
                     {getSelectedIcons(i - 1).length > 0 && (
                       <button onClick={() => clearSlideIcons(i - 1)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 9, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "1px 5px" }}>Clear</button>
                     )}
@@ -1942,7 +2022,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 </div>
                 {/* Category tabs */}
                 <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-                  {(["sleep", "health", "lifestyle", "fitness", "mind"] as IconCategory[]).map((cat) => (
+                  {(["sleep", "health", "lifestyle", "fitness", "mind", "daily"] as IconCategory[]).map((cat) => (
                     <button key={cat} onClick={() => setIconPickerCategory(cat)} style={{
                       flex: 1, padding: "6px 2px", border: "none",
                       borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
