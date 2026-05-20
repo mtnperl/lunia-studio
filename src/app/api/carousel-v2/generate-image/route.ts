@@ -49,15 +49,20 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
-    const override = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2'].includes(body.imageEngine))
-      ? (body.imageEngine as ImageEngine)
-      : undefined;
-    const textInImage: boolean = Boolean(body.textInImage);
-    const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override });
-
     // Pick a visual mood for this generation. If the caller passes one (e.g.
     // "regenerate with the same mood"), respect it; otherwise random.
     const mood: VisualMood = getMoodById(body.moodId) ?? pickRandomMood();
+
+    const explicitEngine = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2'].includes(body.imageEngine))
+      ? (body.imageEngine as ImageEngine)
+      : undefined;
+    // Lifestyle Health renders best on gpt-image-2 — sunlit DTC-wellness
+    // photography is its strongest lane. Caller-supplied imageEngine still wins.
+    const moodDefaultEngine: ImageEngine | undefined =
+      mood.id === 'lifestyle-health' ? 'gpt-image-2' : undefined;
+    const override = explicitEngine ?? moodDefaultEngine;
+    const textInImage: boolean = Boolean(body.textInImage);
+    const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override });
 
     const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
     // Append the mood's style block. Placing it AFTER the Claude-written
