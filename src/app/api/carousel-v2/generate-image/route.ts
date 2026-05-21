@@ -1,5 +1,5 @@
 import { fal, buildPrompt } from '@/lib/fal';
-import { checkRateLimit } from '@/lib/kv';
+import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook } from '@/lib/types';
 import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
@@ -65,15 +65,38 @@ export async function POST(req: Request) {
     const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override });
 
     const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
-    // Append the mood's style block. Placing it AFTER the Claude-written
-    // subject prompt biases the model toward the mood's color/lighting/finish
-    // while keeping Claude's compositional direction intact.
-    const prompt = `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.`;
-    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 100)}..."`);
+
+    // Lifestyle Health + gpt-image-2 = attach the Lunia bottle + logo from the
+    // asset library, the same way email-review does it. Other moods (cinematic
+    // dark, surreal, etc.) are conceptual and would be hurt by a real product
+    // reference; other engines (recraft / ideogram / flux2) don't take refs in
+    // our current wiring. Failures here are silent — fall back to text-only.
+    let referenceImageUrls: string[] = [];
+    if (mood.id === 'lifestyle-health' && engine === 'gpt-image-2') {
+      try {
+        const assets = await getAssets();
+        referenceImageUrls = assets
+          .filter((a) => a.assetType === 'logo' || a.assetType === 'product-image')
+          .map((a) => a.url)
+          .slice(0, 10);
+      } catch (assetErr) {
+        console.warn('[v2/generate-image] getAssets failed, generating without refs:', assetErr);
+      }
+    }
+
+    // When real Lunia assets are attached, tell gpt-image-2 to actually USE
+    // them instead of inventing a generic bottle / logo. Same phrasing pattern
+    // as the email-review prompts.
+    const referenceDirective = referenceImageUrls.length > 0
+      ? `\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Use the uploaded reference image for the Lunia logo, small and discreet, rendered exactly as supplied. The reference images win over any generic product description.`
+      : '';
+    const prompt = `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
+
+    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} refs=${referenceImageUrls.length} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 100)}..."`);
 
     let url: string | undefined;
     try {
-      url = await runEngine(engine, { prompt, imageStyle, imageSize, imageAspect });
+      url = await runEngine(engine, { prompt, imageStyle, imageSize, imageAspect, referenceImageUrls });
     } catch (engineErr) {
       // Surface fal.ai's actual error body so we can see what's wrong client-side
       const detail = extractFalError(engineErr);
@@ -111,6 +134,7 @@ type RunInput = {
   imageStyle: string;
   imageSize: { width: number; height: number };
   imageAspect: '4:5' | '9:16';
+  referenceImageUrls?: string[];
 };
 
 async function runEngine(engine: ImageEngine, input: RunInput): Promise<string | undefined> {
@@ -145,14 +169,17 @@ async function runEngine(engine: ImageEngine, input: RunInput): Promise<string |
   }
 
   if (engine === 'gpt-image-2') {
-    const result = await fal.subscribe(endpoint, {
-      input: {
-        prompt: input.prompt,
-        image_size: input.imageSize,
-        quality: 'high',
-      },
-      logs: false,
-    });
+    // Route to the /edit endpoint when we have reference images (logo +
+    // bottle for lifestyle-health). Same pattern as email-image-engine.
+    const refs = (input.referenceImageUrls ?? []).filter(Boolean);
+    const gptEndpoint = refs.length > 0 ? 'openai/gpt-image-2/edit' : endpoint;
+    const gptInput: Record<string, unknown> = {
+      prompt: input.prompt,
+      image_size: input.imageSize,
+      quality: 'high',
+    };
+    if (refs.length > 0) gptInput.image_urls = refs.slice(0, 10);
+    const result = await fal.subscribe(gptEndpoint, { input: gptInput, logs: false });
     return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
   }
 
