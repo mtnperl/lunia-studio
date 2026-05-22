@@ -41,10 +41,13 @@ export async function POST(req: Request) {
     const mood = getMoodById(body.mood);
     const moodBlock = mood ? ` ${mood.styleBlock}.` : "";
 
+    // "medium" not "high": these are text-free lifestyle photos shown small in
+    // an email, so medium is visually equivalent — but 3-4× faster (~40s vs
+    // 2-3 min). The slow "high" path made regeneration feel stuck / unchanged.
     const falUrl = await generateEmailImage({
       prompt: prompt + moodBlock + SAFETY_SUFFIX,
       aspect,
-      quality: "high",
+      quality: "medium",
     });
 
     const url = await mirrorImageToBlob(falUrl, `campaign-${randomUUID()}`, "campaign-images");
