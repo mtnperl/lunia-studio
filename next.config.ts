@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["remotion", "@remotion/player", "@remotion/lambda"],
@@ -34,7 +33,10 @@ const nextConfig: NextConfig = {
     ],
   },
   turbopack: {
-    root: path.resolve(__dirname),
+    // Project root. Avoid `__dirname` — it is undefined when Vercel's build
+    // CLI evaluates this ESM config, which crashed the deploy. `process.cwd()`
+    // is the project root during both `next build` and `next dev`.
+    root: process.cwd(),
   },
 };
 
