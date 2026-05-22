@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { CampaignImageSlot } from "@/lib/types";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import AssetPicker from "./AssetPicker";
-import { Spinner, ImageGenStatus } from "./Loaders";
+import { ImageGenStatus } from "./Loaders";
 
 const DEFAULT_MOOD = "lifestyle-health";
 
@@ -20,6 +20,14 @@ const miniBtn = (active = false): React.CSSProperties => ({
   background: active ? "var(--accent-dim)" : "transparent",
   color: active ? "var(--accent)" : "var(--muted)",
   borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+});
+
+const moodChip = (active: boolean): React.CSSProperties => ({
+  padding: "3px 8px", fontSize: 10, fontWeight: active ? 700 : 500,
+  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+  background: active ? "var(--accent-dim)" : "transparent",
+  color: active ? "var(--accent)" : "var(--muted)",
+  borderRadius: 20, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
 });
 
 export default function ImageSlotControl({
@@ -41,6 +49,7 @@ export default function ImageSlotControl({
     slot.prompt?.trim()
       ? slot.prompt
       : slot.source === "generated" ? buildDefaultPrompt() : "";
+  const activeMood = slot.mood ?? DEFAULT_MOOD;
 
   // Flip to generated — and make sure a prompt + mood are already in place.
   function switchToGenerated() {
@@ -60,7 +69,7 @@ export default function ImageSlotControl({
       const res = await fetch("/api/campaign/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: effectivePrompt, aspect: slot.aspect, mood: slot.mood ?? DEFAULT_MOOD }),
+        body: JSON.stringify({ prompt: effectivePrompt, aspect: slot.aspect, mood: activeMood }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
@@ -88,30 +97,25 @@ export default function ImageSlotControl({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10 }}>
-        {/* Thumbnail */}
-        <div style={{
-          width: 84, height: slot.aspect === "1:1" ? 84 : 105, flexShrink: 0,
-          borderRadius: 6, overflow: "hidden", background: "var(--bg)",
-          border: "1px solid var(--border)", position: "relative",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          {slot.url
-            ? <img src={slot.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <span style={{ fontSize: 9, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>No image</span>}
-          {generating && (
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Spinner size={18} color="#fff" />
-            </div>
-          )}
-        </div>
+      {generating ? (
+        <ImageGenStatus />
+      ) : (
+        <div style={{ display: "flex", gap: 10 }}>
+          {/* Thumbnail */}
+          <div style={{
+            width: 84, height: slot.aspect === "1:1" ? 84 : 105, flexShrink: 0,
+            borderRadius: 6, overflow: "hidden", background: "var(--bg)",
+            border: "1px solid var(--border)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {slot.url
+              ? <img src={slot.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ fontSize: 9, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>No image</span>}
+          </div>
 
-        {/* Controls */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {slot.source === "generated" ? (
-            generating ? (
-              <ImageGenStatus />
-            ) : (
+          {/* Controls */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {slot.source === "generated" ? (
               <>
                 <textarea
                   value={effectivePrompt}
@@ -125,31 +129,25 @@ export default function ImageSlotControl({
                     resize: "vertical",
                   }}
                 />
-                {/* Visual mood — the carousel v2 style list */}
-                <label style={{ display: "block", marginTop: 6 }}>
+                {/* Visual mood — the carousel v2 style list, shown as chips */}
+                <div style={{ marginTop: 7 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Visual mood
                   </span>
-                  <select
-                    value={slot.mood ?? DEFAULT_MOOD}
-                    onChange={(e) => onChange({ ...slot, mood: e.target.value })}
-                    style={{
-                      width: "100%", marginTop: 3, boxSizing: "border-box",
-                      fontSize: 11, fontFamily: "inherit", color: "var(--text)",
-                      padding: "5px 6px", borderRadius: 5,
-                      border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
-                    }}
-                  >
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
                     {VISUAL_MOODS.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
+                      <button key={m.id} style={moodChip(activeMood === m.id)}
+                        onClick={() => onChange({ ...slot, mood: m.id })}>
+                        {m.label}
+                      </button>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                </div>
                 <button
                   onClick={generate}
                   disabled={!effectivePrompt.trim()}
                   style={{
-                    marginTop: 6, padding: "5px 12px", fontSize: 11, fontWeight: 700,
+                    marginTop: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700,
                     background: "var(--accent)", color: "var(--bg)", border: "none",
                     borderRadius: 5, fontFamily: "inherit",
                     cursor: !effectivePrompt.trim() ? "not-allowed" : "pointer",
@@ -159,22 +157,22 @@ export default function ImageSlotControl({
                   {slot.url ? "Regenerate" : "Generate image"}
                 </button>
               </>
-            )
-          ) : (
-            <>
-              <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px", lineHeight: 1.45 }}>
-                Uses an uploaded asset (bottle / logo / product). Never AI-generated.
-              </p>
-              <button style={miniBtn(false)} onClick={() => setPickerOpen((v) => !v)}>
-                {slot.url ? "Swap asset" : "Choose asset"}
-              </button>
-            </>
-          )}
-          {error && <p style={{ fontSize: 10, color: "var(--error)", margin: "6px 0 0" }}>{error}</p>}
+            ) : (
+              <>
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px", lineHeight: 1.45 }}>
+                  Uses an uploaded asset (bottle / logo / product). Never AI-generated.
+                </p>
+                <button style={miniBtn(false)} onClick={() => setPickerOpen((v) => !v)}>
+                  {slot.url ? "Swap asset" : "Choose asset"}
+                </button>
+              </>
+            )}
+            {error && <p style={{ fontSize: 10, color: "var(--error)", margin: "6px 0 0" }}>{error}</p>}
+          </div>
         </div>
-      </div>
+      )}
 
-      {slot.source === "asset" && pickerOpen && (
+      {slot.source === "asset" && pickerOpen && !generating && (
         <AssetPicker
           selectedId={slot.assetId}
           onClose={() => setPickerOpen(false)}
