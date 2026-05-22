@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -147,6 +147,39 @@ export async function deleteCarouselKv(id: string): Promise<void> {
   const all = await getCarousels();
   const filtered = all.filter((c) => c.id !== id);
   await redis.set(CAROUSELS_KEY, filtered, { ex: TTL_SECONDS });
+}
+
+// ─── Campaign emails (campaign builder) ───────────────────────────────────────
+const CAMPAIGN_EMAILS_KEY = "lunia:campaign-emails";
+
+export async function getCampaignEmails(): Promise<SavedCampaign[]> {
+  try {
+    return (await redis.get<SavedCampaign[]>(CAMPAIGN_EMAILS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveCampaignEmail(campaign: SavedCampaign): Promise<void> {
+  const all = await getCampaignEmails();
+  const idx = all.findIndex((c) => c.id === campaign.id);
+  if (idx >= 0) {
+    all[idx] = campaign;
+  } else {
+    all.unshift(campaign);
+  }
+  await redis.set(CAMPAIGN_EMAILS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+}
+
+export async function getCampaignEmailById(id: string): Promise<SavedCampaign | null> {
+  const all = await getCampaignEmails();
+  return all.find((c) => c.id === id) ?? null;
+}
+
+export async function deleteCampaignEmailKv(id: string): Promise<void> {
+  const all = await getCampaignEmails();
+  const filtered = all.filter((c) => c.id !== id);
+  await redis.set(CAMPAIGN_EMAILS_KEY, filtered, { ex: TTL_SECONDS });
 }
 
 // ─── Asset metadata ───────────────────────────────────────────────────────────

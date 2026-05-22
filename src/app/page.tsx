@@ -5,6 +5,8 @@ import EditorView from "@/components/EditorView";
 import LibraryView from "@/components/LibraryView";
 import CarouselView from "@/components/CarouselView";
 import CarouselViewV2 from "@/components/CarouselViewV2";
+import CampaignView from "@/components/CampaignView";
+import CampaignLibraryView from "@/components/CampaignLibraryView";
 import BatchView from "@/components/BatchView";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
@@ -29,7 +31,7 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
 
 const LIGHT_VARS: Record<string, string> = {
@@ -66,6 +68,8 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "carousel-library": IconFolder,
   "email-reviews": IconSparkles,
   "email-flows": IconBoard,
+  campaign: IconSparkles,
+  "campaign-library": IconFolder,
   video: IconVideo,
   "video-library": IconFolder,
   "video-assets": IconImage,
@@ -90,6 +94,8 @@ const TAB_TITLES: Record<string, string> = {
   "carousel-library": "Carousel library",
   "email-reviews": "Email flow reviews",
   "email-flows": "Saved flow reviews",
+  campaign: "Campaign builder",
+  "campaign-library": "Campaign library",
   video: "Video builder",
   "video-library": "Video library",
   "video-assets": "Video assets",
@@ -124,8 +130,10 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   {
     section: "Email",
     items: [
-      { key: "email-reviews", product: "carousel", label: "Flow reviews" },
-      { key: "email-flows",   product: "carousel", label: "Saved reviews" },
+      { key: "campaign",         product: "carousel", label: "Campaign builder" },
+      { key: "campaign-library", product: "carousel", label: "Campaign library" },
+      { key: "email-reviews",    product: "carousel", label: "Flow reviews" },
+      { key: "email-flows",      product: "carousel", label: "Saved reviews" },
     ],
   },
   ...(SHOW_VIDEO ? [{
@@ -161,6 +169,7 @@ export default function Page() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
+  const [pendingCampaign, setPendingCampaign] = useState<import("@/lib/types").SavedCampaign | null>(null);
   const [pendingEmailFlow, setPendingEmailFlow] = useState<import("@/lib/types").EmailFlow | null>(null);
   const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
 
@@ -494,6 +503,12 @@ export default function Page() {
               onConvertToEmail={(c) => { setPendingCarousel(c); setTab("email-reviews"); }}
             />
           </div>
+        )}
+        {tab === "campaign" && (
+          <CampaignView initialCampaign={pendingCampaign} onCampaignLoaded={() => setPendingCampaign(null)} />
+        )}
+        {tab === "campaign-library" && (
+          <CampaignLibraryView onOpen={(c) => { setPendingCampaign(c); setTab("campaign"); }} />
         )}
         {tab === "email-reviews" && (
           <EmailReviewView

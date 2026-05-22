@@ -410,6 +410,47 @@ export type MultiVariantResponse = {
   warning?: string; // e.g. "2 of 5 variants failed — showing 3"
 };
 
+// ─── Campaign builder (email campaigns) ──────────────────────────────────────
+
+/** One image in a campaign email. Either AI-generated (lifestyle, no text/logo)
+ *  or sourced from an uploaded asset (bottle / logo / product shots). */
+export type CampaignImageSlot = {
+  id: string;
+  role: "hero" | "secondary";
+  source: "generated" | "asset";
+  /** generated: gpt-image-2 lifestyle prompt — no text, no bottle, no logo. */
+  prompt?: string;
+  aspect: "4:5" | "1:1";
+  /** asset: chosen uploaded asset id (from the asset library). */
+  assetId?: string;
+  /** Resolved final image url — mirrored blob url (generated) or asset url. */
+  url?: string | null;
+};
+
+export type CampaignBlock = {
+  id: string;
+  body: string;
+  align: "left" | "center";
+  italic?: boolean;
+};
+
+export type CampaignContent = {
+  subjectLines: string[];        // 3 options
+  selectedSubject: number;
+  previewText: string;           // preheader
+  promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
+  blocks: CampaignBlock[];       // ordered body text blocks
+  cta: { label: string; url: string };
+  images: CampaignImageSlot[];   // 1 hero + 2–4 secondary
+};
+
+export type SavedCampaign = {
+  id: string;
+  topic: string;
+  createdAt: string;
+  content: CampaignContent;
+};
+
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────
 
 export type MetaCampaign = {
