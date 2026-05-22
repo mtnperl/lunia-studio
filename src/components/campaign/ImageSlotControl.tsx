@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { CampaignImageSlot } from "@/lib/types";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import AssetPicker from "./AssetPicker";
-import { ImageGenStatus } from "./Loaders";
+import { ImageGenStatus, Spinner } from "./Loaders";
 
 const DEFAULT_MOOD = "lifestyle-health";
 
@@ -33,13 +33,16 @@ const moodChip = (active: boolean): React.CSSProperties => ({
 export default function ImageSlotControl({
   slot,
   label,
+  topic,
   onChange,
 }: {
   slot: CampaignImageSlot;
   label: string;
+  topic: string;
   onChange: (next: CampaignImageSlot) => void;
 }) {
   const [generating, setGenerating] = useState(false);
+  const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -59,6 +62,29 @@ export default function ImageSlotControl({
       prompt: slot.prompt?.trim() ? slot.prompt : buildDefaultPrompt(),
       mood: slot.mood ?? DEFAULT_MOOD,
     });
+  }
+
+  async function regeneratePrompt() {
+    if (regeneratingPrompt) return;
+    setRegeneratingPrompt(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaign/regenerate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, role: slot.role, currentPrompt: effectivePrompt }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.prompt) {
+        setError(data.error ?? "Could not rewrite the prompt");
+        return;
+      }
+      onChange({ ...slot, prompt: data.prompt });
+    } catch {
+      setError("Network error — please try again");
+    } finally {
+      setRegeneratingPrompt(false);
+    }
   }
 
   async function generate() {
@@ -129,6 +155,22 @@ export default function ImageSlotControl({
                     resize: "vertical",
                   }}
                 />
+                {/* Rewrite the prompt with AI, based on the email topic */}
+                <button
+                  onClick={regeneratePrompt}
+                  disabled={regeneratingPrompt}
+                  style={{
+                    marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "3px 8px", fontSize: 10, fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: "0.04em",
+                    border: "1px solid var(--border)", background: "transparent",
+                    color: "var(--muted)", borderRadius: 5, fontFamily: "inherit",
+                    cursor: regeneratingPrompt ? "wait" : "pointer",
+                  }}
+                >
+                  {regeneratingPrompt && <Spinner size={10} />}
+                  {regeneratingPrompt ? "Writing prompt…" : "↻ Regenerate prompt"}
+                </button>
                 {/* Visual mood — the carousel v2 style list, shown as chips */}
                 <div style={{ marginTop: 7 }}>
                   <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>

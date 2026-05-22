@@ -210,7 +210,7 @@ export default function CampaignEditor({
                 : `Image ${secondaryImages.indexOf(img) + 2}`;
               return (
                 <div key={img.id} style={{ position: "relative" }}>
-                  <ImageSlotControl slot={img} label={label} onChange={updateImage} />
+                  <ImageSlotControl slot={img} label={label} topic={topic} onChange={updateImage} />
                   {img.role === "secondary" && secondaryImages.length > 2 && (
                     <button
                       onClick={() => removeImage(img.id)}
