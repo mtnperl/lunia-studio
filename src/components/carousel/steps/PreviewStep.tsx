@@ -14,6 +14,20 @@ import FeedPreview, { type FeedMode } from "@/components/carousel/preview/FeedPr
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
+import SlideRail from "@/components/carousel/preview/SlideRail";
+import InspectorPanel from "@/components/carousel/preview/InspectorPanel";
+
+// v2 editor: which tool panel is docked in the inspector (null = closed).
+type InspectorMode =
+  | null
+  | "settings"
+  | "text"
+  | "icons"
+  | "graphicType"
+  | "graphicData"
+  | "overlays"
+  | "image"
+  | "graphicComment";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -64,14 +78,54 @@ function toolbarBtnStyle(active: boolean): React.CSSProperties {
   };
 }
 
+// ─── v2 editor action-bar button ──────────────────────────────────────────────
+function ToolbarButton({ label, onClick, active = false, disabled = false }: {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...toolbarBtnStyle(active), opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ─── Hook overlay panel helpers ───────────────────────────────────────────────
-function OverlayRow({ label, hint, enabled, onToggle, children }: {
+function OverlayRow({ label, hint, enabled, onToggle, children, compact = false }: {
   label: string;
   hint: string;
   enabled: boolean;
   onToggle: (v: boolean) => void;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", gap: 8,
+        padding: "8px 0", borderTop: "1px dashed var(--border)",
+        opacity: enabled ? 1 : 0.5,
+      }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => onToggle(e.target.checked)}
+            style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+          />
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
+          <span style={{ fontSize: 10, color: "var(--subtle)" }}>{hint}</span>
+        </label>
+        <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
+      </div>
+    );
+  }
   return (
     <div style={{
       display: "grid",
@@ -191,9 +245,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Collapsible "Slide controls" drawer — open by default, collapse to bring the
   // preview up and clear the screen.
   const [controlsOpen, setControlsOpen] = useState(true);
-  // v2-only: feed view (single-slide phone mockup) toggle + current index
-  const [viewMode, setViewMode] = useState<"strip" | "feed">("feed");
+  // v2-only: editor (3-zone workspace) vs feed (IG/TikTok mockup preview)
+  const [viewMode, setViewMode] = useState<"editor" | "feed">("editor");
   const [feedIndex, setFeedIndex] = useState(0);
+  // v2 editor: focused slide shown in the canvas + which inspector panel is open
+  const [focusedSlide, setFocusedSlide] = useState(0);
+  const [inspectorMode, setInspectorMode] = useState<InspectorMode>(null);
+  // v2 editor: AI-suggested icon ids for the focused content slide, held
+  // un-applied so opening the icon panel never mutates the slide.
+  const [iconSuggestions, setIconSuggestions] = useState<string[]>([]);
+  // v2 editor: measured editor width — canvas scale is derived from it.
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const [editorW, setEditorW] = useState(0);
   // v2-only: graphic type picker — which slide's picker is open (or null)
   const [typePickerOpen, setTypePickerOpen] = useState<number | null>(null);
   // v2-only: graphic data editor — which slide's editor is open (or null)
@@ -714,9 +777,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       });
       const data = await res.json();
       if (res.ok && Array.isArray(data.icons) && data.icons.length > 0) {
-        // Auto-pick is always label-free — that's the whole reason the user
-        // reaches for it. Manual override (toggle, regen) still works.
-        writeIconGraphic(slideIndex, data.icons.slice(0, 4), iconPickerLayout, false);
+        const picks = data.icons.slice(0, 4) as string[];
+        if (isV2) {
+          // v2: hold suggestions un-applied — the slide only changes when the
+          // user clicks "Use these" or an individual suggested chip.
+          setIconSuggestions(picks);
+        } else {
+          // v1: auto-pick writes straight to the slide, label-free.
+          writeIconGraphic(slideIndex, picks, iconPickerLayout, false);
+        }
       } else if (!opts?.force) {
         // Silent failure on first-click auto-suggest; surface only if user explicitly clicked ✨.
       }
@@ -735,6 +804,48 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (willOpen && getSelectedIcons(slideIndex).length === 0) {
       void handleSuggestIcons(slideIndex);
     }
+  }
+
+  // ─── v2 editor helpers ────────────────────────────────────────────────────
+  // Open an inspector tool for the focused slide. Toggles closed if already open.
+  function openInspector(mode: Exclude<InspectorMode, null>) {
+    setInspectorMode((cur) => (cur === mode ? null : mode));
+  }
+
+  // Open the icon panel for a content slide (slideIndex 0-2). Never mutates the
+  // slide — auto-fetches suggestions only when the slide has no icons yet.
+  function openIconInspector() {
+    const slideIndex = focusedSlide - 1;
+    const willOpen = inspectorMode !== "icons";
+    setInspectorMode(willOpen ? "icons" : null);
+    if (willOpen && slideIndex >= 0 && slideIndex <= 2
+        && getSelectedIcons(slideIndex).length === 0 && iconSuggestions.length === 0) {
+      void handleSuggestIcons(slideIndex);
+    }
+  }
+
+  // Focus a slide in the canvas. Clears stale icon suggestions and closes any
+  // inspector panel that doesn't apply to the newly focused slide.
+  function selectSlide(i: number) {
+    setFocusedSlide(i);
+    setIconSuggestions([]);
+    setInspectorMode((cur) => {
+      if (cur === null || cur === "settings") return cur;
+      const isContent = i >= 1 && i <= 3;
+      const isHook = i === 0;
+      if ((cur === "icons" || cur === "text" || cur === "graphicType"
+        || cur === "graphicData" || cur === "graphicComment") && !isContent) return null;
+      if ((cur === "overlays" || cur === "image") && !isHook) return null;
+      return cur;
+    });
+  }
+
+  // Apply AI-suggested icons to the focused content slide (label-free, like v1
+  // auto-pick). Used by the "Use these" button in the v2 icon inspector.
+  function applyIconSuggestions(ids: string[]) {
+    const slideIndex = focusedSlide - 1;
+    if (slideIndex < 0 || slideIndex > 2) return;
+    writeIconGraphic(slideIndex, ids.slice(0, 4), iconPickerLayout, false);
   }
 
   async function handleRegenerateSlide(slideIndex: number) {
@@ -1047,6 +1158,497 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     });
   }
 
+  // ─── v2 inspector body renderer ───────────────────────────────────────────
+  // Returns the docked panel's title + body for the current inspectorMode.
+  // All tool panels live here so opening one never reflows the canvas.
+  function getInspector(): { title: string; subtitle?: string; body: React.ReactNode } | null {
+    if (!inspectorMode) return null;
+    const slideIdx = focusedSlide - 1; // 0-2 when a content slide is focused
+
+    // ── Settings ──────────────────────────────────────────────────────────
+    if (inspectorMode === "settings") {
+      const sizeRow = (label: string, vals: readonly number[], labels: string[], cur: number, set: (v: number) => void) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>{label}</span>
+          {vals.map((s, idx) => (
+            <button key={s} onClick={() => set(s)} style={{
+              padding: "3px 8px", fontSize: 11, fontWeight: 700,
+              background: cur === s ? "var(--text)" : "var(--surface)",
+              color: cur === s ? "var(--bg)" : "var(--muted)",
+              border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+            }}>{labels[idx]}</button>
+          ))}
+        </div>
+      );
+      return {
+        title: "Settings",
+        body: (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
+            {sizeRow("Logo", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], logoScale, setLogoScale)}
+            {sizeRow("Arrows", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], arrowScale, setArrowScale)}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Lunia Life</span>
+              <button onClick={() => setShowLuniaLifeWatermark((v) => !v)} style={{
+                padding: "3px 10px", fontSize: 11, fontWeight: 700,
+                background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
+                color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+              }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Format</span>
+              <button onClick={() => setReelsMode(false)} style={{
+                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                background: !reelsMode ? "var(--accent)" : "var(--surface)",
+                color: !reelsMode ? "var(--bg)" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+              }}>4:5</button>
+              <button onClick={() => setReelsMode(true)} style={{
+                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                background: reelsMode ? "var(--accent)" : "var(--surface)",
+                color: reelsMode ? "var(--bg)" : "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+              }}>9:16</button>
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Text &amp; content</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Slides bg</span>
+              {([{ label: "Dark", color: "#01253f" }, { label: "Light", color: "#F7F4EF" }] as const).map(({ label, color }) => {
+                const active = slideBgColor?.toLowerCase() === color.toLowerCase();
+                return (
+                  <button key={color} onClick={() => { setSlideBgColor(color); setDarkBackground(color === "#F7F4EF"); }} style={{
+                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    background: active ? "var(--text)" : "var(--surface)",
+                    color: active ? "var(--bg)" : "var(--muted)",
+                    border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: color, border: "1px solid rgba(0,0,0,0.15)" }} />
+                    {label}
+                  </button>
+                );
+              })}
+              <label style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 6px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer" }}>
+                <input type="color" value={slideBgColor ?? "#01253f"} onChange={(e) => { const c = e.target.value; setSlideBgColor(c); setDarkBackground(c.toLowerCase() === "#f7f4ef"); }} style={{ width: 18, height: 18, padding: 0, border: "none", background: "transparent", cursor: "pointer" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Custom</span>
+              </label>
+              {slideBgColor !== undefined && (
+                <button onClick={() => setSlideBgColor(undefined)} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--subtle)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}>×</button>
+              )}
+            </div>
+            {contentBgImages.some((u) => !!u) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Bg dim</span>
+                <input type="range" min={0} max={0.9} step={0.05} value={contentBgOverlayOpacity} onChange={(e) => setContentBgOverlayOpacity(parseFloat(e.target.value))} style={{ width: 110 }} />
+                <span style={{ fontSize: 10, color: "var(--subtle)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
+              </div>
+            )}
+            {sizeRow("Citation", [18, 26, 36, 48], ["S", "M", "L", "XL"], citationFontSize, setCitationFontSize)}
+            {sizeRow("Headline", [0.85, 1, 1.15, 1.3], ["S", "M", "L", "XL"], headlineScale, setHeadlineScale)}
+            {sizeRow("Body", [0.85, 1, 1.2, 1.5, 1.85, 2.25], ["S", "M", "L", "XL", "2XL", "3XL"], bodyScale, setBodyScale)}
+          </div>
+        ),
+      };
+    }
+
+    // ── Text editor (content slides) ──────────────────────────────────────
+    if (inspectorMode === "text") {
+      const slide = content.slides[slideIdx];
+      if (!slide) return null;
+      return {
+        title: `${SLIDE_LABELS[focusedSlide]} text`,
+        body: (
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Headline</label>
+            <input
+              type="text"
+              value={slide.headline}
+              onChange={(e) => updateSlideField(slideIdx, "headline", e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.4, fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)", marginBottom: 12 }}
+            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Main text</label>
+            <textarea
+              value={slide.body}
+              onChange={(e) => updateSlideField(slideIdx, "body", e.target.value)}
+              rows={6}
+              style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" }}
+            />
+          </div>
+        ),
+      };
+    }
+
+    // ── Icon picker (non-destructive suggestions) ─────────────────────────
+    if (inspectorMode === "icons") {
+      const selected = getSelectedIcons(slideIdx);
+      const showLabels = getShowLabels(slideIdx);
+      const loadingSuggestions = suggestingIcons === slideIdx;
+      const iconById = (id: string) => CAROUSEL_ICONS.find((ic) => ic.id === id);
+      return {
+        title: `${SLIDE_LABELS[focusedSlide]} icons`,
+        subtitle: `${selected.length}/4 selected`,
+        body: (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Suggestions row — un-applied until the user acts */}
+            <div style={{ border: "1px dashed var(--accent-mid)", borderRadius: 6, padding: "8px 10px", background: "var(--accent-dim)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI suggestions</span>
+                <button
+                  onClick={() => handleSuggestIcons(slideIdx, { force: true })}
+                  disabled={loadingSuggestions}
+                  style={{ background: "transparent", border: "1px solid var(--accent-mid)", borderRadius: 3, fontSize: 9, color: "var(--accent)", cursor: loadingSuggestions ? "not-allowed" : "pointer", fontFamily: "inherit", padding: "1px 6px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                >
+                  {loadingSuggestions ? "Picking…" : "Suggest 3"}
+                </button>
+              </div>
+              {loadingSuggestions ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0" }}>
+                  <span style={{ display: "inline-block", width: 11, height: 11, border: "2px solid var(--accent-mid)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>Claude is picking icons…</span>
+                </div>
+              ) : iconSuggestions.length > 0 ? (
+                <>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                    {iconSuggestions.map((id) => {
+                      const ic = iconById(id);
+                      if (!ic) return null;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => toggleSlideIcon(slideIdx, id)}
+                          title={`Add ${ic.label}`}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 8px", border: "1px dashed var(--accent-mid)", borderRadius: 6, background: "var(--bg)", cursor: "pointer" }}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: ic.svg }} />
+                          <span style={{ fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{ic.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => applyIconSuggestions(iconSuggestions)}
+                    style={{ width: "100%", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 5, padding: "6px 0", fontSize: 11, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em", textTransform: "uppercase" }}
+                  >
+                    Use these {iconSuggestions.length} icons
+                  </button>
+                </>
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>No suggestions yet — tap “Suggest 3”.</span>
+              )}
+            </div>
+
+            {/* Current selection controls */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {selected.length > 0 && (
+                <button
+                  onClick={() => toggleShowLabels(slideIdx)}
+                  style={{ background: showLabels ? "var(--accent-dim)" : "transparent", border: `1px solid ${showLabels ? "var(--accent-mid)" : "var(--border)"}`, borderRadius: 3, fontSize: 9, color: showLabels ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                >
+                  Labels {showLabels ? "On" : "Off"}
+                </button>
+              )}
+              {selected.length > 0 && (
+                <button onClick={() => clearSlideIcons(slideIdx)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 9, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>Clear</button>
+              )}
+            </div>
+
+            {/* Layout picker */}
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Layout</span>
+              {(["row", "column", "grid", "scattered"] as const).map((lyt) => (
+                <button key={lyt} onClick={() => applyIconLayout(slideIdx, lyt)} style={{
+                  padding: "2px 7px", fontSize: 9, fontWeight: 700,
+                  background: iconPickerLayout === lyt ? "var(--accent)" : "var(--bg)",
+                  color: iconPickerLayout === lyt ? "#fff" : "var(--muted)",
+                  border: "1px solid var(--border)", borderRadius: 3, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.04em",
+                }}>{lyt}</button>
+              ))}
+            </div>
+
+            {/* Category tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
+              {(["sleep", "health", "lifestyle", "fitness", "mind", "daily"] as IconCategory[]).map((cat) => (
+                <button key={cat} onClick={() => setIconPickerCategory(cat)} style={{
+                  flex: 1, padding: "6px 2px", border: "none",
+                  borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
+                  background: "transparent", fontSize: 9, fontWeight: iconPickerCategory === cat ? 700 : 500,
+                  color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
+                  cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "inherit",
+                }}>{cat}</button>
+              ))}
+            </div>
+
+            {/* Icon grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2, maxHeight: 240, overflowY: "auto" }}>
+              {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
+                const isSelected = selected.includes(ic.id);
+                const atMax = selected.length >= 4 && !isSelected;
+                return (
+                  <button key={ic.id} onClick={() => toggleSlideIcon(slideIdx, ic.id)} title={ic.label} disabled={atMax} style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 4px",
+                    border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
+                    borderRadius: 6, background: isSelected ? "var(--accent-dim)" : "transparent",
+                    cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.35 : 1,
+                  }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke={isSelected ? "var(--accent)" : "var(--muted)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }} dangerouslySetInnerHTML={{ __html: ic.svg }} />
+                    <span style={{ fontSize: 8, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.04em" }}>{ic.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ),
+      };
+    }
+
+    // ── Graphic type picker ───────────────────────────────────────────────
+    if (inspectorMode === "graphicType") {
+      const slide = content.slides[slideIdx];
+      if (!slide) return null;
+      let currentComp: string | undefined;
+      try { currentComp = JSON.parse(slide.graphic ?? "{}").component; } catch {}
+      const atLimit = (graphicRegenCount[slideIdx] ?? 0) >= GRAPHIC_REGEN_LIMIT;
+      return {
+        title: `${SLIDE_LABELS[focusedSlide]} graphic type`,
+        body: (
+          <PanelErrorBoundary label="Graphic type picker" onClose={() => setInspectorMode(null)}>
+            <GraphicTypePicker
+              currentComponent={currentComp}
+              brandStyle={bs}
+              busy={regeneratingGraphic === slideIdx || atLimit}
+              onClose={() => setInspectorMode(null)}
+              onPick={(componentKey) => {
+                if (atLimit) {
+                  setGraphicError(`Regeneration limit reached for this slide (${GRAPHIC_REGEN_LIMIT}/session). Reload the page to reset.`);
+                  return;
+                }
+                handleRegenerateGraphic(slideIdx, "", componentKey);
+                setInspectorMode(null);
+              }}
+            />
+          </PanelErrorBoundary>
+        ),
+      };
+    }
+
+    // ── Graphic data editor ───────────────────────────────────────────────
+    if (inspectorMode === "graphicData") {
+      const slide = content.slides[slideIdx];
+      if (!slide) return null;
+      return {
+        title: `${SLIDE_LABELS[focusedSlide]} graphic data`,
+        body: (
+          <PanelErrorBoundary label="Graphic data editor" onClose={() => setInspectorMode(null)}>
+            <GraphicDataEditor
+              graphicJson={slide.graphic ?? ""}
+              onClose={() => setInspectorMode(null)}
+              onSave={(newJson) => {
+                const slides = [...content.slides];
+                slides[slideIdx] = { ...slides[slideIdx], graphic: newJson };
+                onContentChange({ ...config, content: { ...content, slides } });
+              }}
+            />
+          </PanelErrorBoundary>
+        ),
+      };
+    }
+
+    // ── Graphic regeneration comment ──────────────────────────────────────
+    if (inspectorMode === "graphicComment") {
+      const slide = content.slides[slideIdx];
+      if (!slide) return null;
+      const used = graphicRegenCount[slideIdx] ?? 0;
+      const draft = graphicComment[slideIdx] ?? "";
+      const isBusy = regeneratingGraphic === slideIdx;
+      const atLimit = used >= GRAPHIC_REGEN_LIMIT;
+      return {
+        title: `Regenerate graphic`,
+        subtitle: `${used}/${GRAPHIC_REGEN_LIMIT} used this session`,
+        body: (
+          <div>
+            <textarea
+              value={draft}
+              onChange={(e) => setGraphicComment((prev) => ({ ...prev, [slideIdx]: e.target.value.slice(0, 400) }))}
+              placeholder="Optional — what to change? e.g. 'use minutes not hours', 'make this a vertical comparison'"
+              rows={3}
+              style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: 12, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
+              <span style={{ fontSize: 10, color: "var(--subtle)" }}>{draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}</span>
+              <button
+                onClick={() => handleRegenerateGraphic(slideIdx, draft)}
+                disabled={isBusy || atLimit}
+                style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: (isBusy || atLimit) ? "not-allowed" : "pointer", opacity: (isBusy || atLimit) ? 0.6 : 1 }}
+              >
+                {isBusy ? "Generating…" : atLimit ? "Limit reached" : (draft.trim() ? "Regenerate with comment" : "Regenerate")}
+              </button>
+            </div>
+          </div>
+        ),
+      };
+    }
+
+    // ── Hook overlays ─────────────────────────────────────────────────────
+    if (inspectorMode === "overlays") {
+      const wash = hookOverlays.backgroundWash ?? WASH_SEED;
+      const setWash = (patch: Partial<BackgroundWash>) =>
+        setHookOverlays((s) => ({ ...s, backgroundWash: { ...(s.backgroundWash ?? WASH_SEED), ...patch } }));
+      return {
+        title: "Hook overlays",
+        subtitle: "Layered effects on the hook image — live + in export.",
+        body: (
+          <div style={{ display: "grid", gap: 12 }}>
+            <button
+              onClick={() => setHookOverlays({
+                ...DEFAULT_HOOK_OVERLAYS,
+                frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
+              })}
+              style={{ alignSelf: "flex-start", background: "transparent", border: "1px solid var(--border)", borderRadius: 5, fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "4px 8px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600 }}
+            >
+              Reset
+            </button>
+            <OverlayRow compact label="Editorial frame" hint="Thin inset border" enabled={hookOverlays.frame.enabled} onToggle={(v) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, enabled: v } }))}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="color" value={hookOverlays.frame.color} onChange={(e) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, color: e.target.value } }))} style={{ width: 28, height: 22, border: "1px solid var(--border)", borderRadius: 4, padding: 0, background: "transparent", cursor: "pointer" }} />
+                <SliderControl label="Opacity" min={0} max={1} step={0.05} value={hookOverlays.frame.opacity} onChange={(v) => setHookOverlays((s) => ({ ...s, frame: { ...s.frame, opacity: v } }))} />
+              </div>
+            </OverlayRow>
+            <OverlayRow compact label="Soft vignette" hint="Darkens corners" enabled={hookOverlays.vignette.enabled} onToggle={(v) => setHookOverlays((s) => ({ ...s, vignette: { ...s.vignette, enabled: v } }))}>
+              <SliderControl label="Strength" min={0} max={0.6} step={0.05} value={hookOverlays.vignette.intensity} onChange={(v) => setHookOverlays((s) => ({ ...s, vignette: { ...s.vignette, intensity: v } }))} />
+            </OverlayRow>
+            <OverlayRow compact label="Color grade" hint="Editorial polish" enabled={hookOverlays.colorGrade.enabled} onToggle={(v) => setHookOverlays((s) => ({ ...s, colorGrade: { ...s.colorGrade, enabled: v } }))}>
+              <SliderControl label="Strength" min={0} max={2} step={0.1} value={hookOverlays.colorGrade.intensity} onChange={(v) => setHookOverlays((s) => ({ ...s, colorGrade: { ...s.colorGrade, intensity: v } }))} />
+            </OverlayRow>
+            <OverlayRow compact label="Film grain" hint="Subtle noise" enabled={hookOverlays.grain.enabled} onToggle={(v) => setHookOverlays((s) => ({ ...s, grain: { ...s.grain, enabled: v } }))}>
+              <SliderControl label="Opacity" min={0} max={0.2} step={0.01} value={hookOverlays.grain.opacity} onChange={(v) => setHookOverlays((s) => ({ ...s, grain: { ...s.grain, opacity: v } }))} />
+            </OverlayRow>
+            <div style={{ display: "grid", gap: 10, padding: "8px 0", borderTop: "1px dashed var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Background wash</span>
+                <Segmented label="Mode" value={wash.mode} options={[{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }, { value: "none", label: "None" }]} onChange={(mode) => setWash({ mode })} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", opacity: wash.mode === "none" ? 0.5 : 1, pointerEvents: wash.mode === "none" ? "none" : "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: wash.mode === "light" ? 1 : 0.4 }}>
+                  <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Color</label>
+                  <input type="color" value={wash.color} disabled={wash.mode !== "light"} onChange={(e) => setWash({ color: e.target.value })} style={{ width: 28, height: 22, border: "1px solid var(--border)", borderRadius: 4, padding: 0, background: "transparent", cursor: wash.mode === "light" ? "pointer" : "not-allowed" }} />
+                </div>
+                <SliderControl label="Opacity" min={0} max={1} step={0.05} value={wash.opacity} onChange={(v) => setWash({ opacity: v })} />
+                <Segmented label="Style" value={wash.gradient ? "gradient" : "flat"} options={[{ value: "flat", label: "Flat" }, { value: "gradient", label: "Gradient" }]} onChange={(v) => setWash({ gradient: v === "gradient" })} />
+              </div>
+            </div>
+          </div>
+        ),
+      };
+    }
+
+    // ── Hook image refine ─────────────────────────────────────────────────
+    if (inspectorMode === "image") {
+      return {
+        title: "Refine hook image",
+        subtitle: "Edit the prompt or add guidelines — Claude rewrites it, then regenerates.",
+        body: (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</span>
+              {IMAGE_STYLE_CHIPS.map((chip) => {
+                const active = imageStyle === chip.value;
+                return (
+                  <button key={chip.value} onClick={() => setImageStyle(chip.value)} style={{
+                    padding: "4px 10px", borderRadius: 20,
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    background: active ? "var(--accent-dim)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--muted)",
+                    fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                  }}>{chip.label}</button>
+                );
+              })}
+            </div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Current prompt</label>
+            <textarea
+              value={currentImagePrompt}
+              onChange={(e) => setImagePromptDraft(e.target.value)}
+              rows={4}
+              placeholder="No prompt yet — add guidelines below to generate one."
+              style={{ width: "100%", boxSizing: "border-box", fontSize: 12, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit", color: currentImagePrompt ? "var(--text)" : "var(--subtle)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--bg)", marginBottom: 12 }}
+            />
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Guidelines (optional)</label>
+            <textarea
+              value={imageGuidelines}
+              onChange={(e) => setImageGuidelines(e.target.value)}
+              rows={2}
+              placeholder="e.g. warmer tones, ocean waves, more minimal…"
+              style={{ width: "100%", boxSizing: "border-box", fontSize: 12, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--bg)", marginBottom: 12 }}
+            />
+            {(fetchingSuggestions || suggestedPrompts.length > 0) && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  {fetchingSuggestions ? "Loading suggestions…" : "Suggested concepts — click to use"}
+                </div>
+                {fetchingSuggestions ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>Generating fresh directions…</span>
+                  </div>
+                ) : suggestedPrompts.map((s, i) => (
+                  <div key={i} onClick={() => { setImagePromptDraft(s); onContentChange({ ...config, content: { ...config.content, imagePrompt: s } }); }} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", marginBottom: 6, fontSize: 12, color: "var(--text)", lineHeight: 1.5, cursor: "pointer", display: "flex", gap: 8 }} title="Click to use this prompt">
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i === 0 ? "A" : "B"}</span>
+                    <span>{s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Model</label>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {([{ value: "auto", label: "Auto (Recraft)" }, { value: "gpt-image-2", label: "GPT Image 2" }] as const).map((opt) => {
+                const active = regenEngine === opt.value;
+                return (
+                  <button key={opt.value} onClick={() => setRegenEngine(opt.value)} style={{
+                    padding: "4px 10px", borderRadius: 20,
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    background: active ? "var(--accent-dim)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--muted)",
+                    fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                  }}>{opt.label}</button>
+                );
+              })}
+            </div>
+            {imageRegenError && <p style={{ fontSize: 12, color: "var(--error)", margin: "0 0 8px" }}>{imageRegenError}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleRegeneratePromptOnly}
+                disabled={regeneratingPrompt || regeneratingImage}
+                style={{ background: "var(--surface)", color: (regeneratingPrompt || regeneratingImage) ? "var(--subtle)" : "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "9px 14px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: (regeneratingPrompt || regeneratingImage) ? "not-allowed" : "pointer" }}
+              >
+                {regeneratingPrompt ? "Generating…" : "↺ 3 directions"}
+              </button>
+              <button
+                onClick={handleRegenerateHookImage}
+                disabled={regeneratingImage || regeneratingPrompt}
+                style={{ flex: 1, background: (regeneratingImage || regeneratingPrompt) ? "var(--border)" : "var(--accent)", color: (regeneratingImage || regeneratingPrompt) ? "var(--muted)" : "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: (regeneratingImage || regeneratingPrompt) ? "not-allowed" : "pointer" }}
+              >
+                {regeneratingImage ? "Generating…" : "↺ New image"}
+              </button>
+            </div>
+            {promptAlternatives.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>More directions — click to use</div>
+                {promptAlternatives.map((alt, i) => (
+                  <div key={i} onClick={() => { setImagePromptDraft(alt); onContentChange({ ...config, content: { ...config.content, imagePrompt: alt } }); }} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", marginBottom: 6, fontSize: 12, color: "var(--text)", lineHeight: 1.5, cursor: "pointer", display: "flex", gap: 8 }} title="Click to use this prompt">
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i + 2}</span>
+                    <span>{alt}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ),
+      };
+    }
+
+    return null;
+  }
+
   // fal.ai images: hook (imgs[0]) + editorial background images on content slides (imgs[1-3]).
   // CTA slide stays clean — brand colors only.
   const slideNodes = [
@@ -1078,6 +1680,27 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
   const slideH = Math.round((reelsMode ? 1920 : 1350) * PREVIEW_SCALE);
+  const inspector = isV2 ? getInspector() : null;
+
+  // v2 editor: track the editor's own width (changes only on window resize),
+  // then derive the canvas column width arithmetically so the focused slide
+  // scales to fit even as the inspector docks in and out.
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const measure = () => { const w = el.clientWidth; if (w > 0) setEditorW(w); };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isV2, viewMode]);
+
+  const RAIL_COL = 112;
+  const editorGap = inspector ? 16 : 12;
+  const canvasColW = editorW > 0
+    ? Math.max(200, editorW - RAIL_COL - (inspector ? 320 : 0) - editorGap * 2)
+    : slideW;
+  const canvasScale = Math.min(1, canvasColW / slideW);
 
   return (
     <div style={{ maxWidth: 960 }}>
@@ -1160,6 +1783,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
+      {/* ─── v1 layout (strip view + inline panels) ─────────────────────── */}
+      {!isV2 && (<>
       {/* Slide controls — collapsible, grouped */}
       <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 14, overflow: "hidden" }}>
         <button
@@ -1520,7 +2145,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
-            {(["strip", "feed"] as const).map((mode) => {
+            {(["editor", "feed"] as const).map((mode) => {
               const active = viewMode === mode;
               return (
                 <button
@@ -1540,7 +2165,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     textTransform: "uppercase",
                   }}
                 >
-                  {mode === "strip" ? "Strip" : (reelsMode ? "TikTok feed" : "IG feed")}
+                  {mode === "editor" ? "Editor" : (reelsMode ? "TikTok feed" : "IG feed")}
                 </button>
               );
             })}
@@ -1627,7 +2252,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       })()}
 
       {/* Slide strip */}
-      {(!isV2 || viewMode === "strip") && (
+      {!isV2 && (
       <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingTop: 8, paddingBottom: 16, scrollSnapType: "x mandatory", position: "sticky", top: 0, background: "var(--bg)", zIndex: 5 }}>
         {slideNodes.map((slide, i) => {
           const isActive = activeSlide === i;
@@ -2539,6 +3164,119 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           />
         ))}
       </div>
+      </>)}
+
+      {/* ─── v2 layout (3-zone editor) ──────────────────────────────────── */}
+      {isV2 && (
+        <div ref={editorRef}>
+          {/* View toggle */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
+            {(["editor", "feed"] as const).map((mode) => {
+              const active = viewMode === mode;
+              return (
+                <button key={mode} onClick={() => setViewMode(mode)} style={{
+                  padding: "5px 12px", borderRadius: 5,
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  background: active ? "var(--accent-dim)" : "transparent",
+                  color: active ? "var(--accent)" : "var(--muted)",
+                  fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: "inherit",
+                  cursor: "pointer", letterSpacing: "0.04em", textTransform: "uppercase",
+                }}>
+                  {mode === "editor" ? "Editor" : (reelsMode ? "TikTok feed" : "IG feed")}
+                </button>
+              );
+            })}
+          </div>
+
+          {viewMode === "feed" ? (
+            <FeedPreview
+              slideNode={exportNodes[Math.min(feedIndex, exportNodes.length - 1)]}
+              index={Math.min(feedIndex, exportNodes.length - 1)}
+              total={exportNodes.length}
+              onPrev={() => setFeedIndex((i) => Math.max(0, i - 1))}
+              onNext={() => setFeedIndex((i) => Math.min(exportNodes.length - 1, i + 1))}
+              mode={reelsMode ? "tiktok" : "instagram"}
+              aspect={reelsMode ? "9:16" : "4:5"}
+              caption={content.caption}
+              brandAccent={bs?.accent ?? "#1e7a8a"}
+            />
+          ) : (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: `${RAIL_COL}px minmax(0, 1fr) ${inspector ? "320px" : "0px"}`,
+              gap: editorGap,
+              alignItems: "start",
+              transition: "grid-template-columns 0.22s ease-out, gap 0.22s ease-out",
+            }}>
+              {/* Rail */}
+              <SlideRail slides={slideNodes} labels={SLIDE_LABELS} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} />
+
+              {/* Canvas */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, minWidth: 0 }}>
+                <div style={{
+                  position: "relative",
+                  width: Math.round(slideW * canvasScale),
+                  height: Math.round(slideH * canvasScale),
+                  borderRadius: 8, overflow: "hidden", flexShrink: 0,
+                  opacity: ((regeneratingGraphic === focusedSlide - 1) || (focusedSlide === 0 && regeneratingImage)) ? 0.45 : 1,
+                }}>
+                  <div style={{ width: slideW, height: slideH, transform: `scale(${canvasScale})`, transformOrigin: "top left" }}>
+                    {slideNodes[focusedSlide]}
+                  </div>
+                  {regeneratingGraphic === focusedSlide - 1 && (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: "none" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.15)", borderTopColor: "var(--accent)", animation: "spin 0.7s linear infinite" }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--text)", textTransform: "uppercase" }}>generating</span>
+                    </div>
+                  )}
+                  {focusedSlide === 0 && regeneratingImage && (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none", background: "rgba(0,0,0,0.18)" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", animation: "spin 0.7s linear infinite" }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#fff", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>generating image…</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action bar */}
+                {(() => {
+                  const sIdx = focusedSlide - 1;
+                  const isContent = focusedSlide >= 1 && focusedSlide <= 3;
+                  const isHook = focusedSlide === 0;
+                  const isDownloading = downloading === focusedSlide;
+                  const bgGenerating = isContent && contentBgGenerating.has(sIdx);
+                  const hasBg = isContent && !!contentBgImages[sIdx];
+                  return (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
+                      <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
+                      <ToolbarButton label="Settings" active={inspectorMode === "settings"} onClick={() => openInspector("settings")} />
+                      {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
+                      {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
+                      {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
+                      {isContent && <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />}
+                      {isContent && <ToolbarButton label="Graphic type" active={inspectorMode === "graphicType"} onClick={() => openInspector("graphicType")} />}
+                      {isContent && <ToolbarButton label="Graphic data" active={inspectorMode === "graphicData"} onClick={() => openInspector("graphicData")} />}
+                      {isContent && <ToolbarButton label="Regen graphic" active={inspectorMode === "graphicComment"} onClick={() => openInspector("graphicComment")} />}
+                      {isContent && <ToolbarButton label={regenerating === sIdx ? "Regenerating…" : "Regen slide"} onClick={() => handleRegenerateSlide(sIdx)} disabled={regenerating === sIdx || regeneratingGraphic === sIdx} />}
+                      {isContent && <ToolbarButton label={bgGenerating ? "Generating…" : hasBg ? "Regen background" : "AI background"} onClick={() => handleGenerateContentBg(sIdx)} disabled={bgGenerating} />}
+                      {isContent && hasBg && !bgGenerating && <ToolbarButton label="Clear background" onClick={() => handleClearContentBg(sIdx)} />}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Inspector */}
+              <div style={{ overflow: "hidden", minWidth: 0, alignSelf: "stretch" }}>
+                {inspector && (
+                  <InspectorPanel title={inspector.title} subtitle={inspector.subtitle} onClose={() => setInspectorMode(null)}>
+                    {inspector.body}
+                  </InspectorPanel>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Caption */}
       {content.caption && (
