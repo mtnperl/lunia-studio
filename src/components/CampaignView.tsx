@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import type { CampaignContent, SavedCampaign } from "@/lib/types";
 import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
+import { CampaignGenLoader } from "@/components/campaign/Loaders";
 
 export default function CampaignView({
   initialCampaign,
@@ -95,12 +96,7 @@ export default function CampaignView({
         </div>
       )}
 
-      {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "20px 0", color: "var(--muted)", fontSize: 14 }}>
-          <span style={{ width: 16, height: 16, border: "2px solid var(--border)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-          Writing your campaign…
-        </div>
-      )}
+      {loading && <CampaignGenLoader />}
 
       {!loading && step === 1 && <BriefStep onGenerate={handleGenerate} />}
 

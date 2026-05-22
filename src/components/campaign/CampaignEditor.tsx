@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
+import { Spinner } from "./Loaders";
 
 const newId = () => crypto.randomUUID();
 
@@ -242,7 +243,13 @@ export default function CampaignEditor({
 
         {/* Actions */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", paddingTop: 4, borderTop: "1px solid var(--border)", marginTop: 2 }}>
-          <button className="btn" onClick={save} disabled={saving} style={{ minWidth: 120 }}>
+          <button
+            className="btn"
+            onClick={save}
+            disabled={saving}
+            style={{ minWidth: 120, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
+          >
+            {saving && <Spinner size={13} color="var(--bg)" />}
             {saving ? "Saving…" : savedId ? "Saved ✓ Update" : "Save campaign"}
           </button>
           <button className="btn-ghost" onClick={exportHtml}>↓ Export HTML</button>

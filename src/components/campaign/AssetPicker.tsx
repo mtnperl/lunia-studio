@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
+import { Spinner } from "./Loaders";
 
 /** Inline grid of uploaded assets. Used to pick / swap the image for an
  *  asset-sourced slot (bottle, logo, product shots). */
@@ -36,7 +37,12 @@ export default function AssetPicker({
       </div>
       <div style={{ padding: 8 }}>
         {error && <div style={{ fontSize: 12, color: "var(--error)" }}>{error}</div>}
-        {!assets && !error && <div style={{ fontSize: 12, color: "var(--muted)" }}>Loading…</div>}
+        {!assets && !error && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 12, color: "var(--muted)" }}>
+            <Spinner size={13} />
+            Loading assets…
+          </div>
+        )}
         {assets && assets.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
             No uploaded assets yet. Add bottle / logo images in the Assets manager first.

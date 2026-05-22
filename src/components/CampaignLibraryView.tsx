@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { SavedCampaign } from "@/lib/types";
+import { SkeletonTile } from "@/components/campaign/Loaders";
 
 export default function CampaignLibraryView({
   onOpen,
@@ -39,7 +40,19 @@ export default function CampaignLibraryView({
       </p>
 
       {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
-      {!campaigns && !error && <div style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</div>}
+      {!campaigns && !error && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", background: "var(--surface)" }}>
+              <SkeletonTile aspect="4/3" />
+              <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ height: 12, borderRadius: 3, background: "var(--surface-h)" }} />
+                <div style={{ height: 12, width: "60%", borderRadius: 3, background: "var(--surface-h)" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {campaigns && campaigns.length === 0 && (
         <div style={{ fontSize: 13, color: "var(--muted)" }}>No campaigns yet — build one in the Campaign builder.</div>
       )}
