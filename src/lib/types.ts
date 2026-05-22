@@ -420,6 +420,8 @@ export type CampaignImageSlot = {
   source: "generated" | "asset";
   /** generated: gpt-image-2 lifestyle prompt — no text, no bottle, no logo. */
   prompt?: string;
+  /** generated: visual mood id (from VISUAL_MOODS) steering the look. */
+  mood?: string;
   aspect: "4:5" | "1:1";
   /** asset: chosen uploaded asset id (from the asset library). */
   assetId?: string;

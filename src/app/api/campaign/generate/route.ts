@@ -124,7 +124,10 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
         const { assetId, url } = suggestAsset(img.assetTypeHint);
         return { id: randomUUID(), role, source: "asset", aspect, assetId, url: url ?? null };
       }
-      return { id: randomUUID(), role, source: "generated", aspect, prompt: img.prompt ?? "", url: null };
+      const genPrompt = img.prompt?.trim()
+        ? img.prompt
+        : "A calm, photoreal wellness lifestyle scene — soft natural light, warm neutral tones, a quiet restful mood.";
+      return { id: randomUUID(), role, source: "generated", aspect, prompt: genPrompt, mood: "lifestyle-health", url: null };
     });
     // Guarantee exactly one hero.
     if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";

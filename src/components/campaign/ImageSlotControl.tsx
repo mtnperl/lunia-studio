@@ -1,8 +1,17 @@
 "use client";
 import { useState } from "react";
 import type { CampaignImageSlot } from "@/lib/types";
+import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import AssetPicker from "./AssetPicker";
 import { Spinner, ImageGenStatus } from "./Loaders";
+
+const DEFAULT_MOOD = "lifestyle-health";
+
+/** A ready-to-edit prompt so switching to "Generated" never lands on a blank
+ *  box. Lifestyle scene only — text / bottle / logo are excluded server-side. */
+function buildDefaultPrompt(): string {
+  return "A calm, photoreal wellness lifestyle scene — a serene bedroom in soft morning light, warm neutral linens, a quiet restful mood.";
+}
 
 const miniBtn = (active = false): React.CSSProperties => ({
   padding: "4px 9px", fontSize: 10, fontWeight: 700,
@@ -26,22 +35,39 @@ export default function ImageSlotControl({
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // A generated slot always shows a ready-to-edit prompt — even one loaded
+  // from an older save that has none.
+  const effectivePrompt =
+    slot.prompt?.trim()
+      ? slot.prompt
+      : slot.source === "generated" ? buildDefaultPrompt() : "";
+
+  // Flip to generated — and make sure a prompt + mood are already in place.
+  function switchToGenerated() {
+    onChange({
+      ...slot,
+      source: "generated",
+      prompt: slot.prompt?.trim() ? slot.prompt : buildDefaultPrompt(),
+      mood: slot.mood ?? DEFAULT_MOOD,
+    });
+  }
+
   async function generate() {
-    if (generating || !slot.prompt?.trim()) return;
+    if (generating || !effectivePrompt.trim()) return;
     setGenerating(true);
     setError(null);
     try {
       const res = await fetch("/api/campaign/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: slot.prompt, aspect: slot.aspect }),
+        body: JSON.stringify({ prompt: effectivePrompt, aspect: slot.aspect, mood: slot.mood ?? DEFAULT_MOOD }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
         setError(data.error ?? "Image generation failed");
         return;
       }
-      onChange({ ...slot, url: data.url });
+      onChange({ ...slot, prompt: effectivePrompt, url: data.url });
     } catch {
       setError("Network error — please try again");
     } finally {
@@ -56,8 +82,7 @@ export default function ImageSlotControl({
           {label}
         </span>
         <div style={{ display: "flex", gap: 4 }}>
-          <button style={miniBtn(slot.source === "generated")}
-            onClick={() => onChange({ ...slot, source: "generated" })}>Generated</button>
+          <button style={miniBtn(slot.source === "generated")} onClick={switchToGenerated}>Generated</button>
           <button style={miniBtn(slot.source === "asset")}
             onClick={() => onChange({ ...slot, source: "asset" })}>Asset</button>
         </div>
@@ -89,7 +114,7 @@ export default function ImageSlotControl({
             ) : (
               <>
                 <textarea
-                  value={slot.prompt ?? ""}
+                  value={effectivePrompt}
                   onChange={(e) => onChange({ ...slot, prompt: e.target.value })}
                   rows={3}
                   placeholder="Lifestyle scene — no text, no bottle, no logo"
@@ -100,15 +125,35 @@ export default function ImageSlotControl({
                     resize: "vertical",
                   }}
                 />
+                {/* Visual mood — the carousel v2 style list */}
+                <label style={{ display: "block", marginTop: 6 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Visual mood
+                  </span>
+                  <select
+                    value={slot.mood ?? DEFAULT_MOOD}
+                    onChange={(e) => onChange({ ...slot, mood: e.target.value })}
+                    style={{
+                      width: "100%", marginTop: 3, boxSizing: "border-box",
+                      fontSize: 11, fontFamily: "inherit", color: "var(--text)",
+                      padding: "5px 6px", borderRadius: 5,
+                      border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
+                    }}
+                  >
+                    {VISUAL_MOODS.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   onClick={generate}
-                  disabled={!slot.prompt?.trim()}
+                  disabled={!effectivePrompt.trim()}
                   style={{
                     marginTop: 6, padding: "5px 12px", fontSize: 11, fontWeight: 700,
                     background: "var(--accent)", color: "var(--bg)", border: "none",
                     borderRadius: 5, fontFamily: "inherit",
-                    cursor: !slot.prompt?.trim() ? "not-allowed" : "pointer",
-                    opacity: !slot.prompt?.trim() ? 0.55 : 1,
+                    cursor: !effectivePrompt.trim() ? "not-allowed" : "pointer",
+                    opacity: !effectivePrompt.trim() ? 0.55 : 1,
                   }}
                 >
                   {slot.url ? "Regenerate" : "Generate image"}

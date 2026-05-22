@@ -1,6 +1,7 @@
 import { checkRateLimit } from "@/lib/kv";
 import { generateEmailImage, type EmailImageAspect } from "@/lib/email-image-engine";
 import { mirrorImageToBlob } from "@/lib/blob-mirror";
+import { getMoodById } from "@/lib/carousel-visual-moods";
 import { randomUUID } from "crypto";
 
 export const maxDuration = 240;
@@ -36,8 +37,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "Image prompt required" }, { status: 400 });
     }
 
+    // Optional visual mood (shared list with carousel v2) steers the look.
+    const mood = getMoodById(body.mood);
+    const moodBlock = mood ? ` ${mood.styleBlock}.` : "";
+
     const falUrl = await generateEmailImage({
-      prompt: prompt + SAFETY_SUFFIX,
+      prompt: prompt + moodBlock + SAFETY_SUFFIX,
       aspect,
       quality: "high",
     });
