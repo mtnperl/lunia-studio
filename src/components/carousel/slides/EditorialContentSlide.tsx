@@ -94,7 +94,6 @@ export default function EditorialContentSlide({
         .filter(Boolean) as { id: string; label: string; svg: string; category: string }[]
     : [];
   const hasPhoto = !!bgImageUrl;
-  const hasRightCol = hasPhoto || iconRows.length > 0;
 
   // Headline + body sizes — scale-aware so the existing PreviewStep size sliders still bite.
   const headlineSize = Math.round(96 * headlineScale);
@@ -142,15 +141,17 @@ export default function EditorialContentSlide({
         />
       )}
 
-      {/* Main editorial column — headline + rule + body + stat rows.
-          Stat rows live INSIDE the main column under the body (like the
-          reference layouts), not floated over the photo. */}
+      {/* Main editorial column — headline + rule + body. Body spreads the full
+          column width; stat-icon rows render as a separate horizontal band
+          below this column (above the citation). */}
       <div style={{
         position: "absolute",
         top: py + 140,                                              // sit below the brand mark
         left: PAD.x,
-        right: hasRightCol ? PAD.x + 460 : PAD.x,                   // make room for the right column
-        bottom: py + 80,                                            // leave room for the citation
+        // Only narrow the column when a product photo actually sits on the right.
+        right: hasPhoto ? PAD.x + 460 : PAD.x,
+        // Reserve room for the icon band (when icons are present) + the citation.
+        bottom: py + 60 + (iconRows.length > 0 ? 200 : 0),
         display: "flex", flexDirection: "column", gap: 28,
       }}>
         <h1 style={{
@@ -175,55 +176,60 @@ export default function EditorialContentSlide({
           fontSize: bodySize,
           color: bodyCol,
           lineHeight: 1.5,
-          maxWidth: 740,
+          // No artificial cap — let the body fill the column so the page breathes.
         }}>
           {body}
         </p>
-
-        {/* Stat-icon rows — under the body, in the main column. Renders only
-            when the slide's graphic is an icon layout. */}
-        {iconRows.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 8 }}>
-            {iconRows.map((ic) => (
-              <div key={ic.id} style={{ display: "flex", alignItems: "center", gap: 22 }}>
-                <div style={{
-                  width: 72, height: 72, borderRadius: "50%",
-                  background: headlineCol,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    style={{ width: 36, height: 36 }}
-                    dangerouslySetInnerHTML={{ __html: ic.svg }} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <div style={{
-                    fontFamily: EDITORIAL_FONT,
-                    fontWeight: 500,
-                    fontSize: 30,
-                    color: headlineCol,
-                    letterSpacing: "0.03em",
-                  }}>
-                    {ic.label}
-                  </div>
-                  <div style={{
-                    fontFamily: EDITORIAL_FONT,
-                    fontWeight: 300,
-                    fontSize: 16,
-                    color: bodyCol,
-                    opacity: 0.7,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                  }}>
-                    Cited by name
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Stat-icon row — sits BELOW the main column and ABOVE the citation,
+          spanning the full slide width as a horizontal band. Renders only when
+          the slide's graphic is an icon layout. */}
+      {iconRows.length > 0 && (
+        <div style={{
+          position: "absolute",
+          left: PAD.x,
+          right: PAD.x,
+          // Leave the citation room (py + ~40) and tuck the band above it.
+          bottom: py + 60,
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          gap: 56,
+          flexWrap: "wrap",
+        }}>
+          {iconRows.map((ic) => (
+            <div key={ic.id} style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+              minWidth: 140,
+            }}>
+              <div style={{
+                width: 84, height: 84, borderRadius: "50%",
+                background: headlineCol,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  style={{ width: 40, height: 40 }}
+                  dangerouslySetInnerHTML={{ __html: ic.svg }} />
+              </div>
+              <div style={{
+                fontFamily: EDITORIAL_FONT,
+                fontWeight: 500,
+                fontSize: 26,
+                color: headlineCol,
+                letterSpacing: "0.03em",
+                textAlign: "center",
+                maxWidth: 220,
+              }}>
+                {ic.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Citation — small navy text at the bottom. Centered horizontally when a
           product photo is present (so it doesn't crowd the left column). */}
