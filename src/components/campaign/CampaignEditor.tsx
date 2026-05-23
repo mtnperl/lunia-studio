@@ -45,6 +45,10 @@ export default function CampaignEditor({
 }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [copyLabel, setCopyLabel] = useState("Copy HTML");
+  const [klaviyoBusy, setKlaviyoBusy] = useState(false);
+  const [klaviyoResult, setKlaviyoResult] = useState<{ editorUrl: string } | null>(null);
+  const [klaviyoError, setKlaviyoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
@@ -89,6 +93,42 @@ export default function CampaignEditor({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function copyHtml() {
+    try {
+      await navigator.clipboard.writeText(html);
+      setCopyLabel("Copied ✓");
+      setTimeout(() => setCopyLabel("Copy HTML"), 2000);
+    } catch {
+      setCopyLabel("Copy failed");
+      setTimeout(() => setCopyLabel("Copy HTML"), 2000);
+    }
+  }
+
+  async function pushToKlaviyo() {
+    if (klaviyoBusy) return;
+    setKlaviyoBusy(true);
+    setKlaviyoError(null);
+    setKlaviyoResult(null);
+    try {
+      const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? topic;
+      const res = await fetch("/api/campaign/klaviyo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html, topic, subject }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.editorUrl) {
+        setKlaviyoError(data.error ?? "Push failed");
+        return;
+      }
+      setKlaviyoResult({ editorUrl: data.editorUrl });
+    } catch (err) {
+      setKlaviyoError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setKlaviyoBusy(false);
+    }
   }
 
   async function save() {
@@ -253,6 +293,27 @@ export default function CampaignEditor({
             {saving ? "Saving…" : savedId ? "Saved ✓ Update" : "Save campaign"}
           </button>
           <button className="btn-ghost" onClick={exportHtml}>↓ Export HTML</button>
+          <button className="btn-ghost" onClick={copyHtml}>📋 {copyLabel}</button>
+          <button
+            className="btn-ghost"
+            onClick={pushToKlaviyo}
+            disabled={klaviyoBusy}
+            style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+          >
+            {klaviyoBusy && <Spinner size={13} />}
+            {klaviyoBusy ? "Pushing…" : "🚀 Push to Klaviyo"}
+          </button>
+          {klaviyoResult && (
+            <a
+              href={klaviyoResult.editorUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "underline" }}
+            >
+              Open in Klaviyo →
+            </a>
+          )}
+          {klaviyoError && <span style={{ fontSize: 12, color: "var(--error)" }}>{klaviyoError}</span>}
           {saveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{saveError}</span>}
         </div>
       </div>

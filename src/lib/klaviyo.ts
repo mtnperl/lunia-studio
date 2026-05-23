@@ -398,6 +398,33 @@ export async function cloneTemplate(input: CloneTemplateInput): Promise<{ id: st
   return { id: newId, name: cloneRes.data.attributes.name };
 }
 
+/** Create a brand-new email template in Klaviyo from raw HTML. Returns the
+ *  new template id and its editor URL so callers can deep-link to Klaviyo. */
+export async function createEmailTemplate(input: { name: string; html: string; text?: string }): Promise<{ id: string; name: string; editorUrl: string }> {
+  if (!hasWriteAccess()) throw new KlaviyoAuthError("Write key not configured");
+  const res = await klaviyoFetch<{ data: { id: string; attributes: { name: string } } }>(`/templates/`, {
+    method: "POST",
+    useWriteKey: true,
+    body: {
+      data: {
+        type: "template",
+        attributes: {
+          name: input.name,
+          editor_type: "CODE",
+          html: input.html,
+          text: input.text ?? "",
+        },
+      },
+    },
+  });
+  const id = res.data.id;
+  return {
+    id,
+    name: res.data.attributes.name,
+    editorUrl: `https://www.klaviyo.com/template/${id}/edit`,
+  };
+}
+
 export async function swapFlowMessageTemplate(flowMessageId: string, newTemplateId: string): Promise<void> {
   if (!hasWriteAccess()) throw new KlaviyoAuthError("Write key not configured");
   await klaviyoFetch(`/flow-messages/${flowMessageId}/relationships/template/`, {
