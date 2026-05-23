@@ -143,17 +143,16 @@ export default function EditorialContentSlide({
         />
       )}
 
-      {/* Main editorial column — headline + rule + body. Body spreads the full
-          column width; stat-icon rows render as a separate horizontal band
-          below this column (above the citation). */}
+      {/* Main editorial column — headline + rule + body + (optional) icon row.
+          The icon row sits INSIDE this column right under the body so the
+          icons hug the text instead of floating at the bottom of the slide. */}
       <div style={{
         position: "absolute",
         top: py + 140,                                              // sit below the brand mark
         left: PAD.x,
         // Only narrow the column when a product photo actually sits on the right.
         right: hasPhoto ? 560 : PAD.x,
-        // Reserve room for the icon band (when icons are present) + the citation.
-        bottom: py + 60 + (iconRows.length > 0 ? 200 : 0),
+        bottom: py + 60,                                            // just enough room for the citation
         display: "flex", flexDirection: "column", gap: 28,
       }}>
         <h1 style={{
@@ -182,56 +181,50 @@ export default function EditorialContentSlide({
         }}>
           {body}
         </p>
-      </div>
 
-      {/* Stat-icon row — sits BELOW the main column and ABOVE the citation,
-          spanning the full slide width as a horizontal band. Renders only when
-          the slide's graphic is an icon layout. */}
-      {iconRows.length > 0 && (
-        <div style={{
-          position: "absolute",
-          left: PAD.x,
-          right: PAD.x,
-          // Leave the citation room (py + ~40) and tuck the band above it.
-          bottom: py + 60,
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          gap: 56,
-          flexWrap: "wrap",
-        }}>
-          {iconRows.map((ic) => (
-            <div key={ic.id} style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-              minWidth: 140,
-            }}>
-              <div style={{
-                width: 84, height: 84, borderRadius: "50%",
-                background: headlineCol,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
+        {iconRows.length > 0 && (
+          <div style={{
+            // marginTop adds a little more visual breathing room than the column
+            // gap so the icons feel grouped with the body, not floating below.
+            marginTop: 8,
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 48,
+            alignItems: "flex-start",
+          }}>
+            {iconRows.map((ic) => (
+              <div key={ic.id} style={{
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+                minWidth: 120,
               }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
-                  strokeLinecap="round" strokeLinejoin="round"
-                  style={{ width: 40, height: 40 }}
-                  dangerouslySetInnerHTML={{ __html: ic.svg }} />
-              </div>
-              <div style={{
-                fontFamily: EDITORIAL_FONT,
-                fontWeight: 500,
-                fontSize: 26,
-                color: headlineCol,
-                letterSpacing: "0.03em",
-                textAlign: "center",
-                maxWidth: 220,
-              }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: "50%",
+                  background: headlineCol,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    style={{ width: 36, height: 36 }}
+                    dangerouslySetInnerHTML={{ __html: ic.svg }} />
+                </div>
+                <div style={{
+                  fontFamily: EDITORIAL_FONT,
+                  fontWeight: 500,
+                  fontSize: 24,
+                  color: headlineCol,
+                  letterSpacing: "0.03em",
+                  textAlign: "center",
+                  maxWidth: 200,
+                }}>
                 {ic.label}
               </div>
             </div>
           ))}
         </div>
       )}
+      </div>
 
       {/* Citation — small navy text at the bottom. Centered horizontally when a
           product photo is present (so it doesn't crowd the left column). */}
