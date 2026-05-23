@@ -142,13 +142,15 @@ export default function EditorialContentSlide({
         />
       )}
 
-      {/* Main editorial column — headline + rule + body + stats + citation */}
+      {/* Main editorial column — headline + rule + body + stat rows.
+          Stat rows live INSIDE the main column under the body (like the
+          reference layouts), not floated over the photo. */}
       <div style={{
         position: "absolute",
         top: py + 140,                                              // sit below the brand mark
         left: PAD.x,
         right: hasRightCol ? PAD.x + 460 : PAD.x,                   // make room for the right column
-        bottom: py + 60,                                            // leave room for the citation
+        bottom: py + 80,                                            // leave room for the citation
         display: "flex", flexDirection: "column", gap: 28,
       }}>
         <h1 style={{
@@ -177,52 +179,54 @@ export default function EditorialContentSlide({
         }}>
           {body}
         </p>
+
+        {/* Stat-icon rows — under the body, in the main column. Renders only
+            when the slide's graphic is an icon layout. */}
+        {iconRows.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 8 }}>
+            {iconRows.map((ic) => (
+              <div key={ic.id} style={{ display: "flex", alignItems: "center", gap: 22 }}>
+                <div style={{
+                  width: 72, height: 72, borderRadius: "50%",
+                  background: headlineCol,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    style={{ width: 36, height: 36 }}
+                    dangerouslySetInnerHTML={{ __html: ic.svg }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{
+                    fontFamily: EDITORIAL_FONT,
+                    fontWeight: 500,
+                    fontSize: 30,
+                    color: headlineCol,
+                    letterSpacing: "0.03em",
+                  }}>
+                    {ic.label}
+                  </div>
+                  <div style={{
+                    fontFamily: EDITORIAL_FONT,
+                    fontWeight: 300,
+                    fontSize: 16,
+                    color: bodyCol,
+                    opacity: 0.7,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                  }}>
+                    Cited by name
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Stat-icon rows (right column) — only when the slide's graphic is an
-          icon layout. Otherwise the right column shows just the photo. */}
-      {iconRows.length > 0 && (
-        <div style={{
-          position: "absolute",
-          top: hasPhoto ? py + 80 + (slideH - py * 2 - 80) - (iconRows.length * 124) - 40 : py + 200,
-          right: hasPhoto ? PAD.x + 16 : PAD.x,
-          width: hasPhoto ? 420 - 32 : 420,
-          display: "flex", flexDirection: "column", gap: 24,
-          // When the photo is present, sit the stat rows over the bottom of the photo
-          // in a soft ivory card so they stay legible.
-          background: hasPhoto ? "rgba(247,244,239,0.92)" : "transparent",
-          padding: hasPhoto ? "20px 18px" : 0,
-          borderRadius: hasPhoto ? 10 : 0,
-        }}>
-          {iconRows.map((ic) => (
-            <div key={ic.id} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{
-                width: 56, height: 56, borderRadius: "50%",
-                background: headlineCol,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
-                  strokeLinecap="round" strokeLinejoin="round"
-                  style={{ width: 30, height: 30 }}
-                  dangerouslySetInnerHTML={{ __html: ic.svg }} />
-              </div>
-              <div style={{
-                fontFamily: EDITORIAL_FONT,
-                fontWeight: 500,
-                fontSize: 26,
-                color: headlineCol,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-              }}>
-                {ic.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Citation — small navy text at the bottom */}
+      {/* Citation — small navy text at the bottom. Centered horizontally when a
+          product photo is present (so it doesn't crowd the left column). */}
       {showCitationBars && citation && (
         <div style={{
           position: "absolute",
@@ -233,6 +237,7 @@ export default function EditorialContentSlide({
           color: citationCol,
           opacity: 0.75,
           lineHeight: 1.4,
+          textAlign: hasPhoto ? "center" : "left",
         }}>
           {citation}
         </div>

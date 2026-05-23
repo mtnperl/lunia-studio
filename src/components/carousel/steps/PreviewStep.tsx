@@ -1137,6 +1137,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           body: slide.body,
           slideBgColor,
           imageAspect: reelsMode ? "9:16" : "4:5",
+          stylePreset,
         }),
       });
       // Capture the body as text first so we can surface useful errors even when the response isn't JSON (Vercel auth wall, framework 404 page, etc.).

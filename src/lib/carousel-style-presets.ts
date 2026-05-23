@@ -2,16 +2,18 @@
 // engine direction so the whole carousel takes on a single coherent look.
 import type { BrandStyle, CarouselStylePreset } from "./types";
 
-/** Lunia April-2026 brand palette mapped onto BrandStyle. Soft Ivory bg,
- *  Deep Navy text, Signal Yellow accent — per the Lunia Color Brand Book. */
+/** Lunia April-2026 brand palette mapped onto BrandStyle. Soft Ivory bg with
+ *  Rich Navy #01253f used uniformly for every text role — explicit user
+ *  direction. Signal Yellow is reserved for the CTA button in HTML chrome
+ *  (never as on-slide text), so we don't map it to BrandStyle.accent here. */
 export const EDITORIAL_BRAND_STYLE: BrandStyle = {
   background:     "#F7F4EF",  // Soft Ivory
-  hookBackground: "#F7F4EF",  // Soft Ivory (light default per user)
-  headline:       "#102635",  // Deep Navy
-  hookHeadline:   "#102635",  // Deep Navy
-  body:           "#2c3f51",  // Slate Blue
-  accent:         "#ffd800",  // Signal Yellow — CTAs
-  secondary:      "#2c3f51",  // Slate Blue (muted)
+  hookBackground: "#F7F4EF",  // Soft Ivory (light default)
+  headline:       "#01253f",  // Rich Navy — all on-slide text
+  hookHeadline:   "#01253f",  // Rich Navy
+  body:           "#01253f",  // Rich Navy
+  accent:         "#01253f",  // Rich Navy (no yellow text anywhere)
+  secondary:      "#01253f",  // Rich Navy
 };
 
 /** Typography overrides applied across all slides for the editorial preset. */
