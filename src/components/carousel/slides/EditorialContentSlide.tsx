@@ -123,7 +123,8 @@ export default function EditorialContentSlide({
         }}>LUNIA LIFE</span>
       </div>
 
-      {/* Optional product/lifestyle photo on the right */}
+      {/* Optional product/lifestyle photo on the right — bleeds to the slide
+          edge like the reference layouts (bottle-on-pedestal, bottle-on-rock). */}
       {hasPhoto && (
         <img
           src={bgImageUrl}
@@ -131,12 +132,13 @@ export default function EditorialContentSlide({
           alt=""
           style={{
             position: "absolute",
-            top: py + 80,
-            right: PAD.x,
-            width: 420,
-            height: slideH - py * 2 - 80,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 520,
+            height: "100%",
             objectFit: "cover",
-            borderRadius: 12,
+            objectPosition: "center",
           }}
         />
       )}
@@ -149,7 +151,7 @@ export default function EditorialContentSlide({
         top: py + 140,                                              // sit below the brand mark
         left: PAD.x,
         // Only narrow the column when a product photo actually sits on the right.
-        right: hasPhoto ? PAD.x + 460 : PAD.x,
+        right: hasPhoto ? 560 : PAD.x,
         // Reserve room for the icon band (when icons are present) + the citation.
         bottom: py + 60 + (iconRows.length > 0 ? 200 : 0),
         display: "flex", flexDirection: "column", gap: 28,

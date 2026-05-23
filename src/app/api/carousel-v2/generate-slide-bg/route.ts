@@ -7,18 +7,20 @@ export const maxDuration = 240;
 
 const RECRAFT_ENDPOINT = 'fal-ai/recraft/v4/pro/text-to-image';
 
-/** Editorial Scientific bg prompt — features the Lunia Restore bottle so the
- *  slide picks up the brand object. The reference images (lab bottle on rock,
- *  bottle on cube) all anchor on the product. */
+/** Editorial Scientific bg prompt — features the Lunia Restore amber bottle as
+ *  the focal subject, framed to the right of the composition so it sits naturally
+ *  in the slide's right column. Echoes the reference look (bottle on rock,
+ *  bottle on cube, bottle on linen). */
 function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string }): string {
-  const subject = `${args.headline}. ${args.body}`.slice(0, 280);
+  const subject = `${args.headline}. ${args.body}`.slice(0, 240);
   return [
-    'Editorial scientific lifestyle photograph featuring the Lunia Restore amber supplement bottle as the focal subject.',
+    'Editorial scientific product photograph of the Lunia Restore amber-glass supplement bottle on a calm minimalist surface (linen, smooth stone, marble pedestal, or matte ceramic).',
+    'Composition: the bottle is positioned to the RIGHT of the frame with generous negative space on the left for editorial text.',
     `Subject context: ${subject}.`,
     args.topic ? `Topical context: ${args.topic}.` : '',
-    'Clinical premium DTC wellness aesthetic — soft natural daylight, warm cream and soft ivory palette with deep navy accents, generous negative space, minimal calm composition, magazine-quality.',
-    'Photoreal, sharp focus, premium product photography.',
-    'No text, no overlaid logos, no signage.',
+    'Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, soft ivory / warm cream palette with deep navy accents, no harsh shadows.',
+    'Photoreal, sharp focus, premium still-life product photography. Background is uncluttered.',
+    'Absolutely NO text, NO words, NO logos, NO labels, NO signage, NO supplement-label typography in the scene.',
   ].filter(Boolean).join(' ');
 }
 
