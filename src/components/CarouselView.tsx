@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BrandStyle, CarouselContent, CarouselConfig, CarouselFormat, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
@@ -60,6 +60,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const [selectedVariant, setSelectedVariant] = useState(0);
   const [selectedHook, setSelectedHook] = useState(0);
   const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
+  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
   const [hookImageUrl, setHookImageUrl] = useState<string | null>(null);
   const [slideImages, setSlideImages] = useState<(string | null)[]>([null, null, null, null, null]);
 
@@ -77,6 +78,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     setSlideImages(loadedImages);
     if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
     if (initialCarousel.format) setCarouselFormat(initialCarousel.format);
+    if (initialCarousel.stylePreset) setStylePreset(initialCarousel.stylePreset);
     if (initialCarousel.didYouKnowContent) {
       setDidYouKnowVariants([initialCarousel.didYouKnowContent]);
       setSelectedDidYouKnow(0);
@@ -120,7 +122,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const FAL_SLIDE_INDICES = [0] as const;
   const FAL_TOTAL = FAL_SLIDE_INDICES.length;
 
-  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number, currentImageStyle: CarouselImageStyle = "realistic", currentMoodId: string | null = null) {
+  function generateSlideImages(currentTopic: string, currentContent: CarouselContent, currentHookIndex: number, currentImageStyle: CarouselImageStyle = "realistic", currentMoodId: string | null = null, currentStylePreset: CarouselStylePreset = "default") {
     setSlideImages([null, null, null, null, null]);
     setFalErrors([null, null, null, null, null]);
     setFalStatus("loading");
@@ -139,6 +141,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           imagePrompt: currentContent.imagePrompt,
           imageStyle: currentImageStyle,
           ...(currentMoodId ? { moodId: currentMoodId } : {}),
+          ...(currentStylePreset && currentStylePreset !== "default" ? { stylePreset: currentStylePreset } : {}),
         }),
       })
         .then(async (r) => {
@@ -181,13 +184,14 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
 
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset) {
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
     setImageStyle(style ?? "realistic");
     setCarouselFormat(format ?? "standard");
     setEngagementSubType(engSubType ?? "reveal");
+    setStylePreset(preset ?? "default");
     setError(null);
     setWarning(null);
 
@@ -210,6 +214,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           concise: conciseMode ?? false,
           format: format ?? "standard",
           engagementSubType: engSubType,
+          stylePreset: preset ?? "default",
         }),
       });
       const data = await res.json();
@@ -261,6 +266,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     setSelectedVariant(0);
     setSelectedHook(0);
     setBrandStyle(null);
+    setStylePreset("default");
     setHookImageUrl(null);
     setSlideImages([null, null, null, null, null]);
     setError(null);
@@ -398,7 +404,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               onSelectHook={setSelectedHook}
               onNext={() => {
                 setStep(4);
-                generateSlideImages(topic, content, selectedHook, imageStyle, moodId);
+                generateSlideImages(topic, content, selectedHook, imageStyle, moodId, stylePreset);
                 // Persist draft so HomeView can reopen it (30-min window)
                 try {
                   const draftId = draftIdRef.current || `draft_${Date.now()}`;
@@ -448,7 +454,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
               ]}
-              onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle, moodId)}
+              onRetry={() => content && generateSlideImages(topic, content, selectedHook, imageStyle, moodId, stylePreset)}
               modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"}
             />
           )}
@@ -470,7 +476,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialBodyScale={initialCarousel?.bodyScale}
               initialShowLuniaLifeWatermark={initialCarousel?.showLuniaLifeWatermark}
               initialHookOverlays={initialCarousel?.hookOverlays}
+              initialShowSlideArrows={initialCarousel?.showSlideArrows}
+              initialShowSlideNumbers={initialCarousel?.showSlideNumbers}
+              initialShowCitationBars={initialCarousel?.showCitationBars}
               carouselFormat={carouselFormat}
+              stylePreset={stylePreset}
               onContentChange={(c) => {
                 const next = [...variants];
                 next[selectedVariant] = c.content;

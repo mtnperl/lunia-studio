@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { CarouselFormat, EngagementSubType, HookTone, Subject } from "@/lib/types";
+import { CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject } from "@/lib/types";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
 
@@ -45,7 +45,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset) => void;
 };
 
 type Mode = "list" | "custom";
@@ -63,6 +63,7 @@ export default function TopicStep({ onNext }: Props) {
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [concise, setConcise] = useState(false);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
+  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
 
   useEffect(() => {
     fetch("/api/subjects")
@@ -100,7 +101,7 @@ export default function TopicStep({ onNext }: Props) {
       carouselFormat === "engagement" ? true
       : carouselFormat === "did_you_know" ? true
       : concise;
-    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined);
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset);
   }
 
   // Cherry-pick #5: inline add-custom-topic from list mode
@@ -453,6 +454,40 @@ export default function TopicStep({ onNext }: Props) {
         </div>
       </div>
 
+      )}
+
+      {/* Carousel style preset — re-skins the whole carousel (colors, fonts,
+          image engine). "Editorial Scientific" applies the Lunia brand book. */}
+      {carouselFormat !== "did_you_know" && (
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {([
+            { val: "default" as CarouselStylePreset, label: "Default", desc: "Current v2 styling" },
+            { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
+          ]).map((opt) => {
+            const sel = stylePreset === opt.val;
+            return (
+              <div
+                key={opt.val}
+                onClick={() => setStylePreset(opt.val)}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
       )}
 
       {/* Hook image style — hidden for did_you_know (no AI imagery) */}

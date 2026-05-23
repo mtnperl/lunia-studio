@@ -47,6 +47,12 @@ export const VISUAL_MOODS: VisualMood[] = [
     styleBlock:
       "bright, sunlit lifestyle photography in the spirit of premium DTC wellness brands (Tally Health, Ritual, AG1), warm natural daylight through a window, soft cream / sand / sage / honey palette, real-world moments — kitchen counters, breakfast tables, linen, ceramic, fresh produce, hands in soft focus, gentle film grain, approachable and human, no moody chiaroscuro, no dark blue, no text, no logos",
   },
+  {
+    id: "editorial-scientific",
+    label: "Editorial Scientific",
+    styleBlock:
+      "clinical editorial photography in the spirit of premium DTC wellness brands, soft ivory and warm cream palette with deep navy accents, generous negative space, soft natural daylight, a single Lunia Restore amber bottle as the focal product, calm scientific aesthetic, magazine-quality composition, photoreal, no text, no overlaid logos",
+  },
 ];
 
 export function pickRandomMood(seed?: string): VisualMood {

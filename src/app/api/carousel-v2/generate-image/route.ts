@@ -49,9 +49,14 @@ export async function POST(req: Request) {
       return Response.json({ error: 'slideIndex must be 0–4' }, { status: 400 });
     }
 
+    // Editorial Scientific preset locks the mood to the Lunia editorial look.
+    const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
+    const isEditorial = stylePreset === 'editorial-scientific';
+
     // Pick a visual mood for this generation. If the caller passes one (e.g.
     // "regenerate with the same mood"), respect it; otherwise random.
-    const mood: VisualMood = getMoodById(body.moodId) ?? pickRandomMood();
+    const requestedMoodId = isEditorial ? 'editorial-scientific' : body.moodId;
+    const mood: VisualMood = getMoodById(requestedMoodId) ?? pickRandomMood();
 
     const explicitEngine = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2'].includes(body.imageEngine))
       ? (body.imageEngine as ImageEngine)
@@ -59,10 +64,10 @@ export async function POST(req: Request) {
     // Lifestyle Health renders best on gpt-image-2 — sunlit DTC-wellness
     // photography is its strongest lane. Caller-supplied imageEngine still wins.
     const moodDefaultEngine: ImageEngine | undefined =
-      mood.id === 'lifestyle-health' ? 'gpt-image-2' : undefined;
+      mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific' ? 'gpt-image-2' : undefined;
     const override = explicitEngine ?? moodDefaultEngine;
     const textInImage: boolean = Boolean(body.textInImage);
-    const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override });
+    const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override, stylePreset });
 
     const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
 
@@ -72,7 +77,7 @@ export async function POST(req: Request) {
     // reference; other engines (recraft / ideogram / flux2) don't take refs in
     // our current wiring. Failures here are silent — fall back to text-only.
     let referenceImageUrls: string[] = [];
-    if (mood.id === 'lifestyle-health' && engine === 'gpt-image-2') {
+    if ((mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific') && engine === 'gpt-image-2') {
       try {
         const assets = await getAssets();
         referenceImageUrls = assets

@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       : body.format === "did_you_know" ? "did_you_know"
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
+    const stylePreset: string | undefined = typeof body.stylePreset === "string" ? body.stylePreset : undefined;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -137,11 +138,19 @@ export async function POST(req: Request) {
         ? `${count - variants.length} of ${count} variants failed — showing ${variants.length}`
         : undefined;
 
+    // Editorial Scientific preset overrides any inferred / template brandStyle
+    // with the Lunia April-2026 palette so every slide reads on-brand.
+    const { EDITORIAL_BRAND_STYLE } = await import("@/lib/carousel-style-presets");
+    const resolvedBrandStyle = stylePreset === "editorial-scientific"
+      ? EDITORIAL_BRAND_STYLE
+      : (template?.brandStyle ?? null);
+
     return Response.json({
       variants,
       styleRefsUsed: styleRefs.length,
       templateUsed: template?.name,
-      brandStyle: template?.brandStyle ?? null,
+      brandStyle: resolvedBrandStyle,
+      stylePreset: stylePreset ?? "default",
       ...(warning ? { warning } : {}),
     });
   } catch (err) {

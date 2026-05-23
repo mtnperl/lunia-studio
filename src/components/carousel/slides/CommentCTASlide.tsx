@@ -15,6 +15,10 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;
+  stylePreset?: "default" | "editorial-scientific";
+  showSlideArrows?: boolean;
+  showSlideNumbers?: boolean;
+  showCitationBars?: boolean;
 };
 
 export default function CommentCTASlide({
@@ -30,6 +34,10 @@ export default function CommentCTASlide({
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
   reels = false,
+  stylePreset: _stylePreset = "default",
+  showSlideArrows: _showSlideArrows = true,
+  showSlideNumbers: _showSlideNumbers = true,
+  showCitationBars: _showCitationBars = true,
 }: Props) {
   const slideH = reels ? 1920 : 1350;
   const bg = brandStyle?.hookBackground ?? "#01253f";

@@ -30,9 +30,16 @@ type Props = {
   /** v2: layered overlays applied on top of the background image (frame, vignette, color grade, grain). */
   overlays?: HookOverlaySettings;
   reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
+  /** Carousel-wide style preset — "editorial-scientific" swaps typography to Inter and tones down hook treatment. */
+  stylePreset?: "default" | "editorial-scientific";
+  /** Decoration toggles (default true) — let the user hide the swipe-cue arrows, the slide-number badge, or the source-note rail. */
+  showSlideArrows?: boolean;
+  showSlideNumbers?: boolean;
+  showCitationBars?: boolean;
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true }: Props) {
+  const isEditorial = stylePreset === "editorial-scientific";
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
@@ -93,7 +100,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         }} />
       ) : null}
 
-      <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
+      {showSlideArrows && <ArrowIcons color={arrowColor} sizeScale={arrowScale} />}
 
       {/* Flex column content block — headline + subline stacked with padding tokens */}
       <div style={{
@@ -109,7 +116,15 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         boxSizing: 'border-box',
       }}>
         {/* Headline zone */}
-        <div style={{
+        <div style={isEditorial ? {
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontWeight: 400,
+          fontSize: 72,
+          color: headlineColor,
+          textTransform: 'none',
+          letterSpacing: '-0.015em',
+          lineHeight: 1.1,
+        } : {
           fontFamily: 'Jost, Montserrat, sans-serif',
           fontWeight: 400,
           fontSize: 64,
@@ -122,7 +137,13 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         </div>
 
         {/* Subline zone */}
-        <div style={{
+        <div style={isEditorial ? {
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          fontWeight: 300,
+          fontSize: 42,
+          color: sublineColor,
+          lineHeight: 1.45,
+        } : {
           fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
           fontWeight: 500,
           fontSize: 50,
@@ -133,7 +154,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         </div>
 
         {/* Trust liner — sits directly beneath the subline */}
-        {sourceNote && (
+        {showCitationBars && sourceNote && (
           <div style={{
             fontFamily: 'Jost, Montserrat, sans-serif',
             fontWeight: 400,

@@ -188,6 +188,10 @@ type Props = {
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
   bodyScale?: number;               // multiplier on the auto-sized body (default 1)
+  stylePreset?: "default" | "editorial-scientific";
+  showSlideArrows?: boolean;
+  showSlideNumbers?: boolean;
+  showCitationBars?: boolean;
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -215,7 +219,13 @@ export default function ContentSlide({
   reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  stylePreset = "default",
+  showSlideArrows = true,
+  showSlideNumbers: _showSlideNumbers = true,
+  showCitationBars = true,
 }: Props) {
+  const isEditorial = stylePreset === "editorial-scientific";
+  const editorialFontFamily = "Inter, system-ui, -apple-system, sans-serif";
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
@@ -348,7 +358,7 @@ export default function ContentSlide({
           animation: 'shimmer 1.6s ease-in-out infinite',
         }} />
       ) : null}
-      <ArrowIcons color={arrowColor} sizeScale={arrowScale} />
+      {showSlideArrows && <ArrowIcons color={arrowColor} sizeScale={arrowScale} />}
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',
@@ -385,7 +395,16 @@ export default function ContentSlide({
         boxSizing: 'border-box',
       }}>
         {/* Headline zone */}
-        <div style={{
+        <div style={isEditorial ? {
+          fontFamily: editorialFontFamily,
+          fontWeight: 400,
+          fontSize: headlineFontSize,
+          color: headlineColor,
+          textTransform: 'none',
+          letterSpacing: '-0.01em',
+          lineHeight: 1.15,
+          flexShrink: 0,
+        } : {
           fontFamily: 'Jost, Montserrat, sans-serif',
           fontWeight: 400,
           fontSize: headlineFontSize,
@@ -413,20 +432,22 @@ export default function ContentSlide({
             color: bodyColor,
             lineHeight: 1.55,
           }}>
-            <span style={{ fontWeight: 700 }}>{boldSentence}</span>
-            {restBody ? <span style={{ fontWeight: 400 }}>{' '}{restBody}</span> : null}
+            <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
+            {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
           </div>
 
-          <div style={{
-            fontFamily: 'Cormorant Garamond, Lora, serif',
-            fontWeight: 400,
-            fontStyle: 'italic',
-            fontSize: citationFontSize,
-            color: citationColor,
-            lineHeight: 1.4,
-          }}>
-            {citation}
-          </div>
+          {showCitationBars && (
+            <div style={{
+              fontFamily: isEditorial ? editorialFontFamily : 'Cormorant Garamond, Lora, serif',
+              fontWeight: isEditorial ? 300 : 400,
+              fontStyle: isEditorial ? 'normal' : 'italic',
+              fontSize: citationFontSize,
+              color: citationColor,
+              lineHeight: 1.4,
+            }}>
+              {citation}
+            </div>
+          )}
         </div>
 
         {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}

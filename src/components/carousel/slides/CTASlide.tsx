@@ -18,9 +18,14 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
+  stylePreset?: "default" | "editorial-scientific";
+  showSlideArrows?: boolean;
+  showSlideNumbers?: boolean;
+  showCitationBars?: boolean;
 };
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false, stylePreset = "default", showSlideArrows: _showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars: _showCitationBars = true }: Props) {
+  const isEditorial = stylePreset === "editorial-scientific";
   const slideH = reels ? 1920 : 1350;
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
@@ -82,7 +87,15 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         </div>
       )}
       <div style={{ position: "absolute", top: contentTop, left: 72, right: 72 }}>
-        <div style={{
+        <div style={isEditorial ? {
+          fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+          fontWeight: 400,
+          fontSize: 80,
+          color: headlineColor,
+          textTransform: "none",
+          letterSpacing: "-0.015em",
+          lineHeight: 1.1,
+        } : {
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
           fontSize: 72,
@@ -93,7 +106,14 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }}>
           {headline}
         </div>
-        <div style={{
+        <div style={isEditorial ? {
+          fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+          fontWeight: 300,
+          fontSize: 36,
+          color: followColor,
+          lineHeight: 1.45,
+          marginTop: 56,
+        } : {
           fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
@@ -103,7 +123,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
           marginTop: 56,
         }}>
           {parts[0]}
-          <span style={{ fontWeight: 700 }}>@lunia_life</span>
+          <span style={{ fontWeight: isEditorial ? 500 : 700 }}>@lunia_life</span>
           {parts[1]}
         </div>
       </div>

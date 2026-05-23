@@ -314,6 +314,11 @@ export type BrandStyle = {
   secondary: string;       // muted / citation text
 };
 
+/** Carousel-wide style preset. "editorial-scientific" applies the Lunia brand
+ *  palette, Inter normal/light typography, and routes image generation through
+ *  gpt-image-2 with the matching visual mood. */
+export type CarouselStylePreset = "default" | "editorial-scientific";
+
 export type CarouselConfig = {
   topic: string;
   content: CarouselContent;
@@ -325,6 +330,8 @@ export type CarouselConfig = {
   contentBgImages?: (string | null)[];
   /** 0..1 — opacity of the slide-color overlay on top of contentBgImages. Higher = image more muted. */
   contentBgOverlayOpacity?: number;
+  /** Carousel-wide style preset. Default → "default". */
+  stylePreset?: CarouselStylePreset;
 };
 
 /** v2 hook image overlay settings — inlined as a plain shape so types.ts stays free of UI imports. Mirrors HookOverlaySettings in components/carousel/shared/HookOverlays.tsx. */
@@ -366,6 +373,12 @@ export type SavedCarousel = {
   bodyScale?: number;
   /** v2 hook image overlays (frame / vignette / color grade / grain). */
   hookOverlays?: SavedHookOverlays;
+  /** Carousel-wide style preset (default → "default"). */
+  stylePreset?: CarouselStylePreset;
+  /** Decoration toggles — default true on every carousel for backward compat. */
+  showSlideArrows?: boolean;
+  showSlideNumbers?: boolean;
+  showCitationBars?: boolean;
   savedAt: string;
 };
 

@@ -50,6 +50,7 @@ export async function POST(req: Request) {
       headlineScale, bodyScale,
       format, engagementSubType, didYouKnowContent,
       hookOverlays,
+      stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
     } = body;
 
     if (!topic) {
@@ -113,6 +114,10 @@ export async function POST(req: Request) {
       headlineScale: headlineScale ?? undefined,
       bodyScale: bodyScale ?? undefined,
       hookOverlays: hookOverlays ?? undefined,
+      stylePreset: stylePreset ?? undefined,
+      showSlideArrows: typeof showSlideArrows === "boolean" ? showSlideArrows : undefined,
+      showSlideNumbers: typeof showSlideNumbers === "boolean" ? showSlideNumbers : undefined,
+      showCitationBars: typeof showCitationBars === "boolean" ? showCitationBars : undefined,
       savedAt: new Date().toISOString(),
     };
 
