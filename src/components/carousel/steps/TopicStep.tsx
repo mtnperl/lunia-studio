@@ -50,6 +50,20 @@ type Props = {
 
 type Mode = "list" | "custom";
 
+/** Demo topics for one-click testing — exercise a range of visual metaphors so
+ *  it's a fair stress-test of the editorial preset (portrait, still life,
+ *  bedroom scene, etc.) without picking from the real subject library. */
+const SAMPLE_SUBJECTS = [
+  "Skin repairs at night — the overnight repair window",
+  "Magnesium glycinate beats melatonin for real sleep",
+  "Why core body temperature drops at night and triggers sleep",
+  "Cortisol's morning peak and how to align your day with it",
+  "REM sleep and memory consolidation — the science",
+  "L-Theanine: take 200mg 40 minutes before bed",
+  "Why blood sugar spikes at night ruin deep sleep",
+  "Apigenin: the chamomile compound that quiets the brain",
+];
+
 export default function TopicStep({ onNext }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -142,26 +156,51 @@ export default function TopicStep({ onNext }: Props) {
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Choose a topic</h2>
       <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick from your subject library or enter a custom topic.</p>
 
-      {/* Mode toggle */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
-        {(["list", "custom"] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              padding: "8px 20px",
-              fontSize: 13,
-              fontWeight: 600,
-              background: mode === m ? "var(--accent)" : "var(--surface)",
-              color: mode === m ? "#fff" : "var(--muted)",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {m === "list" ? "Subject library" : "Custom topic"}
-          </button>
-        ))}
+      {/* Mode toggle + quick-test sample-subject button */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          {(["list", "custom"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: mode === m ? "var(--accent)" : "var(--surface)",
+                color: mode === m ? "#fff" : "var(--muted)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {m === "list" ? "Subject library" : "Custom topic"}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => {
+            const pick = SAMPLE_SUBJECTS[Math.floor(Math.random() * SAMPLE_SUBJECTS.length)];
+            setMode("custom");
+            setCustom(pick);
+            setSelectedSubject(null);
+          }}
+          title="Fill a sample topic so you can simulate a post without picking a real subject"
+          style={{
+            padding: "7px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--muted)",
+            background: "transparent",
+            border: "1px dashed var(--border-strong)",
+            borderRadius: 7,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.02em",
+          }}
+        >
+          🎲 Try sample subject
+        </button>
       </div>
 
       {/* List mode */}
