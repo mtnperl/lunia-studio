@@ -139,7 +139,15 @@ export async function POST(req: Request) {
     const useEditorialHookFramework =
       slideIndex === 0 && isEditorial && hookImageSpec && hookImageSpec.subject;
 
-    const prompt = useEditorialHookFramework
+    // customPrompt — if the caller (Edit hook-image prompt panel in PreviewStep)
+    // passes a verbatim prompt string, send THAT to fal/gpt and skip the
+    // server-side assembly. References still attach per the existing rules.
+    const customPrompt: string | undefined =
+      typeof body.customPrompt === 'string' && body.customPrompt.trim().length > 0
+        ? body.customPrompt
+        : undefined;
+
+    const assembledPrompt = useEditorialHookFramework
       ? buildEditorialHookPrompt({
           spec: hookImageSpec!,
           headline: hookHeadline,
@@ -148,7 +156,22 @@ export async function POST(req: Request) {
         })
       : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
 
-    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} refs=${referenceImageUrls.length} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 100)}..."`);
+    const prompt = customPrompt ?? assembledPrompt;
+
+    // previewOnly — return the prompt without calling fal.ai. Used by the
+    // "Edit hook-image prompt" UI to populate the textarea so the user can
+    // see exactly what would be sent (or edit it before generating).
+    if (body.previewOnly === true) {
+      return Response.json({
+        prompt,
+        source: customPrompt ? 'custom' : (useEditorialHookFramework ? 'editorial-framework' : 'mood-assembled'),
+        engine,
+        mood: { id: mood.id, label: mood.label },
+        refs: referenceImageUrls.length,
+      });
+    }
+
+    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} refs=${referenceImageUrls.length} prompt_source=${customPrompt ? 'custom' : (imagePrompt?.trim() ? 'claude' : 'fallback')} prompt="${prompt.slice(0, 100)}..."`);
 
     let url: string | undefined;
     try {

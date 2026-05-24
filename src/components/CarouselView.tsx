@@ -143,6 +143,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           ...(currentMoodId ? { moodId: currentMoodId } : {}),
           ...(currentStylePreset && currentStylePreset !== "default" ? { stylePreset: currentStylePreset } : {}),
           ...(currentContent.hookImageSpec ? { hookImageSpec: currentContent.hookImageSpec } : {}),
+          // Honour any user-edited full prompt from PreviewStep's prompt editor.
+          ...(currentContent.hookImagePromptOverride && currentContent.hookImagePromptOverride.trim()
+              ? { customPrompt: currentContent.hookImagePromptOverride }
+              : {}),
         }),
       })
         .then(async (r) => {

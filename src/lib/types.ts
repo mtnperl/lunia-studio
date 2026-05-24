@@ -307,6 +307,11 @@ export type CarouselContent = {
   commentKeyword?: string; // engagement format: auto-generated keyword for comment CTA
   /** Editorial-scientific only: structured hook-image brief written by Claude. */
   hookImageSpec?: EditorialHookImageSpec;
+  /** Verbatim prompt the user typed in the "Edit hook-image prompt" panel.
+   *  When set, the image route bypasses its own assembly (editorial framework
+   *  OR mood styleBlock) and sends this string to fal/gpt verbatim. Persisted
+   *  on save so manual edits survive reload. Clear to fall back to assembled. */
+  hookImagePromptOverride?: string;
 };
 
 export type GraphicStyle =

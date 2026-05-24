@@ -336,6 +336,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // "gpt-image-2" forces OpenAI GPT Image 2 via fal for higher fidelity / text rendering.
   const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2">("auto");
 
+  // ── Full-prompt editor ──────────────────────────────────────────────────
+  // fullPromptPreview = the prompt the server WOULD send right now (assembled
+  // from spec + mood + chrome). fullPromptOverride mirrors
+  // content.hookImagePromptOverride and, when non-empty, is sent verbatim to
+  // the image route so the user-edited prompt wins over the server framework.
+  const [fullPromptPreview, setFullPromptPreview] = useState<string>("");
+  const [fullPromptOverride, setFullPromptOverride] = useState<string>("");
+  const [fullPromptLoading, setFullPromptLoading] = useState<boolean>(false);
+  const [fullPromptOpen, setFullPromptOpen] = useState<boolean>(false);
+  const [fullPromptError, setFullPromptError] = useState<string | null>(null);
+
   // Derive vector mode from actual graphic data rather than ephemeral UI state
   function isVectorSlide(slideIndex: number): boolean {
     try {
@@ -403,6 +414,57 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (proxied) prefetchUrl(proxied);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgs[0], hookImageUrl]);
+
+  // Sync the local override mirror whenever the saved carousel changes (e.g.
+  // load from library or a different carousel comes in).
+  useEffect(() => {
+    setFullPromptOverride(content.hookImagePromptOverride ?? "");
+  }, [content.hookImagePromptOverride]);
+
+  // Whenever the hook variant, the high-level imagePrompt, the image style,
+  // the chosen mood/engine, or the structured editorial spec changes, ask the
+  // server what FULL prompt it would assemble. This keeps the "Full prompt
+  // sent to engine" textarea always showing the current truth — and the user
+  // can edit it from there if they want to override.
+  const targetAspectForPreview = reelsMode ? "9:16" : "4:5";
+  useEffect(() => {
+    let aborted = false;
+    setFullPromptLoading(true);
+    setFullPromptError(null);
+    fetch(`${apiBase}/generate-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        previewOnly: true,
+        slideIndex: 0,
+        topic: topic ?? "",
+        hook,
+        imagePrompt: currentImagePrompt,
+        imageStyle,
+        imageAspect: targetAspectForPreview,
+        ...(moodId ? { moodId } : {}),
+        ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
+        ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
+        ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+      }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (aborted) return;
+        if (!r.ok || data.error || !data.prompt) {
+          setFullPromptError(data.error ?? `Could not preview prompt (HTTP ${r.status})`);
+          return;
+        }
+        setFullPromptPreview(data.prompt as string);
+      })
+      .catch((err) => {
+        if (aborted) return;
+        setFullPromptError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => { if (!aborted) setFullPromptLoading(false); });
+    return () => { aborted = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview]);
 
   // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
@@ -990,6 +1052,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
           ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+          // If the user edited the full prompt in the "Edit hook-image prompt"
+          // panel, send that verbatim — bypasses server-side assembly.
+          ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
+              ? { customPrompt: content.hookImagePromptOverride }
+              : {}),
         }),
       });
       // Read as text first so Vercel gateway HTML (e.g. on timeout) doesn't crash JSON.parse.
@@ -1602,6 +1669,54 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   }}>{chip.label}</button>
                 );
               })}
+            </div>
+            {/* Full prompt sent to engine — what fal/gpt will actually receive,
+                including framework chrome (palette, fonts, refs). Edit to override. */}
+            <div style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
+              <button
+                onClick={() => setFullPromptOpen((v) => !v)}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}
+              >
+                <span>Full prompt sent to engine{content.hookImagePromptOverride ? " (edited)" : ""}</span>
+                <span style={{ color: "var(--subtle)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
+              </button>
+              {fullPromptOpen && (
+                <div style={{ padding: "0 10px 10px" }}>
+                  {fullPromptLoading && !fullPromptOverride && !fullPromptPreview && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0 8px" }}>
+                      <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>Loading current prompt…</span>
+                    </div>
+                  )}
+                  {fullPromptError && <div style={{ fontSize: 11, color: "var(--error)", marginBottom: 6 }}>{fullPromptError}</div>}
+                  <textarea
+                    value={fullPromptOverride || fullPromptPreview}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFullPromptOverride(v);
+                      // Persist override (or clear it when the user empties the box).
+                      onContentChange({ ...config, content: { ...config.content, hookImagePromptOverride: v.trim() ? v : undefined } });
+                    }}
+                    rows={10}
+                    placeholder="Server-assembled prompt will appear here. Edit to override."
+                    style={{ width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.5, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface)" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--subtle)" }}>
+                    <span>{content.hookImagePromptOverride ? "Override is active — sent verbatim on next regen." : "Showing server default — edit to override."}</span>
+                    {content.hookImagePromptOverride && (
+                      <button
+                        onClick={() => {
+                          setFullPromptOverride("");
+                          onContentChange({ ...config, content: { ...config.content, hookImagePromptOverride: undefined } });
+                        }}
+                        style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        Reset to default
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Current prompt</label>
             <textarea
@@ -2995,6 +3110,53 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   </button>
                 );
               })}
+            </div>
+            {/* Full prompt sent to engine — what fal/gpt will actually receive,
+                including framework chrome (palette, fonts, refs). Edit to override. */}
+            <div style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
+              <button
+                onClick={() => setFullPromptOpen((v) => !v)}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}
+              >
+                <span>Full prompt sent to engine{content.hookImagePromptOverride ? " (edited)" : ""}</span>
+                <span style={{ color: "var(--subtle)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
+              </button>
+              {fullPromptOpen && (
+                <div style={{ padding: "0 10px 10px" }}>
+                  {fullPromptLoading && !fullPromptOverride && !fullPromptPreview && (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 0 8px" }}>
+                      <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid var(--subtle)", borderTopColor: "var(--muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>Loading current prompt…</span>
+                    </div>
+                  )}
+                  {fullPromptError && <div style={{ fontSize: 11, color: "#dc2626", marginBottom: 6 }}>{fullPromptError}</div>}
+                  <textarea
+                    value={fullPromptOverride || fullPromptPreview}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFullPromptOverride(v);
+                      onContentChange({ ...config, content: { ...config.content, hookImagePromptOverride: v.trim() ? v : undefined } });
+                    }}
+                    rows={10}
+                    placeholder="Server-assembled prompt will appear here. Edit to override."
+                    style={{ width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.5, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface)" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--subtle)" }}>
+                    <span>{content.hookImagePromptOverride ? "Override is active — sent verbatim on next regen." : "Showing server default — edit to override."}</span>
+                    {content.hookImagePromptOverride && (
+                      <button
+                        onClick={() => {
+                          setFullPromptOverride("");
+                          onContentChange({ ...config, content: { ...config.content, hookImagePromptOverride: undefined } });
+                        }}
+                        style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        Reset to default
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
               Current prompt
