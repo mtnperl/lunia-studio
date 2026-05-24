@@ -130,7 +130,7 @@ Return ONLY valid JSON in this exact format, no other text:
     "brandMood": "3–5 evocative adjectives (e.g. \\"exclusive, calm, aspirational, premium\\")",
     "subject": "literal description of the focal subject — a person (note age + emotion), still life, hands, surface, etc. — chosen for the carousel topic",
     "composition": "framing direction — \\"editorial flat lay\\" / \\"half-face portrait\\" / \\"still life, top-down\\" / \\"close-crop product on linen\\" / etc.",
-    "sceneElements": ["3–6 specific physical items in the scene, always include 'Lunia Restore bottle'"],
+    "sceneElements": ["3–6 specific physical items in the scene; include 'Lunia Restore bottle' ONLY if the topic is genuinely about the product / an ingredient / a dose"],
     "overlay": "optional short tagline ≤ 6 words baked into the image; omit field if not useful"
   }` : ""}
 }
@@ -229,7 +229,7 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
     • brandMood: 3–5 mood adjectives, comma-separated (e.g. "exclusive, calm, aspirational, premium")
     • subject: literal description of the focal subject. If a person, include approximate age and emotion. Half-portraits, hands, surfaces, partial framing — all valid. Never "full portrait of model".
     • composition: short framing direction — "editorial flat lay" / "half-face portrait" / "still life, top-down" / "close-crop product on linen" / etc.
-    • sceneElements: 3–6 specific physical items. ALWAYS include "Lunia Restore bottle". Concrete nouns (linen pillow, ceramic mug, dried flower, marble surface, single sage sprig, amber bottle).
+    • sceneElements: 3–6 specific physical items. ONLY include "Lunia Restore bottle" if the topic is actually about the product, an ingredient, a dose, or supplementation (e.g. magnesium glycinate, L-theanine, dosing). For non-product topics (sleep biology, stress mechanisms, routines, lifestyle), DO NOT include the bottle — it would feel forced. Use concrete nouns (linen pillow, ceramic mug, dried flower, marble surface, single sage sprig, etc.).
     • overlay: optional short tagline ≤ 6 words baked as an editorial mark in the image. Only set when a tagline meaningfully sharpens the brief; otherwise omit.
   Do NOT include the headline / body / palette / font / reference instructions — those are added by the image route as fixed brand chrome. Keep your output focused on the variable creative brief only.
 ` : ""}- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.

@@ -124,7 +124,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         {/* Headline zone */}
         <div style={isEditorial ? {
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-          fontWeight: 400,
+          fontWeight: 300,
           fontSize: 72,
           color: headlineColor,
           textTransform: 'none',
@@ -145,7 +145,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         {/* Subline zone */}
         <div style={isEditorial ? {
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-          fontWeight: 300,
+          fontWeight: 200,
           fontSize: 42,
           color: sublineColor,
           lineHeight: 1.45,

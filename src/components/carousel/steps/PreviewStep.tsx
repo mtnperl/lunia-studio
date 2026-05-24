@@ -284,7 +284,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // optional product photo. Drop-in compatible with ContentSlide's props.
   const ContentSlideComponent = isEditorial ? EditorialContentSlide : ContentSlide;
   // Editorial Scientific: default the slide bg to Soft Ivory if no saved color.
-  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isEditorial ? "#F7F4EF" : undefined));
+  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isEditorial ? "#EFEFF4" : undefined));
   // Decoration toggles — default true to preserve every existing carousel's look.
   const [showSlideArrows, setShowSlideArrows] = useState(initialShowSlideArrows ?? true);
   const [showSlideNumbers, setShowSlideNumbers] = useState(initialShowSlideNumbers ?? true);

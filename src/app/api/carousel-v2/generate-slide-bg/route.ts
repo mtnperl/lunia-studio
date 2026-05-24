@@ -7,20 +7,49 @@ export const maxDuration = 240;
 
 const RECRAFT_ENDPOINT = 'fal-ai/recraft/v4/pro/text-to-image';
 
-/** Editorial Scientific bg prompt — features the Lunia Restore amber bottle as
- *  the focal subject, framed to the right of the composition so it sits naturally
- *  in the slide's right column. Echoes the reference look (bottle on rock,
- *  bottle on cube, bottle on linen). */
-function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string }): string {
+/** Keywords that indicate the slide is actually about the Lunia product /
+ *  supplement itself — only then do we feature the bottle. For unrelated
+ *  topics (sleep biology, stress, lifestyle), the bottle would feel forced. */
+const PRODUCT_KEYWORDS = [
+  'lunia', 'restore', 'bottle', 'supplement', 'capsule', 'pill', 'dose', 'dosage',
+  'magnesium', 'glycinate', 'l-theanine', 'theanine', 'apigenin', 'ashwagandha',
+  'ingredient', 'formula', 'serving', 'mg', 'tincture',
+];
+
+function slideMentionsProduct(text: string): boolean {
+  const lower = text.toLowerCase();
+  return PRODUCT_KEYWORDS.some((k) => lower.includes(k));
+}
+
+/** Editorial Scientific bg prompt — if the slide is about the product, the
+ *  Lunia Restore amber bottle becomes the focal subject (still-life on linen
+ *  / stone / pedestal). Otherwise, we render an editorial scene that matches
+ *  the slide's subject (calm bedroom, hands, surface) with NO product. */
+function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string; includeBottle: boolean }): string {
   const subject = `${args.headline}. ${args.body}`.slice(0, 240);
+  const palette = 'soft pearl ivory (#EFEFF4) base, rich navy (#01253f) accents, slate blue (#2C3F51) secondary structure';
+
+  if (args.includeBottle) {
+    return [
+      'Editorial scientific product photograph of the Lunia Restore amber-glass supplement bottle on a calm minimalist surface (linen, smooth stone, marble pedestal, or matte ceramic).',
+      'Composition: the bottle is positioned to the RIGHT of the frame with generous negative space on the left for editorial text.',
+      `Subject context: ${subject}.`,
+      args.topic ? `Topical context: ${args.topic}.` : '',
+      `Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, ${palette}, no harsh shadows.`,
+      'Photoreal, sharp focus, premium still-life product photography. Background is uncluttered.',
+      'Absolutely NO text, NO words, NO logos, NO labels, NO signage, NO supplement-label typography in the scene.',
+    ].filter(Boolean).join(' ');
+  }
+
   return [
-    'Editorial scientific product photograph of the Lunia Restore amber-glass supplement bottle on a calm minimalist surface (linen, smooth stone, marble pedestal, or matte ceramic).',
-    'Composition: the bottle is positioned to the RIGHT of the frame with generous negative space on the left for editorial text.',
-    `Subject context: ${subject}.`,
+    'Editorial scientific photograph for a premium wellness brand — calm, minimal, magazine-cover quality.',
+    `Subject: ${subject}.`,
     args.topic ? `Topical context: ${args.topic}.` : '',
-    'Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, soft ivory / warm cream palette with deep navy accents, no harsh shadows.',
-    'Photoreal, sharp focus, premium still-life product photography. Background is uncluttered.',
-    'Absolutely NO text, NO words, NO logos, NO labels, NO signage, NO supplement-label typography in the scene.',
+    'Composition: the focal subject is positioned to the RIGHT of the frame with generous negative space on the left for editorial text.',
+    `Aesthetic: clinical premium DTC wellness, soft natural daylight, ${palette}, no harsh shadows.`,
+    'Photoreal, sharp focus, premium editorial photography. Background is uncluttered.',
+    'No bottles, no supplements, no product packaging. No people unless the subject explicitly calls for a person — then half-portraits or hands only, never a full portrait.',
+    'Absolutely NO text, NO words, NO logos, NO labels, NO signage of any kind in the scene.',
   ].filter(Boolean).join(' ');
 }
 
@@ -77,19 +106,25 @@ export async function POST(req: Request) {
       return Response.json({ error: 'headline or body required' }, { status: 400 });
     }
 
-    // Editorial Scientific routes through gpt-image-2/edit with the Lunia
-    // bottle + logo attached, so the slide image actually shows the product.
+    // Editorial Scientific routes through gpt-image-2/edit. Attach the Lunia
+    // bottle + logo references ONLY when the slide is actually about the
+    // product (mentions an ingredient, dose, the brand, etc.) — otherwise the
+    // bottle would feel forced into unrelated topics.
     if (stylePreset === 'editorial-scientific') {
-      const editorialPrompt = buildEditorialBgPrompt({ headline, body: slideBody, topic });
+      const includeBottle = slideMentionsProduct(`${headline} ${slideBody} ${topic ?? ''}`);
+      const editorialPrompt = buildEditorialBgPrompt({ headline, body: slideBody, topic, includeBottle });
+
       let referenceImageUrls: string[] = [];
-      try {
-        const assets = await getAssets();
-        referenceImageUrls = assets
-          .filter((a) => a.assetType === 'logo' || a.assetType === 'product-image')
-          .map((a) => a.url)
-          .slice(0, 10);
-      } catch (assetErr) {
-        console.warn('[v2/generate-slide-bg] getAssets failed, generating without refs:', assetErr);
+      if (includeBottle) {
+        try {
+          const assets = await getAssets();
+          referenceImageUrls = assets
+            .filter((a) => a.assetType === 'logo' || a.assetType === 'product-image')
+            .map((a) => a.url)
+            .slice(0, 10);
+        } catch (assetErr) {
+          console.warn('[v2/generate-slide-bg] getAssets failed, generating without refs:', assetErr);
+        }
       }
       const refDirective = referenceImageUrls.length > 0
         ? '\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. The reference images win over any generic product description.'
@@ -102,7 +137,7 @@ export async function POST(req: Request) {
         quality: 'medium',
         referenceImageUrls,
       });
-      console.log(`[v2/generate-slide-bg] editorial refs=${referenceImageUrls.length} prompt="${editorialPrompt.slice(0, 120)}..."`);
+      console.log(`[v2/generate-slide-bg] editorial bottle=${includeBottle} refs=${referenceImageUrls.length} prompt="${editorialPrompt.slice(0, 120)}..."`);
       return Response.json({ url });
     }
 

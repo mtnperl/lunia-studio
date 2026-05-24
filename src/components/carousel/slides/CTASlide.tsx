@@ -89,7 +89,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
       <div style={{ position: "absolute", top: contentTop, left: 72, right: 72 }}>
         <div style={isEditorial ? {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-          fontWeight: 400,
+          fontWeight: 300,
           fontSize: 80,
           color: headlineColor,
           textTransform: "none",
@@ -108,7 +108,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         </div>
         <div style={isEditorial ? {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-          fontWeight: 300,
+          fontWeight: 200,
           fontSize: 36,
           color: followColor,
           lineHeight: 1.45,

@@ -1,4 +1,5 @@
 "use client";
+import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
@@ -74,17 +75,20 @@ export default function EditorialContentSlide({
   headlineScale = 1,
   bodyScale = 1,
   showCitationBars = true,
+  showSlideArrows = true,
+  arrowScale = 1,
 }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 200 : PAD.y;
 
   // Lunia palette defaults — preset already passes EDITORIAL_BRAND_STYLE in.
-  const bg          = brandStyle?.background     ?? "#F7F4EF";
-  const headlineCol = brandStyle?.headline       ?? "#102635";
-  const bodyCol     = brandStyle?.body           ?? "#2c3f51";
-  const ruleCol     = brandStyle?.secondary      ?? "#2c3f51";
-  const citationCol = brandStyle?.secondary      ?? "#2c3f51";
-  const wordmarkCol = brandStyle?.headline       ?? "#102635";
+  const bg          = brandStyle?.background     ?? "#EFEFF4";
+  const headlineCol = brandStyle?.headline       ?? "#01253f";
+  const bodyCol     = brandStyle?.body           ?? "#01253f";
+  const ruleCol     = brandStyle?.secondary      ?? "#2C3F51";
+  const citationCol = brandStyle?.secondary      ?? "#2C3F51";
+  const wordmarkCol = brandStyle?.headline       ?? "#01253f";
+  const arrowCol    = brandStyle?.secondary      ?? "#2C3F51";
 
   const iconLayout = parseIconLayout(graphic);
   const iconRows = iconLayout
@@ -158,7 +162,7 @@ export default function EditorialContentSlide({
         <h1 style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
-          fontWeight: 400,
+          fontWeight: 300,
           fontSize: headlineSize,
           color: headlineCol,
           lineHeight: 1.04,
@@ -173,7 +177,7 @@ export default function EditorialContentSlide({
         <p style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
-          fontWeight: 300,
+          fontWeight: 200,
           fontSize: bodySize,
           color: bodyCol,
           lineHeight: 1.5,
@@ -184,46 +188,52 @@ export default function EditorialContentSlide({
 
         {iconRows.length > 0 && (
           <div style={{
-            // marginTop adds a little more visual breathing room than the column
-            // gap so the icons feel grouped with the body, not floating below.
+            // Bullet list — each row has the label on the LEFT and the
+            // contextual icon on the RIGHT, hugging the body copy above.
             marginTop: 8,
             display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 48,
-            alignItems: "flex-start",
+            flexDirection: "column",
+            gap: 16,
+            alignItems: "stretch",
           }}>
             {iconRows.map((ic) => (
               <div key={ic.id} style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-                minWidth: 120,
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 24,
+                paddingBottom: 14,
+                borderBottom: `1px solid ${ruleCol}`,
+                borderColor: ruleCol,
+                opacity: 1,
               }}>
                 <div style={{
-                  width: 72, height: 72, borderRadius: "50%",
+                  fontFamily: EDITORIAL_FONT,
+                  fontWeight: 300,
+                  fontSize: Math.round(bodySize * 0.82),
+                  color: headlineCol,
+                  letterSpacing: "0.01em",
+                  flex: 1,
+                  textAlign: "left",
+                }}>
+                  {ic.label}
+                </div>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
                   background: headlineCol,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
                     strokeLinecap="round" strokeLinejoin="round"
-                    style={{ width: 36, height: 36 }}
+                    style={{ width: 28, height: 28 }}
                     dangerouslySetInnerHTML={{ __html: ic.svg }} />
                 </div>
-                <div style={{
-                  fontFamily: EDITORIAL_FONT,
-                  fontWeight: 500,
-                  fontSize: 24,
-                  color: headlineCol,
-                  letterSpacing: "0.03em",
-                  textAlign: "center",
-                  maxWidth: 200,
-                }}>
-                {ic.label}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Citation — small navy text at the bottom. Centered horizontally when a
@@ -244,11 +254,18 @@ export default function EditorialContentSlide({
         </div>
       )}
 
-      {/* Re-use the existing brand-mark badge only as a soft watermark when toggled on */}
+      {/* Slide-navigation arrows — render above the LUNIA LIFE watermark so
+          the editorial slides match the hook/CTA chrome. */}
+      {showSlideArrows && <ArrowIcons color={arrowCol} sizeScale={arrowScale} />}
+
+      {/* Re-use the existing brand-mark badge only as a soft watermark when toggled on. Centered horizontally to match HookSlide / CTASlide. */}
       {showLuniaLifeWatermark && (
         <div style={{
-          position: "absolute", bottom: prominentWatermark ? 28 : 22,
-          right: PAD.x,
+          position: "absolute",
+          bottom: prominentWatermark ? 28 : 22,
+          left: 0,
+          right: 0,
+          textAlign: "center",
           fontFamily: EDITORIAL_FONT,
           fontWeight: 500,
           fontSize: prominentWatermark ? 18 : 14,
@@ -256,6 +273,8 @@ export default function EditorialContentSlide({
           textTransform: "uppercase",
           color: headlineCol,
           opacity: prominentWatermark ? 0.45 : 0.18,
+          pointerEvents: "none",
+          userSelect: "none",
         }}>LUNIA LIFE</div>
       )}
 

@@ -53,6 +53,36 @@ export async function POST(req: Request) {
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
     const isEditorial = stylePreset === 'editorial-scientific';
 
+    // Parse the structured hook image spec early — we need it both for the
+    // ref-attachment decision and for the prompt assembly below.
+    type HookSpec = { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
+    const hookImageSpec: HookSpec | undefined =
+      body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
+
+    /** Decide whether to attach the Lunia bottle / logo references. For the
+     *  editorial hook, only attach when the structured spec actually mentions
+     *  the bottle (Claude-driven decision per topic). For lifestyle-health we
+     *  keep the existing behaviour (always attach). */
+    const editorialSceneMentionsProduct = (() => {
+      if (!isEditorial || !hookImageSpec) return false;
+      const haystack = [
+        hookImageSpec.subject,
+        hookImageSpec.composition,
+        ...(hookImageSpec.sceneElements ?? []),
+      ].join(' ').toLowerCase();
+      return /\b(lunia|restore|bottle|capsule|supplement|amber bottle|amber-glass|pill|dose|tincture|magnesium|theanine|apigenin|ashwagandha|glycinate|ingredient|formula)\b/.test(haystack);
+    })();
+    const editorialSceneMentionsLogo = (() => {
+      if (!isEditorial || !hookImageSpec) return false;
+      const haystack = [
+        hookImageSpec.subject,
+        hookImageSpec.composition,
+        ...(hookImageSpec.sceneElements ?? []),
+        hookImageSpec.overlay ?? '',
+      ].join(' ').toLowerCase();
+      return /\b(logo|wordmark|brand mark|lunia life)\b/.test(haystack);
+    })();
+
     // Pick a visual mood for this generation. If the caller passes one (e.g.
     // "regenerate with the same mood"), respect it; otherwise random.
     const requestedMoodId = isEditorial ? 'editorial-scientific' : body.moodId;
@@ -71,21 +101,30 @@ export async function POST(req: Request) {
 
     const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
 
-    // Lifestyle Health + gpt-image-2 = attach the Lunia bottle + logo from the
-    // asset library, the same way email-review does it. Other moods (cinematic
-    // dark, surreal, etc.) are conceptual and would be hurt by a real product
-    // reference; other engines (recraft / ideogram / flux2) don't take refs in
-    // our current wiring. Failures here are silent — fall back to text-only.
+    // Reference attachment policy:
+    //  • Lifestyle Health + gpt-image-2  → always attach bottle + logo (this
+    //    mood is a product-photography lane).
+    //  • Editorial Scientific + gpt-image-2 → attach only what Claude's spec
+    //    actually references. Bottle if scene mentions the product, logo if
+    //    scene mentions the wordmark. For purely lifestyle/biology topics,
+    //    skip refs so the hook image doesn't shoehorn the product in.
+    //  • Other moods + engines → no refs.
     let referenceImageUrls: string[] = [];
-    if ((mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific') && engine === 'gpt-image-2') {
-      try {
-        const assets = await getAssets();
-        referenceImageUrls = assets
-          .filter((a) => a.assetType === 'logo' || a.assetType === 'product-image')
-          .map((a) => a.url)
-          .slice(0, 10);
-      } catch (assetErr) {
-        console.warn('[v2/generate-image] getAssets failed, generating without refs:', assetErr);
+    if (engine === 'gpt-image-2') {
+      const wantsBottle = mood.id === 'lifestyle-health' || (mood.id === 'editorial-scientific' && editorialSceneMentionsProduct);
+      const wantsLogo   = mood.id === 'lifestyle-health' || (mood.id === 'editorial-scientific' && editorialSceneMentionsLogo);
+      if (wantsBottle || wantsLogo) {
+        try {
+          const assets = await getAssets();
+          referenceImageUrls = assets
+            .filter((a) =>
+              (wantsLogo   && a.assetType === 'logo') ||
+              (wantsBottle && a.assetType === 'product-image'))
+            .map((a) => a.url)
+            .slice(0, 10);
+        } catch (assetErr) {
+          console.warn('[v2/generate-image] getAssets failed, generating without refs:', assetErr);
+        }
       }
     }
 
@@ -98,11 +137,8 @@ export async function POST(req: Request) {
 
     // ─── Editorial-Scientific HOOK uses a content-aware structured prompt ──
     // (Only the hook — slideIndex 0. Content slides keep mood.styleBlock.) The
-    // structured spec comes from Claude's carousel generation; here we wrap it
-    // in the fixed brand chrome (text-to-bake, palette, fonts, references).
-    type HookSpec = { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
-    const hookImageSpec: HookSpec | undefined =
-      body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
+    // structured spec was parsed earlier; here we wrap it in the fixed brand
+    // chrome (text-to-bake, palette, fonts, references).
     const hookHeadline: string = typeof hook?.headline === 'string' ? hook.headline : '';
     const hookSubline:  string = typeof hook?.subline  === 'string' ? hook.subline  : '';
 
@@ -161,15 +197,15 @@ function buildEditorialHookPrompt(args: {
     `Subject: ${spec.subject}.`,
     `Composition: ${spec.composition}.${scene ? ` Scene elements: ${scene}.` : ""}`,
     "",
-    "Bake the following text into the image as the ONLY typography. Use the Inter font family at the specified weights. Render crisp, perfectly legible, navy on ivory:",
-    `  • Headline (Inter Regular 400): "${headline}"`,
-    `  • Body (Inter Light 300): "${subline}"`,
-    spec.overlay ? `  • Overlay (Inter Regular 400): "${spec.overlay}"` : "",
+    "Bake the following text into the image as the ONLY typography. Use the Inter font family at the specified weights. Render crisp, perfectly legible, navy on pearl ivory:",
+    `  • Headline (Inter Light 300): "${headline}"`,
+    `  • Body (Inter ExtraLight 200): "${subline}"`,
+    spec.overlay ? `  • Overlay (Inter Light 300): "${spec.overlay}"` : "",
     "",
     "Color palette:",
-    "  • Background: #F7F4EF (soft ivory)",
+    "  • Background: #EFEFF4 (soft pearl ivory)",
     "  • Primary text & accents: #01253f (rich navy)",
-    "  • Secondary structure: #2c3f51 (slate blue)",
+    "  • Secondary structure: #2C3F51 (slate blue)",
     "",
     refLine,
     "",
