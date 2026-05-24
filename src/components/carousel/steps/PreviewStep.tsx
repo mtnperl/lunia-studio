@@ -989,6 +989,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(moodId ? { moodId } : {}),
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
+          ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
         }),
       });
       // Read as text first so Vercel gateway HTML (e.g. on timeout) doesn't crash JSON.parse.

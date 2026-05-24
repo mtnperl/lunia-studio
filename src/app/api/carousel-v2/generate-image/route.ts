@@ -95,7 +95,28 @@ export async function POST(req: Request) {
     const referenceDirective = referenceImageUrls.length > 0
       ? `\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Use the uploaded reference image for the Lunia logo, small and discreet, rendered exactly as supplied. The reference images win over any generic product description.`
       : '';
-    const prompt = `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
+
+    // ─── Editorial-Scientific HOOK uses a content-aware structured prompt ──
+    // (Only the hook — slideIndex 0. Content slides keep mood.styleBlock.) The
+    // structured spec comes from Claude's carousel generation; here we wrap it
+    // in the fixed brand chrome (text-to-bake, palette, fonts, references).
+    type HookSpec = { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
+    const hookImageSpec: HookSpec | undefined =
+      body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
+    const hookHeadline: string = typeof hook?.headline === 'string' ? hook.headline : '';
+    const hookSubline:  string = typeof hook?.subline  === 'string' ? hook.subline  : '';
+
+    const useEditorialHookFramework =
+      slideIndex === 0 && isEditorial && hookImageSpec && hookImageSpec.subject;
+
+    const prompt = useEditorialHookFramework
+      ? buildEditorialHookPrompt({
+          spec: hookImageSpec!,
+          headline: hookHeadline,
+          subline:  hookSubline,
+          hasRefs:  referenceImageUrls.length > 0,
+        })
+      : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
 
     console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id} refs=${referenceImageUrls.length} prompt_source=${imagePrompt?.trim() ? 'claude' : 'fallback'} prompt="${prompt.slice(0, 100)}..."`);
 
@@ -116,6 +137,46 @@ export async function POST(req: Request) {
     console.error('[api/carousel-v2/generate-image]', msg);
     return Response.json({ error: msg }, { status: 500 });
   }
+}
+
+// ─── Editorial Scientific hook framework ─────────────────────────────────────
+// Content-aware structured prompt assembled from Claude's hookImageSpec + the
+// chosen hook's headline / subline. Brand chrome (palette, fonts, references,
+// guardrails) is fixed scaffolding shared by every editorial hook.
+function buildEditorialHookPrompt(args: {
+  spec: { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
+  headline: string;
+  subline: string;
+  hasRefs: boolean;
+}): string {
+  const { spec, headline, subline, hasRefs } = args;
+  const scene = (spec.sceneElements ?? []).filter(Boolean).join(", ");
+  const refLine = hasRefs
+    ? "Use the uploaded reference for the Lunia Restore amber bottle — match its exact shape, label, proportions. Use the uploaded reference for the Lunia logo — small and discreet, exactly as supplied. The reference images win over any generic product description."
+    : "Render the Lunia Restore amber-glass bottle accurately, with a calm minimalist label.";
+
+  return [
+    `Create an editorial Lunia Life poster image. Brand mood: ${spec.brandMood}.`,
+    "",
+    `Subject: ${spec.subject}.`,
+    `Composition: ${spec.composition}.${scene ? ` Scene elements: ${scene}.` : ""}`,
+    "",
+    "Bake the following text into the image as the ONLY typography. Use the Inter font family at the specified weights. Render crisp, perfectly legible, navy on ivory:",
+    `  • Headline (Inter Regular 400): "${headline}"`,
+    `  • Body (Inter Light 300): "${subline}"`,
+    spec.overlay ? `  • Overlay (Inter Regular 400): "${spec.overlay}"` : "",
+    "",
+    "Color palette:",
+    "  • Background: #F7F4EF (soft ivory)",
+    "  • Primary text & accents: #01253f (rich navy)",
+    "  • Secondary structure: #2c3f51 (slate blue)",
+    "",
+    refLine,
+    "",
+    "Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, generous negative space, photoreal.",
+    "",
+    "No additional text, no other logos, no signage, no watermarks.",
+  ].filter(Boolean).join("\n");
 }
 
 function extractFalError(err: unknown): string {

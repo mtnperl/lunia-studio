@@ -93,8 +93,13 @@ export const GENERATE_CAROUSEL_PROMPT = (
   template: CarouselTemplate | null = null,
   brandStyle?: BrandStyle,
   concise = false,
-  v2Mode = false
+  v2Mode = false,
+  /** When set to "editorial-scientific", Claude also outputs a structured
+   *  hookImageSpec so the hook image renders as a Lunia editorial poster
+   *  (text baked in, brand chrome assembled by the image route). */
+  stylePreset?: string,
 ) => {
+  const isEditorial = stylePreset === "editorial-scientific";
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
@@ -120,7 +125,14 @@ Return ONLY valid JSON in this exact format, no other text:
     "followLine": "Follow @lunia_life for science-based sleep strategies."
   },
   "caption": "string",
-  "imagePrompt": "string"
+  "imagePrompt": "string"${isEditorial ? `,
+  "hookImageSpec": {
+    "brandMood": "3–5 evocative adjectives (e.g. \\"exclusive, calm, aspirational, premium\\")",
+    "subject": "literal description of the focal subject — a person (note age + emotion), still life, hands, surface, etc. — chosen for the carousel topic",
+    "composition": "framing direction — \\"editorial flat lay\\" / \\"half-face portrait\\" / \\"still life, top-down\\" / \\"close-crop product on linen\\" / etc.",
+    "sceneElements": ["3–6 specific physical items in the scene, always include 'Lunia Restore bottle'"],
+    "overlay": "optional short tagline ≤ 6 words baked into the image; omit field if not useful"
+  }` : ""}
 }
 ${v2Mode ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
@@ -210,7 +222,17 @@ Brand rules (follow exactly):
   Structure: [literal visual from the hook's key word/phrase] + [cinematic lighting] + [camera/composition] + [colour palette] + [mood].
   Hard rules: if the hook concept involves a human experience (fatigue, stress, a journey, a habit, waking up) you MAY include a single person or human detail — hands, a silhouette, or an editorial close-crop of a face — always partial framing, never a full portrait. No text, no logos. Ultra-sharp, editorial, premium brand aesthetic. Max 55 words. DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
   Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"
-- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
+${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
+  Write a structured brief for a poster-style hook image. The fields are content-aware: tailor every field to THIS carousel's topic so a skin-repair carousel ships a half-face portrait, a sleep-architecture carousel ships a calm bedroom flat lay, a magnesium carousel ships a still life, etc.
+  Choose the strongest visual metaphor for the topic — a half-portrait of a person (always note age + emotion), an editorial flat lay, a still life, or a top-down scene. Do not default to a single archetype across topics.
+  Fields:
+    • brandMood: 3–5 mood adjectives, comma-separated (e.g. "exclusive, calm, aspirational, premium")
+    • subject: literal description of the focal subject. If a person, include approximate age and emotion. Half-portraits, hands, surfaces, partial framing — all valid. Never "full portrait of model".
+    • composition: short framing direction — "editorial flat lay" / "half-face portrait" / "still life, top-down" / "close-crop product on linen" / etc.
+    • sceneElements: 3–6 specific physical items. ALWAYS include "Lunia Restore bottle". Concrete nouns (linen pillow, ceramic mug, dried flower, marble surface, single sage sprig, amber bottle).
+    • overlay: optional short tagline ≤ 6 words baked as an editorial mark in the image. Only set when a tagline meaningfully sharpens the brief; otherwise omit.
+  Do NOT include the headline / body / palette / font / reference instructions — those are added by the image route as fixed brand chrome. Keep your output focused on the variable creative brief only.
+` : ""}- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
   Format: [core visual concept — e.g. "hub-and-spoke diagram", "iceberg cross-section", "bridge arc"] + [style: "clean minimal vector illustration, no text, no labels"] + [color: "white background, [accent_color] highlights, soft shadows"] + [mood].
   The accent color is: ${brandStyle?.accent ?? '#1e7a8a'}.
   For TIER A slides (stat, bars, donut, radial, circleStats, spectrum, stackedBar, funnel, scorecard, iconStat, heatGrid, wave, timeline, matrix2x2, callout), set graphicImagePrompt to null — SVG components handle data-precise slides.

@@ -102,7 +102,13 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
 
       {showSlideArrows && <ArrowIcons color={arrowColor} sizeScale={arrowScale} />}
 
-      {/* Flex column content block — headline + subline stacked with padding tokens */}
+      {/*
+        Editorial Scientific: when the hook image is ready, the text is already
+        baked INTO the image by gpt-image-2, so we skip the HTML overlay to
+        avoid duplicated text. If the image is still generating or failed, we
+        fall through to the HTML overlay so the editor preview isn't empty.
+      */}
+      {!(isEditorial && backgroundImageUrl) && (
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -169,6 +175,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           </div>
         )}
       </div>
+      )}
 
       {showLuniaLifeWatermark && (
         <div style={{

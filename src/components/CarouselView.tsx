@@ -142,6 +142,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           imageStyle: currentImageStyle,
           ...(currentMoodId ? { moodId: currentMoodId } : {}),
           ...(currentStylePreset && currentStylePreset !== "default" ? { stylePreset: currentStylePreset } : {}),
+          ...(currentContent.hookImageSpec ? { hookImageSpec: currentContent.hookImageSpec } : {}),
         }),
       })
         .then(async (r) => {

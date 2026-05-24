@@ -286,6 +286,18 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
 
 export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;
 
+/** Editorial-only structured spec for the hook image. Populated by Claude
+ *  during /api/carousel-v2/generate when stylePreset === "editorial-scientific".
+ *  The carousel-v2/generate-image route assembles a poster-style prompt from
+ *  this spec + the chosen hook's headline/subline (text baked into the image). */
+export type EditorialHookImageSpec = {
+  brandMood: string;          // e.g. "exclusive, calm, aspirational, premium"
+  subject: string;            // literal description of the focal subject
+  composition: string;        // "editorial flat lay" / "half-face portrait" / "still life" / …
+  sceneElements: string[];    // 3–6 specific physical items in the scene; should include the Lunia bottle
+  overlay?: string;           // optional short tagline (≤ 6 words) baked into the image
+};
+
 export type CarouselContent = {
   hooks: Hook[];
   slides: CarouselContentSlide[];
@@ -293,6 +305,8 @@ export type CarouselContent = {
   caption: string; // IG caption including hashtags
   imagePrompt?: string; // Claude-written Recraft V3 prompt for the hook slide background
   commentKeyword?: string; // engagement format: auto-generated keyword for comment CTA
+  /** Editorial-scientific only: structured hook-image brief written by Claude. */
+  hookImageSpec?: EditorialHookImageSpec;
 };
 
 export type GraphicStyle =
