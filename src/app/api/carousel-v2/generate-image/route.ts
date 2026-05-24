@@ -59,20 +59,10 @@ export async function POST(req: Request) {
     const hookImageSpec: HookSpec | undefined =
       body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
 
-    /** Decide whether to attach the Lunia bottle reference for the editorial
-     *  hook. Only when the structured spec genuinely calls for the product —
-     *  otherwise the hook turns into a product shot, which the user has
-     *  explicitly said they don't want. The logo is never attached to the
-     *  hook image (user direction: no logo in hook). */
-    const editorialSceneMentionsProduct = (() => {
-      if (!isEditorial || !hookImageSpec) return false;
-      const haystack = [
-        hookImageSpec.subject,
-        hookImageSpec.composition,
-        ...(hookImageSpec.sceneElements ?? []),
-      ].join(' ').toLowerCase();
-      return /\b(lunia|restore|bottle|capsule|supplement|amber bottle|amber-glass|pill|dose|tincture|magnesium|theanine|apigenin|ashwagandha|glycinate|ingredient|formula)\b/.test(haystack);
-    })();
+    // Editorial hook never features the bottle. User direction (repeated):
+    // the bottle dominates composition, kills regen variation, and pulls the
+    // hook off-brand. Product photography lives on content slides only.
+    const editorialSceneMentionsProduct = false;
 
     // Pick a visual mood for this generation. If the caller passes one (e.g.
     // "regenerate with the same mood"), respect it; otherwise random.
@@ -200,52 +190,69 @@ function buildEditorialHookPrompt(args: {
   spec: { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
   headline: string;
   subline: string;
-  hasRefs: boolean;
+  hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
 }): string {
-  const { spec, headline, subline, hasRefs } = args;
-  // Strip any bottle / product / logo references from sceneElements when the
-  // topic isn't product-related (hasRefs gates the bottle, refs only attach
-  // when the spec genuinely calls for it). The logo is NEVER part of the
-  // hook image — user direction.
-  const FORBIDDEN_SCENE_TOKENS = /\b(logo|wordmark|brand[- ]?mark|lunia life mark)\b/i;
+  const { spec, headline, subline } = args;
+
+  // Strip any product / bottle / logo tokens from sceneElements — the
+  // editorial hook is always product-free, no matter what Claude (or a saved
+  // spec) put in. The bottle dominates composition + kills regen variation
+  // + pulls the image off-brand.
+  const FORBIDDEN_SCENE_TOKENS = /\b(lunia[- ]?restore|lunia[- ]?bottle|amber[- ]?bottle|amber[- ]?glass|supplement[- ]?bottle|bottle|capsule|capsules|pill|pills|tincture|dropper|amber|logo|wordmark|brand[- ]?mark|monogram)\b/i;
   const filteredScene = (spec.sceneElements ?? [])
     .filter(Boolean)
     .filter((el) => !FORBIDDEN_SCENE_TOKENS.test(el));
   const scene = filteredScene.join(", ");
 
-  const productLine = hasRefs
-    ? "Use the uploaded reference for the Lunia Restore amber bottle — match its exact shape, label, proportions. The reference image wins over any generic product description."
-    : "Do NOT include any supplement bottle, capsule, pill, tincture or product packaging in the scene. The product is intentionally absent from this hook.";
+  // Variation tail — a per-call wisp that nudges gpt-image-2 toward a fresh
+  // composition each regen even when the spec is identical. Plain language
+  // so it doesn't fight the rest of the brief.
+  const variationNonce = Math.random().toString(36).slice(2, 10);
+  const variationAngles = [
+    "fresh framing, the subject slightly rotated and the negative space rebalanced",
+    "a different camera angle than the obvious one, hands or surface entering the frame from a new direction",
+    "alternate window-light direction, soft side-light across the scene this time",
+    "a subtly different prop arrangement, no two takes alike",
+    "fresh composition with the focal subject closer to the bottom-right",
+    "fresh composition with the focal subject closer to the top-right, more negative space below",
+  ];
+  const variationAngle = variationAngles[Math.floor(Math.random() * variationAngles.length)];
 
   return [
     `Create an editorial poster image for Lunia Life, a premium women's sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
     "",
+    // ── PRIORITY 1: warmth (this used to be buried, GPT was reading it as cool) ──
+    "WHITE BALANCE — MOST IMPORTANT: the image must read as WARM editorial wellness photography. Late-afternoon golden-hour daylight diffused through a sheer linen curtain, soft warm-neutral light, gentle warmth in the shadows. NEVER cool, NEVER fluorescent, NEVER overcast, NEVER museum-cold, NEVER desaturated grey-blue. The Lunia editorial reference is the warm-ivory of brands like Le Labo, Loewe Home Scents, Aesop product photography, Hims+Hers, Vacation Inc., Glossier You — uncoated cotton paper warmth, sunlit and intimate. Explicit anti-references: NOT Apple product photography, NOT Sotheby's catalogue, NOT museum lighting, NOT cool Vogue glossy.",
+    "",
+    // ── PRIORITY 2: nothing-product ──
+    "ABSOLUTELY NO PRODUCT, NO PACKAGING, NO LOGOS. Do NOT include any supplement bottle, capsule, pill, tincture, jar, dropper, amber glass, or product packaging in the scene. Do NOT include the Lunia logo, wordmark, brand mark, monogram, constellation symbol, signature, or any watermark. The product and brand mark are intentionally absent from this hook — the image is pure editorial wellness photography.",
+    "",
+    // ── PRIORITY 3: subject + composition ──
     `Subject: ${spec.subject}.`,
     `Composition: ${spec.composition}.${scene ? ` Scene elements: ${scene}.` : ""}`,
+    `Variation for this take: ${variationAngle}. (variation seed: ${variationNonce})`,
     "",
+    // ── PRIORITY 4: baked text ──
     "Bake the following text into the image as the ONLY typography in the scene. Use the Inter font family at the specified weights, with crisp anti-aliased rendering. Place the text on the LEFT half of the frame with generous negative space; the visual subject sits on the RIGHT.",
     `  • Headline (Inter Light 300, 72pt feel): "${headline}"`,
     `  • Body (Inter ExtraLight 200, 36pt feel, italic-ish editorial cadence): "${subline}"`,
     spec.overlay ? `  • Overlay accent (Inter Light 300, 18pt feel, uppercase, wide tracking): "${spec.overlay}"` : "",
-    "Text colour: #01253f (rich navy). The text is the ONLY chromatic anchor in the image — never any other colour for the text. Body subline may render at 70-80% opacity of the same navy. No drop shadows, no glow, no outlines on the text.",
+    "Text colour: rich navy. The navy text is the ONLY chromatic anchor in the image. Body subline may render at 70-80% opacity of the same navy. No drop shadows, no glow, no outlines on the text.",
     "",
-    "Aesthetic & palette — natural warm-ivory editorial wellness photography:",
-    "  • Background fills the entire frame edge-to-edge in soft pearl ivory (#EFEFF4) — clean, calm, almost paper-like.",
-    "  • The photograph itself is naturally lit through a soft window — gentle warm-neutral daylight, NOT a desaturated grey-blue cast. Subjects keep their own natural colours (a chamomile cup looks like real chamomile, linen looks like real linen, skin looks like real skin), but the overall scene bathes in pearl-ivory light so the image reads as a single coherent ivory editorial frame.",
-    "  • Think Aesop / Hims / Vacation Inc. / Goop ivory editorial — minimal, sunlit, expensive, calm. Warm pearl ivory NOT cool grey.",
-    "  • Navy #01253f is reserved for the typography baked into the image. #2C3F51 may appear only as subtle deepest shadow tones, never as a colour wash.",
-    "  • Forbidden hues that would pull the image off-brand: NO teal, NO sage green, NO mint, NO mustard yellow, NO orange, NO pink, NO purple, NO heavy saturation. Natural muted earth tones from the subject itself are fine.",
+    // ── PRIORITY 5: palette ──
+    "Aesthetic & palette:",
+    "  • Background fills the entire frame edge-to-edge in warm uncoated-cotton ivory — the bg colour the slide CSS uses is #EFEFF4, but render it as a WARM ivory, not a cool one. Think museum matte paper warmed by golden afternoon light.",
+    "  • Navy text reads as #01253f (rich navy). Reserved for typography only.",
+    "  • Natural subject colours are encouraged — a chamomile cup looks like real chamomile (warm tea + cream porcelain), linen looks like real warm linen, skin looks like real warm skin, dried herbs look like real dried herbs.",
+    "  • Forbidden chromatic accents (would pull the image off-brand): NO teal, NO sage green, NO mint, NO mustard yellow, NO neon orange, NO pink, NO purple, NO heavy saturation. Muted natural earth tones from the subject itself are fine.",
     "",
-    productLine,
-    "",
-    "Photographic feel: magazine-cover quality, ultra-clean composition, generous negative space, photoreal with a soft editorial finish, gentle film grain acceptable. NOT a desaturated black-and-white-ish image — keep it natural and ivory-warm.",
+    "Photographic feel: magazine-cover quality, ultra-clean composition, generous negative space, photoreal with a soft editorial finish, gentle film grain acceptable. Warm-ivory editorial — NEVER desaturated grey, NEVER black-and-white-ish, NEVER cool.",
     "",
     "HARD GUARDRAILS (do not violate):",
-    "  • NO logos of any kind. No Lunia logo, no wordmark, no brand mark, no constellation symbol, no monogram, no signature, no watermark.",
-    "  • NO additional text beyond the headline / body / overlay listed above. No labels, no captions, no signage, no UI, no price tags, no quotes.",
-    "  • Background is always pearl ivory #EFEFF4, text always navy #01253f. No other CHROMATIC accents.",
+    "  • NO logos of any kind, NO product/bottle/capsule/packaging, NO additional text beyond the headline / body / overlay listed above. No labels, no captions, no signage, no UI, no price tags, no quotes.",
+    "  • Background is warm ivory, text is navy. No other chromatic accents.",
     "  • NO secondary subjects that distract from the focal subject.",
-    "  • DO NOT desaturate the image to grey or blue-grey. Keep the natural ivory editorial feel.",
+    "  • Keep it warm-ivory, NEVER cool grey or blue-grey.",
   ].filter(Boolean).join("\n");
 }
 
