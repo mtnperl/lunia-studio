@@ -27,7 +27,7 @@ function slideMentionsProduct(text: string): boolean {
  *  the slide's subject (calm bedroom, hands, surface) with NO product. */
 function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string; includeBottle: boolean }): string {
   const subject = `${args.headline}. ${args.body}`.slice(0, 240);
-  const palette = 'soft pearl ivory (#EFEFF4) base, rich navy (#01253f) accents, slate blue (#2C3F51) secondary structure';
+  const palette = 'STRICTLY soft pearl ivory (#EFEFF4) base, rich navy (#01253f) accents, slate blue (#2C3F51) secondary structure — NO warm cream, NO beige, NO teal, NO yellow, NO green, NO warm wood tone. Any photographic subject must be desaturated and colour-graded to live inside this cool pearl-ivory palette.';
 
   if (args.includeBottle) {
     return [

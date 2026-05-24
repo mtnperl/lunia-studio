@@ -32,7 +32,12 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
 
   const fallbackBg = darkBackground ? '#F7F4EF' : '#01253f';
   const brandBg = darkBackground ? brandStyle?.hookBackground : brandStyle?.background;
-  const bg = slideBgColor ?? brandBg ?? fallbackBg;
+  // Editorial preset always matches the content-slide pearl-ivory background,
+  // regardless of `darkBackground` — the CTA is part of the same editorial
+  // spread and must not flip to a contrasting palette.
+  const bg = isEditorial
+    ? (slideBgColor ?? brandStyle?.background ?? '#EFEFF4')
+    : (slideBgColor ?? brandBg ?? fallbackBg);
   const bgIsDark = isDarkColor(bg);
   const useAutoInk = slideBgColor !== undefined;
   const ink = bgIsDark ? INK_LIGHT : INK_DARK;

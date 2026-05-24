@@ -59,10 +59,11 @@ export async function POST(req: Request) {
     const hookImageSpec: HookSpec | undefined =
       body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
 
-    /** Decide whether to attach the Lunia bottle / logo references. For the
-     *  editorial hook, only attach when the structured spec actually mentions
-     *  the bottle (Claude-driven decision per topic). For lifestyle-health we
-     *  keep the existing behaviour (always attach). */
+    /** Decide whether to attach the Lunia bottle reference for the editorial
+     *  hook. Only when the structured spec genuinely calls for the product —
+     *  otherwise the hook turns into a product shot, which the user has
+     *  explicitly said they don't want. The logo is never attached to the
+     *  hook image (user direction: no logo in hook). */
     const editorialSceneMentionsProduct = (() => {
       if (!isEditorial || !hookImageSpec) return false;
       const haystack = [
@@ -71,16 +72,6 @@ export async function POST(req: Request) {
         ...(hookImageSpec.sceneElements ?? []),
       ].join(' ').toLowerCase();
       return /\b(lunia|restore|bottle|capsule|supplement|amber bottle|amber-glass|pill|dose|tincture|magnesium|theanine|apigenin|ashwagandha|glycinate|ingredient|formula)\b/.test(haystack);
-    })();
-    const editorialSceneMentionsLogo = (() => {
-      if (!isEditorial || !hookImageSpec) return false;
-      const haystack = [
-        hookImageSpec.subject,
-        hookImageSpec.composition,
-        ...(hookImageSpec.sceneElements ?? []),
-        hookImageSpec.overlay ?? '',
-      ].join(' ').toLowerCase();
-      return /\b(logo|wordmark|brand mark|lunia life)\b/.test(haystack);
     })();
 
     // Pick a visual mood for this generation. If the caller passes one (e.g.
@@ -111,8 +102,11 @@ export async function POST(req: Request) {
     //  • Other moods + engines → no refs.
     let referenceImageUrls: string[] = [];
     if (engine === 'gpt-image-2') {
+      // Lifestyle Health = product-photography lane: bottle + logo.
+      // Editorial Scientific hook = product reference ONLY when the spec
+      // actually calls for it. Never the logo (user direction).
       const wantsBottle = mood.id === 'lifestyle-health' || (mood.id === 'editorial-scientific' && editorialSceneMentionsProduct);
-      const wantsLogo   = mood.id === 'lifestyle-health' || (mood.id === 'editorial-scientific' && editorialSceneMentionsLogo);
+      const wantsLogo   = mood.id === 'lifestyle-health';
       if (wantsBottle || wantsLogo) {
         try {
           const assets = await getAssets();
@@ -186,32 +180,47 @@ function buildEditorialHookPrompt(args: {
   hasRefs: boolean;
 }): string {
   const { spec, headline, subline, hasRefs } = args;
-  const scene = (spec.sceneElements ?? []).filter(Boolean).join(", ");
-  const refLine = hasRefs
-    ? "Use the uploaded reference for the Lunia Restore amber bottle — match its exact shape, label, proportions. Use the uploaded reference for the Lunia logo — small and discreet, exactly as supplied. The reference images win over any generic product description."
-    : "Render the Lunia Restore amber-glass bottle accurately, with a calm minimalist label.";
+  // Strip any bottle / product / logo references from sceneElements when the
+  // topic isn't product-related (hasRefs gates the bottle, refs only attach
+  // when the spec genuinely calls for it). The logo is NEVER part of the
+  // hook image — user direction.
+  const FORBIDDEN_SCENE_TOKENS = /\b(logo|wordmark|brand[- ]?mark|lunia life mark)\b/i;
+  const filteredScene = (spec.sceneElements ?? [])
+    .filter(Boolean)
+    .filter((el) => !FORBIDDEN_SCENE_TOKENS.test(el));
+  const scene = filteredScene.join(", ");
+
+  const productLine = hasRefs
+    ? "Use the uploaded reference for the Lunia Restore amber bottle — match its exact shape, label, proportions. The reference image wins over any generic product description."
+    : "Do NOT include any supplement bottle, capsule, pill, tincture or product packaging in the scene. The product is intentionally absent from this hook.";
 
   return [
-    `Create an editorial Lunia Life poster image. Brand mood: ${spec.brandMood}.`,
+    `Create an editorial poster image for Lunia Life, a premium women's sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
     "",
     `Subject: ${spec.subject}.`,
     `Composition: ${spec.composition}.${scene ? ` Scene elements: ${scene}.` : ""}`,
     "",
-    "Bake the following text into the image as the ONLY typography. Use the Inter font family at the specified weights. Render crisp, perfectly legible, navy on pearl ivory:",
-    `  • Headline (Inter Light 300): "${headline}"`,
-    `  • Body (Inter ExtraLight 200): "${subline}"`,
-    spec.overlay ? `  • Overlay (Inter Light 300): "${spec.overlay}"` : "",
+    "Bake the following text into the image as the ONLY typography in the scene. Use the Inter font family at the specified weights, with crisp anti-aliased rendering. Place the text on the LEFT half of the frame with generous negative space; the visual subject sits on the RIGHT.",
+    `  • Headline (Inter Light 300, 72pt feel): "${headline}"`,
+    `  • Body (Inter ExtraLight 200, 36pt feel, italic-ish editorial cadence): "${subline}"`,
+    spec.overlay ? `  • Overlay accent (Inter Light 300, 18pt feel, uppercase, wide tracking): "${spec.overlay}"` : "",
+    "Text colour: #01253f (rich navy) — never any other colour for the text. Body subline may render at 70-80% opacity of the same navy. No drop shadows, no glow, no outlines on the text.",
     "",
-    "Color palette:",
-    "  • Background: #EFEFF4 (soft pearl ivory)",
+    "Color palette is STRICTLY LIMITED to these three hex values — do not introduce any other hue, no warm cream, no off-white, no beige, no teal, no green, no yellow, no warm wood tone, no skin-warm tint that pulls the image off-brand:",
+    "  • Background: #EFEFF4 (soft pearl ivory) — fills the entire frame edge-to-edge",
     "  • Primary text & accents: #01253f (rich navy)",
-    "  • Secondary structure: #2C3F51 (slate blue)",
+    "  • Secondary structure / shadow tones: #2C3F51 (slate blue)",
+    "Any photographic subject must be desaturated and colour-graded to live inside this palette. Skin, fabric, foliage and surfaces should appear cool and pearl-ivory — never warm.",
     "",
-    refLine,
+    productLine,
     "",
-    "Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, generous negative space, photoreal.",
+    "Aesthetic: clinical premium DTC wellness, magazine-cover quality, soft natural daylight, ultra-clean composition, generous negative space, photoreal but slightly editorial. Think Aesop / Goop / Hims pearl-ivory editorial — minimal, calm, expensive.",
     "",
-    "No additional text, no other logos, no signage, no watermarks.",
+    "HARD GUARDRAILS (do not violate):",
+    "  • NO logos of any kind. No Lunia logo, no wordmark, no brand mark, no constellation symbol, no monogram, no signature, no watermark.",
+    "  • NO additional text beyond the headline / body / overlay listed above. No labels, no captions, no signage, no UI, no price tags, no quotes.",
+    "  • NO other colour beyond the three hex values listed.",
+    "  • NO secondary subjects that distract from the focal subject.",
   ].filter(Boolean).join("\n");
 }
 

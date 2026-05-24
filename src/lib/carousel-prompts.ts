@@ -130,7 +130,7 @@ Return ONLY valid JSON in this exact format, no other text:
     "brandMood": "3–5 evocative adjectives (e.g. \\"exclusive, calm, aspirational, premium\\")",
     "subject": "literal description of the focal subject — a person (note age + emotion), still life, hands, surface, etc. — chosen for the carousel topic",
     "composition": "framing direction — \\"editorial flat lay\\" / \\"half-face portrait\\" / \\"still life, top-down\\" / \\"close-crop product on linen\\" / etc.",
-    "sceneElements": ["3–6 specific physical items in the scene; include 'Lunia Restore bottle' ONLY if the topic is genuinely about the product / an ingredient / a dose"],
+    "sceneElements": ["3–6 specific physical items in the scene. DEFAULT TO NO BOTTLE / NO LOGO. Include 'Lunia Restore bottle' ONLY when the carousel is specifically about the product / an ingredient / a dose. NEVER include the Lunia logo, wordmark, or brand mark."],
     "overlay": "optional short tagline ≤ 6 words baked into the image; omit field if not useful"
   }` : ""}
 }
@@ -229,7 +229,7 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
     • brandMood: 3–5 mood adjectives, comma-separated (e.g. "exclusive, calm, aspirational, premium")
     • subject: literal description of the focal subject. If a person, include approximate age and emotion. Half-portraits, hands, surfaces, partial framing — all valid. Never "full portrait of model".
     • composition: short framing direction — "editorial flat lay" / "half-face portrait" / "still life, top-down" / "close-crop product on linen" / etc.
-    • sceneElements: 3–6 specific physical items. ONLY include "Lunia Restore bottle" if the topic is actually about the product, an ingredient, a dose, or supplementation (e.g. magnesium glycinate, L-theanine, dosing). For non-product topics (sleep biology, stress mechanisms, routines, lifestyle), DO NOT include the bottle — it would feel forced. Use concrete nouns (linen pillow, ceramic mug, dried flower, marble surface, single sage sprig, etc.).
+    • sceneElements: 3–6 specific physical items. DEFAULT TO NO BOTTLE. The Lunia Restore bottle should only appear when the carousel is specifically about an ingredient, a dose, or the product itself (e.g. "Magnesium glycinate dosing", "How L-theanine quiets the brain"). For ALL other topics (sleep biology, stress, hormones, routines, wind-down, lifestyle, mindset) DO NOT include the bottle or any supplement / capsule / pill / tincture / packaging — the user has explicitly said the bottle in every hook looks forced. Also NEVER include the Lunia logo, wordmark, or brand mark in sceneElements — the hook image carries no logo. Use concrete nouns (linen pillow, ceramic mug, dried flower, marble surface, single sage sprig, hands, half-face portrait, ceramic bowl, sheer curtain, etc.).
     • overlay: optional short tagline ≤ 6 words baked as an editorial mark in the image. Only set when a tagline meaningfully sharpens the brief; otherwise omit.
   Do NOT include the headline / body / palette / font / reference instructions — those are added by the image route as fixed brand chrome. Keep your output focused on the variable creative brief only.
 ` : ""}- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
