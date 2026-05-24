@@ -4,6 +4,8 @@ import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle } from "@/lib/types";
 import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
+import { parseGraphicSpec } from "@/lib/carousel-utils";
+import { renderGraphicSpec } from "@/components/carousel/graphics/graphicComponentMap";
 
 const SLIDE_W = 1080;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
@@ -49,7 +51,10 @@ function parseIconLayout(graphic?: string): IconLayoutData | null {
   try {
     const parsed = JSON.parse(graphic);
     if (parsed?.component === "iconLayout" && Array.isArray(parsed.data?.icons)) {
-      return parsed.data as IconLayoutData;
+      // Default showLabels=true to match the editor's "Show labels" checkbox
+      // default; if the saved spec explicitly sets false, respect it.
+      const data = parsed.data as IconLayoutData;
+      return { icons: data.icons, showLabels: data.showLabels !== false };
     }
     if (parsed?.component === "icon" && parsed.data?.id) {
       return { icons: [{ id: parsed.data.id as string }], showLabels: false };
@@ -91,12 +96,19 @@ export default function EditorialContentSlide({
   const arrowCol    = brandStyle?.secondary      ?? "#2C3F51";
 
   const iconLayout = parseIconLayout(graphic);
+  const showIconLabels = iconLayout?.showLabels !== false;
   const iconRows = iconLayout
     ? iconLayout.icons
         .slice(0, 4)
         .map((i) => CAROUSEL_ICONS.find((c) => c.id === i.id))
         .filter(Boolean) as { id: string; label: string; svg: string; category: string }[]
     : [];
+  // Non-icon graphic specs (stat, bars, donut, hubSpoke, iceberg, vector, …)
+  // render via the shared component map below the body — same components the
+  // default carousel slide uses, so any infographic the editor offers works in
+  // the editorial preset too.
+  const otherGraphicSpec = !iconLayout ? parseGraphicSpec(graphic) : null;
+  const hasOtherGraphic = !!otherGraphicSpec;
   const hasPhoto = !!bgImageUrl;
 
   // Headline + body sizes — scale-aware so the existing PreviewStep size sliders still bite.
@@ -190,11 +202,14 @@ export default function EditorialContentSlide({
           <div style={{
             // Bullet list — each row has the label on the LEFT and the
             // contextual icon on the RIGHT, hugging the body copy above.
+            // When the editor toggles "Show labels" off, render just the
+            // icons in a horizontal row instead of the labelled list.
             marginTop: 8,
             display: "flex",
-            flexDirection: "column",
-            gap: 16,
-            alignItems: "stretch",
+            flexDirection: showIconLabels ? "column" : "row",
+            gap: showIconLabels ? 16 : 24,
+            alignItems: showIconLabels ? "stretch" : "center",
+            flexWrap: showIconLabels ? "nowrap" : "wrap",
           }}>
             {iconRows.map((ic) => (
               <div key={ic.id} style={{
@@ -203,22 +218,24 @@ export default function EditorialContentSlide({
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 24,
-                paddingBottom: 14,
-                borderBottom: `1px solid ${ruleCol}`,
-                borderColor: ruleCol,
+                paddingBottom: showIconLabels ? 14 : 0,
+                borderBottom: showIconLabels ? `1px solid ${ruleCol}` : "none",
                 opacity: 1,
+                flex: showIconLabels ? "0 0 auto" : "0 0 auto",
               }}>
-                <div style={{
-                  fontFamily: EDITORIAL_FONT,
-                  fontWeight: 300,
-                  fontSize: Math.round(bodySize * 0.82),
-                  color: headlineCol,
-                  letterSpacing: "0.01em",
-                  flex: 1,
-                  textAlign: "left",
-                }}>
-                  {ic.label}
-                </div>
+                {showIconLabels && (
+                  <div style={{
+                    fontFamily: EDITORIAL_FONT,
+                    fontWeight: 300,
+                    fontSize: Math.round(bodySize * 0.82),
+                    color: headlineCol,
+                    letterSpacing: "0.01em",
+                    flex: 1,
+                    textAlign: "left",
+                  }}>
+                    {ic.label}
+                  </div>
+                )}
                 <div style={{
                   width: 56, height: 56, borderRadius: "50%",
                   background: headlineCol,
@@ -232,6 +249,21 @@ export default function EditorialContentSlide({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {hasOtherGraphic && otherGraphicSpec && (
+          <div style={{
+            marginTop: 12,
+            display: "flex",
+            justifyContent: "flex-start",
+            alignItems: "flex-start",
+            width: "100%",
+            // Cap the infographic so it doesn't dominate the editorial layout
+            // when the column is wide (no photo on the right).
+            maxWidth: hasPhoto ? "100%" : 720,
+          }}>
+            {renderGraphicSpec(otherGraphicSpec, brandStyle)}
           </div>
         )}
       </div>
