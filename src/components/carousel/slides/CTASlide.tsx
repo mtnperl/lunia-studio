@@ -70,7 +70,11 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         }} />
       ) : null}
 
-      <LuniaLogo variant={useDarkInk ? "dark" : "light"} sizeScale={logoScale} />
+      {/* Editorial spread omits the constellation logo — the centred LUNIA LIFE
+          wordmark is the only brand mark, matching the content-slide chrome. */}
+      {!isEditorial && (
+        <LuniaLogo variant={useDarkInk ? "dark" : "light"} sizeScale={logoScale} />
+      )}
       {showLuniaLifeWatermark && (
         <div style={{
           position: 'absolute',

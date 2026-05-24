@@ -27,7 +27,7 @@ function slideMentionsProduct(text: string): boolean {
  *  the slide's subject (calm bedroom, hands, surface) with NO product. */
 function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string; includeBottle: boolean }): string {
   const subject = `${args.headline}. ${args.body}`.slice(0, 240);
-  const palette = 'STRICTLY soft pearl ivory (#EFEFF4) base, rich navy (#01253f) accents, slate blue (#2C3F51) secondary structure — NO warm cream, NO beige, NO teal, NO yellow, NO green, NO warm wood tone. Any photographic subject must be desaturated and colour-graded to live inside this cool pearl-ivory palette.';
+  const palette = 'soft pearl ivory (#EFEFF4) base filling the frame edge-to-edge, with rich navy (#01253f) reserved for any printed/text accents and slate blue (#2C3F51) limited to deepest shadow tones only. Aesthetic: natural warm-ivory editorial wellness photography — gentle window daylight, subjects in their natural colours but bathed in pearl-ivory light. Think Aesop / Hims / Goop ivory editorial — warm pearl ivory NOT cool grey, NOT desaturated black-and-white. Forbidden chromatic accents: NO teal, NO sage green, NO mint, NO mustard yellow, NO orange, NO pink, NO purple, NO heavy saturation. Natural muted earth tones from the subject itself are fine.';
 
   if (args.includeBottle) {
     return [
