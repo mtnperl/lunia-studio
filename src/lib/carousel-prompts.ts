@@ -9,10 +9,10 @@ import { LUNIA_BRAND } from "./lunia-brand";
 // natural sentence. A separate static entity line is appended server-side
 // after Claude returns (see src/lib/lunia-brand.ts).
 const BRAND_BRIDGE_INSTRUCTION = `
-- Caption Paragraph 4 (MANDATORY brand bridge — single sentence, ≤25 words, no period at end optional):
+- Caption Paragraph 4 (MANDATORY brand bridge — single sentence, ≤25 words):
   After the @lunia_life follow line, add one more sentence that ties THIS carousel's topic to ${LUNIA_BRAND.name} in a natural, on-voice way. Choose whichever bridge fits the topic best:
-    (a) Product bridge — connect the topic to ${LUNIA_BRAND.product} as a whole.
-    (b) Ingredient bridge — connect the topic to one of the ${LUNIA_BRAND.product} ingredients (${LUNIA_BRAND.ingredients.join(", ")}) and the mechanism in this carousel.
+    (a) Product bridge — connect the topic to ${LUNIA_BRAND.product} as a whole (the formula is melatonin-free, GMP-manufactured, ${LUNIA_BRAND.benefit}).
+    (b) Ingredient bridge — connect the topic to one of the ${LUNIA_BRAND.product} ingredients at its clinical dose: magnesium bisglycinate 500mg, L-theanine 300mg, or apigenin 50mg. Pick the one most relevant to the topic's mechanism.
     (c) Category bridge — connect the topic to "${LUNIA_BRAND.category}" as a brand thesis.
   Voice rules apply: dry, science-forward, no hype, no em dashes. Never sales-y. Never "buy now". Treat it as a closing thought a calm scientist would write.
 `;

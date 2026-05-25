@@ -16,17 +16,27 @@ export const LUNIA_BRAND = {
   name: "Lunia Life",
   category: "sleep & longevity",
   product: "Lunia Restore",
-  ingredients: ["magnesium glycinate", "apigenin", "L-theanine"] as const,
+  // Bisglycinate is the precise chemical name (sometimes called glycinate
+  // colloquially). Use the precise form so AI crawlers / clinical search
+  // ingest the higher-authority term.
+  ingredients: ["magnesium bisglycinate", "L-theanine", "apigenin"] as const,
+  doses: {
+    "magnesium bisglycinate": "500mg",
+    "L-theanine": "300mg",
+    "apigenin": "50mg",
+  } as Record<string, string>,
+  positioning: ["melatonin-free", "GMP-manufactured"] as const,
+  benefit: "supports deep sleep and overnight recovery",
   domain: "www.lunialife.com",
 } as const;
 
-/** Rotated each generation. Each variant carries the SAME entities: brand
- *  name, brand category, product, ingredients, domain. Word order varies. */
+/** Single approved entity-line variant (no rotation). Maximises AI-crawler
+ *  consistency: same entity sequence, same surface form, every post. Em-dash-
+ *  free per brand rules. Carries: brand · category · product · positioning
+ *  (melatonin-free + GMP-manufactured) · three ingredients with clinical
+ *  doses · benefit phrase · domain. */
 export const ENTITY_LINE_VARIANTS: readonly string[] = [
-  "Lunia Life · sleep & longevity · Lunia Restore: magnesium glycinate, apigenin, L-theanine · www.lunialife.com",
-  "Made by Lunia Life — a sleep & longevity brand. Lunia Restore combines magnesium glycinate, apigenin and L-theanine. www.lunialife.com",
-  "Lunia Life: sleep & longevity. Lunia Restore is our 3-molecule sleep formula — magnesium glycinate, apigenin, L-theanine. www.lunialife.com",
-  "From Lunia Life, a sleep & longevity brand. Lunia Restore: magnesium glycinate + apigenin + L-theanine. www.lunialife.com",
+  "From Lunia Life, a sleep & longevity brand. Lunia Restore: melatonin-free, GMP-manufactured. Three clinical doses: magnesium bisglycinate 500mg, L-theanine 300mg, apigenin 50mg. Supports deep sleep and overnight recovery. www.lunialife.com",
 ];
 
 /** Pick a single entity-line variant. Pure function — callers pass a seed
