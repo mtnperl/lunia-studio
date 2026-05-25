@@ -224,11 +224,11 @@ function buildEditorialHookPrompt(args: {
   const variationAngle = variationAngles[Math.floor(Math.random() * variationAngles.length)];
 
   return [
-    `Create an editorial poster image for Lunia Life, a premium women's sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
+    `Create an editorial poster image for Lunia Life, a premium sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
     "",
     // ── PRIORITY 0: contextual fit (most important — beats aesthetic) ──
     topic
-      ? `CONTEXTUAL FIT — READ FIRST: the carousel's actual topic is "${topic}". The scene MUST visually metaphorise THIS specific science / concept so a viewer scrolling Instagram instantly understands what the post is about. Default-to-chamomile-and-linen is failure: a brain-glymphatic carousel must look like sleeping/washing/flow imagery, a cortisol carousel must look like tension/release, a magnesium-glycinate carousel must show dark leafy greens or mineral salts, an L-theanine carousel must show green-tea leaves, a perimenopause carousel must show a real woman partially framed. Keep the science / serious angle of Lunia Life intact — clinical, contemplative, calm — but make the subject SAY the topic at a glance. If the image could fit equally well on a random wellness post, you have failed; push harder on the metaphor.`
+      ? `CONTEXTUAL FIT — READ FIRST: the carousel's actual topic is "${topic}". The scene MUST visually metaphorise THIS specific science / concept so a viewer scrolling Instagram instantly understands what the post is about. Default-to-chamomile-and-linen is failure: a brain-glymphatic carousel must look like sleeping/washing/flow imagery, a cortisol carousel must look like tension/release, a magnesium-glycinate carousel must show dark leafy greens or mineral salts, an L-theanine carousel must show green-tea leaves, a perimenopause / women's-sleep carousel must show a real person partially framed. Keep the science / serious angle of Lunia Life intact — clinical, contemplative, calm — but make the subject SAY the topic at a glance. If the image could fit equally well on a random wellness post, you have failed; push harder on the metaphor.`
       : "CONTEXTUAL FIT: the scene must visually metaphorise the science behind the headline so a viewer scrolling Instagram instantly understands the topic. Clinical, contemplative, on-topic — not generic calm wellness.",
     "",
     // ── PRIORITY 1: warmth (this used to be buried, GPT was reading it as cool) ──

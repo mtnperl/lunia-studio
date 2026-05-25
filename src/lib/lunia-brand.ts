@@ -14,7 +14,7 @@
 
 export const LUNIA_BRAND = {
   name: "Lunia Life",
-  category: "women's sleep & longevity",
+  category: "sleep & longevity",
   product: "Lunia Restore",
   ingredients: ["magnesium glycinate", "apigenin", "L-theanine"] as const,
   domain: "www.lunialife.com",
@@ -23,10 +23,10 @@ export const LUNIA_BRAND = {
 /** Rotated each generation. Each variant carries the SAME entities: brand
  *  name, brand category, product, ingredients, domain. Word order varies. */
 export const ENTITY_LINE_VARIANTS: readonly string[] = [
-  "Lunia Life · women's sleep & longevity · Lunia Restore: magnesium glycinate, apigenin, L-theanine · www.lunialife.com",
-  "Made by Lunia Life — a women's sleep & longevity brand. Lunia Restore combines magnesium glycinate, apigenin and L-theanine. www.lunialife.com",
-  "Lunia Life: women's sleep & longevity. Lunia Restore is our 3-molecule sleep formula — magnesium glycinate, apigenin, L-theanine. www.lunialife.com",
-  "From Lunia Life, a women's sleep & longevity brand. Lunia Restore: magnesium glycinate + apigenin + L-theanine. www.lunialife.com",
+  "Lunia Life · sleep & longevity · Lunia Restore: magnesium glycinate, apigenin, L-theanine · www.lunialife.com",
+  "Made by Lunia Life — a sleep & longevity brand. Lunia Restore combines magnesium glycinate, apigenin and L-theanine. www.lunialife.com",
+  "Lunia Life: sleep & longevity. Lunia Restore is our 3-molecule sleep formula — magnesium glycinate, apigenin, L-theanine. www.lunialife.com",
+  "From Lunia Life, a sleep & longevity brand. Lunia Restore: magnesium glycinate + apigenin + L-theanine. www.lunialife.com",
 ];
 
 /** Pick a single entity-line variant. Pure function — callers pass a seed

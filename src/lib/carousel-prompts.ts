@@ -252,7 +252,7 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
     • Ingredients & dosing (magnesium glycinate, L-theanine, apigenin, ashwagandha) → the raw natural form (dark leafy greens for magnesium, green-tea leaves & matcha bowl for L-theanine, fresh chamomile flowers for apigenin, ashwagandha root on stone) presented as a still life with editorial geometry.
     • Sleep architecture / circadian rhythm → a bedroom at the dawn-dusk transition; rumpled linen catching first light; a moonlit window vs morning window split-frame feel.
     • Stress / wind-down / mindfulness → an unclenching palm; a single breath visible as steam from tea; closed eyes in soft side-light.
-    • Women's health & longevity / perimenopause → a real woman's hand resting on a temple, partial framing; her gaze toward a window; never a stock smiling model.
+    • Hormonal / life-stage topics (perimenopause, menopause, andropause, postpartum) → a real person's hand resting on a temple, partial framing; their gaze toward a window; never a stock smiling model.
 
   Fields:
     • brandMood: 3–5 mood adjectives, comma-separated (e.g. "clinical, contemplative, warm, intentional"). Lean toward scientific/serious — never "playful," "luxurious," "indulgent."
@@ -437,7 +437,7 @@ export const GENERATE_DID_YOU_KNOW_PROMPT = (topic: string, variantCount = 3, vi
     ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
     : "";
 
-  return `You are writing for Lunia Life, a women's sleep & longevity brand. Audience: women 25-40, urban, health-literate. Voice: science-forward, calm, confident, never preachy.
+  return `You are writing for Lunia Life, a sleep & longevity brand. Audience: health-literate adults 25-55, urban, evidence-driven. Voice: science-forward, calm, confident, never preachy.
 
 Generate ${variantCount} variants of a 2-slide "Did You Know" Instagram carousel about: "${topic}".
 
