@@ -595,9 +595,22 @@ export default function TopicStep({ onNext }: Props) {
           a strong association between Lunia Life, the product (Lunia Restore),
           the ingredients, and the brand category. Default ON. */}
       <div style={{ marginBottom: 24 }}>
-        <label
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Caption
+        </label>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIncludeSeoFooter((v) => !v)}
+          onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Enter") {
+              e.preventDefault();
+              setIncludeSeoFooter((v) => !v);
+            }
+          }}
           style={{
             display: "flex",
+            flexDirection: "row",
             alignItems: "flex-start",
             gap: 12,
             padding: "12px 14px",
@@ -606,23 +619,34 @@ export default function TopicStep({ onNext }: Props) {
             borderRadius: 8,
             cursor: "pointer",
             transition: "all 0.12s",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           <input
             type="checkbox"
             checked={includeSeoFooter}
-            onChange={(e) => setIncludeSeoFooter(e.target.checked)}
-            style={{ marginTop: 2, cursor: "pointer", accentColor: "var(--accent)" }}
+            readOnly
+            tabIndex={-1}
+            style={{
+              width: 16,
+              height: 16,
+              marginTop: 2,
+              flex: "0 0 16px",
+              flexShrink: 0,
+              cursor: "pointer",
+              accentColor: "var(--accent)",
+            }}
           />
-          <span style={{ flex: 1 }}>
-            <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: includeSeoFooter ? "var(--accent)" : "var(--text)", marginBottom: 2 }}>
+          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: includeSeoFooter ? "var(--accent)" : "var(--text)", marginBottom: 2 }}>
               Brand SEO line in caption
-            </span>
-            <span style={{ display: "block", fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
               Append a brand-bridge sentence plus a Lunia Life · Lunia Restore · ingredients · domain line. Helps AI crawlers and answer engines surface Lunia when users ask related questions.
-            </span>
-          </span>
-        </label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <button
