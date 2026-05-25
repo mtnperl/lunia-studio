@@ -44,7 +44,8 @@ type Props = {
   stylePreset?: "default" | "editorial-scientific";
 };
 
-type IconLayoutData = { icons: { id: string }[]; showLabels?: boolean };
+type IconRowPosition = "hug-body" | "between";
+type IconLayoutData = { icons: { id: string }[]; showLabels?: boolean; iconRowPosition?: IconRowPosition };
 
 function parseIconLayout(graphic?: string): IconLayoutData | null {
   if (!graphic) return null;
@@ -54,10 +55,11 @@ function parseIconLayout(graphic?: string): IconLayoutData | null {
       // Default showLabels=true to match the editor's "Show labels" checkbox
       // default; if the saved spec explicitly sets false, respect it.
       const data = parsed.data as IconLayoutData;
-      return { icons: data.icons, showLabels: data.showLabels !== false };
+      const position: IconRowPosition = data.iconRowPosition === "between" ? "between" : "hug-body";
+      return { icons: data.icons, showLabels: data.showLabels !== false, iconRowPosition: position };
     }
     if (parsed?.component === "icon" && parsed.data?.id) {
-      return { icons: [{ id: parsed.data.id as string }], showLabels: false };
+      return { icons: [{ id: parsed.data.id as string }], showLabels: false, iconRowPosition: "hug-body" };
     }
   } catch { /* ignore */ }
   return null;
@@ -97,6 +99,7 @@ export default function EditorialContentSlide({
 
   const iconLayout = parseIconLayout(graphic);
   const showIconLabels = iconLayout?.showLabels !== false;
+  const iconPosition: IconRowPosition = iconLayout?.iconRowPosition ?? "hug-body";
   const iconRows = iconLayout
     ? iconLayout.icons
         .slice(0, 4)
@@ -198,58 +201,19 @@ export default function EditorialContentSlide({
           {body}
         </p>
 
-        {iconRows.length > 0 && (
-          <div style={{
-            // Bullet list — each row has the label on the LEFT and the
-            // contextual icon on the RIGHT, hugging the body copy above.
-            // When the editor toggles "Show labels" off, render just the
-            // icons in a horizontal row instead of the labelled list.
-            marginTop: 8,
-            display: "flex",
-            flexDirection: showIconLabels ? "column" : "row",
-            gap: showIconLabels ? 16 : 24,
-            alignItems: showIconLabels ? "stretch" : "center",
-            flexWrap: showIconLabels ? "nowrap" : "wrap",
-          }}>
-            {iconRows.map((ic) => (
-              <div key={ic.id} style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 24,
-                paddingBottom: showIconLabels ? 14 : 0,
-                borderBottom: showIconLabels ? `1px solid ${ruleCol}` : "none",
-                opacity: 1,
-                flex: showIconLabels ? "0 0 auto" : "0 0 auto",
-              }}>
-                {showIconLabels && (
-                  <div style={{
-                    fontFamily: EDITORIAL_FONT,
-                    fontWeight: 300,
-                    fontSize: Math.round(bodySize * 0.82),
-                    color: headlineCol,
-                    letterSpacing: "0.01em",
-                    flex: 1,
-                    textAlign: "left",
-                  }}>
-                    {ic.label}
-                  </div>
-                )}
-                <div style={{
-                  width: 56, height: 56, borderRadius: "50%",
-                  background: headlineCol,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
-                    strokeLinecap="round" strokeLinejoin="round"
-                    style={{ width: 28, height: 28 }}
-                    dangerouslySetInnerHTML={{ __html: ic.svg }} />
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Hug-body position (default): icon block sits inside the body
+            column, right under the copy. The "between" position renders the
+            same block in a separate absolute container below this column. */}
+        {iconRows.length > 0 && iconPosition === "hug-body" && (
+          <IconBlock
+            rows={iconRows}
+            showLabels={showIconLabels}
+            bodySize={bodySize}
+            headlineCol={headlineCol}
+            ruleCol={ruleCol}
+            bg={bg}
+            centered={false}
+          />
         )}
 
         {hasOtherGraphic && otherGraphicSpec && (
@@ -267,6 +231,30 @@ export default function EditorialContentSlide({
           </div>
         )}
       </div>
+
+      {/* "Between" position: icon block sits centred horizontally between the
+          body column and the citation, anchored just above the citation. */}
+      {iconRows.length > 0 && iconPosition === "between" && (
+        <div style={{
+          position: "absolute",
+          left: PAD.x,
+          right: hasPhoto ? 560 : PAD.x,
+          bottom: py + (showCitationBars && citation ? Math.round(citationFontSize * 2.4) : 24),
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
+          <IconBlock
+            rows={iconRows}
+            showLabels={showIconLabels}
+            bodySize={bodySize}
+            headlineCol={headlineCol}
+            ruleCol={ruleCol}
+            bg={bg}
+            centered={true}
+          />
+        </div>
+      )}
 
       {/* Citation — small navy text at the bottom. Centered horizontally when a
           product photo is present (so it doesn't crowd the left column). */}
@@ -318,5 +306,72 @@ export default function EditorialContentSlide({
         </div>
       )}
     </SlideWrapper>
+  );
+}
+
+// Shared icon block — used both inside the body column ("hug-body") and as a
+// centred standalone block ("between"). When centered=true, the labelled
+// vertical list constrains its width and centres on its own axis; the icons-
+// only horizontal row simply centres its row content.
+function IconBlock({
+  rows, showLabels, bodySize, headlineCol, ruleCol, bg, centered,
+}: {
+  rows: { id: string; label: string; svg: string; category: string }[];
+  showLabels: boolean;
+  bodySize: number;
+  headlineCol: string;
+  ruleCol: string;
+  bg: string;
+  centered: boolean;
+}) {
+  return (
+    <div style={{
+      marginTop: centered ? 0 : 8,
+      display: "flex",
+      flexDirection: showLabels ? "column" : "row",
+      gap: showLabels ? 16 : 24,
+      alignItems: showLabels ? "stretch" : "center",
+      justifyContent: centered && !showLabels ? "center" : "flex-start",
+      flexWrap: showLabels ? "nowrap" : "wrap",
+      width: showLabels && centered ? 540 : undefined,
+    }}>
+      {rows.map((ic) => (
+        <div key={ic.id} style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 24,
+          paddingBottom: showLabels ? 14 : 0,
+          borderBottom: showLabels ? `1px solid ${ruleCol}` : "none",
+          flex: "0 0 auto",
+        }}>
+          {showLabels && (
+            <div style={{
+              fontFamily: "Inter, system-ui, -apple-system, sans-serif",
+              fontWeight: 300,
+              fontSize: Math.round(bodySize * 0.82),
+              color: headlineCol,
+              letterSpacing: "0.01em",
+              flex: 1,
+              textAlign: "left",
+            }}>
+              {ic.label}
+            </div>
+          )}
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: headlineCol,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
+              strokeLinecap="round" strokeLinejoin="round"
+              style={{ width: 28, height: 28 }}
+              dangerouslySetInnerHTML={{ __html: ic.svg }} />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

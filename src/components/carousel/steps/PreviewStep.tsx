@@ -800,10 +800,32 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     return true;
   }
 
-  function writeIconGraphic(slideIndex: number, ids: string[], layout: "row" | "column" | "grid" | "scattered", showLabels: boolean) {
+  // Where the icon row sits within the editorial slide layout.
+  //   "hug-body": icon block hugs the body copy (default, existing behaviour).
+  //   "between" : icon block sits centred between the body text and the citation.
+  type IconRowPosition = "hug-body" | "between";
+  function getIconRowPosition(slideIndex: number): IconRowPosition {
+    try {
+      const g = content.slides[slideIndex]?.graphic ?? "";
+      if (!g) return "hug-body";
+      const parsed = JSON.parse(g);
+      if (parsed.component === "iconLayout" && (parsed.data?.iconRowPosition === "between" || parsed.data?.iconRowPosition === "hug-body")) {
+        return parsed.data.iconRowPosition;
+      }
+    } catch { /* ignore */ }
+    return "hug-body";
+  }
+
+  function writeIconGraphic(
+    slideIndex: number,
+    ids: string[],
+    layout: "row" | "column" | "grid" | "scattered",
+    showLabels: boolean,
+    iconRowPosition: IconRowPosition = "hug-body",
+  ) {
     const graphic = ids.length === 0
       ? ""
-      : JSON.stringify({ component: "iconLayout", data: { icons: ids.map((id) => ({ id })), layout, showLabels } });
+      : JSON.stringify({ component: "iconLayout", data: { icons: ids.map((id) => ({ id })), layout, showLabels, iconRowPosition } });
     const slides = [...content.slides];
     slides[slideIndex] = { ...slides[slideIndex], graphic };
     onContentChange({ ...config, content: { ...content, slides } });
@@ -819,20 +841,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     } else {
       return;
     }
-    writeIconGraphic(slideIndex, next, iconPickerLayout, getShowLabels(slideIndex));
+    writeIconGraphic(slideIndex, next, iconPickerLayout, getShowLabels(slideIndex), getIconRowPosition(slideIndex));
   }
 
   function applyIconLayout(slideIndex: number, layout: "row" | "column" | "grid" | "scattered") {
     setIconPickerLayout(layout);
     const current = getSelectedIcons(slideIndex);
     if (current.length === 0) return;
-    writeIconGraphic(slideIndex, current, layout, getShowLabels(slideIndex));
+    writeIconGraphic(slideIndex, current, layout, getShowLabels(slideIndex), getIconRowPosition(slideIndex));
   }
 
   function toggleShowLabels(slideIndex: number) {
     const current = getSelectedIcons(slideIndex);
     if (current.length === 0) return;
-    writeIconGraphic(slideIndex, current, iconPickerLayout, !getShowLabels(slideIndex));
+    writeIconGraphic(slideIndex, current, iconPickerLayout, !getShowLabels(slideIndex), getIconRowPosition(slideIndex));
+  }
+
+  function setIconRowPosition(slideIndex: number, position: IconRowPosition) {
+    const current = getSelectedIcons(slideIndex);
+    if (current.length === 0) return;
+    writeIconGraphic(slideIndex, current, iconPickerLayout, getShowLabels(slideIndex), position);
   }
 
   function clearSlideIcons(slideIndex: number) {
@@ -1454,6 +1482,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   Labels {showLabels ? "On" : "Off"}
                 </button>
               )}
+              {selected.length > 0 && (() => {
+                const pos = getIconRowPosition(slideIdx);
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 0, border: "1px solid var(--border)", borderRadius: 3, overflow: "hidden" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase", padding: "2px 7px", borderRight: "1px solid var(--border)" }}>Position</span>
+                    <button
+                      onClick={() => setIconRowPosition(slideIdx, "hug-body")}
+                      title="Icon row hugs the body text (default)"
+                      style={{ background: pos === "hug-body" ? "var(--accent-dim)" : "transparent", border: "none", borderRight: "1px solid var(--border)", fontSize: 9, color: pos === "hug-body" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                    >
+                      Hug body
+                    </button>
+                    <button
+                      onClick={() => setIconRowPosition(slideIdx, "between")}
+                      title="Icon row centred between body text and citation"
+                      style={{ background: pos === "between" ? "var(--accent-dim)" : "transparent", border: "none", fontSize: 9, color: pos === "between" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                    >
+                      Centered
+                    </button>
+                  </div>
+                );
+              })()}
               {selected.length > 0 && (
                 <button onClick={() => clearSlideIcons(slideIdx)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 9, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>Clear</button>
               )}
