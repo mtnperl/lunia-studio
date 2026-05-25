@@ -341,6 +341,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // "gpt-image-2" forces OpenAI GPT Image 2 via fal for higher fidelity / text rendering.
   const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2">("auto");
 
+  // Hook image history — newest first. Populated whenever a regenerate
+  // displaces the current image, so the user can revert to any prior take.
+  // Session-only (does not persist on save) — keeps the surface tiny.
+  const [hookImageHistory, setHookImageHistory] = useState<string[]>([]);
+
   // ── Full-prompt editor ──────────────────────────────────────────────────
   // fullPromptPreview = the prompt the server WOULD send right now (assembled
   // from spec + mood + chrome). fullPromptOverride mirrors
@@ -1049,6 +1054,22 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  // Swap a history entry into the current hook image slot. The displaced
+  // current URL flows back to the top of history so the user can ping-pong.
+  function revertToHookImage(url: string) {
+    if (!url) return;
+    const prevImages = config.slideImages ?? [null, null, null, null, null];
+    const displaced = prevImages[0];
+    const newImages = [...prevImages];
+    newImages[0] = url;
+    onContentChange({ ...config, slideImages: newImages as (string | null)[] });
+    setHookImageHistory((prev) => {
+      const filtered = prev.filter((u) => u && u !== url);
+      const next = displaced && displaced !== url ? [displaced, ...filtered] : filtered;
+      return next.slice(0, 8);
+    });
+  }
+
   async function handleRegenerateHookImage() {
     setRegeneratingImage(true);
     setImageRegenError(null);
@@ -1112,11 +1133,23 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       }
       if (!imgRes.ok || imgData.error || !imgData.url) throw new Error(imgData.error ?? `Image generation failed (HTTP ${imgRes.status})`);
 
+      // Capture the soon-to-be-replaced URL before swapping in the new one.
+      // Pushed to history so the user can revert; de-duped + capped at 8.
+      const prevImages = config.slideImages ?? [null, null, null, null, null];
+      const displaced = prevImages[0];
+
       // Update slideImages[0] in config and track the aspect of the new image
-      const newSlideImages = [...(config.slideImages ?? [null, null, null, null, null])];
+      const newSlideImages = [...prevImages];
       newSlideImages[0] = imgData.url;
       setHookImageAspect(targetAspect);
       onContentChange({ ...config, slideImages: newSlideImages as (string | null)[], content: { ...config.content, imagePrompt: finalPrompt } });
+
+      if (displaced && displaced !== imgData.url) {
+        setHookImageHistory((prev) => {
+          const next = [displaced, ...prev.filter((u) => u && u !== displaced && u !== imgData.url)];
+          return next.slice(0, 8);
+        });
+      }
     } catch (err) {
       setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate image");
     } finally {
@@ -1829,6 +1862,30 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 );
               })}
             </div>
+            {/* Previous hook images — click any thumb to revert. Session-only. */}
+            {hookImageHistory.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  Previous images — click to revert
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {hookImageHistory.map((url, i) => (
+                    <button
+                      key={`${url}-${i}`}
+                      onClick={() => revertToHookImage(url)}
+                      title={`Revert to image ${i + 1}`}
+                      style={{ padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", cursor: "pointer", overflow: "hidden", lineHeight: 0, width: 56, height: 70 }}
+                    >
+                      <img
+                        src={proxyUrl(url)}
+                        alt={`Previous hook image ${i + 1}`}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {imageRegenError && <p style={{ fontSize: 12, color: "var(--error)", margin: "0 0 8px" }}>{imageRegenError}</p>}
             <div style={{ display: "flex", gap: 8 }}>
               <button
@@ -3318,6 +3375,30 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 );
               })}
             </div>
+            {/* Previous hook images — click any thumb to revert. Session-only. */}
+            {hookImageHistory.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  Previous images — click to revert
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {hookImageHistory.map((url, i) => (
+                    <button
+                      key={`${url}-${i}`}
+                      onClick={() => revertToHookImage(url)}
+                      title={`Revert to image ${i + 1}`}
+                      style={{ padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)", cursor: "pointer", overflow: "hidden", lineHeight: 0, width: 60, height: 75 }}
+                    >
+                      <img
+                        src={proxyUrl(url)}
+                        alt={`Previous hook image ${i + 1}`}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {imageRegenError && (
               <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{imageRegenError}</p>
             )}
