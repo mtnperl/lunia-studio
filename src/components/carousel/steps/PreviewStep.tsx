@@ -60,6 +60,10 @@ type Props = {
   initialShowCitationBars?: boolean;
   stylePreset?: import("@/lib/types").CarouselStylePreset;
   carouselFormat?: CarouselFormat;
+  /** When the editor was opened from the library, the saved-carousel id flows
+   *  in so the "Save" button updates that record in place instead of minting
+   *  a brand-new carousel on every save. */
+  initialSavedId?: string | null;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
@@ -222,12 +226,13 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, stylePreset = "default", carouselFormat = "standard" }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, stylePreset = "default", carouselFormat = "standard", initialSavedId = null }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(initialSavedId);
+  const [saveLabel, setSaveLabel] = useState<string | null>(null); // transient "Saved!" flash after a successful update
   const [copyLabel, setCopyLabel] = useState("Copy link");
   const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");
   const [regenerating, setRegenerating] = useState<number | null>(null);
@@ -733,6 +738,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // When the carousel was loaded from the library (or we've already
+          // saved it once this session), pass the existing id so the route
+          // updates that record in place instead of duplicating it.
+          ...(savedId ? { id: savedId } : {}),
           topic,
           hookTone,
           content,
@@ -763,6 +772,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (!res.ok) return;
       const { id } = await res.json();
       setSavedId(id);
+      // Brief "Saved!" flash on the button so the user knows the update landed.
+      setSaveLabel("Saved!");
+      setTimeout(() => setSaveLabel(null), 1600);
     } finally {
       setSaving(false);
     }
@@ -1919,13 +1931,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {savedId ? (
+          <button className="btn-ghost" onClick={handleSave} disabled={saving} title={savedId ? "Update the saved carousel" : "Save this carousel to the library"}>
+            {saving ? (savedId ? "Updating…" : "Saving…") : (saveLabel ?? (savedId ? "Update" : "Save"))}
+          </button>
+          {savedId && (
             <button className="btn-ghost" onClick={handleCopyShareLink}>
               {copyLabel}
-            </button>
-          ) : (
-            <button className="btn-ghost" onClick={handleSave} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
             </button>
           )}
           {imagesLoading && (

@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
+      id: existingId,
       topic, hookTone, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, slideBgColor,
@@ -72,7 +73,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const id = randomUUID();
+    // When the editor passes an existing id (update flow), reuse it so the
+    // KV upsert lands on the same record. Otherwise mint a fresh one.
+    const id = typeof existingId === "string" && existingId.length > 0 ? existingId : randomUUID();
 
     // Persist fal.ai images to Vercel Blob before their CDN URLs expire.
     // Run in parallel — any individual failure falls back to the original URL.
