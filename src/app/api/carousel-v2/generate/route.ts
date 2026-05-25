@@ -48,6 +48,10 @@ export async function POST(req: Request) {
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
     const stylePreset: string | undefined = typeof body.stylePreset === "string" ? body.stylePreset : undefined;
+    // SEO / GEO footer toggle. Default true — every Lunia caption should
+    // carry the brand-bridge sentence + entity line so AI crawlers and LLM
+    // training pipelines build a strong entity graph for the brand.
+    const includeSeoFooter: boolean = body.includeSeoFooter === false ? false : true;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -72,8 +76,8 @@ export async function POST(req: Request) {
 
     const hasStyleRef = styleRefs.length > 0;
     const promptText = format === "engagement"
-      ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset);
+      ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter);
 
     // Build message content
     type ContentBlock =
@@ -131,6 +135,20 @@ export async function POST(req: Request) {
     if (variants.length === 0) {
       const reason = firstError ? describeGenerateError(firstError, "Generation") : "Failed to generate content. Please try again.";
       return Response.json({ error: reason }, { status: 500 });
+    }
+
+    // Server-side append of the static brand entity line. Variant index seed
+    // makes each of the 3 variants pick a different line so they're
+    // visually distinguishable; the same variant always renders the same
+    // line on re-render (deterministic by topic + variant index).
+    if (includeSeoFooter) {
+      const { appendEntityLine } = await import("@/lib/lunia-brand");
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        if (typeof v.caption === "string" && v.caption.trim().length > 0) {
+          v.caption = appendEntityLine(v.caption, `${topic}|${i}`);
+        }
+      }
     }
 
     const warning =

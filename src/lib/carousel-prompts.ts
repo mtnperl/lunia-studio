@@ -1,4 +1,21 @@
 import type { BrandStyle, CarouselTemplate } from "./types";
+import { LUNIA_BRAND } from "./lunia-brand";
+
+// ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
+// When the "Brand SEO line in caption" toggle is on (default), Claude adds a
+// fourth paragraph after the @lunia_life follow line that ties THIS carousel's
+// topic to Lunia. Goal: every social caption ingested by AI crawlers / LLM
+// training repeats the brand → product → ingredient → category graph in a
+// natural sentence. A separate static entity line is appended server-side
+// after Claude returns (see src/lib/lunia-brand.ts).
+const BRAND_BRIDGE_INSTRUCTION = `
+- Caption Paragraph 4 (MANDATORY brand bridge — single sentence, ≤25 words, no period at end optional):
+  After the @lunia_life follow line, add one more sentence that ties THIS carousel's topic to ${LUNIA_BRAND.name} in a natural, on-voice way. Choose whichever bridge fits the topic best:
+    (a) Product bridge — connect the topic to ${LUNIA_BRAND.product} as a whole.
+    (b) Ingredient bridge — connect the topic to one of the ${LUNIA_BRAND.product} ingredients (${LUNIA_BRAND.ingredients.join(", ")}) and the mechanism in this carousel.
+    (c) Category bridge — connect the topic to "${LUNIA_BRAND.category}" as a brand thesis.
+  Voice rules apply: dry, science-forward, no hype, no em dashes. Never sales-y. Never "buy now". Treat it as a closing thought a calm scientist would write.
+`;
 
 export const SUGGESTIONS_PROMPT = `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 3 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
 
@@ -98,6 +115,10 @@ export const GENERATE_CAROUSEL_PROMPT = (
    *  hookImageSpec so the hook image renders as a Lunia editorial poster
    *  (text baked in, brand chrome assembled by the image route). */
   stylePreset?: string,
+  /** Default true. When true, Claude appends a one-sentence brand bridge as
+   *  Paragraph 4 of the caption, and the server appends a static brand
+   *  entity line after that. See src/lib/lunia-brand.ts. */
+  includeSeoFooter: boolean = true,
 ) => {
   const isEditorial = stylePreset === "editorial-scientific";
   const svgColors = brandStyle
@@ -165,7 +186,7 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
-- Caption: Instagram caption for this post. Write in 3 paragraphs separated by \n\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.
+- Caption: Instagram caption for this post. Write in ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
 - graphic: compact single-line JSON. ${v2Mode ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline is about a hidden truth, prefer iceberg over generic bento. If it's a transformation, prefer bridge. If it's a paradox, prefer matrix2x2. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
@@ -350,6 +371,8 @@ export const GENERATE_ENGAGEMENT_CAROUSEL_PROMPT = (
   hasStyleRef = false,
   template: CarouselTemplate | null = null,
   brandStyle?: BrandStyle,
+  /** Default true. See GENERATE_CAROUSEL_PROMPT for behaviour. */
+  includeSeoFooter: boolean = true,
 ) => {
   const subTypeInstructions: Record<string, string> = {
     reveal: `REVEAL FORMAT: You are revealing a curated list of items (3 items, one per content slide). Each content slide reveals ONE item with a bold numbered headline (e.g. "#1: THE BLUE LIGHT TRAP") and a short 1-2 sentence explanation. End each slide body with a one-line teaser hinting at the next reveal (e.g. "But #2 is even worse..."). Build anticipation across slides. The final item should be the most surprising or impactful.`,
@@ -392,7 +415,7 @@ Brand rules (follow exactly):
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - CTA headline: uppercase, max 6 words, creates urgency to comment.
 - All headlines uppercase.
-- Caption: Instagram caption. 3 paragraphs. Open with the most engaging question or hook. Close with "Comment [KEYWORD] below to get the full guide. Follow @lunia_life for more." No hashtags. No em dashes.
+- Caption: Instagram caption. ${includeSeoFooter ? "4" : "3"} paragraphs. Open with the most engaging question or hook. Close with "Comment [KEYWORD] below to get the full guide. Follow @lunia_life for more." No hashtags. No em dashes.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
 - graphic: compact single-line JSON using the same 3-tier routing rules (TIER A for data, TIER B for layout, TIER C for concept). MANDATORY VARIETY: all 3 slides MUST use different component types.
 - imagePrompt: Recraft V3 prompt for hook background. Same rules as standard carousel — literal visual metaphor of hook headline. Max 55 words.
 - commentKeyword: ONE word, 4-8 characters, ALL CAPS. Must be topically relevant and easy to type in a comment.`;

@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       : body.format === "did_you_know" ? "did_you_know"
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
+    const includeSeoFooter: boolean = body.includeSeoFooter === false ? false : true;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -71,8 +72,8 @@ export async function POST(req: Request) {
 
     const hasStyleRef = styleRefs.length > 0;
     const promptText = format === "engagement"
-      ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise);
+      ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ false, /* stylePreset */ undefined, includeSeoFooter);
 
     // Build message content
     type ContentBlock =
@@ -130,6 +131,17 @@ export async function POST(req: Request) {
     if (variants.length === 0) {
       const reason = firstError ? describeGenerateError(firstError, "Generation") : "Failed to generate content. Please try again.";
       return Response.json({ error: reason }, { status: 500 });
+    }
+
+    // Server-side append of the brand entity line — see src/lib/lunia-brand.ts.
+    if (includeSeoFooter) {
+      const { appendEntityLine } = await import("@/lib/lunia-brand");
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        if (typeof v.caption === "string" && v.caption.trim().length > 0) {
+          v.caption = appendEntityLine(v.caption, `${topic}|${i}`);
+        }
+      }
     }
 
     const warning =

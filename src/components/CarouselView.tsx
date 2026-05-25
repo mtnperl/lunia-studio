@@ -61,6 +61,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const [selectedHook, setSelectedHook] = useState(0);
   const [brandStyle, setBrandStyle] = useState<BrandStyle | null>(null);
   const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
+  const [includeSeoFooter, setIncludeSeoFooter] = useState<boolean>(true);
   const [hookImageUrl, setHookImageUrl] = useState<string | null>(null);
   const [slideImages, setSlideImages] = useState<(string | null)[]>([null, null, null, null, null]);
 
@@ -189,7 +190,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
 
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean) {
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
@@ -197,6 +198,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     setCarouselFormat(format ?? "standard");
     setEngagementSubType(engSubType ?? "reveal");
     setStylePreset(preset ?? "default");
+    setIncludeSeoFooter(seoFooter ?? true);
     setError(null);
     setWarning(null);
 
@@ -220,6 +222,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           format: format ?? "standard",
           engagementSubType: engSubType,
           stylePreset: preset ?? "default",
+          includeSeoFooter: seoFooter ?? true,
         }),
       });
       const data = await res.json();
@@ -246,7 +249,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
       setSelectedVariant(0);
       setSelectedHook(0);
       setBrandStyle(std.brandStyle ?? null);
-      setHookImageUrl((data as any).hookImageUrl ?? null);
+      setHookImageUrl((data as { hookImageUrl?: string | null }).hookImageUrl ?? null);
       setFalStatus("idle");
       setFalCount(0);
       const msgs = [

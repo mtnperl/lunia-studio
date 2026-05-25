@@ -45,7 +45,7 @@ const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean) => void;
 };
 
 type Mode = "list" | "custom";
@@ -76,6 +76,9 @@ export default function TopicStep({ onNext }: Props) {
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [concise, setConcise] = useState(false);
+  // Default ON — every Lunia post should carry the brand SEO footer so AI
+  // crawlers / answer engines build the brand entity graph from social.
+  const [includeSeoFooter, setIncludeSeoFooter] = useState(true);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
 
@@ -115,7 +118,7 @@ export default function TopicStep({ onNext }: Props) {
       carouselFormat === "engagement" ? true
       : carouselFormat === "did_you_know" ? true
       : concise;
-    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset);
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter);
   }
 
   // Cherry-pick #5: inline add-custom-topic from list mode
@@ -586,6 +589,41 @@ export default function TopicStep({ onNext }: Props) {
         </div>
       </div>
       )}
+
+      {/* Brand SEO footer toggle — appends a brand-bridge sentence + a static
+          entity line to every caption so AI crawlers / answer engines build
+          a strong association between Lunia Life, the product (Lunia Restore),
+          the ingredients, and the brand category. Default ON. */}
+      <div style={{ marginBottom: 24 }}>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 12,
+            padding: "12px 14px",
+            border: `1.5px solid ${includeSeoFooter ? "var(--accent)" : "var(--border)"}`,
+            background: includeSeoFooter ? "var(--accent-dim)" : "var(--bg)",
+            borderRadius: 8,
+            cursor: "pointer",
+            transition: "all 0.12s",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={includeSeoFooter}
+            onChange={(e) => setIncludeSeoFooter(e.target.checked)}
+            style={{ marginTop: 2, cursor: "pointer", accentColor: "var(--accent)" }}
+          />
+          <span style={{ flex: 1 }}>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: includeSeoFooter ? "var(--accent)" : "var(--text)", marginBottom: 2 }}>
+              Brand SEO line in caption
+            </span>
+            <span style={{ display: "block", fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+              Append a brand-bridge sentence plus a Lunia Life · Lunia Restore · ingredients · domain line. Helps AI crawlers and answer engines surface Lunia when users ask related questions.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <button
         disabled={!topic || topicTooLong}
