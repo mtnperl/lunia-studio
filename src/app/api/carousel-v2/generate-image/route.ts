@@ -142,6 +142,7 @@ export async function POST(req: Request) {
           spec: hookImageSpec!,
           headline: hookHeadline,
           subline:  hookSubline,
+          topic:    topic,
           hasRefs:  referenceImageUrls.length > 0,
         })
       : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
@@ -190,9 +191,13 @@ function buildEditorialHookPrompt(args: {
   spec: { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
   headline: string;
   subline: string;
+  /** The carousel's underlying topic — anchors the contextual-fit paragraph
+   *  so the image visually metaphorises the actual science, not generic
+   *  calm wellness. */
+  topic?: string;
   hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
 }): string {
-  const { spec, headline, subline } = args;
+  const { spec, headline, subline, topic } = args;
 
   // Strip any product / bottle / logo tokens from sceneElements — the
   // editorial hook is always product-free, no matter what Claude (or a saved
@@ -220,6 +225,11 @@ function buildEditorialHookPrompt(args: {
 
   return [
     `Create an editorial poster image for Lunia Life, a premium women's sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
+    "",
+    // ── PRIORITY 0: contextual fit (most important — beats aesthetic) ──
+    topic
+      ? `CONTEXTUAL FIT — READ FIRST: the carousel's actual topic is "${topic}". The scene MUST visually metaphorise THIS specific science / concept so a viewer scrolling Instagram instantly understands what the post is about. Default-to-chamomile-and-linen is failure: a brain-glymphatic carousel must look like sleeping/washing/flow imagery, a cortisol carousel must look like tension/release, a magnesium-glycinate carousel must show dark leafy greens or mineral salts, an L-theanine carousel must show green-tea leaves, a perimenopause carousel must show a real woman partially framed. Keep the science / serious angle of Lunia Life intact — clinical, contemplative, calm — but make the subject SAY the topic at a glance. If the image could fit equally well on a random wellness post, you have failed; push harder on the metaphor.`
+      : "CONTEXTUAL FIT: the scene must visually metaphorise the science behind the headline so a viewer scrolling Instagram instantly understands the topic. Clinical, contemplative, on-topic — not generic calm wellness.",
     "",
     // ── PRIORITY 1: warmth (this used to be buried, GPT was reading it as cool) ──
     "WHITE BALANCE — MOST IMPORTANT: the image must read as WARM editorial wellness photography. Late-afternoon golden-hour daylight diffused through a sheer linen curtain, soft warm-neutral light, gentle warmth in the shadows. NEVER cool, NEVER fluorescent, NEVER overcast, NEVER museum-cold, NEVER desaturated grey-blue. The Lunia editorial reference is the warm-ivory of brands like Le Labo, Loewe Home Scents, Aesop product photography, Hims+Hers, Vacation Inc., Glossier You — uncoated cotton paper warmth, sunlit and intimate. Explicit anti-references: NOT Apple product photography, NOT Sotheby's catalogue, NOT museum lighting, NOT cool Vogue glossy.",
