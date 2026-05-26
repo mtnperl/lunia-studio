@@ -421,7 +421,9 @@ export async function createEmailTemplate(input: { name: string; html: string; t
   return {
     id,
     name: res.data.attributes.name,
-    editorUrl: `https://www.klaviyo.com/template/${id}/edit`,
+    // Klaviyo's current product uses /email-template/<id>/edit (singular).
+    // The legacy /template/<id>/edit pattern 404s in the modern UI.
+    editorUrl: `https://www.klaviyo.com/email-template/${id}/edit`,
   };
 }
 
@@ -436,7 +438,7 @@ export async function swapFlowMessageTemplate(flowMessageId: string, newTemplate
 
 // Klaviyo deep-link to the template editor (so the user can publish manually).
 export function klaviyoTemplateEditorUrl(templateId: string): string {
-  return `https://www.klaviyo.com/template/${templateId}`;
+  return `https://www.klaviyo.com/email-template/${templateId}/edit`;
 }
 
 // --- Audit log --------------------------------------------------------------
