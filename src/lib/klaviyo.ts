@@ -421,13 +421,13 @@ export async function createEmailTemplate(input: { name: string; html: string; t
   return {
     id,
     name: res.data.attributes.name,
-    // Klaviyo keeps moving the template editor URL pattern across UI
-    // refreshes (we've already 404'd on /template/<id>/edit and on
-    // /email-template/<id>/edit). The templates LIST page, on the other
-    // hand, is stable: /email-templates. The template name we set
-    // ("Lunia · <subject> · <date>") sorts to the top and is one click
-    // away from the editor. Trading a deep-link for a reliable link.
-    editorUrl: `https://www.klaviyo.com/email-templates`,
+    // User-confirmed Klaviyo templates URL for the current account. Lands on
+    // the Klaviyo email-templates surface; the recently-pushed template
+    // (named "Lunia · <subject> · <date>") shows up in the list shown there.
+    // Klaviyo's per-template deep-link URL keeps shifting between UI
+    // refreshes (we've already 404'd on /template/<id>/edit and
+    // /email-template/<id>/edit) so we link to this stable landing instead.
+    editorUrl: `https://www.klaviyo.com/email-templates/create`,
   };
 }
 
@@ -440,13 +440,12 @@ export async function swapFlowMessageTemplate(flowMessageId: string, newTemplate
   });
 }
 
-// Klaviyo deep-link to the templates list (so the user can publish manually).
+// Klaviyo deep-link to the templates landing (so the user can publish manually).
 // Klaviyo's deep-link to a specific template keeps shifting across UI
-// refreshes; the list page is stable. The template we just created sorts
-// to the top of the list by default.
+// refreshes; this landing is the user-confirmed working URL.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function klaviyoTemplateEditorUrl(_templateId: string): string {
-  return `https://www.klaviyo.com/email-templates`;
+  return `https://www.klaviyo.com/email-templates/create`;
 }
 
 // --- Audit log --------------------------------------------------------------
