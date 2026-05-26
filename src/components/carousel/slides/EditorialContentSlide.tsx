@@ -233,13 +233,15 @@ export default function EditorialContentSlide({
       </div>
 
       {/* "Between" position: icon block sits centred horizontally between the
-          body column and the citation, anchored just above the citation. */}
+          body column and the citation. Anchored higher than the citation so
+          the band between body and icons gets ~33% more breathing room
+          (previously sat too close to the citation). */}
       {iconRows.length > 0 && iconPosition === "between" && (
         <div style={{
           position: "absolute",
           left: PAD.x,
           right: hasPhoto ? 560 : PAD.x,
-          bottom: py + (showCitationBars && citation ? Math.round(citationFontSize * 2.4) : 24),
+          bottom: py + (showCitationBars && citation ? Math.round(citationFontSize * 3.2) : 32),
           display: "flex",
           justifyContent: "center",
           alignItems: "center",

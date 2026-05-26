@@ -303,8 +303,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     typeof config.contentBgOverlayOpacity === 'number' ? config.contentBgOverlayOpacity : 0.55
   );
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(initialShowLuniaLifeWatermark ?? true);
-  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? 36);
-  const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? 1);
+  // Editorial preset defaults: citation = M (26), headline = L (1.15).
+  // Other presets keep the previous defaults (citation L = 36, headline M = 1).
+  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isEditorial ? 26 : 36));
+  const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? (isEditorial ? 1.15 : 1));
   const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1);
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
@@ -793,9 +795,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     });
   }
 
+  // Read the graphic JSON for any slot — content slides at 0-2, the CTA at 3.
+  function getSlotGraphic(slideIndex: number): string {
+    if (slideIndex === 3) return content.cta?.graphic ?? "";
+    return content.slides[slideIndex]?.graphic ?? "";
+  }
+
+  // Write back the graphic JSON to the right slot.
+  function setSlotGraphic(slideIndex: number, graphic: string) {
+    if (slideIndex === 3) {
+      onContentChange({ ...config, content: { ...content, cta: { ...content.cta, graphic } } });
+    } else {
+      const slides = [...content.slides];
+      slides[slideIndex] = { ...slides[slideIndex], graphic };
+      onContentChange({ ...config, content: { ...content, slides } });
+    }
+  }
+
   function getSelectedIcons(slideIndex: number): string[] {
     try {
-      const g = content.slides[slideIndex]?.graphic ?? "";
+      const g = getSlotGraphic(slideIndex);
       if (!g) return [];
       const parsed = JSON.parse(g);
       if (parsed.component === "iconLayout") return parsed.data.icons.map((ic: { id: string }) => ic.id);
@@ -807,7 +826,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Defaults to true so existing carousels render with labels — matches v1 behavior.
   function getShowLabels(slideIndex: number): boolean {
     try {
-      const g = content.slides[slideIndex]?.graphic ?? "";
+      const g = getSlotGraphic(slideIndex);
       if (!g) return true;
       const parsed = JSON.parse(g);
       if (parsed.component === "iconLayout" && typeof parsed.data?.showLabels === "boolean") {
@@ -823,7 +842,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   type IconRowPosition = "hug-body" | "between";
   function getIconRowPosition(slideIndex: number): IconRowPosition {
     try {
-      const g = content.slides[slideIndex]?.graphic ?? "";
+      const g = getSlotGraphic(slideIndex);
       if (!g) return "hug-body";
       const parsed = JSON.parse(g);
       if (parsed.component === "iconLayout" && (parsed.data?.iconRowPosition === "between" || parsed.data?.iconRowPosition === "hug-body")) {
@@ -843,9 +862,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const graphic = ids.length === 0
       ? ""
       : JSON.stringify({ component: "iconLayout", data: { icons: ids.map((id) => ({ id })), layout, showLabels, iconRowPosition } });
-    const slides = [...content.slides];
-    slides[slideIndex] = { ...slides[slideIndex], graphic };
-    onContentChange({ ...config, content: { ...content, slides } });
+    setSlotGraphic(slideIndex, graphic);
   }
 
   function toggleSlideIcon(slideIndex: number, iconId: string) {
@@ -881,9 +898,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   function clearSlideIcons(slideIndex: number) {
-    const slides = [...content.slides];
-    slides[slideIndex] = { ...slides[slideIndex], graphic: "" };
-    onContentChange({ ...config, content: { ...content, slides } });
+    setSlotGraphic(slideIndex, "");
   }
 
   async function handleSuggestIcons(slideIndex: number, opts?: { force?: boolean }) {
@@ -1934,7 +1949,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[2] ?? undefined} bgImageShimmer={contentBgGenerating.has(2)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
+      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -1948,7 +1963,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[2])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     carouselFormat === "engagement" && content.commentKeyword
       ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
+      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -3586,9 +3601,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   const sIdx = focusedSlide - 1;
                   const isContent = focusedSlide >= 1 && focusedSlide <= 3;
                   const isHook = focusedSlide === 0;
+                  const isCta = focusedSlide === 4;
                   const isDownloading = downloading === focusedSlide;
                   const bgGenerating = isContent && contentBgGenerating.has(sIdx);
                   const hasBg = isContent && !!contentBgImages[sIdx];
+                  // CTA icons currently only render on the editorial preset.
+                  const ctaIconsAvailable = isCta && isEditorial;
                   return (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
                       <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
@@ -3596,7 +3614,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
                       {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
-                      {isContent && <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />}
+                      {(isContent || ctaIconsAvailable) && <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />}
                       {isContent && <ToolbarButton label="Graphic type" active={inspectorMode === "graphicType"} onClick={() => openInspector("graphicType")} />}
                       {isContent && <ToolbarButton label="Graphic data" active={inspectorMode === "graphicData"} onClick={() => openInspector("graphicData")} />}
                       {isContent && <ToolbarButton label="Regen graphic" active={inspectorMode === "graphicComment"} onClick={() => openInspector("graphicComment")} />}

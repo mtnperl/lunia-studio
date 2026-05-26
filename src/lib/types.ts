@@ -313,7 +313,11 @@ export type EditorialHookImageSpec = {
 export type CarouselContent = {
   hooks: Hook[];
   slides: CarouselContentSlide[];
-  cta: { headline: string; followLine: string };
+  /** The closing CTA slide. `graphic` is optional — when set, it carries the
+   *  same GraphicSpec JSON used by content slides (currently only iconLayout
+   *  is rendered on the CTA). Lets the user attach a row of icons to the
+   *  finish screen in the editorial preset. */
+  cta: { headline: string; followLine: string; graphic?: string };
   caption: string; // IG caption including hashtags
   imagePrompt?: string; // Claude-written Recraft V3 prompt for the hook slide background
   commentKeyword?: string; // engagement format: auto-generated keyword for comment CTA
