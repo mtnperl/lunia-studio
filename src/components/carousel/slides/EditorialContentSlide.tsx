@@ -220,14 +220,22 @@ export default function EditorialContentSlide({
           <div style={{
             marginTop: 12,
             display: "flex",
-            justifyContent: "flex-start",
+            // Centre the graphic block in the body column so its internal
+            // centred content (e.g. StatCallout's 75% rules + centred number)
+            // aligns visually with the body text's column-centre. flex-start
+            // was leaving the stat offset left of the body's optical centre.
+            justifyContent: "center",
             alignItems: "flex-start",
             width: "100%",
-            // Cap the infographic so it doesn't dominate the editorial layout
-            // when the column is wide (no photo on the right).
-            maxWidth: hasPhoto ? "100%" : 720,
           }}>
-            {renderGraphicSpec(otherGraphicSpec, brandStyle)}
+            <div style={{
+              // Soft cap so very wide graphics (tables, matrix2x2, etc.) don't
+              // dominate the editorial layout when the column is wide.
+              width: "100%",
+              maxWidth: hasPhoto ? "100%" : 760,
+            }}>
+              {renderGraphicSpec(otherGraphicSpec, brandStyle)}
+            </div>
           </div>
         )}
       </div>
