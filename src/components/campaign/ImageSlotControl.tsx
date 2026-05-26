@@ -35,11 +35,17 @@ export default function ImageSlotControl({
   label,
   topic,
   onChange,
+  onGenerated,
 }: {
   slot: CampaignImageSlot;
   label: string;
   topic: string;
   onChange: (next: CampaignImageSlot) => void;
+  /** Called immediately AFTER a successful generation with the new URL,
+   *  BEFORE the onChange propagates. Lets the parent register the URL in
+   *  the freshly-generated-URL lock so any subsequent state mutation that
+   *  tries to revert the slot back to the previous asset URL is rejected. */
+  onGenerated?: (url: string) => void;
 }) {
   const [generating, setGenerating] = useState(false);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
@@ -122,11 +128,13 @@ export default function ImageSlotControl({
         setError(data.error ?? "Image generation failed");
         return;
       }
+      // Register the new URL in the parent's per-slot lock FIRST so any
+      // subsequent onChange that tries to silently revert the slot back to
+      // an asset URL gets caught by the firewall in CampaignEditor.updateImage.
+      onGenerated?.(data.url);
       // Merge into the LATEST slot (not the closure snapshot from click time)
       // and strip any leftover asset metadata so the slot is unambiguously
-      // a fresh generated image. Without these guards, a slow generation
-      // could land while the parent has re-rendered with a stale slot, and
-      // the new URL gets overwritten back to the previous asset image.
+      // a fresh generated image.
       onChange({
         ...latestSlot.current,
         source: "generated",

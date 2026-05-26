@@ -51,6 +51,20 @@ export default function CampaignEditor({
   const [klaviyoError, setKlaviyoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
+  // Per-slot lock on the most recently generated URL. When ImageSlotControl
+  // finishes a generation it registers the new URL here via markGenerated().
+  // updateImage() below uses the map to detect + reject any subsequent state
+  // mutation that tries to silently change a generated slot's URL to a
+  // different value while the slot is still in "generated" mode.
+  //
+  // This is the firewall against the "hero image reverts to default" bug:
+  // even if some race or stale render emits an onChange with the previous
+  // asset URL, the guard preserves the freshly generated URL.
+  const generatedUrlLock = useRef<Map<string, string>>(new Map());
+  function markGenerated(slotId: string, url: string) {
+    generatedUrlLock.current.set(slotId, url);
+  }
+
   const html = useMemo(() => renderCampaignEmail(content), [content]);
 
   // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
@@ -83,7 +97,38 @@ export default function CampaignEditor({
     onChange({ ...content, blocks: [...content.blocks, { id: newId(), body: "", align: "left" }] });
   }
   function updateImage(next: CampaignImageSlot) {
-    onChange({ ...content, images: content.images.map((i) => (i.id === next.id ? next : i)) });
+    const prev = content.images.find((i) => i.id === next.id);
+    let final = next;
+
+    // If the user explicitly switched the source from generated → asset,
+    // they're abandoning the generated image — clear the lock.
+    if (prev?.source === "generated" && next.source === "asset") {
+      generatedUrlLock.current.delete(next.id);
+    }
+
+    // While the slot is in "generated" mode, the URL can ONLY change in two
+    // legitimate ways:
+    //   (a) Generate produced a brand new URL → ImageSlotControl calls
+    //       markGenerated() BEFORE its onChange. The lock has the new URL
+    //       and matches next.url. No-op.
+    //   (b) User cleared the URL by switching to Generated mode (url=null).
+    //       That's an explicit reset.
+    // Anything else — different URL, no markGenerated, source still
+    // "generated" — is the revert bug. Preserve the locked URL.
+    if (next.source === "generated") {
+      const locked = generatedUrlLock.current.get(next.id);
+      if (locked && next.url !== null && next.url !== locked) {
+        // eslint-disable-next-line no-console
+        console.warn("[CampaignEditor] suspicious URL change on generated slot — preserving locked URL", {
+          slotId: next.id,
+          attemptedUrl: next.url,
+          preservedUrl: locked,
+        });
+        final = { ...next, url: locked, assetId: undefined };
+      }
+    }
+
+    onChange({ ...content, images: content.images.map((i) => (i.id === next.id ? final : i)) });
   }
   function removeImage(id: string) {
     onChange({ ...content, images: content.images.filter((i) => i.id !== id) });
@@ -264,7 +309,7 @@ export default function CampaignEditor({
                 : `Image ${secondaryImages.indexOf(img) + 2}`;
               return (
                 <div key={img.id} style={{ position: "relative" }}>
-                  <ImageSlotControl slot={img} label={label} topic={topic} onChange={updateImage} />
+                  <ImageSlotControl slot={img} label={label} topic={topic} onChange={updateImage} onGenerated={(url) => markGenerated(img.id, url)} />
                   {img.role === "secondary" && secondaryImages.length > 2 && (
                     <button
                       onClick={() => removeImage(img.id)}
