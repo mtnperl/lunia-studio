@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CampaignImageSlot } from "@/lib/types";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import AssetPicker from "./AssetPicker";
@@ -45,6 +45,12 @@ export default function ImageSlotControl({
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Keep a live ref to the current slot so async handlers (generate /
+  // regeneratePrompt) merge into the latest version of the slot, not the
+  // snapshot they closed over when the click happened. Without this, any
+  // parent re-render between click and response can clobber the result.
+  const latestSlot = useRef(slot);
+  useEffect(() => { latestSlot.current = slot; }, [slot]);
 
   // A generated slot always shows a ready-to-edit prompt — even one loaded
   // from an older save that has none.
@@ -55,12 +61,17 @@ export default function ImageSlotControl({
   const activeMood = slot.mood ?? DEFAULT_MOOD;
 
   // Flip to generated — and make sure a prompt + mood are already in place.
+  // Clear the previous asset metadata (assetId + url from a prior asset
+  // pick) so the slot becomes unambiguously "generated" — otherwise the
+  // old asset's URL lingers and can come back if the slot is reseeded.
   function switchToGenerated() {
     onChange({
       ...slot,
       source: "generated",
       prompt: slot.prompt?.trim() ? slot.prompt : buildDefaultPrompt(),
       mood: slot.mood ?? DEFAULT_MOOD,
+      assetId: undefined,
+      url: null,
     });
   }
 
@@ -79,9 +90,10 @@ export default function ImageSlotControl({
         setError(data.error ?? "Could not rewrite the prompt");
         return;
       }
-      onChange({ ...slot, prompt: data.prompt });
+      // Merge into the LATEST slot, not the one captured at click time.
+      onChange({ ...latestSlot.current, prompt: data.prompt });
     } catch {
-      setError("Network error — please try again");
+      setError("Network error, please try again");
     } finally {
       setRegeneratingPrompt(false);
     }
@@ -102,9 +114,20 @@ export default function ImageSlotControl({
         setError(data.error ?? "Image generation failed");
         return;
       }
-      onChange({ ...slot, prompt: effectivePrompt, url: data.url });
+      // Merge into the LATEST slot (not the closure snapshot from click time)
+      // and strip any leftover asset metadata so the slot is unambiguously
+      // a fresh generated image. Without these guards, a slow generation
+      // could land while the parent has re-rendered with a stale slot, and
+      // the new URL gets overwritten back to the previous asset image.
+      onChange({
+        ...latestSlot.current,
+        source: "generated",
+        prompt: effectivePrompt,
+        url: data.url,
+        assetId: undefined,
+      });
     } catch {
-      setError("Network error — please try again");
+      setError("Network error, please try again");
     } finally {
       setGenerating(false);
     }

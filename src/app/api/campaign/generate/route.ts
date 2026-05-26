@@ -5,7 +5,9 @@ import { randomUUID } from "crypto";
 
 export const maxDuration = 60;
 
-const LUNIA_VOICE_SPEC = `Lunia Life brand voice: Aspirational, minimal, wellness-science grounded. Tone: calm confidence. No hype. No FOMO manipulation. Language: clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimizing their sleep. Write like a trusted expert friend, not a marketer. Lunia Life sells a sleep supplement (magnesium glycinate, L-theanine, apigenin — transparent dosing, melatonin-free).`;
+const LUNIA_VOICE_SPEC = `Lunia Life brand voice: Aspirational, minimal, wellness-science grounded. Tone: calm confidence. No hype. No FOMO manipulation. Language: clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimizing their sleep. Write like a trusted expert friend, not a marketer. Lunia Life sells a sleep supplement (magnesium glycinate, L-theanine, apigenin. Transparent dosing. Melatonin-free).
+
+HARD BRAND RULE — NEVER use em dashes (—) or en dashes (–) ANYWHERE in any field you return. Use commas, periods, semicolons, parentheses, or short sentences instead. Em dashes are a hard no in Lunia copy. This rule overrides any stylistic instinct you have and applies to every string in the JSON output.`;
 
 type RawImage = {
   role: "hero" | "secondary";
@@ -100,11 +102,11 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
       parsed = JSON.parse(jsonText);
     } catch {
       console.error("[api/campaign/generate] JSON parse failed:", raw.slice(0, 400));
-      return Response.json({ error: "Generation failed — please try again." }, { status: 422 });
+      return Response.json({ error: "Generation failed, please try again." }, { status: 422 });
     }
 
     if (!parsed.images?.length || !parsed.blocks?.length || !parsed.subjectLines?.length) {
-      return Response.json({ error: "Incomplete campaign — please try again." }, { status: 422 });
+      return Response.json({ error: "Incomplete campaign, please try again." }, { status: 422 });
     }
 
     // Resolve AI-suggested assets for "asset" slots.
@@ -132,18 +134,30 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
     // Guarantee exactly one hero.
     if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
 
+    // Defensive em / en dash scrubber — replaces any em-dash with a comma
+    // and any en-dash with a hyphen. Belt-and-braces in case the model
+    // ignored the HARD BRAND RULE in the prompt. Used on every string
+    // field that gets surfaced to the user.
+    function stripDashes(s: string): string {
+      return s
+        .replace(/\s*—\s*/g, ", ")  // em dash → comma + space
+        .replace(/\s*–\s*/g, "-")   // en dash → hyphen
+        .replace(/\s{2,}/g, " ")    // collapse double spaces left behind
+        .trim();
+    }
+
     const content: CampaignContent = {
-      subjectLines: parsed.subjectLines.slice(0, 3),
+      subjectLines: parsed.subjectLines.slice(0, 3).map(stripDashes),
       selectedSubject: 0,
-      previewText: parsed.previewText ?? "",
-      promoBand: parsed.promoBand?.trim() || undefined,
+      previewText: stripDashes(parsed.previewText ?? ""),
+      promoBand: parsed.promoBand?.trim() ? stripDashes(parsed.promoBand) : undefined,
       blocks: parsed.blocks.map((b) => ({
         id: randomUUID(),
-        body: b.body ?? "",
+        body: stripDashes(b.body ?? ""),
         align: b.align === "center" ? "center" : "left",
         italic: !!b.italic,
       })),
-      cta: { label: parsed.cta ?? "Shop now", url: ctaUrl },
+      cta: { label: stripDashes(parsed.cta ?? "Shop now"), url: ctaUrl },
       images,
     };
 

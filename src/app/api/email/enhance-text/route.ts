@@ -22,24 +22,26 @@ export async function POST(req: Request) {
 
     const TYPE_GUIDE: Record<string, string> = {
       subject:
-        "email subject line — punchy, curiosity-led or benefit-led, max 55 characters, no emoji unless clearly brand-appropriate",
+        "email subject line. Punchy, curiosity-led or benefit-led. Max 55 characters. No emoji unless clearly brand-appropriate.",
       body:
-        "email body paragraph — 2-4 sentences, conversational yet sophisticated, one clear idea per paragraph",
+        "email body paragraph. 2-4 sentences, conversational yet sophisticated. One clear idea per paragraph.",
     };
 
     const guidance = TYPE_GUIDE[type as string] ?? "marketing copy";
 
     const prompt = `You are a senior copywriter for Lunia Life.
 
-Lunia Life brand voice: aspirational, minimal, wellness-science grounded. Calm confidence. No hype, no FOMO, no urgency manipulation. Clear, direct, sophisticated. Target reader: health-conscious adult, 28–45, optimising their life.
+Lunia Life brand voice: aspirational, minimal, wellness-science grounded. Calm confidence. No hype, no FOMO, no urgency manipulation. Clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimising their life.
+
+HARD BRAND RULE: NEVER use em dashes (—) or en dashes (–) ANYWHERE in your output. Use commas, periods, semicolons, or short sentences instead. This rule overrides any stylistic instinct you have.
 
 Email topic: ${topic?.trim() || "wellness and lifestyle"}
 
-Rewrite this ${guidance} in Lunia voice. Keep the core intent. Make it sharper, more specific, more Lunia — elevate without inflating:
+Rewrite this ${guidance} in Lunia voice. Keep the core intent. Make it sharper, more specific, more Lunia. Elevate without inflating.
 
 "${text.trim()}"
 
-Return ONLY the rewritten text. No explanation, no quotes, no markdown.`;
+Return ONLY the rewritten text. No explanation, no quotes, no markdown. No em dashes.`;
 
     const response = await createContentMessage({
       model: "claude-opus-4-6",
@@ -47,9 +49,19 @@ Return ONLY the rewritten text. No explanation, no quotes, no markdown.`;
       messages: [{ role: "user", content: prompt }],
     });
 
+    // Defensive scrub: replace any em-dash with a comma + space and any
+    // en-dash with a hyphen, in case the model ignored the HARD BRAND RULE.
+    function stripDashes(s: string): string {
+      return s
+        .replace(/\s*—\s*/g, ", ")
+        .replace(/\s*–\s*/g, "-")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+
     const enhanced =
       response.content[0].type === "text"
-        ? response.content[0].text.trim()
+        ? stripDashes(response.content[0].text)
         : text;
 
     return Response.json({ enhanced });

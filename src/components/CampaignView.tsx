@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CampaignContent, SavedCampaign } from "@/lib/types";
 import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
@@ -19,9 +19,21 @@ export default function CampaignView({
   const [content, setContent] = useState<CampaignContent | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
 
-  // Load a saved campaign from the library.
+  // Load a saved campaign from the library. Guard against re-loading the
+  // SAME campaign more than once: if the library hands us the same id we
+  // already have open, do nothing — otherwise this effect would clobber any
+  // unsaved edits (e.g. a freshly generated hero image whose URL hasn't been
+  // saved yet) with the stale server snapshot every time the parent
+  // re-renders.
+  const loadedIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!initialCampaign) return;
+    if (loadedIdRef.current === initialCampaign.id) {
+      // Already loaded this campaign; ignore reruns.
+      onCampaignLoaded?.();
+      return;
+    }
+    loadedIdRef.current = initialCampaign.id;
     setTopic(initialCampaign.topic);
     setContent(initialCampaign.content);
     setSavedId(initialCampaign.id);
@@ -40,7 +52,7 @@ export default function CampaignView({
       });
       const data = await res.json();
       if (!res.ok || !data.content) {
-        setError(data.error ?? "Generation failed — please try again.");
+        setError(data.error ?? "Generation failed, please try again.");
         return;
       }
       setTopic(data.topic ?? brief.topic);
@@ -48,7 +60,7 @@ export default function CampaignView({
       setSavedId(null);
       setStep(2);
     } catch {
-      setError("Network error — please check your connection and try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -60,6 +72,8 @@ export default function CampaignView({
     setContent(null);
     setSavedId(null);
     setError(null);
+    // Reset the loaded-id ref so the next library open re-seeds editor state.
+    loadedIdRef.current = null;
   }
 
   return (
