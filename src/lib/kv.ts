@@ -199,6 +199,19 @@ export async function saveAsset(asset: AssetMetadata): Promise<void> {
   await redis.set(ASSETS_KEY, all, { ex: TTL_SECONDS });
 }
 
+/** Add an asset only if no existing entry already references the same URL.
+ *  Used by the carousel save route to register text-free generated images
+ *  (hooks + content backgrounds) for re-use in the email campaign picker,
+ *  without duplicating entries when a carousel is re-saved with the same
+ *  images attached. */
+export async function saveAssetIfNew(asset: AssetMetadata): Promise<boolean> {
+  const all = await getAssets();
+  if (all.some((a) => a.url === asset.url)) return false;
+  all.unshift(asset);
+  await redis.set(ASSETS_KEY, all, { ex: TTL_SECONDS });
+  return true;
+}
+
 export async function deleteAsset(id: string): Promise<void> {
   const all = await getAssets();
   const filtered = all.filter((a) => a.id !== id);

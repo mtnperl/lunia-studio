@@ -442,7 +442,16 @@ export type Subject = {
   sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
 };
 
-export type AssetType = "logo" | "carousel-style" | "product-image" | "other";
+export type AssetType =
+  | "logo"
+  | "carousel-style"
+  | "product-image"
+  | "other"
+  /** Auto-registered when a carousel is saved. Carries lifestyle / editorial
+   *  images that the carousel produced (hooks + content backgrounds), so the
+   *  email campaign picker can reuse them. Text-free only — editorial hooks
+   *  with baked text are intentionally skipped. */
+  | "carousel-generated";
 
 export type AssetMetadata = {
   id: string;
@@ -451,6 +460,13 @@ export type AssetMetadata = {
   type: string;        // MIME type
   assetType: AssetType; // usage classification
   uploadedAt: string;
+  /** Optional provenance — set on auto-registered carousel images so the
+   *  picker can show context (topic + slide role). */
+  source?: {
+    carouselId?: string;
+    topic?: string;
+    role?: "hook" | "slide-bg";
+  };
 };
 
 export type MultiVariantResponse = {

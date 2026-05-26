@@ -31,7 +31,7 @@ export default function AssetPicker({
     <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 10px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          Pick an uploaded asset
+          Pick an image — uploaded assets + carousel-generated
         </span>
         <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
       </div>
@@ -45,7 +45,7 @@ export default function AssetPicker({
         )}
         {assets && assets.length === 0 && (
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-            No uploaded assets yet. Add bottle / logo images in the Assets manager first.
+            No images yet. Upload bottle / logo images in the Assets manager, or save a carousel to register its generated images here automatically.
           </div>
         )}
         {assets && assets.length > 0 && (

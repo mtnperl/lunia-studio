@@ -1,5 +1,5 @@
-import { saveCarousel } from "@/lib/kv";
-import { DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
+import { saveAssetIfNew, saveCarousel } from "@/lib/kv";
+import { AssetMetadata, DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { put } from "@vercel/blob";
 
@@ -125,6 +125,59 @@ export async function POST(req: Request) {
     };
 
     await saveCarousel(carousel);
+
+    // ── Register text-free carousel images in the asset library ────────────
+    // So the email-campaign image picker can reuse them. Editorial hooks
+    // have text baked into the pixels by gpt-image-2 — those are intentionally
+    // skipped because they wouldn't work as a clean background image. Every
+    // other image (non-editorial hook + every content-slide bg) is text-free
+    // by construction and is registered idempotently (URL-keyed) so re-saves
+    // don't duplicate entries.
+    const isEditorial = stylePreset === "editorial-scientific";
+    const registrations: Promise<unknown>[] = [];
+    const now = new Date().toISOString();
+    function inferMime(url: string): string {
+      const lower = url.toLowerCase();
+      if (lower.endsWith(".png")) return "image/png";
+      if (lower.endsWith(".webp")) return "image/webp";
+      return "image/jpeg";
+    }
+    // Hook image — only when the text isn't baked into the pixels (i.e. not
+    // editorial preset). The hook hex on the slide carries text via HTML
+    // overlay for non-editorial presets, so the underlying image is clean.
+    if (!isEditorial && carousel.hookImageUrl) {
+      const url = carousel.hookImageUrl;
+      const asset: AssetMetadata = {
+        id: `cgen-${id}-hook`,
+        url,
+        name: `${topic} — hook`.slice(0, 90),
+        type: inferMime(url),
+        assetType: "carousel-generated",
+        uploadedAt: now,
+        source: { carouselId: id, topic, role: "hook" },
+      };
+      registrations.push(saveAssetIfNew(asset).catch(() => false));
+    }
+    // Content-slide backgrounds — always text-free.
+    (carousel.contentBgImages ?? []).forEach((url, i) => {
+      if (!url) return;
+      const asset: AssetMetadata = {
+        id: `cgen-${id}-bg-${i}`,
+        url,
+        name: `${topic} — slide ${i + 2} bg`.slice(0, 90),
+        type: inferMime(url),
+        assetType: "carousel-generated",
+        uploadedAt: now,
+        source: { carouselId: id, topic, role: "slide-bg" },
+      };
+      registrations.push(saveAssetIfNew(asset).catch(() => false));
+    });
+    if (registrations.length > 0) {
+      // Fire-and-forget after the carousel itself is persisted — failures
+      // here should never block the save response.
+      Promise.allSettled(registrations).catch(() => {});
+    }
+
     return Response.json({ id: carousel.id });
   } catch (err) {
     console.error("[api/carousel/save]", err);
