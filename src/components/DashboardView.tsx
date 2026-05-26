@@ -535,6 +535,36 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
             </div>
           )}
         </div>
+        {/* Meta error banner — surface the actual reason above the KPI cards
+            so the user doesn't have to scroll past zeroed-out cards to find
+            out why the integration isn't pulling. */}
+        {metaError && !metaLoading && (
+          <div style={{
+            border: "1px solid rgba(184,92,92,0.4)",
+            background: "rgba(184,92,92,0.08)",
+            borderRadius: 8,
+            padding: "10px 14px",
+            marginBottom: 12,
+            fontSize: 12.5,
+            color: "var(--error)",
+            lineHeight: 1.5,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Couldn&apos;t pull Meta Ads data</div>
+            <div style={{ color: "var(--text)", marginBottom: 6 }}>{metaError}</div>
+            <div style={{ color: "var(--muted)", fontSize: 11.5 }}>
+              Run a diagnostic to find the exact cause:{" "}
+              <a
+                href="/api/meta/diagnose"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--accent)", textDecoration: "underline", fontWeight: 600 }}
+              >
+                /api/meta/diagnose
+              </a>
+              . Common fixes: add <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 3 }}>META_ACCESS_TOKEN</code> + <code style={{ background: "var(--surface)", padding: "1px 5px", borderRadius: 3 }}>META_AD_ACCOUNT_ID</code> in Vercel env vars (account id is just the digits, no <code>act_</code> prefix), regenerate an expired token in Meta Business Manager, or pick a window that contains actual spend.
+            </div>
+          </div>
+        )}
         <div className="kpi-grid" style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
