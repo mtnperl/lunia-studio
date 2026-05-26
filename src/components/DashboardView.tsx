@@ -437,7 +437,7 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
                 prefix="$"
                 decimals={0}
                 loading={mtdLoading}
-                tooltip="Total revenue from paid orders before refunds"
+                tooltip="Total revenue from paid orders, BEFORE discounts and refunds. Σ line-item subtotals across countable orders."
               />
               <KPICard
                 label="Net Revenue"
@@ -445,7 +445,7 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
                 prefix="$"
                 decimals={0}
                 loading={mtdLoading}
-                tooltip="Gross revenue minus refunded orders — the money you actually keep"
+                tooltip="Gross revenue MINUS discounts (promo / coupon codes) MINUS refunds. Matches Shopify's 'Net sales' line in their analytics."
               />
               <KPICard
                 label="Refund Rate"
