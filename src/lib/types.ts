@@ -290,12 +290,24 @@ export type GraphicSpec = z.infer<typeof GraphicSpecSchema>;
  *  during /api/carousel-v2/generate when stylePreset === "editorial-scientific".
  *  The carousel-v2/generate-image route assembles a poster-style prompt from
  *  this spec + the chosen hook's headline/subline (text baked into the image). */
+/** Concept-only brief — we hand gpt-image-2 the topic concept + the exact
+ *  text to bake and let the model interpret the scene. Older saved carousels
+ *  may still carry the legacy subject/composition/sceneElements fields; the
+ *  image route falls back to them when concept is missing. */
 export type EditorialHookImageSpec = {
-  brandMood: string;          // e.g. "exclusive, calm, aspirational, premium"
-  subject: string;            // literal description of the focal subject
-  composition: string;        // "editorial flat lay" / "half-face portrait" / "still life" / …
-  sceneElements: string[];    // 3–6 specific physical items in the scene; should include the Lunia bottle
-  overlay?: string;           // optional short tagline (≤ 6 words) baked into the image
+  /** One sentence (≤30 words) capturing the science / concept the hook is
+   *  about. The visual interpretation is left to the image engine. */
+  concept?: string;
+  /** Optional short tagline (≤6 words) baked into the image as an editorial
+   *  accent above the headline. */
+  overlay?: string;
+  /** Legacy fields — kept for backward compatibility with saved carousels
+   *  generated before the concept-only framework. New generations leave them
+   *  unset. */
+  brandMood?: string;
+  subject?: string;
+  composition?: string;
+  sceneElements?: string[];
 };
 
 export type CarouselContent = {

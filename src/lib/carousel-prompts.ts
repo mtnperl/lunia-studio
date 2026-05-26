@@ -148,11 +148,8 @@ Return ONLY valid JSON in this exact format, no other text:
   "caption": "string",
   "imagePrompt": "string"${isEditorial ? `,
   "hookImageSpec": {
-    "brandMood": "3–5 evocative adjectives (e.g. \\"exclusive, calm, aspirational, premium\\")",
-    "subject": "literal description of the focal subject — a person (note age + emotion), still life, hands, surface, etc. — chosen for the carousel topic",
-    "composition": "framing direction — \\"editorial flat lay\\" / \\"half-face portrait\\" / \\"still life, top-down\\" / \\"close-crop product on linen\\" / etc.",
-    "sceneElements": ["3–6 specific editorial items in the scene. NEVER include the Lunia bottle / supplement / capsule / packaging / amber glass / dropper / logo / wordmark / brand mark — the HOOK is always product-free."],
-    "overlay": "optional short tagline ≤ 6 words baked into the image; omit field if not useful"
+    "concept": "ONE sentence (max 30 words) capturing the science / concept this hook is about. Do NOT prescribe scene details, props, camera angles, lighting, or composition — we give only the concept and the exact text to the image engine and let it interpret freely.",
+    "overlay": "OPTIONAL short tagline (≤ 6 words) baked into the image as an editorial accent above the headline. Omit field if nothing meaningful adds."
   }` : ""}
 }
 ${v2Mode ? `
@@ -244,24 +241,18 @@ Brand rules (follow exactly):
   Hard rules: if the hook concept involves a human experience (fatigue, stress, a journey, a habit, waking up) you MAY include a single person or human detail — hands, a silhouette, or an editorial close-crop of a face — always partial framing, never a full portrait. No text, no logos. Ultra-sharp, editorial, premium brand aesthetic. Max 55 words. DO NOT illustrate the supplement or ingredient — illustrate the HOOK.
   Bad example (never do this): "Extreme macro of magnesium glycinate powder dissolving in dark water"
 ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
-  Write a structured brief for a poster-style hook image. The visual MUST give the viewer immediate scientific / contextual cues about THIS carousel's actual topic — not generic calm wellness. A reader scrolling Instagram should look at the image and instantly think "this is about [the science concept]," not just "this is a Lunia ad with linen."
-
-  CONTEXTUAL FIT IS THE PRIMARY CRITERION. Default-to-chamomile-and-linen is failure. Pick a subject that visually metaphorises the science:
-    • Brain biology (glymphatic system, REM, neurotransmitters, cortisol cascade) → a sleeping profile in dim light; a single hand under a temple; an empty pillow in pre-dawn blue; water / washing / flow imagery; an editorial cross-section feel (think Scientific American photo essay).
-    • Hormones (cortisol, melatonin, oestrogen, progesterone) → an hourglass tipping; sun-clock light moving across a wall; tense vs released hands; a thermometer-like vertical of light through linen.
-    • Ingredients & dosing (magnesium glycinate, L-theanine, apigenin, ashwagandha) → the raw natural form (dark leafy greens for magnesium, green-tea leaves & matcha bowl for L-theanine, fresh chamomile flowers for apigenin, ashwagandha root on stone) presented as a still life with editorial geometry.
-    • Sleep architecture / circadian rhythm → a bedroom at the dawn-dusk transition; rumpled linen catching first light; a moonlit window vs morning window split-frame feel.
-    • Stress / wind-down / mindfulness → an unclenching palm; a single breath visible as steam from tea; closed eyes in soft side-light.
-    • Hormonal / life-stage topics (perimenopause, menopause, andropause, postpartum) → a real person's hand resting on a temple, partial framing; their gaze toward a window; never a stock smiling model.
+  Hand the image engine the CONCEPT and let it interpret. Do NOT prescribe scene details, props, lighting, camera angles, mood adjectives, or composition — the framework's whole point is that gpt-image-2 makes the visual choices freely from the concept + the exact text it must bake.
 
   Fields:
-    • brandMood: 3–5 mood adjectives, comma-separated (e.g. "clinical, contemplative, warm, intentional"). Lean toward scientific/serious — never "playful," "luxurious," "indulgent."
-    • subject: literal, concrete description of the focal subject — chosen specifically because it visually metaphorises the science. If a person, include approximate age and emotion (always partial: half-face, hands, profile, never full smiling portrait). State the connection to the science briefly in the subject line itself so the image engine has the link (e.g. "a woman's profile in pre-dawn blue, eyes closed, evoking the brain's overnight glymphatic flush" rather than "a calm woman").
-    • composition: framing direction — "half-face portrait" / "still life, top-down" / "editorial flat lay" / "close-crop hands" / "split-frame day/night" / etc. Pick the one that best carries the science metaphor.
-    • sceneElements: 3–6 specific physical items that REINFORCE the topic. Each element should connect to the science (e.g. for a glymphatic-system carousel: a sleeping profile, a soft pillow indentation, ribbon of light suggesting flow, a small carafe of water — not random chamomile if chamomile isn't the topic). NEVER include the Lunia bottle, Lunia Restore, any supplement bottle, capsule, pill, tincture, dropper, amber glass, packaging, jar. NEVER include the Lunia logo, wordmark, brand mark, monogram, or constellation symbol.
-    • overlay: optional short tagline ≤ 6 words that frames the science (e.g. "THE BRAIN'S NIGHT SHIFT", "THE QUIET MOLECULE"). Only set when it sharpens the topic; otherwise omit.
+    • concept: ONE sentence, max 30 words. Capture the science / mechanism / claim this carousel hook is actually about, in plain language a curious adult can follow. The point of the sentence is to give the image engine a clear conceptual anchor — not a scene description. Examples:
+        – "The glymphatic system flushes metabolic waste from the brain only during deep sleep."
+        – "L-theanine raises alpha brain-wave activity, quieting a racing mind without sedation."
+        – "Cortisol's natural fall after midnight is what unlocks deep, restorative sleep."
+        – "Apigenin binds to GABA-A receptors, the same calming pathway as traditional sleep botanicals."
+      Use the language of the science. Do NOT describe a scene ("a woman with her hand on her temple…") — describe the concept.
+    • overlay: OPTIONAL short tagline (≤6 words) baked into the image as an editorial accent above the headline (uppercase, wide tracking — e.g. "THE BRAIN'S NIGHT SHIFT", "THE QUIET MOLECULE"). Only set when it meaningfully sharpens the hook; otherwise omit.
 
-  HARD RULE: re-read the topic + the 3 content slides before you write the spec. If your subject/composition would fit equally well on a totally unrelated wellness post, you have failed — push the brief until it is specifically about THIS topic. Do not include the headline / body / palette / font / reference instructions — those are fixed chrome the image route adds.
+  HARD RULE: do not include subject, composition, sceneElements, brandMood, or any scene-prescription field. The image engine is intentionally left to interpret the concept on its own. Do not include the headline / body / palette / font / aesthetic instructions either — those are fixed chrome the image route adds.
 ` : ""}- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
   Format: [core visual concept — e.g. "hub-and-spoke diagram", "iceberg cross-section", "bridge arc"] + [style: "clean minimal vector illustration, no text, no labels"] + [color: "white background, [accent_color] highlights, soft shadows"] + [mood].
   The accent color is: ${brandStyle?.accent ?? '#1e7a8a'}.

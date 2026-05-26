@@ -54,8 +54,17 @@ export async function POST(req: Request) {
     const isEditorial = stylePreset === 'editorial-scientific';
 
     // Parse the structured hook image spec early — we need it both for the
-    // ref-attachment decision and for the prompt assembly below.
-    type HookSpec = { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
+    // ref-attachment decision and for the prompt assembly below. New shape
+    // uses `concept` + optional `overlay`. Legacy fields are accepted for
+    // backwards-compat with carousels saved before the concept-only rewrite.
+    type HookSpec = {
+      concept?: string;
+      overlay?: string;
+      brandMood?: string;
+      subject?: string;
+      composition?: string;
+      sceneElements?: string[];
+    };
     const hookImageSpec: HookSpec | undefined =
       body.hookImageSpec && typeof body.hookImageSpec === 'object' ? body.hookImageSpec as HookSpec : undefined;
 
@@ -126,8 +135,14 @@ export async function POST(req: Request) {
     const hookHeadline: string = typeof hook?.headline === 'string' ? hook.headline : '';
     const hookSubline:  string = typeof hook?.subline  === 'string' ? hook.subline  : '';
 
+    // Concept-only framework: enter the editorial branch whenever the slide is
+    // the hook + editorial preset is selected, even if the spec only carries a
+    // `concept`. Legacy specs that only have `subject` still work because
+    // buildEditorialHookPrompt falls back to those fields when `concept` is
+    // missing.
     const useEditorialHookFramework =
-      slideIndex === 0 && isEditorial && hookImageSpec && hookImageSpec.subject;
+      slideIndex === 0 && isEditorial && hookImageSpec &&
+      (Boolean(hookImageSpec.concept) || Boolean(hookImageSpec.subject));
 
     // customPrompt — if the caller (Edit hook-image prompt panel in PreviewStep)
     // passes a verbatim prompt string, send THAT to fal/gpt and skip the
@@ -188,81 +203,66 @@ export async function POST(req: Request) {
 // chosen hook's headline / subline. Brand chrome (palette, fonts, references,
 // guardrails) is fixed scaffolding shared by every editorial hook.
 function buildEditorialHookPrompt(args: {
-  spec: { brandMood: string; subject: string; composition: string; sceneElements: string[]; overlay?: string };
+  spec: {
+    concept?: string;
+    overlay?: string;
+    brandMood?: string;
+    subject?: string;
+    composition?: string;
+    sceneElements?: string[];
+  };
   headline: string;
   subline: string;
-  /** The carousel's underlying topic — anchors the contextual-fit paragraph
-   *  so the image visually metaphorises the actual science, not generic
-   *  calm wellness. */
   topic?: string;
   hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
 }): string {
   const { spec, headline, subline, topic } = args;
 
-  // Strip any product / bottle / logo tokens from sceneElements — the
-  // editorial hook is always product-free, no matter what Claude (or a saved
-  // spec) put in. The bottle dominates composition + kills regen variation
-  // + pulls the image off-brand.
-  const FORBIDDEN_SCENE_TOKENS = /\b(lunia[- ]?restore|lunia[- ]?bottle|amber[- ]?bottle|amber[- ]?glass|supplement[- ]?bottle|bottle|capsule|capsules|pill|pills|tincture|dropper|amber|logo|wordmark|brand[- ]?mark|monogram)\b/i;
-  const filteredScene = (spec.sceneElements ?? [])
-    .filter(Boolean)
-    .filter((el) => !FORBIDDEN_SCENE_TOKENS.test(el));
-  const scene = filteredScene.join(", ");
+  // Concept-only framework: hand gpt-image-2 the topic concept + the exact
+  // text to bake and let it choose the visual. If the saved spec is from
+  // before the rewrite, derive a concept from the legacy subject so older
+  // carousels still produce coherent images.
+  const concept = (() => {
+    if (spec.concept && spec.concept.trim()) return spec.concept.trim();
+    const legacy = [spec.subject, spec.composition].filter(Boolean).join(". ");
+    return legacy || topic || "the science of sleep and overnight recovery";
+  })();
 
-  // Variation tail — a per-call wisp that nudges gpt-image-2 toward a fresh
-  // composition each regen even when the spec is identical. Plain language
-  // so it doesn't fight the rest of the brief.
-  const variationNonce = Math.random().toString(36).slice(2, 10);
-  const variationAngles = [
-    "fresh framing, the subject slightly rotated and the negative space rebalanced",
-    "a different camera angle than the obvious one, hands or surface entering the frame from a new direction",
-    "alternate window-light direction, soft side-light across the scene this time",
-    "a subtly different prop arrangement, no two takes alike",
-    "fresh composition with the focal subject closer to the bottom-right",
-    "fresh composition with the focal subject closer to the top-right, more negative space below",
-  ];
-  const variationAngle = variationAngles[Math.floor(Math.random() * variationAngles.length)];
+  // Tiny variation nonce — each call should produce a genuinely different
+  // visual even with identical concept + text. Plain-language seed phrase.
+  const variationNonce = Math.random().toString(36).slice(2, 8);
 
   return [
-    `Create an editorial poster image for Lunia Life, a premium sleep & longevity brand. Brand mood: ${spec.brandMood}.`,
+    "Create an editorial poster image for Lunia Life, a sleep & longevity brand.",
     "",
-    // ── PRIORITY 0: contextual fit (most important — beats aesthetic) ──
-    topic
-      ? `CONTEXTUAL FIT — READ FIRST: the carousel's actual topic is "${topic}". The scene MUST visually metaphorise THIS specific science / concept so a viewer scrolling Instagram instantly understands what the post is about. Default-to-chamomile-and-linen is failure: a brain-glymphatic carousel must look like sleeping/washing/flow imagery, a cortisol carousel must look like tension/release, a magnesium-glycinate carousel must show dark leafy greens or mineral salts, an L-theanine carousel must show green-tea leaves, a perimenopause / women's-sleep carousel must show a real person partially framed. Keep the science / serious angle of Lunia Life intact — clinical, contemplative, calm — but make the subject SAY the topic at a glance. If the image could fit equally well on a random wellness post, you have failed; push harder on the metaphor.`
-      : "CONTEXTUAL FIT: the scene must visually metaphorise the science behind the headline so a viewer scrolling Instagram instantly understands the topic. Clinical, contemplative, on-topic — not generic calm wellness.",
+    // ── Concept (the WHAT — only direction the image engine gets) ──
+    topic ? `Topic: ${topic}.` : "",
+    `Concept: ${concept}`,
     "",
-    // ── PRIORITY 1: warmth (this used to be buried, GPT was reading it as cool) ──
-    "WHITE BALANCE — MOST IMPORTANT: the image must read as WARM editorial wellness photography. Late-afternoon golden-hour daylight diffused through a sheer linen curtain, soft warm-neutral light, gentle warmth in the shadows. NEVER cool, NEVER fluorescent, NEVER overcast, NEVER museum-cold, NEVER desaturated grey-blue. The Lunia editorial reference is the warm-ivory of brands like Le Labo, Loewe Home Scents, Aesop product photography, Hims+Hers, Vacation Inc., Glossier You — uncoated cotton paper warmth, sunlit and intimate. Explicit anti-references: NOT Apple product photography, NOT Sotheby's catalogue, NOT museum lighting, NOT cool Vogue glossy.",
+    "You — the image engine — interpret this concept visually as you see fit. The brief gives you the WHAT, not the HOW. Choose your own subject, composition, lighting, camera angle, props and styling so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept.",
     "",
-    // ── PRIORITY 2: nothing-product ──
-    "ABSOLUTELY NO PRODUCT, NO PACKAGING, NO LOGOS. Do NOT include any supplement bottle, capsule, pill, tincture, jar, dropper, amber glass, or product packaging in the scene. Do NOT include the Lunia logo, wordmark, brand mark, monogram, constellation symbol, signature, or any watermark. The product and brand mark are intentionally absent from this hook — the image is pure editorial wellness photography.",
+    // ── Mandatory baked text (the only prescriptive part) ──
+    "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",
+    `  • Headline (Inter Light 300): "${headline}"`,
+    `  • Body (Inter ExtraLight 200, lighter weight): "${subline}"`,
+    spec.overlay ? `  • Overlay accent (Inter Light 300, uppercase, wide tracking, small): "${spec.overlay}"` : "",
+    "Text colour: rich navy (#01253f). The navy text is the only chromatic anchor in the image. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines.",
     "",
-    // ── PRIORITY 3: subject + composition ──
-    `Subject: ${spec.subject}.`,
-    `Composition: ${spec.composition}.${scene ? ` Scene elements: ${scene}.` : ""}`,
-    `Variation for this take: ${variationAngle}. (variation seed: ${variationNonce})`,
+    // ── Palette (strict) ──
+    "PALETTE — STRICT:",
+    "  • Background: #EFEFF4 (clean neutral ivory) filling the entire frame edge-to-edge. NOT warm cream, NOT yellow-tinted, NOT golden, NOT desaturated grey-blue. A clean modern ivory like premium uncoated magazine paper.",
+    "  • Text: #01253f (rich navy) — the only chromatic anchor.",
+    "  • Natural subject colours are fine but must live comfortably inside this restrained ivory + navy palette. Skin, fabric and natural textures should read true to life, not pushed warm and not pushed cool.",
     "",
-    // ── PRIORITY 4: baked text ──
-    "Bake the following text into the image as the ONLY typography in the scene. Use the Inter font family at the specified weights, with crisp anti-aliased rendering. Place the text on the LEFT half of the frame with generous negative space; the visual subject sits on the RIGHT.",
-    `  • Headline (Inter Light 300, 72pt feel): "${headline}"`,
-    `  • Body (Inter ExtraLight 200, 36pt feel, italic-ish editorial cadence): "${subline}"`,
-    spec.overlay ? `  • Overlay accent (Inter Light 300, 18pt feel, uppercase, wide tracking): "${spec.overlay}"` : "",
-    "Text colour: rich navy. The navy text is the ONLY chromatic anchor in the image. Body subline may render at 70-80% opacity of the same navy. No drop shadows, no glow, no outlines on the text.",
-    "",
-    // ── PRIORITY 5: palette ──
-    "Aesthetic & palette:",
-    "  • Background fills the entire frame edge-to-edge in warm uncoated-cotton ivory — the bg colour the slide CSS uses is #EFEFF4, but render it as a WARM ivory, not a cool one. Think museum matte paper warmed by golden afternoon light.",
-    "  • Navy text reads as #01253f (rich navy). Reserved for typography only.",
-    "  • Natural subject colours are encouraged — a chamomile cup looks like real chamomile (warm tea + cream porcelain), linen looks like real warm linen, skin looks like real warm skin, dried herbs look like real dried herbs.",
-    "  • Forbidden chromatic accents (would pull the image off-brand): NO teal, NO sage green, NO mint, NO mustard yellow, NO neon orange, NO pink, NO purple, NO heavy saturation. Muted natural earth tones from the subject itself are fine.",
-    "",
-    "Photographic feel: magazine-cover quality, ultra-clean composition, generous negative space, photoreal with a soft editorial finish, gentle film grain acceptable. Warm-ivory editorial — NEVER desaturated grey, NEVER black-and-white-ish, NEVER cool.",
-    "",
+    // ── Hard guardrails ──
     "HARD GUARDRAILS (do not violate):",
-    "  • NO logos of any kind, NO product/bottle/capsule/packaging, NO additional text beyond the headline / body / overlay listed above. No labels, no captions, no signage, no UI, no price tags, no quotes.",
-    "  • Background is warm ivory, text is navy. No other chromatic accents.",
-    "  • NO secondary subjects that distract from the focal subject.",
-    "  • Keep it warm-ivory, NEVER cool grey or blue-grey.",
+    "  • NO logos of any kind. NO Lunia logo, wordmark, brand mark, constellation symbol, monogram, signature, or watermark.",
+    "  • NO product, NO supplement bottle, capsule, pill, tincture, jar, dropper, amber glass, or any packaging.",
+    "  • NO additional text beyond the headline / body / overlay listed above. No labels, captions, signage, UI, quotes, or price tags.",
+    "  • NO chromatic accents beyond ivory + navy. NO teal, sage, mint, mustard, orange, pink, purple, gold or heavy saturation.",
+    "  • NO desaturated grey-blue cast and NO warm cream / golden cast. Keep it clean neutral ivory.",
+    "",
+    `Photoreal, magazine-cover quality, calm and contemplative. (variation seed: ${variationNonce})`,
   ].filter(Boolean).join("\n");
 }
 
