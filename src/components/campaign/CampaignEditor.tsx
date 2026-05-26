@@ -218,14 +218,17 @@ export default function CampaignEditor({
       {/* ── Live preview ───────────────────────────────────────────────────── */}
       <div style={{ flex: "1 1 520px", minWidth: 320 }}>
         <div style={sectionLabel}>Live preview</div>
-        <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#f0f1f5" }}>
+        {/* Navy wrapper so the iframe blends with the email's own navy body —
+            no gray bars at the top/bottom of the preview during the brief
+            window before fitIframe resizes the iframe to its content. */}
+        <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#01253f" }}>
           <iframe
             key={htmlKey}
             ref={iframeRef}
             srcDoc={html}
             onLoad={fitIframe}
             title="Campaign preview"
-            style={{ width: "100%", border: "none", display: "block", minHeight: 600 }}
+            style={{ width: "100%", border: "none", display: "block", minHeight: 600, background: "#01253f" }}
           />
         </div>
       </div>

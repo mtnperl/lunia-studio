@@ -112,10 +112,14 @@ export function renderCampaignEmail(content: CampaignContent): string {
 <title>${esc(subject)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;padding:0;background:${NAVY};}
-  img{border:0;outline:none;max-width:100%;}
-  table{border-collapse:collapse;}
-  .email-container{width:600px;max-width:600px;}
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:${NAVY};width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:${NAVY};}
 
   /* Mobile overrides — kick in below 600px viewports.
      Every shape change uses !important to win over inline styles. */
