@@ -53,6 +53,19 @@ export default function CampaignEditor({
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
 
+  // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
+  // every content change. Without this, some browsers don't re-fetch images
+  // inside a srcDoc when the URL changes — the iframe element is preserved,
+  // not remounted. Keying on a content-derived string forces React to unmount
+  // and re-mount the iframe, which guarantees fresh image loads.
+  const htmlKey = useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < html.length; i++) {
+      h = ((h << 5) - h + html.charCodeAt(i)) | 0;
+    }
+    return String(h);
+  }, [html]);
+
   function fitIframe() {
     const f = iframeRef.current;
     if (!f?.contentDocument?.body) return;
@@ -162,6 +175,7 @@ export default function CampaignEditor({
         <div style={sectionLabel}>Live preview</div>
         <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#f0f1f5" }}>
           <iframe
+            key={htmlKey}
             ref={iframeRef}
             srcDoc={html}
             onLoad={fitIframe}

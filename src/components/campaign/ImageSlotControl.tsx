@@ -166,7 +166,7 @@ export default function ImageSlotControl({
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             {slot.url
-              ? <img src={slot.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ? <img key={slot.url} src={slot.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : <span style={{ fontSize: 9, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>No image</span>}
           </div>
 

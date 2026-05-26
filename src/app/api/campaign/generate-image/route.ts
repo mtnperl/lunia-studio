@@ -42,11 +42,28 @@ export async function POST(req: Request) {
     const mood = getMoodById(body.mood);
     const moodBlock = mood ? ` ${mood.styleBlock}.` : "";
 
+    // Per-call variation seed. gpt-image-2 with the same prompt produces
+    // near-identical outputs (no seed parameter). Without this users were
+    // hitting "Generate" multiple times and getting the same image back.
+    // A tiny natural-language variation cue + a unique nonce nudges the
+    // model toward a fresh take each call.
+    const variationNonce = Math.random().toString(36).slice(2, 8);
+    const variationAngles = [
+      "fresh framing this take, the subject slightly rotated and negative space rebalanced",
+      "alternate camera angle, hands or surface entering the frame from a new direction",
+      "different window-light direction this take, gentle side-light across the scene",
+      "subtly different prop arrangement, no two takes alike",
+      "the focal subject closer to the bottom-right of the frame this take",
+      "the focal subject closer to the top-right, more negative space below",
+    ];
+    const variationAngle = variationAngles[Math.floor(Math.random() * variationAngles.length)];
+    const variationBlock = ` Variation cue: ${variationAngle}. (seed: ${variationNonce})`;
+
     // "medium" not "high": these are text-free lifestyle photos shown small in
     // an email, so medium is visually equivalent — but 3-4× faster (~40s vs
     // 2-3 min). The slow "high" path made regeneration feel stuck / unchanged.
     const falUrl = await generateEmailImage({
-      prompt: prompt + moodBlock + SAFETY_SUFFIX,
+      prompt: prompt + moodBlock + variationBlock + SAFETY_SUFFIX,
       aspect,
       quality: "medium",
     });
