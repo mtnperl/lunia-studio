@@ -421,13 +421,11 @@ export async function createEmailTemplate(input: { name: string; html: string; t
   return {
     id,
     name: res.data.attributes.name,
-    // User-confirmed Klaviyo templates URL for the current account. Lands on
-    // the Klaviyo email-templates surface; the recently-pushed template
-    // (named "Lunia · <subject> · <date>") shows up in the list shown there.
-    // Klaviyo's per-template deep-link URL keeps shifting between UI
-    // refreshes (we've already 404'd on /template/<id>/edit and
-    // /email-template/<id>/edit) so we link to this stable landing instead.
-    editorUrl: `https://www.klaviyo.com/email-templates/create`,
+    // User-confirmed Klaviyo deep-link to a specific template editor:
+    //   https://www.klaviyo.com/email-editor/<template_id>/edit
+    // (The /template/<id>/edit and /email-template/<id>/edit patterns we
+    // tried earlier are stale — Klaviyo moved the editor under /email-editor.)
+    editorUrl: `https://www.klaviyo.com/email-editor/${id}/edit`,
   };
 }
 
@@ -440,12 +438,9 @@ export async function swapFlowMessageTemplate(flowMessageId: string, newTemplate
   });
 }
 
-// Klaviyo deep-link to the templates landing (so the user can publish manually).
-// Klaviyo's deep-link to a specific template keeps shifting across UI
-// refreshes; this landing is the user-confirmed working URL.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function klaviyoTemplateEditorUrl(_templateId: string): string {
-  return `https://www.klaviyo.com/email-templates/create`;
+// Klaviyo deep-link to a specific template editor.
+export function klaviyoTemplateEditorUrl(templateId: string): string {
+  return `https://www.klaviyo.com/email-editor/${templateId}/edit`;
 }
 
 // --- Audit log --------------------------------------------------------------

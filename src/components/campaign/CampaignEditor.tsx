@@ -367,10 +367,10 @@ export default function CampaignEditor({
               href={klaviyoResult.editorUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="Opens the Klaviyo email-templates list. Your push is at the top of the list."
+              title="Opens this template directly in the Klaviyo editor."
               style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "underline" }}
             >
-              Open Klaviyo templates →
+              Open in Klaviyo →
             </a>
           )}
           {klaviyoError && <span style={{ fontSize: 12, color: "var(--error)" }}>{klaviyoError}</span>}
