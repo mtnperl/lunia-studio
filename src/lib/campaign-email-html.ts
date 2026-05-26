@@ -2,11 +2,12 @@
 // Matches the Lunia template: 600px navy shell, Inter type, rounded text
 // blocks, a 2-up secondary image row, a cream CTA button. All copy is real
 // HTML text so it stays crisp at any zoom — never baked into images.
+// Mobile-responsive: media queries stack the 2-up image rows and tighten
+// paddings / font sizes on narrow viewports.
 import type { CampaignContent } from "./types";
 
 const NAVY = "#01253f";
 const CREAM = "#f5f5e9";
-const PAGE_BG = "#f0f1f5";
 
 function esc(s: string): string {
   return (s ?? "")
@@ -34,10 +35,11 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean): st
 }
 
 function imageCell(url: string | null | undefined, width: string): string {
+  // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
-    return `<td width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;"></div></td>`;
+    return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;"></div></td>`;
   }
-  return `<td width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
+  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
     url,
   )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
 }
@@ -55,7 +57,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
 
   // Hero
   const heroHtml = hero?.url
-    ? `<tr><td style="padding:0 24px 16px;">
+    ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
          <a href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;">
            <img src="${esc(hero.url)}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
          </a>
@@ -64,7 +66,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
 
   // Promo band
   const promoHtml = content.promoBand?.trim()
-    ? `<tr><td style="padding:0 24px 16px;">
+    ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
          <div style="background:${CREAM};color:${NAVY};text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">${esc(
            content.promoBand,
          )}</div>
@@ -73,29 +75,29 @@ export function renderCampaignEmail(content: CampaignContent): string {
 
   // A padded text block
   const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean }) =>
-    `<tr><td style="padding:0 24px 16px;">
-       <div style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic)}</div>
+    `<tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic)}</div>
      </td></tr>`;
 
-  // Secondary images — rows of 2
+  // Secondary images — rows of 2 (stack on mobile via the secondary-cell class)
   let secondaryHtml = "";
   for (let i = 0; i < secondary.length; i += 2) {
     const left = secondary[i];
     const right = secondary[i + 1];
-    secondaryHtml += `<tr><td style="padding:0 24px 16px;">
+    secondaryHtml += `<tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr>
           ${imageCell(left?.url, "48.91%")}
-          <td width="12" style="width:12px;font-size:0;">&nbsp;</td>
-          ${right ? imageCell(right.url, "48.91%") : '<td width="48.91%" style="width:48.91%;">&nbsp;</td>'}
+          <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
+          ${right ? imageCell(right.url, "48.91%") : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
         </tr>
       </table>
     </td></tr>`;
   }
 
   // CTA button
-  const ctaHtml = `<tr><td style="padding:0 24px 24px;" align="center">
-    <a href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+  const ctaHtml = `<tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
       <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:48px;height:48px;text-align:center;letter-spacing:0.12em;border-radius:2px;">${esc(
         content.cta.label,
       )}</span>
@@ -109,14 +111,32 @@ export function renderCampaignEmail(content: CampaignContent): string {
 <meta name="x-apple-disable-message-reformatting">
 <title>${esc(subject)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>body{margin:0;padding:0;}img{border:0;outline:none;}</style>
+<style>
+  body{margin:0;padding:0;background:${NAVY};}
+  img{border:0;outline:none;max-width:100%;}
+  table{border-collapse:collapse;}
+  .email-container{width:600px;max-width:600px;}
+
+  /* Mobile overrides — kick in below 600px viewports.
+     Every shape change uses !important to win over inline styles. */
+  @media only screen and (max-width:600px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.45 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background:${PAGE_BG};">
+<body style="margin:0;padding:0;background:${NAVY};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(content.previewText)}</div>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAGE_BG};">
-  <tr><td align="center" style="padding:24px 0;">
-    <table width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
-      <tr><td style="height:24px;font-size:0;">&nbsp;</td></tr>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${NAVY};">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
+      <tr><td style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}
       ${introBlock ? blockRow(introBlock) : ""}
