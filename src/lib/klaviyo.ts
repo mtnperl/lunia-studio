@@ -421,9 +421,13 @@ export async function createEmailTemplate(input: { name: string; html: string; t
   return {
     id,
     name: res.data.attributes.name,
-    // Klaviyo's current product uses /email-template/<id>/edit (singular).
-    // The legacy /template/<id>/edit pattern 404s in the modern UI.
-    editorUrl: `https://www.klaviyo.com/email-template/${id}/edit`,
+    // Klaviyo keeps moving the template editor URL pattern across UI
+    // refreshes (we've already 404'd on /template/<id>/edit and on
+    // /email-template/<id>/edit). The templates LIST page, on the other
+    // hand, is stable: /email-templates. The template name we set
+    // ("Lunia · <subject> · <date>") sorts to the top and is one click
+    // away from the editor. Trading a deep-link for a reliable link.
+    editorUrl: `https://www.klaviyo.com/email-templates`,
   };
 }
 
@@ -436,9 +440,13 @@ export async function swapFlowMessageTemplate(flowMessageId: string, newTemplate
   });
 }
 
-// Klaviyo deep-link to the template editor (so the user can publish manually).
-export function klaviyoTemplateEditorUrl(templateId: string): string {
-  return `https://www.klaviyo.com/email-template/${templateId}/edit`;
+// Klaviyo deep-link to the templates list (so the user can publish manually).
+// Klaviyo's deep-link to a specific template keeps shifting across UI
+// refreshes; the list page is stable. The template we just created sorts
+// to the top of the list by default.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function klaviyoTemplateEditorUrl(_templateId: string): string {
+  return `https://www.klaviyo.com/email-templates`;
 }
 
 // --- Audit log --------------------------------------------------------------
