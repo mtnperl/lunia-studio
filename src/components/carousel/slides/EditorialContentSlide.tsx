@@ -238,33 +238,34 @@ export default function EditorialContentSlide({
             </div>
           </div>
         )}
-      </div>
 
-      {/* "Between" position: icon block sits centred horizontally between the
-          body column and the citation. Anchored higher than the citation so
-          the band between body and icons gets ~33% more breathing room
-          (previously sat too close to the citation). */}
-      {iconRows.length > 0 && iconPosition === "between" && (
-        <div style={{
-          position: "absolute",
-          left: PAD.x,
-          right: hasPhoto ? 560 : PAD.x,
-          bottom: py + (showCitationBars && citation ? Math.round(citationFontSize * 3.2) : 32),
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
-          <IconBlock
-            rows={iconRows}
-            showLabels={showIconLabels}
-            bodySize={bodySize}
-            headlineCol={headlineCol}
-            ruleCol={ruleCol}
-            bg={bg}
-            centered={true}
-          />
-        </div>
-      )}
+        {/* "Between" position: icon block sits INSIDE the column at the end
+            with auto top + bottom margins, so flexbox vertically centres it
+            in the empty space below the body text. Lands roughly midway
+            between where the body actually ends and where the citation
+            starts, regardless of body length. */}
+        {iconRows.length > 0 && iconPosition === "between" && (
+          <div style={{
+            marginTop: "auto",
+            marginBottom: "auto",
+            paddingTop: 24,
+            paddingBottom: 24,
+            display: "flex",
+            justifyContent: "center",
+            width: "100%",
+          }}>
+            <IconBlock
+              rows={iconRows}
+              showLabels={showIconLabels}
+              bodySize={bodySize}
+              headlineCol={headlineCol}
+              ruleCol={ruleCol}
+              bg={bg}
+              centered={true}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Citation — small navy text at the bottom. Centered horizontally when a
           product photo is present (so it doesn't crowd the left column). */}
