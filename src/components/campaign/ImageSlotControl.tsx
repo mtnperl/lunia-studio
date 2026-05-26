@@ -107,7 +107,15 @@ export default function ImageSlotControl({
       const res = await fetch("/api/campaign/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: effectivePrompt, aspect: slot.aspect, mood: activeMood }),
+        body: JSON.stringify({
+          prompt: effectivePrompt,
+          aspect: slot.aspect,
+          mood: activeMood,
+          // Sent purely so the auto-registered asset gets a useful name in
+          // the picker — not used by image generation itself.
+          topic,
+          role: slot.role,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) {

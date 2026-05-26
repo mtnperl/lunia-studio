@@ -451,7 +451,12 @@ export type AssetType =
    *  images that the carousel produced (hooks + content backgrounds), so the
    *  email campaign picker can reuse them. Text-free only — editorial hooks
    *  with baked text are intentionally skipped. */
-  | "carousel-generated";
+  | "carousel-generated"
+  /** Auto-registered when an image is generated in the email campaign
+   *  editor. Lifestyle scenes only (no product / no text), so they're safe
+   *  to re-use as backgrounds anywhere. De-duped by URL so multiple
+   *  campaigns sharing the same generated image only land once. */
+  | "email-generated";
 
 export type AssetMetadata = {
   id: string;

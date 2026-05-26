@@ -1,7 +1,8 @@
-import { checkRateLimit } from "@/lib/kv";
+import { checkRateLimit, saveAssetIfNew } from "@/lib/kv";
 import { generateEmailImage, type EmailImageAspect } from "@/lib/email-image-engine";
 import { mirrorImageToBlob } from "@/lib/blob-mirror";
 import { getMoodById } from "@/lib/carousel-visual-moods";
+import type { AssetMetadata } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 export const maxDuration = 240;
@@ -51,6 +52,38 @@ export async function POST(req: Request) {
     });
 
     const url = await mirrorImageToBlob(falUrl, `campaign-${randomUUID()}`, "campaign-images");
+
+    // Register the freshly generated image in the asset library so the
+    // campaign image picker can re-use it on any future email. Lifestyle-
+    // only by construction (SAFETY_SUFFIX strips text / product / logo),
+    // so it's safe to re-use as a background anywhere. saveAssetIfNew is
+    // URL-keyed, so re-generations of the exact same image don't duplicate.
+    if (url) {
+      const topic: string = typeof body.topic === "string" ? body.topic.trim() : "";
+      const role: string = body.role === "hero" || body.role === "secondary" ? body.role : "secondary";
+      const inferMime = (u: string) => {
+        const lower = u.toLowerCase();
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".webp")) return "image/webp";
+        return "image/jpeg";
+      };
+      const assetName = (topic ? `${topic} — ${role}` : `Email ${role}`)
+        .slice(0, 90);
+      const asset: AssetMetadata = {
+        id: `egen-${randomUUID()}`,
+        url,
+        name: assetName,
+        type: inferMime(url),
+        assetType: "email-generated",
+        uploadedAt: new Date().toISOString(),
+        source: topic ? { topic } : undefined,
+      };
+      // Fire-and-forget — failures here never block the image response.
+      saveAssetIfNew(asset).catch((err) => {
+        console.warn("[api/campaign/generate-image] asset registration failed:", err);
+      });
+    }
+
     return Response.json({ url });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
