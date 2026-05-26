@@ -50,6 +50,11 @@ export default function CampaignEditor({
   const [klaviyoResult, setKlaviyoResult] = useState<{ editorUrl: string } | null>(null);
   const [klaviyoError, setKlaviyoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Live preview viewport — desktop = full container width (~520px), mobile
+  // = 375px (iPhone-class viewport) so the email's @media (max-width:600px)
+  // overrides kick in and the user can preview the mobile layout. Default
+  // is desktop per user direction.
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
 
   // Per-slot lock on the most recently generated URL. When ImageSlotControl
   // finishes a generation it registers the new URL here via markGenerated().
@@ -217,18 +222,67 @@ export default function CampaignEditor({
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
       {/* ── Live preview ───────────────────────────────────────────────────── */}
       <div style={{ flex: "1 1 520px", minWidth: 320 }}>
-        <div style={sectionLabel}>Live preview</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
+          {/* Desktop / Mobile preview toggle. Default = desktop. */}
+          <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+            {(["desktop", "mobile"] as const).map((mode) => {
+              const active = previewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setPreviewMode(mode)}
+                  title={mode === "desktop" ? "Show the desktop layout" : "Show how the email reflows on mobile (~375px viewport)"}
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    border: "none",
+                    borderRight: mode === "desktop" ? "1px solid var(--border)" : "none",
+                    background: active ? "var(--accent-dim)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--muted)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {mode}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {/* Navy wrapper so the iframe blends with the email's own navy body —
             no gray bars at the top/bottom of the preview during the brief
-            window before fitIframe resizes the iframe to its content. */}
-        <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#01253f" }}>
+            window before fitIframe resizes the iframe to its content.
+            In mobile mode, the iframe is centred at 375px (iPhone-class
+            viewport) so the email's @media (max-width:600px) overrides
+            kick in. */}
+        <div style={{
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "#01253f",
+          padding: previewMode === "mobile" ? "16px 0" : 0,
+          display: "flex",
+          justifyContent: "center",
+        }}>
           <iframe
-            key={htmlKey}
+            key={`${htmlKey}-${previewMode}`}
             ref={iframeRef}
             srcDoc={html}
             onLoad={fitIframe}
             title="Campaign preview"
-            style={{ width: "100%", border: "none", display: "block", minHeight: 600, background: "#01253f" }}
+            style={{
+              width: previewMode === "mobile" ? 375 : "100%",
+              maxWidth: previewMode === "mobile" ? 375 : "100%",
+              border: previewMode === "mobile" ? "1px solid rgba(255,255,255,0.08)" : "none",
+              borderRadius: previewMode === "mobile" ? 12 : 0,
+              display: "block",
+              minHeight: 600,
+              background: "#01253f",
+            }}
           />
         </div>
       </div>
