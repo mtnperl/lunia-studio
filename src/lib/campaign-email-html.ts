@@ -73,8 +73,8 @@ function renderTopBanner(text: string): string {
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
   const NATURAL = 163;
-  const CROP_TOP = 16;
-  const CROP_BOTTOM = 16;
+  const CROP_TOP = 24;
+  const CROP_BOTTOM = 0;
   const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
   return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;">
     <div class="logo-crop" style="height:${wrapperHeight}px;overflow:hidden;line-height:0;">
@@ -198,9 +198,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    /* Mobile mirrors desktop's crop — 11px top + 11px bottom. */
-    .logo-img{height:116px !important;margin-top:-11px !important;}
-    .logo-crop{height:94px !important;}
+    /* Mobile mirrors desktop's top-only crop — 17px top, 0 bottom. */
+    .logo-img{height:116px !important;margin-top:-17px !important;}
+    .logo-crop{height:99px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
