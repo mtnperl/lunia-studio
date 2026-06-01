@@ -63,27 +63,15 @@ function renderTopBanner(text: string): string {
 /** White logo strip below the top banner. Left-aligned, large logo to
  *  match the AG1-style header. Skipped entirely when no logo url.
  *
- *  The img is wrapped in an overflow:hidden box that's ~50% of the source
- *  image's whitespace shorter than the natural image height, with a
- *  matching negative margin-top. This crops the asset's internal
- *  top/bottom padding so the visible glyph sits closer to the strip
- *  edges. If the asset itself becomes a truly tight crop, lower the
- *  CROP_TOP / CROP_BOTTOM numbers (or zero them out) to avoid clipping
- *  the glyph. */
+ *  No crop wrapper anymore — the current logo asset is a tight crop with
+ *  negligible internal padding, and email clients (Gmail / Outlook) were
+ *  honoring overflow:hidden inconsistently, which clipped the glyph in
+ *  prod even though the preview iframe was fine. If a future asset has
+ *  baked-in padding, fix the asset (don't reintroduce a CSS crop). */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  // Natural source heights — the img always renders at these.
-  const NATURAL = 163;
-  // CSS-level crop: pixels to clip off the top and bottom of the asset.
-  // Tuned for the current logo's ~33% top/bottom padding; halves the
-  // visible whitespace.
-  const CROP_TOP = 26;
-  const CROP_BOTTOM = 26;
-  const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
   return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;">
-    <div class="logo-crop" style="height:${wrapperHeight}px;overflow:hidden;line-height:0;">
-      <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${NATURAL}px;width:auto;margin-top:-${CROP_TOP}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
-    </div>
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:111px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
   </td></tr>`;
 }
 
@@ -201,10 +189,8 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
-    /* Tighten new top header + hero overlay on narrow viewports.
-       Crop values shrink proportionally with the smaller mobile logo. */
-    .logo-img{height:116px !important;margin-top:-18px !important;}
-    .logo-crop{height:80px !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    .logo-img{height:80px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
