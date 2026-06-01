@@ -14,6 +14,7 @@ import HomeView from "@/components/HomeView";
 import BusinessView from "@/components/business/BusinessView";
 import VideoView from "@/components/VideoView";
 import VideoAssetsView from "@/components/VideoAssetsView";
+import AssetsView from "@/components/AssetsView";
 import VideoLibraryView from "@/components/VideoLibraryView";
 import EmailReviewView from "@/components/email-review/EmailReviewView";
 import EmailFlowsLibrary from "@/components/email-review/EmailFlowsLibrary";
@@ -31,8 +32,8 @@ import { getLibrary, saveScript } from "@/lib/storage";
 // Feature flag: the Video builder is hidden from the nav. Flip to true to restore.
 const SHOW_VIDEO = false;
 
-type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
-type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business";
+type Tab = "home" | "generate" | "editor" | "library" | "carousel" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "assets" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business" | "assets";
 
 const LIGHT_VARS: Record<string, string> = {
   "--bg": "#f6f7fb", "--surface": "#ffffff", "--surface-r": "#f5f6f8",
@@ -73,6 +74,7 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   video: IconVideo,
   "video-library": IconFolder,
   "video-assets": IconImage,
+  assets: IconImage,
   ugc: IconBoard,
   "ugc-briefs": IconDocument,
   "business-overview": IconTrendingUp,
@@ -99,6 +101,7 @@ const TAB_TITLES: Record<string, string> = {
   video: "Video builder",
   "video-library": "Video library",
   "video-assets": "Video assets",
+  assets: "Asset library",
   ugc: "UGC tracker",
   "ugc-briefs": "UGC briefs",
   "business-overview": "Business — Overview",
@@ -134,6 +137,12 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
       { key: "campaign-library", product: "carousel", label: "Campaign library" },
       { key: "email-reviews",    product: "carousel", label: "Flow reviews" },
       { key: "email-flows",      product: "carousel", label: "Saved reviews" },
+    ],
+  },
+  {
+    section: "Assets",
+    items: [
+      { key: "assets", product: "assets", label: "Library" },
     ],
   },
   ...(SHOW_VIDEO ? [{
@@ -534,6 +543,7 @@ export default function Page() {
         {tab === "video"         && <VideoView />}
         {tab === "video-library" && <VideoLibraryView />}
         {tab === "video-assets"  && <VideoAssetsView />}
+        {tab === "assets"        && <AssetsView />}
         {tab === "ugc" && <UGCTrackerView />}
         {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
         {tab === "business-overview"       && <BusinessView active="overview" />}
