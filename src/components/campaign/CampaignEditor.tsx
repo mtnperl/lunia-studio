@@ -326,6 +326,19 @@ export default function CampaignEditor({
 
       {/* ── Controls ───────────────────────────────────────────────────────── */}
       <div style={{ flex: "1 1 340px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+        {/* Top banner — thin white strip above the logo. Renders uppercase
+            via CSS; wrap a fragment with **double asterisks** to highlight
+            it with the brand color (navy pill). */}
+        <div>
+          <label style={fieldLabel}>Top banner (optional)</label>
+          <input type="text" value={content.topBanner ?? ""}
+            placeholder="e.g. SAVE **26%** WITH A 3-MONTH SUBSCRIPTION"
+            onChange={(e) => onChange({ ...content, topBanner: e.target.value || undefined })} style={input} />
+          <div style={{ marginTop: 4, fontSize: 11, color: "var(--subtle)", lineHeight: 1.4 }}>
+            Wrap a phrase in <code style={{ fontFamily: "monospace" }}>**double asterisks**</code> to mark it with the brand color. Renders in caps automatically.
+          </div>
+        </div>
+
         {/* Subject */}
         <div>
           <div style={sectionLabel}>Subject line</div>

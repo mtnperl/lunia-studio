@@ -34,6 +34,38 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean): st
     .join("");
 }
 
+/** Top banner above the logo. Caps Inter on white. Wrap a fragment with
+ *  `**...**` to render that fragment as a navy pill (background NAVY, color
+ *  CREAM). Empty/whitespace text → returns "" so the row is skipped. */
+function renderTopBanner(text: string): string {
+  const trimmed = (text ?? "").trim();
+  if (!trimmed) return "";
+  // Split by `**...**` markers, preserving the surrounding chunks. Even-indexed
+  // chunks are plain text; odd-indexed are the highlighted fragments.
+  const parts = trimmed.split(/\*\*([^*]+)\*\*/g);
+  const inner = parts
+    .map((chunk, i) => {
+      if (!chunk) return "";
+      const safe = esc(chunk);
+      if (i % 2 === 1) {
+        return `<span style="background:${NAVY};color:${CREAM};padding:2px 8px;border-radius:3px;">${safe}</span>`;
+      }
+      return safe;
+    })
+    .join("");
+  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${NAVY};line-height:1.5;">
+    ${inner}
+  </td></tr>`;
+}
+
+/** White logo strip below the top banner. Left-aligned logo. Skipped if no url. */
+function renderLogoStrip(url: string | null | undefined): string {
+  if (!url) return "";
+  return `<tr><td style="background:#ffffff;padding:16px 24px;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:36px;width:auto;border:0;">
+  </td></tr>`;
+}
+
 function imageCell(url: string | null | undefined, width: string): string {
   // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
@@ -55,11 +87,25 @@ export function renderCampaignEmail(content: CampaignContent): string {
   const introBlock = content.blocks[0];
   const closingBlocks = content.blocks.slice(1);
 
-  // Hero
+  // Hero — wrapped img + an absolutely-positioned cream CTA pill anchored
+  // bottom-center. The pill is decorative: many email clients (Outlook,
+  // parts of Gmail) drop `position: absolute`, so the underlying <a> wrapper
+  // is still the source of truth that makes the whole hero tappable. The
+  // bottom cream CTA below the email also remains as a guaranteed-render
+  // fallback. Don't try to make this pixel-perfect in Outlook.
+  const heroCtaLabel = content.cta.label?.trim();
+  const heroOverlay = hero?.url && heroCtaLabel
+    ? `<div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
+         <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:44px;height:44px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
+       </div>`
+    : "";
   const heroHtml = hero?.url
     ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
          <a href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;">
-           <img src="${esc(hero.url)}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+           <div style="position:relative;">
+             <img src="${esc(hero.url)}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+             ${heroOverlay}
+           </div>
          </a>
        </td></tr>`
     : "";
@@ -132,6 +178,10 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    .logo-img{height:28px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
 </style>
 </head>
@@ -140,7 +190,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${NAVY};">
   <tr><td align="center" style="padding:0;">
     <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
-      <tr><td style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      ${renderTopBanner(content.topBanner ?? "")}
+      ${renderLogoStrip(content.logoUrl)}
+      <tr><td style="height:16px;font-size:0;line-height:0;">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}
       ${introBlock ? blockRow(introBlock) : ""}

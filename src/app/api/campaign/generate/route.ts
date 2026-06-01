@@ -111,6 +111,7 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
 
     // Resolve AI-suggested assets for "asset" slots.
     const assets = await getAssets();
+    const logoAsset = assets.find((a) => a.assetType === "logo");
     function suggestAsset(hint?: string): { assetId?: string; url?: string } {
       const wanted: AssetType = hint === "logo" ? "logo" : "product-image";
       const match =
@@ -150,6 +151,7 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
       subjectLines: parsed.subjectLines.slice(0, 3).map(stripDashes),
       selectedSubject: 0,
       previewText: stripDashes(parsed.previewText ?? ""),
+      logoUrl: logoAsset?.url ?? null,
       promoBand: parsed.promoBand?.trim() ? stripDashes(parsed.promoBand) : undefined,
       blocks: parsed.blocks.map((b) => ({
         id: randomUUID(),

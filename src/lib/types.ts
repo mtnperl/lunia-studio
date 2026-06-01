@@ -509,6 +509,12 @@ export type CampaignContent = {
   subjectLines: string[];        // 3 options
   selectedSubject: number;
   previewText: string;           // preheader
+  /** Thin top banner above the logo. Caps Inter rendered. Wrap a fragment
+   *  with `**...**` to render it as a navy highlight pill. Empty/unset → hidden. */
+  topBanner?: string;
+  /** Resolved Lunia logo url (from the asset library, assetType "logo").
+   *  Server sets this on generate. Renderer skips the logo strip if unset. */
+  logoUrl?: string | null;
   promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
   blocks: CampaignBlock[];       // ordered body text blocks
   cta: { label: string; url: string };
