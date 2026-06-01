@@ -73,10 +73,15 @@ function renderTopBanner(text: string): string {
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
   const NATURAL = 163;
-  const CROP_TOP = 22;
+  const CROP_TOP = 30;
   const CROP_BOTTOM = 16;
   const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
-  return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;">
+  // border-top is the divider between the top banner and the logo strip.
+  // The preview iframe used to show a hairline naturally from table-cell
+  // border collapsing; email clients strip that, so we have to render it
+  // explicitly. Subtle near-transparent black reads on white in every
+  // major client.
+  return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;border-top:1px solid rgba(0,0,0,0.08);">
     <div class="logo-crop" style="height:${wrapperHeight}px;overflow:hidden;line-height:0;">
       <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${NATURAL}px;width:auto;margin-top:-${CROP_TOP}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
     </div>
@@ -198,9 +203,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    /* Mobile mirrors desktop's crop — 16px top, 11px bottom. */
-    .logo-img{height:116px !important;margin-top:-16px !important;}
-    .logo-crop{height:89px !important;}
+    /* Mobile mirrors desktop's crop — 21px top, 11px bottom. */
+    .logo-img{height:116px !important;margin-top:-21px !important;}
+    .logo-crop{height:84px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
