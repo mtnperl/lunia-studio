@@ -72,11 +72,15 @@ function renderTopBanner(text: string): string {
  *  CROP_TOP / CROP_BOTTOM to 0 so the strip doesn't eat any of the mark. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  const NATURAL = 163;
-  const CROP_TOP = 30;
-  // Bottom is conservative — the asset's bottom padding is < 16px, so the
-  // earlier CROP_BOTTOM=16 was visibly clipping "LIFE" in Gmail/prod.
-  const CROP_BOTTOM = 4;
+  // Asset is now a tight crop (no internal padding around the mark +
+  // text), so the CSS crop is no longer needed. Render the image at its
+  // visible target height; the wrapper just constrains it. Keep the
+  // overflow:hidden + margin-top structure intact (with zero values) so
+  // any future padded asset can be tuned by editing CROP_TOP / CROP_BOTTOM
+  // without re-introducing the wrapper.
+  const NATURAL = 130;
+  const CROP_TOP = 0;
+  const CROP_BOTTOM = 0;
   const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
   // border-top is the divider between the top banner and the logo strip.
   // The preview iframe used to show a hairline naturally from table-cell
@@ -205,8 +209,8 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    /* Mobile mirrors desktop's crop — 21px top, 3px bottom. */
-    .logo-img{height:116px !important;margin-top:-21px !important;}
+    /* Mobile — asset is tight, no crop needed. */
+    .logo-img{height:92px !important;margin-top:0 !important;}
     .logo-crop{height:92px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
