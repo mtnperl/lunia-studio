@@ -55,7 +55,7 @@ function renderTopBanner(text: string): string {
       return safe;
     })
     .join("");
-  return `<tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:${NAVY};line-height:1.4;">
+  return `<tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:${NAVY};line-height:1.4;">
     ${inner}
   </td></tr>`;
 }
@@ -64,7 +64,7 @@ function renderTopBanner(text: string): string {
  *  match the AG1-style header. Skipped entirely when no logo url. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  return `<tr><td style="background:#ffffff;padding:2px 24px;text-align:left;">
+  return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;">
     <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:163px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
   </td></tr>`;
 }
