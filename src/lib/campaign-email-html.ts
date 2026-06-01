@@ -72,24 +72,23 @@ function renderTopBanner(text: string): string {
  *  CROP_TOP / CROP_BOTTOM to 0 so the strip doesn't eat any of the mark. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  // Asset is now a tight crop (no internal padding around the mark +
-  // text), so the CSS crop is no longer needed. Render the image at its
-  // visible target height; the wrapper just constrains it. Keep the
-  // overflow:hidden + margin-top structure intact (with zero values) so
-  // any future padded asset can be tuned by editing CROP_TOP / CROP_BOTTOM
-  // without re-introducing the wrapper.
-  const NATURAL = 130;
-  const CROP_TOP = 0;
-  const CROP_BOTTOM = 0;
-  const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
+  // Wrapper height defines the strip's overall vertical footprint (and
+  // therefore the banner-to-hero spacing). Image height defines how big
+  // the visible glyph is INSIDE that strip — making image < wrapper
+  // produces a vertically-centered smaller logo without shifting any of
+  // the surrounding layout. To grow the logo back to flush, set
+  // IMAGE_HEIGHT === WRAPPER_HEIGHT.
+  const WRAPPER_HEIGHT = 130;
+  const IMAGE_HEIGHT = 104; // 20% smaller than wrapper
+  const VERTICAL_CENTER = Math.round((WRAPPER_HEIGHT - IMAGE_HEIGHT) / 2);
   // border-top is the divider between the top banner and the logo strip.
   // The preview iframe used to show a hairline naturally from table-cell
   // border collapsing; email clients strip that, so we have to render it
   // explicitly. Subtle near-transparent black reads on white in every
   // major client.
   return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;border-top:1px solid rgba(0,0,0,0.08);">
-    <div class="logo-crop" style="height:${wrapperHeight}px;overflow:hidden;line-height:0;">
-      <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${NATURAL}px;width:auto;margin-top:-${CROP_TOP}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
+    <div class="logo-crop" style="height:${WRAPPER_HEIGHT}px;overflow:hidden;line-height:0;">
+      <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${IMAGE_HEIGHT}px;width:auto;margin-top:${VERTICAL_CENTER}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
     </div>
   </td></tr>`;
 }
@@ -209,8 +208,8 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    /* Mobile — asset is tight, no crop needed. */
-    .logo-img{height:92px !important;margin-top:0 !important;}
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
