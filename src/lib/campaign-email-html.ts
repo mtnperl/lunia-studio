@@ -55,7 +55,7 @@ function renderTopBanner(text: string): string {
       return safe;
     })
     .join("");
-  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${NAVY};line-height:1.5;">
+  return `<tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:${NAVY};line-height:1.4;">
     ${inner}
   </td></tr>`;
 }
@@ -65,7 +65,7 @@ function renderTopBanner(text: string): string {
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
   return `<tr><td style="background:#ffffff;padding:20px 24px;text-align:left;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:192px;width:auto;border:0;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:192px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
   </td></tr>`;
 }
 
