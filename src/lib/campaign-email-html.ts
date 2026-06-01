@@ -217,7 +217,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
       ${renderTopBanner(content.topBanner ?? "")}
       ${renderLogoStrip(content.logoUrl)}
-      <tr><td style="height:0;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="height:16px;font-size:0;line-height:0;background:${NAVY};">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}
       ${introBlock ? blockRow(introBlock) : ""}
