@@ -43,9 +43,69 @@ export async function POST(req: Request) {
     const offer: string = (body.offer ?? "").trim();
     const ctaUrl: string = (body.ctaUrl ?? "").trim() || "https://www.lunialife.com/products/lunia-sleep-vitamins";
     const tone: string = (body.tone ?? "calm, editorial").trim();
+    const test: boolean = body.test === true;
 
     if (topic.length < 4) {
       return Response.json({ error: "Describe the campaign in a few words." }, { status: 400 });
+    }
+
+    // ── Test mode ──────────────────────────────────────────────────────────
+    // Skip the LLM call AND skip image generation. Returns a canned campaign
+    // wired to existing asset-library images, so you can dogfood layout
+    // changes (top banner, logo, hero overlay, etc.) without burning tokens
+    // or waiting on image generation. Hero + every secondary use "asset"
+    // source so the editor never tries to render through gpt-image-2.
+    if (test) {
+      const assets = await getAssets();
+      const logoAsset = assets.find((a) => a.assetType === "logo");
+      const productPool = assets.filter((a) => a.assetType === "product-image");
+      if (productPool.length === 0) {
+        return Response.json({ error: "Test mode needs at least one product-image asset in the library." }, { status: 400 });
+      }
+      const pickAsset = (i: number) => productPool[i % productPool.length]!;
+      const heroAsset = pickAsset(0);
+      const sec1 = pickAsset(1);
+      const sec2 = pickAsset(2);
+      const sec3 = pickAsset(3);
+      const testContent: CampaignContent = {
+        subjectLines: [
+          `Test: ${topic.slice(0, 60)}`,
+          "Test subject line — alternate phrasing",
+          "Test subject line — third option",
+        ],
+        selectedSubject: 0,
+        previewText: "Test preview text. Layout dry run, no LLM calls.",
+        logoUrl: logoAsset?.url ?? null,
+        promoBand: undefined,
+        blocks: [
+          {
+            id: randomUUID(),
+            body: "This is a test campaign rendered without any AI calls. Every line of copy here is fixed sample text, and every image is pulled straight from the asset library. Use this mode to dogfood layout changes, font choices, spacing, and the top banner / logo / hero overlay without spending tokens.",
+            align: "left",
+            italic: false,
+          },
+          {
+            id: randomUUID(),
+            body: "A calmer nervous system is the foundation. Everything else, the deeper sleep, the steadier mornings, the clearer days, follows from there.",
+            align: "center",
+            italic: false,
+          },
+          {
+            id: randomUUID(),
+            body: "Test italic urgency line.",
+            align: "left",
+            italic: true,
+          },
+        ],
+        cta: { label: "Test CTA", url: ctaUrl },
+        images: [
+          { id: randomUUID(), role: "hero", source: "asset", aspect: "4:5", assetId: heroAsset.id, url: heroAsset.url },
+          { id: randomUUID(), role: "secondary", source: "asset", aspect: "1:1", assetId: sec1.id, url: sec1.url },
+          { id: randomUUID(), role: "secondary", source: "asset", aspect: "1:1", assetId: sec2.id, url: sec2.url },
+          { id: randomUUID(), role: "secondary", source: "asset", aspect: "1:1", assetId: sec3.id, url: sec3.url },
+        ],
+      };
+      return Response.json({ topic, content: testContent });
     }
 
     const prompt = `${LUNIA_VOICE_SPEC}

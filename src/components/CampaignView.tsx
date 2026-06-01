@@ -52,7 +52,7 @@ export default function CampaignView({
       const res = await fetch("/api/campaign/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(brief),
+        body: JSON.stringify({ ...brief, test: brief.test === true }),
       });
       const data = await res.json();
       if (!res.ok || !data.content) {

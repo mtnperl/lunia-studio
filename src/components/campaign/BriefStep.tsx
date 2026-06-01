@@ -8,6 +8,10 @@ export type CampaignBrief = {
   offer: string;
   ctaUrl: string;
   tone: string;
+  /** When true, the API short-circuits the LLM + image generation and
+   *  returns canned text wired to existing asset-library images. Lets
+   *  you dogfood layout changes without burning tokens. */
+  test?: boolean;
 };
 
 type Mode = "list" | "custom";
@@ -170,7 +174,7 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
           })}
         </div>
       </div>
-      <div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           className="btn"
           disabled={!canGenerate}
@@ -178,6 +182,15 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
           style={{ minWidth: 180, opacity: canGenerate ? 1 : 0.5, cursor: canGenerate ? "pointer" : "not-allowed" }}
         >
           Generate campaign
+        </button>
+        <button
+          className="btn-ghost"
+          disabled={!canGenerate}
+          onClick={() => onGenerate({ topic, occasion, offer, ctaUrl, tone, test: true })}
+          title="Skip the LLM and image generation — return canned text wired to existing assets. For layout testing only."
+          style={{ opacity: canGenerate ? 1 : 0.5, cursor: canGenerate ? "pointer" : "not-allowed" }}
+        >
+          🧪 Test (no AI)
         </button>
       </div>
     </div>
