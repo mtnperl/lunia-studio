@@ -132,7 +132,7 @@ function SkeletonCard() {
 }
 
 // ── CarouselCard ───────────────────────────────────────────────────────────────
-function CarouselCard({ c, onClick, onDelete, onConvertToEmail }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onConvertToEmail?: (c: SavedCarousel) => void }) {
+function CarouselCard({ c, onClick, onDelete, onConvertToCampaign }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
   const [hovered, setHovered] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -307,10 +307,10 @@ function CarouselCard({ c, onClick, onDelete, onConvertToEmail }: { c: SavedCaro
           ) : (
             <>
               <CopyButton text={caption} />
-              {onConvertToEmail && (
+              {onConvertToCampaign && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onConvertToEmail(c); }}
-                  title="Make email flow from this carousel"
+                  onClick={(e) => { e.stopPropagation(); onConvertToCampaign(c); }}
+                  title="Make campaign from this carousel"
                   style={{
                     flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -367,7 +367,7 @@ function CarouselCard({ c, onClick, onDelete, onConvertToEmail }: { c: SavedCaro
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
-export default function CarouselLibraryView({ onOpen, onConvertToEmail }: { onOpen?: (c: SavedCarousel) => void; onConvertToEmail?: (c: SavedCarousel) => void }) {
+export default function CarouselLibraryView({ onOpen, onConvertToCampaign }: { onOpen?: (c: SavedCarousel) => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -419,7 +419,7 @@ export default function CarouselLibraryView({ onOpen, onConvertToEmail }: { onOp
                 c={c}
                 onClick={() => onOpen?.(c)}
                 onDelete={() => setCarousels(prev => prev.filter(x => x.id !== c.id))}
-                onConvertToEmail={onConvertToEmail}
+                onConvertToCampaign={onConvertToCampaign}
               />
             ))}
         </div>

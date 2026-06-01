@@ -500,12 +500,17 @@ export default function Page() {
             </div>
             <CarouselLibraryView
               onOpen={(c) => { setPendingCarousel(c); setTab("carousel-v2"); }}
-              onConvertToEmail={(c) => { setPendingCarousel(c); setTab("email-reviews"); }}
+              onConvertToCampaign={(c) => { setPendingCarousel(c); setTab("campaign"); }}
             />
           </div>
         )}
         {tab === "campaign" && (
-          <CampaignView initialCampaign={pendingCampaign} onCampaignLoaded={() => setPendingCampaign(null)} />
+          <CampaignView
+            initialCampaign={pendingCampaign}
+            initialCarousel={pendingCarousel}
+            onCampaignLoaded={() => setPendingCampaign(null)}
+            onCarouselConsumed={() => setPendingCarousel(null)}
+          />
         )}
         {tab === "campaign-library" && (
           <CampaignLibraryView onOpen={(c) => { setPendingCampaign(c); setTab("campaign"); }} />

@@ -1,16 +1,20 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import type { CampaignContent, SavedCampaign } from "@/lib/types";
+import type { CampaignContent, SavedCampaign, SavedCarousel } from "@/lib/types";
 import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
 import { CampaignGenLoader } from "@/components/campaign/Loaders";
 
 export default function CampaignView({
   initialCampaign,
+  initialCarousel,
   onCampaignLoaded,
+  onCarouselConsumed,
 }: {
   initialCampaign?: SavedCampaign | null;
+  initialCarousel?: SavedCarousel | null;
   onCampaignLoaded?: () => void;
+  onCarouselConsumed?: () => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
@@ -41,7 +45,7 @@ export default function CampaignView({
     onCampaignLoaded?.();
   }, [initialCampaign]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleGenerate(brief: CampaignBrief) {
+  async function handleGenerate(brief: CampaignBrief, pinHeroUrl?: string | null) {
     setLoading(true);
     setError(null);
     try {
@@ -55,8 +59,13 @@ export default function CampaignView({
         setError(data.error ?? "Generation failed, please try again.");
         return;
       }
+      const next: CampaignContent = data.content;
+      if (pinHeroUrl) {
+        const hero = next.images.find((i) => i.role === "hero");
+        if (hero) hero.url = pinHeroUrl;
+      }
       setTopic(data.topic ?? brief.topic);
-      setContent(data.content);
+      setContent(next);
       setSavedId(null);
       setStep(2);
     } catch {
@@ -66,6 +75,36 @@ export default function CampaignView({
     }
   }
 
+  // Seed the campaign from a carousel handed in by the library — auto-runs
+  // generation using the carousel caption as the brief topic, then pins the
+  // hero image to the carousel's hook image. Guarded by a ref so the same
+  // carousel never re-triggers generation on subsequent re-renders.
+  const seededCarouselIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialCarousel) return;
+    if (initialCampaign) return; // explicit library campaign wins
+    if (seededCarouselIdRef.current === initialCarousel.id) {
+      onCarouselConsumed?.();
+      return;
+    }
+    seededCarouselIdRef.current = initialCarousel.id;
+    const caption = initialCarousel.content?.caption?.trim() ?? "";
+    const topicSeed = (caption.length >= 4 ? caption : initialCarousel.topic).slice(0, 600);
+    const hookImg =
+      initialCarousel.hookImageUrl ??
+      initialCarousel.slideImages?.find((u): u is string => !!u) ??
+      null;
+    const brief: CampaignBrief = {
+      topic: topicSeed,
+      occasion: "",
+      offer: "",
+      ctaUrl: "https://www.lunialife.com/products/lunia-sleep-vitamins",
+      tone: "calm, editorial",
+    };
+    handleGenerate(brief, hookImg);
+    onCarouselConsumed?.();
+  }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleRestart() {
     setStep(1);
     setTopic("");
@@ -74,6 +113,9 @@ export default function CampaignView({
     setError(null);
     // Reset the loaded-id ref so the next library open re-seeds editor state.
     loadedIdRef.current = null;
+    // Likewise reset the carousel seed ref so re-opening the same carousel
+    // from the library after a manual New re-runs generation.
+    seededCarouselIdRef.current = null;
   }
 
   return (
