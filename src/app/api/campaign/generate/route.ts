@@ -109,15 +109,27 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
       return Response.json({ error: "Incomplete campaign, please try again." }, { status: 422 });
     }
 
-    // Resolve AI-suggested assets for "asset" slots.
+    // Resolve AI-suggested assets for "asset" slots. Rotate through the pool
+    // so every asset-source image gets a DIFFERENT asset where possible;
+    // we only repeat when the pool runs out. Previously this just grabbed
+    // the first matching asset every time → hero + secondaries collapsed to
+    // the same bottle shot.
     const assets = await getAssets();
     const logoAsset = assets.find((a) => a.assetType === "logo");
+    const productPool = assets.filter((a) => a.assetType === "product-image");
+    const logoPool = assets.filter((a) => a.assetType === "logo");
+    const fallbackPool = productPool.length > 0 ? productPool : logoPool;
+    const usedAssetIds = new Set<string>();
     function suggestAsset(hint?: string): { assetId?: string; url?: string } {
       const wanted: AssetType = hint === "logo" ? "logo" : "product-image";
-      const match =
-        assets.find((a) => a.assetType === wanted) ??
-        assets.find((a) => a.assetType === "product-image" || a.assetType === "logo");
-      return match ? { assetId: match.id, url: match.url } : {};
+      const primary = wanted === "logo" ? logoPool : productPool;
+      const pool = primary.length > 0 ? primary : fallbackPool;
+      if (pool.length === 0) return {};
+      const unused = pool.find((a) => !usedAssetIds.has(a.id));
+      const pick = unused ?? pool[usedAssetIds.size % pool.length];
+      if (!pick) return {};
+      usedAssetIds.add(pick.id);
+      return { assetId: pick.id, url: pick.url };
     }
 
     const images: CampaignImageSlot[] = parsed.images.slice(0, 5).map((img) => {
