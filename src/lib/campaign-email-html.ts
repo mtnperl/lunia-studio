@@ -8,6 +8,8 @@ import type { CampaignContent } from "./types";
 
 const NAVY = "#01253f";
 const CREAM = "#f5f5e9";
+/** Highlighter-style mark color for top-banner `**...**` fragments. */
+const HIGHLIGHT = "#ffd800";
 
 function esc(s: string): string {
   return (s ?? "")
@@ -48,7 +50,7 @@ function renderTopBanner(text: string): string {
       if (!chunk) return "";
       const safe = esc(chunk);
       if (i % 2 === 1) {
-        return `<span style="background:${NAVY};color:${CREAM};padding:2px 8px;border-radius:3px;">${safe}</span>`;
+        return `<span style="background:${HIGHLIGHT};color:${NAVY};padding:2px 8px;border-radius:3px;">${safe}</span>`;
       }
       return safe;
     })
@@ -58,11 +60,12 @@ function renderTopBanner(text: string): string {
   </td></tr>`;
 }
 
-/** White logo strip below the top banner. Left-aligned logo. Skipped if no url. */
+/** White logo strip below the top banner. Centered logo. Skipped if no url.
+ *  Tight vertical padding so the strip doesn't sit in a sea of white space. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  return `<tr><td style="background:#ffffff;padding:16px 24px;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:36px;width:auto;border:0;">
+  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:center;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:54px;width:auto;border:0;">
   </td></tr>`;
 }
 
@@ -179,7 +182,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    .logo-img{height:28px !important;}
+    .logo-img{height:40px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
@@ -192,7 +195,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
       ${renderTopBanner(content.topBanner ?? "")}
       ${renderLogoStrip(content.logoUrl)}
-      <tr><td style="height:16px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="height:0;font-size:0;line-height:0;">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}
       ${introBlock ? blockRow(introBlock) : ""}

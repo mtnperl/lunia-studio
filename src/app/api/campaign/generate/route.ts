@@ -63,7 +63,8 @@ The email layout is fixed: a hero image, an optional promo band, an intro text b
 Image rules — CRITICAL:
 - "source": "asset" for ANY image that shows the Lunia product, the supplement bottle, the label, or the Lunia logo. These are NOT generated — they come from an uploaded asset library. Give an "assetTypeHint" of "product-image" (bottle/product shots) or "logo".
 - "source": "generated" for pure lifestyle / atmosphere images (a calm bedroom, soft morning light, someone resting). For these write a detailed photorealistic "prompt". The prompt MUST NOT contain any text, words, signage, logos, bottles, or product packaging — only an editorial wellness lifestyle scene. Describe scene, light, mood, palette (warm, calm, dim, natural).
-- The hero is almost always "asset" (it carries the product). Provide 2 to 4 secondary images, a mix of asset and generated.
+- The hero MUST be "source": "generated" with a detailed photorealistic prompt that visually expresses THIS specific campaign topic / angle (the reader's first impression should be the editorial scene, not a stock product shot). Only use "source": "asset" for the hero if the campaign is explicitly product-focused (a product launch, a bundle promo, a "what's in the bottle" educational angle).
+- Provide 2 to 4 secondary images, mixing asset (bottle shots) and generated (lifestyle).
 
 Return ONLY valid JSON, no markdown, matching this exact schema:
 
@@ -78,7 +79,7 @@ Return ONLY valid JSON, no markdown, matching this exact schema:
   ],
   "cta": "string — CTA button label, e.g. 'Start Sleeping Better'",
   "images": [
-    { "role": "hero", "source": "asset", "assetTypeHint": "product-image" },
+    { "role": "hero", "source": "generated", "prompt": "..." },
     { "role": "secondary", "source": "asset", "assetTypeHint": "product-image" },
     { "role": "secondary", "source": "generated", "prompt": "..." }
   ]
