@@ -64,8 +64,8 @@ function renderTopBanner(text: string): string {
  *  match the AG1-style header. Skipped entirely when no logo url. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  return `<tr><td style="background:#ffffff;padding:18px 24px;text-align:left;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:78px;width:auto;border:0;">
+  return `<tr><td style="background:#ffffff;padding:20px 24px;text-align:left;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:96px;width:auto;border:0;">
   </td></tr>`;
 }
 
@@ -170,9 +170,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
   table{border-collapse:collapse;border-spacing:0;}
   .email-container{width:600px;max-width:600px;background:${NAVY};}
 
-  /* Mobile overrides — kick in below 600px viewports.
-     Every shape change uses !important to win over inline styles. */
-  @media only screen and (max-width:600px) {
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
     .email-container{width:100% !important;max-width:100% !important;}
     .h-padding{padding-left:14px !important;padding-right:14px !important;}
     .text-block{padding:8px !important;}
@@ -182,7 +184,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    .logo-img{height:56px !important;}
+    .logo-img{height:68px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }

@@ -336,7 +336,10 @@ export default function CampaignEditor({
           border: "1px solid var(--border)",
           borderRadius: 8,
           overflow: "hidden",
-          background: "#01253f",
+          // Desktop: navy bg so the iframe at 600px blends edge-to-edge.
+          // Mobile: light surface bg so the navy doesn't bleed beyond the
+          // 375px frame — only the email itself stays navy.
+          background: previewMode === "mobile" ? "var(--surface)" : "#01253f",
           padding: previewMode === "mobile" ? "16px 0" : 0,
           display: "flex",
           justifyContent: "center",
