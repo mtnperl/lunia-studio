@@ -1,12 +1,13 @@
 import { getCampaignEmailById, deleteCampaignEmailKv, getAssets } from "@/lib/kv";
 import type { SavedCampaign } from "@/lib/types";
 
-/** Backfill content fields older saved campaigns may be missing, so the
- *  current template renders correctly without a manual re-save.
- *  Only logoUrl right now — topBanner is user-authored, hero CTA reuses
- *  cta.label which has always been present. */
+/** Always re-resolve logoUrl to the CURRENT logo asset (not whatever was
+ *  saved). Saved campaigns hold a logoUrl from the time of generation,
+ *  which goes stale the moment a new logo asset is uploaded — the crop
+ *  in the template is then trimming the OLD image's padding, not the
+ *  new one's. Overriding on read keeps saves visually in sync with the
+ *  asset library without anyone having to open + re-save each campaign. */
 async function backfillTemplateFields(campaign: SavedCampaign): Promise<SavedCampaign> {
-  if (campaign.content.logoUrl) return campaign;
   const assets = await getAssets();
   const logo = assets.find((a) => a.assetType === "logo");
   if (!logo) return campaign;
