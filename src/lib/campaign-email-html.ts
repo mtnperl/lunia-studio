@@ -55,17 +55,17 @@ function renderTopBanner(text: string): string {
       return safe;
     })
     .join("");
-  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${NAVY};line-height:1.5;">
+  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${NAVY};line-height:1.5;">
     ${inner}
   </td></tr>`;
 }
 
-/** White logo strip below the top banner. Centered logo. Skipped if no url.
- *  Tight vertical padding so the strip doesn't sit in a sea of white space. */
+/** White logo strip below the top banner. Left-aligned, large logo to
+ *  match the AG1-style header. Skipped entirely when no logo url. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  return `<tr><td style="background:#ffffff;padding:10px 24px;text-align:center;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:54px;width:auto;border:0;">
+  return `<tr><td style="background:#ffffff;padding:18px 24px;text-align:left;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:78px;width:auto;border:0;">
   </td></tr>`;
 }
 
@@ -182,7 +182,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    .logo-img{height:40px !important;}
+    .logo-img{height:56px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }

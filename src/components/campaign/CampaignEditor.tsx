@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
@@ -53,6 +53,16 @@ export default function CampaignEditor({
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Preview scaling — the email is hard-coded to 600px so we render the
+  // iframe at the email's NATIVE width and CSS-scale it down to fit the
+  // preview pane. Previously the iframe just stretched to whatever pane
+  // width was available (~520px on typical screens), which is < 600px and
+  // therefore triggered the email's `@media (max-width:600px)` mobile
+  // rules INSIDE the desktop preview. That made the preview disagree with
+  // what real email clients render.
+  const previewPaneRef = useRef<HTMLDivElement | null>(null);
+  const [paneWidth, setPaneWidth] = useState(600);
+  const [iframeBodyHeight, setIframeBodyHeight] = useState(600);
   // Live preview viewport — desktop = full container width (~520px), mobile
   // = 375px (iPhone-class viewport) so the email's @media (max-width:600px)
   // overrides kick in and the user can preview the mobile layout. Default
@@ -91,8 +101,35 @@ export default function CampaignEditor({
   function fitIframe() {
     const f = iframeRef.current;
     if (!f?.contentDocument?.body) return;
-    f.style.height = `${f.contentDocument.body.scrollHeight}px`;
+    // Read the rendered email body height, then drive the iframe height +
+    // outer wrapper height via state. The wrapper height is scaled, the
+    // iframe height is native.
+    setIframeBodyHeight(f.contentDocument.body.scrollHeight);
   }
+
+  // Track the preview pane width so we can scale a 600px iframe down to fit.
+  useEffect(() => {
+    const el = previewPaneRef.current;
+    if (!el) return;
+    const update = () => setPaneWidth(el.clientWidth);
+    update();
+    const obs = new ResizeObserver(update);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Native widths matching the email's own breakpoints. Mobile mode
+  // intentionally renders at 375px (an iPhone-class viewport) so the
+  // email's `@media (max-width:600px)` rules kick in. Desktop renders at
+  // 600px — the email's hard-coded container width — so what you see is
+  // literally what a 600px+ email client renders.
+  const NATIVE_DESKTOP = 600;
+  const NATIVE_MOBILE = 375;
+  const nativeWidth = previewMode === "mobile" ? NATIVE_MOBILE : NATIVE_DESKTOP;
+  // Scale factor — never upscale (cap at 1), only shrink if the pane is
+  // narrower than the native width. Subtract a couple of px so the inner
+  // 1px border in mobile mode doesn't cause a clipped right edge.
+  const previewScale = Math.min(1, Math.max(0, paneWidth - 2) / nativeWidth);
 
   // ── field updates ──────────────────────────────────────────────────────────
   function updateBlock(id: string, patch: Partial<CampaignBlock>) {
@@ -290,13 +327,12 @@ export default function CampaignEditor({
             })}
           </div>
         </div>
-        {/* Navy wrapper so the iframe blends with the email's own navy body —
-            no gray bars at the top/bottom of the preview during the brief
-            window before fitIframe resizes the iframe to its content.
-            In mobile mode, the iframe is centred at 375px (iPhone-class
-            viewport) so the email's @media (max-width:600px) overrides
-            kick in. */}
-        <div style={{
+        {/* Navy wrapper so the iframe blends with the email's own navy body.
+            The iframe is rendered at its NATIVE width (600px desktop, 375px
+            mobile) and CSS-scaled down to fit the pane — that way the
+            email's own @media (max-width:600px) rules trigger at the right
+            moments and the preview matches what real clients render. */}
+        <div ref={previewPaneRef} style={{
           border: "1px solid var(--border)",
           borderRadius: 8,
           overflow: "hidden",
@@ -305,22 +341,35 @@ export default function CampaignEditor({
           display: "flex",
           justifyContent: "center",
         }}>
-          <iframe
-            key={`${htmlKey}-${previewMode}`}
-            ref={iframeRef}
-            srcDoc={html}
-            onLoad={fitIframe}
-            title="Campaign preview"
-            style={{
-              width: previewMode === "mobile" ? 375 : "100%",
-              maxWidth: previewMode === "mobile" ? 375 : "100%",
-              border: previewMode === "mobile" ? "1px solid rgba(255,255,255,0.08)" : "none",
-              borderRadius: previewMode === "mobile" ? 12 : 0,
-              display: "block",
-              minHeight: 600,
-              background: "#01253f",
-            }}
-          />
+          <div style={{
+            // Outer wrapper takes the SCALED size so the navy background
+            // hugs the email and the layout flows correctly below.
+            width: nativeWidth * previewScale,
+            height: iframeBodyHeight * previewScale,
+            minHeight: 600 * previewScale,
+            position: "relative",
+            overflow: "hidden",
+            border: previewMode === "mobile" ? "1px solid rgba(255,255,255,0.08)" : "none",
+            borderRadius: previewMode === "mobile" ? 12 : 0,
+            boxSizing: "border-box",
+          }}>
+            <iframe
+              key={`${htmlKey}-${previewMode}`}
+              ref={iframeRef}
+              srcDoc={html}
+              onLoad={fitIframe}
+              title="Campaign preview"
+              style={{
+                width: nativeWidth,
+                height: Math.max(600, iframeBodyHeight),
+                border: "none",
+                display: "block",
+                background: "#01253f",
+                transform: `scale(${previewScale})`,
+                transformOrigin: "top left",
+              }}
+            />
+          </div>
         </div>
       </div>
 
