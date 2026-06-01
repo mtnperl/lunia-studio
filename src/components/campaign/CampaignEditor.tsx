@@ -49,6 +49,9 @@ export default function CampaignEditor({
   const [klaviyoBusy, setKlaviyoBusy] = useState(false);
   const [klaviyoResult, setKlaviyoResult] = useState<{ editorUrl: string } | null>(null);
   const [klaviyoError, setKlaviyoError] = useState<string | null>(null);
+  const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Live preview viewport — desktop = full container width (~520px), mobile
   // = 375px (iPhone-class viewport) so the email's @media (max-width:600px)
@@ -156,6 +159,40 @@ export default function CampaignEditor({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function copyBlockBody(id: string, body: string) {
+    try {
+      await navigator.clipboard.writeText(body);
+      setCopiedBlockId(id);
+      setTimeout(() => setCopiedBlockId((curr) => (curr === id ? null : curr)), 1500);
+    } catch {
+      setCopiedBlockId(`err:${id}`);
+      setTimeout(() => setCopiedBlockId((curr) => (curr === `err:${id}` ? null : curr)), 1500);
+    }
+  }
+
+  async function suggestPromoBand() {
+    if (promoBusy) return;
+    setPromoBusy(true);
+    setPromoError(null);
+    try {
+      const res = await fetch("/api/campaign/suggest-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, current: content.promoBand ?? "" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.promoBand) {
+        setPromoError(data.error ?? "Suggestion failed");
+        return;
+      }
+      onChange({ ...content, promoBand: data.promoBand });
+    } catch (err) {
+      setPromoError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setPromoBusy(false);
+    }
   }
 
   async function copyHtml() {
@@ -316,10 +353,22 @@ export default function CampaignEditor({
 
         {/* Promo band */}
         <div>
-          <label style={fieldLabel}>Promo band (optional)</label>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Promo band (optional)</label>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={suggestPromoBand}
+              disabled={promoBusy}
+              title="Generate a short promo band line from the campaign topic"
+            >
+              {promoBusy && <Spinner size={10} />}
+              {promoBusy ? "Thinking…" : "✨ Suggest"}
+            </button>
+          </div>
           <input type="text" value={content.promoBand ?? ""}
             placeholder="e.g. MEMORIAL DAY WEEKEND SALE"
             onChange={(e) => onChange({ ...content, promoBand: e.target.value || undefined })} style={input} />
+          {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
         </div>
 
         {/* Blocks */}
@@ -339,6 +388,13 @@ export default function CampaignEditor({
                     <button style={miniBtn(b.align === "left")} onClick={() => updateBlock(b.id, { align: "left" })}>Left</button>
                     <button style={miniBtn(b.align === "center")} onClick={() => updateBlock(b.id, { align: "center" })}>Center</button>
                     <button style={miniBtn(!!b.italic)} onClick={() => updateBlock(b.id, { italic: !b.italic })}>Italic</button>
+                    <button
+                      style={miniBtn(copiedBlockId === b.id)}
+                      onClick={() => copyBlockBody(b.id, b.body)}
+                      title="Copy this block's text to the clipboard"
+                    >
+                      {copiedBlockId === b.id ? "✓" : copiedBlockId === `err:${b.id}` ? "Err" : "📋"}
+                    </button>
                     <button style={miniBtn(false)} onClick={() => removeBlock(b.id)}>✕</button>
                   </div>
                 </div>
