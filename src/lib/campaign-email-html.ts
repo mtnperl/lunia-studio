@@ -64,8 +64,8 @@ function renderTopBanner(text: string): string {
  *  match the AG1-style header. Skipped entirely when no logo url. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
-  return `<tr><td style="background:#ffffff;padding:20px 24px;text-align:left;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:inline-block;height:192px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
+  return `<tr><td style="background:#ffffff;padding:2px 24px;text-align:left;">
+    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:163px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
   </td></tr>`;
 }
 
@@ -184,7 +184,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    .logo-img{height:136px !important;}
+    .logo-img{height:116px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
