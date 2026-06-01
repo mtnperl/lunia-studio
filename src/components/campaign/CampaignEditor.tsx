@@ -63,6 +63,10 @@ export default function CampaignEditor({
   const previewPaneRef = useRef<HTMLDivElement | null>(null);
   const [paneWidth, setPaneWidth] = useState(600);
   const [iframeBodyHeight, setIframeBodyHeight] = useState(600);
+  // True while the iframe is mid-reload (srcDoc changed but onLoad hasn't
+  // fired yet). Drives a soft spinner overlay so the preview never goes
+  // visually blank between edits.
+  const [previewLoading, setPreviewLoading] = useState(true);
   // Live preview viewport — desktop = full container width (~520px), mobile
   // = 375px (iPhone-class viewport) so the email's @media (max-width:600px)
   // overrides kick in and the user can preview the mobile layout. Default
@@ -105,7 +109,15 @@ export default function CampaignEditor({
     // outer wrapper height via state. The wrapper height is scaled, the
     // iframe height is native.
     setIframeBodyHeight(f.contentDocument.body.scrollHeight);
+    setPreviewLoading(false);
   }
+
+  // Whenever the rendered HTML changes (a keystroke, a regeneration), flip
+  // the loading flag back on so the spinner overlay reappears until the
+  // iframe finishes painting and fitIframe → setPreviewLoading(false).
+  useEffect(() => {
+    setPreviewLoading(true);
+  }, [htmlKey]);
 
   // Track the preview pane width so we can scale a 600px iframe down to fit.
   useEffect(() => {
@@ -333,28 +345,31 @@ export default function CampaignEditor({
             email's own @media (max-width:600px) rules trigger at the right
             moments and the preview matches what real clients render. */}
         <div ref={previewPaneRef} style={{
-          border: "1px solid var(--border)",
+          border: previewMode === "mobile" ? "none" : "1px solid var(--border)",
           borderRadius: 8,
           overflow: "hidden",
-          // Desktop: navy bg so the iframe at 600px blends edge-to-edge.
-          // Mobile: light surface bg so the navy doesn't bleed beyond the
-          // 375px frame — only the email itself stays navy.
-          background: previewMode === "mobile" ? "var(--surface)" : "#01253f",
-          padding: previewMode === "mobile" ? "16px 0" : 0,
+          // Desktop: navy bg so the iframe at 600px blends edge-to-edge with
+          // the email body. Mobile: no bg — only the scaled iframe carries
+          // the navy, so there are no navy wings beside the 375px frame.
+          background: previewMode === "mobile" ? "transparent" : "#01253f",
+          padding: previewMode === "mobile" ? "8px 0" : 0,
           display: "flex",
           justifyContent: "center",
+          position: "relative",
         }}>
           <div style={{
-            // Outer wrapper takes the SCALED size so the navy background
-            // hugs the email and the layout flows correctly below.
+            // Outer wrapper takes the SCALED size so the layout below
+            // flows correctly. Mobile gets a subtle outline to read as a
+            // device frame; desktop is flush.
             width: nativeWidth * previewScale,
             height: iframeBodyHeight * previewScale,
             minHeight: 600 * previewScale,
             position: "relative",
             overflow: "hidden",
-            border: previewMode === "mobile" ? "1px solid rgba(255,255,255,0.08)" : "none",
+            border: previewMode === "mobile" ? "1px solid var(--border)" : "none",
             borderRadius: previewMode === "mobile" ? 12 : 0,
             boxSizing: "border-box",
+            background: "#01253f",
           }}>
             <iframe
               key={`${htmlKey}-${previewMode}`}
@@ -370,9 +385,35 @@ export default function CampaignEditor({
                 background: "#01253f",
                 transform: `scale(${previewScale})`,
                 transformOrigin: "top left",
+                opacity: previewLoading ? 0.55 : 1,
+                transition: "opacity 120ms ease-out",
               }}
             />
           </div>
+          {/* Light spinner overlay while the iframe re-renders. Sits on top
+              of the navy wrapper so it's visible during the brief blank
+              window between srcDoc change and onLoad. */}
+          {previewLoading && (
+            <div style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 10px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.92)",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              zIndex: 2,
+              pointerEvents: "none",
+            }}>
+              <Spinner size={11} color="#01253f" />
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#01253f", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Updating
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
