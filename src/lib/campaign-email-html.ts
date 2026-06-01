@@ -63,15 +63,23 @@ function renderTopBanner(text: string): string {
 /** White logo strip below the top banner. Left-aligned, large logo to
  *  match the AG1-style header. Skipped entirely when no logo url.
  *
- *  No crop wrapper anymore — the current logo asset is a tight crop with
- *  negligible internal padding, and email clients (Gmail / Outlook) were
- *  honoring overflow:hidden inconsistently, which clipped the glyph in
- *  prod even though the preview iframe was fine. If a future asset has
- *  baked-in padding, fix the asset (don't reintroduce a CSS crop). */
+ *  The img sits inside an overflow:hidden box that's CROP_TOP+CROP_BOTTOM
+ *  pixels shorter than the natural image, with a matching negative
+ *  margin-top. That trims the asset's own top/bottom whitespace so the
+ *  visible glyph sits closer to the strip edges. Earlier values (26/26)
+ *  clipped the glyph in Gmail/Outlook — keeping it conservative now.
+ *  If the asset is ever replaced with a TRULY zero-padding crop, set
+ *  CROP_TOP / CROP_BOTTOM to 0 so the strip doesn't eat any of the mark. */
 function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
+  const NATURAL = 163;
+  const CROP_TOP = 10;
+  const CROP_BOTTOM = 10;
+  const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
   return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;">
-    <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:163px;width:auto;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
+    <div class="logo-crop" style="height:${wrapperHeight}px;overflow:hidden;line-height:0;">
+      <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${NATURAL}px;width:auto;margin-top:-${CROP_TOP}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
+    </div>
   </td></tr>`;
 }
 
@@ -190,7 +198,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    .logo-img{height:116px !important;}
+    /* Mobile mirrors desktop's small crop — 7px top + 7px bottom. */
+    .logo-img{height:116px !important;margin-top:-7px !important;}
+    .logo-crop{height:102px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
