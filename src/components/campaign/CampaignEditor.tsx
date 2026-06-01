@@ -49,7 +49,7 @@ export default function CampaignEditor({
   const [klaviyoBusy, setKlaviyoBusy] = useState(false);
   const [klaviyoResult, setKlaviyoResult] = useState<{ editorUrl: string } | null>(null);
   const [klaviyoError, setKlaviyoError] = useState<string | null>(null);
-  const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -210,14 +210,19 @@ export default function CampaignEditor({
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
-  async function copyBlockBody(id: string, body: string) {
+  /** Copy any piece of campaign text to the clipboard and flash a ✓ /Err
+   *  indicator next to whichever button kicked it off. The `key` is a
+   *  free-form identifier the caller uses to drive its own UI state —
+   *  e.g. `block:<uuid>` for text blocks, `subj:<index>` for subject
+   *  lines, `preview` for the preview text. */
+  async function copyText(key: string, text: string) {
     try {
-      await navigator.clipboard.writeText(body);
-      setCopiedBlockId(id);
-      setTimeout(() => setCopiedBlockId((curr) => (curr === id ? null : curr)), 1500);
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((curr) => (curr === key ? null : curr)), 1500);
     } catch {
-      setCopiedBlockId(`err:${id}`);
-      setTimeout(() => setCopiedBlockId((curr) => (curr === `err:${id}` ? null : curr)), 1500);
+      setCopiedKey(`err:${key}`);
+      setTimeout(() => setCopiedKey((curr) => (curr === `err:${key}` ? null : curr)), 1500);
     }
   }
 
@@ -438,13 +443,30 @@ export default function CampaignEditor({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {content.subjectLines.map((s, i) => {
               const active = content.selectedSubject === i;
+              const key = `subj:${i}`;
+              const copied = copiedKey === key;
+              const errored = copiedKey === `err:${key}`;
               return (
-                <button key={i} onClick={() => onChange({ ...content, selectedSubject: i })} style={{
-                  textAlign: "left", padding: "8px 10px", borderRadius: 6,
-                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                  background: active ? "var(--accent-dim)" : "var(--bg)",
-                  color: "var(--text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-                }}>{s}</button>
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                  <button
+                    onClick={() => onChange({ ...content, selectedSubject: i })}
+                    style={{
+                      flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 6,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "var(--bg)",
+                      color: "var(--text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                    }}
+                  >{s}</button>
+                  <button
+                    onClick={() => copyText(key, s)}
+                    title="Copy this subject line to the clipboard"
+                    style={{
+                      ...miniBtn(copied), padding: "0 10px", flexShrink: 0,
+                    }}
+                  >
+                    {copied ? "✓" : errored ? "Err" : "📋"}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -452,7 +474,16 @@ export default function CampaignEditor({
 
         {/* Preview text */}
         <div>
-          <label style={fieldLabel}>Preview text</label>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Preview text</label>
+            <button
+              onClick={() => copyText("preview", content.previewText)}
+              title="Copy the preview text to the clipboard"
+              style={miniBtn(copiedKey === "preview")}
+            >
+              {copiedKey === "preview" ? "✓" : copiedKey === "err:preview" ? "Err" : "📋 Copy"}
+            </button>
+          </div>
           <input type="text" value={content.previewText}
             onChange={(e) => onChange({ ...content, previewText: e.target.value })} style={input} />
         </div>
@@ -495,11 +526,11 @@ export default function CampaignEditor({
                     <button style={miniBtn(b.align === "center")} onClick={() => updateBlock(b.id, { align: "center" })}>Center</button>
                     <button style={miniBtn(!!b.italic)} onClick={() => updateBlock(b.id, { italic: !b.italic })}>Italic</button>
                     <button
-                      style={miniBtn(copiedBlockId === b.id)}
-                      onClick={() => copyBlockBody(b.id, b.body)}
+                      style={miniBtn(copiedKey === `block:${b.id}`)}
+                      onClick={() => copyText(`block:${b.id}`, b.body)}
                       title="Copy this block's text to the clipboard"
                     >
-                      {copiedBlockId === b.id ? "✓" : copiedBlockId === `err:${b.id}` ? "Err" : "📋"}
+                      {copiedKey === `block:${b.id}` ? "✓" : copiedKey === `err:block:${b.id}` ? "Err" : "📋"}
                     </button>
                     <button style={miniBtn(false)} onClick={() => removeBlock(b.id)}>✕</button>
                   </div>
