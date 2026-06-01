@@ -1,4 +1,17 @@
-import { getCampaignEmailById, deleteCampaignEmailKv } from "@/lib/kv";
+import { getCampaignEmailById, deleteCampaignEmailKv, getAssets } from "@/lib/kv";
+import type { SavedCampaign } from "@/lib/types";
+
+/** Backfill content fields older saved campaigns may be missing, so the
+ *  current template renders correctly without a manual re-save.
+ *  Only logoUrl right now — topBanner is user-authored, hero CTA reuses
+ *  cta.label which has always been present. */
+async function backfillTemplateFields(campaign: SavedCampaign): Promise<SavedCampaign> {
+  if (campaign.content.logoUrl) return campaign;
+  const assets = await getAssets();
+  const logo = assets.find((a) => a.assetType === "logo");
+  if (!logo) return campaign;
+  return { ...campaign, content: { ...campaign.content, logoUrl: logo.url } };
+}
 
 export async function GET(
   _req: Request,
@@ -10,7 +23,7 @@ export async function GET(
     if (!campaign) {
       return Response.json({ error: "Campaign not found" }, { status: 404 });
     }
-    return Response.json(campaign);
+    return Response.json(await backfillTemplateFields(campaign));
   } catch (err) {
     console.error("[api/campaign/[id]] GET error:", err);
     return Response.json({ error: "Failed to load campaign" }, { status: 500 });
