@@ -74,7 +74,9 @@ function renderLogoStrip(url: string | null | undefined): string {
   if (!url) return "";
   const NATURAL = 163;
   const CROP_TOP = 30;
-  const CROP_BOTTOM = 16;
+  // Bottom is conservative — the asset's bottom padding is < 16px, so the
+  // earlier CROP_BOTTOM=16 was visibly clipping "LIFE" in Gmail/prod.
+  const CROP_BOTTOM = 4;
   const wrapperHeight = NATURAL - CROP_TOP - CROP_BOTTOM;
   // border-top is the divider between the top banner and the logo strip.
   // The preview iframe used to show a hairline naturally from table-cell
@@ -203,9 +205,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
-    /* Mobile mirrors desktop's crop — 21px top, 11px bottom. */
+    /* Mobile mirrors desktop's crop — 21px top, 3px bottom. */
     .logo-img{height:116px !important;margin-top:-21px !important;}
-    .logo-crop{height:84px !important;}
+    .logo-crop{height:92px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
   }
