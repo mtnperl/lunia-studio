@@ -53,6 +53,21 @@ export async function POST(req: Request) {
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
     const isEditorial = stylePreset === 'editorial-scientific';
 
+    // Editorial extras: interpretive lane + paper tone. Both only meaningful
+    // when isEditorial. Defaults preserve the previous behavior:
+    //   • imageDirection "auto" → server rotates lanes per regen
+    //   • paperTone     "white" → original #EFEFF4 cool ivory palette
+    const VALID_DIRECTIONS = ['auto', 'macro', 'environmental', 'abstract', 'symbolic', 'natural'] as const;
+    type EditorialDirection = typeof VALID_DIRECTIONS[number];
+    const imageDirection: EditorialDirection = (VALID_DIRECTIONS as readonly string[]).includes(body.imageDirection)
+      ? (body.imageDirection as EditorialDirection)
+      : 'auto';
+    const VALID_PAPER_TONES = ['white', 'warm'] as const;
+    type PaperTone = typeof VALID_PAPER_TONES[number];
+    const paperTone: PaperTone = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
+      ? (body.paperTone as PaperTone)
+      : 'white';
+
     // Parse the structured hook image spec early — we need it both for the
     // ref-attachment decision and for the prompt assembly below. New shape
     // uses `concept` + optional `overlay`. Legacy fields are accepted for
@@ -159,6 +174,8 @@ export async function POST(req: Request) {
           subline:  hookSubline,
           topic:    topic,
           hasRefs:  referenceImageUrls.length > 0,
+          direction: imageDirection,
+          paperTone,
         })
       : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
 
@@ -202,6 +219,57 @@ export async function POST(req: Request) {
 // Content-aware structured prompt assembled from Claude's hookImageSpec + the
 // chosen hook's headline / subline. Brand chrome (palette, fonts, references,
 // guardrails) is fixed scaffolding shared by every editorial hook.
+// Editorial interpretive lanes — when the user picks "auto", we rotate
+// through these per regen so gpt-image-2 stops converging on a single
+// composition for a given concept. Lane names match the EDITORIAL_SYSTEM_PROMPT
+// rotator in regenerate-image-prompt/route.ts for consistency.
+const EDITORIAL_LANES: Record<
+  'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural',
+  string
+> = {
+  macro:
+    "Direction — MACRO / CLOSE-UP: render this as an extreme close-up of a single physical object or texture that embodies the concept. Tight crop, shallow depth of field, tactile surface detail. No wide environments.",
+  environmental:
+    "Direction — ENVIRONMENTAL / WIDE: render this as a calm, lived-in interior or landscape scene at scale. Architecture, daylight through a window, soft ambient depth. The viewer feels like they walked into the room. No tight close-ups.",
+  abstract:
+    "Direction — ABSTRACT / GRAPHIC: render this as a clean geometric or shape-driven editorial composition. Forms, planes, gradients, negative space. Minimal, modern, almost poster-like. No literal photography of objects.",
+  symbolic:
+    "Direction — SYMBOLIC / SURREAL: render this as an unexpected juxtaposition or visual metaphor — two unrelated objects in dialogue, or a familiar object behaving in a quietly surprising way. Restrained surrealism, never busy.",
+  natural:
+    "Direction — NATURAL / ORGANIC: render this through botany, biology, mineral or other organic material — plant cross-sections, water, stone, skin, fibre — textures that mirror the concept. No man-made objects in the focal area.",
+};
+
+function pickEditorialLane(direction: string): { key: keyof typeof EDITORIAL_LANES; instruction: string } {
+  if (direction in EDITORIAL_LANES) {
+    const key = direction as keyof typeof EDITORIAL_LANES;
+    return { key, instruction: EDITORIAL_LANES[key] };
+  }
+  // auto / unknown → random lane each call
+  const keys = Object.keys(EDITORIAL_LANES) as (keyof typeof EDITORIAL_LANES)[];
+  const key = keys[Math.floor(Math.random() * keys.length)];
+  return { key, instruction: EDITORIAL_LANES[key] };
+}
+
+// Paper-tone palette block. `white` keeps the original #EFEFF4 cool ivory.
+// `warm` ships the Aesop-style #F4ECE0 warm ivory the user asked for.
+function paperToneBlock(tone: 'white' | 'warm'): string {
+  if (tone === 'warm') {
+    return [
+      "PALETTE & LIGHT — STRICT:",
+      "  • Background / paper / wall tone: #EFE1C8 (warm ecru cream) filling the entire frame edge-to-edge. Uncoated cream paper / lime-washed plaster wall feel — the kind of surface that absorbs and re-emits warm light. Highlights may tip toward #F3E7D0; shadows fall to #E2D2B0.",
+      "  • Light quality: warm golden late-afternoon / candle-lit light, the kind that pours through gauzy curtains at the end of the day. Visible light direction (window glow on one side, soft falloff into deeper warm shadow on the other). This is the defining aesthetic — NOT clinical daylight on warm paper, but warm light on warm paper.",
+      "  • Text: #01253f (rich navy) — the only chromatic anchor.",
+      "  • Subject treatment: skin, hair, fabric, linen, all gently warmed by the ambient light. Bedding and pillow read as cream linen, not white. Subjects feel inhabited by the light, not lit from a separate clinical source.",
+    ].join("\n");
+  }
+  return [
+    "PALETTE — STRICT:",
+    "  • Background: #EFEFF4 (clean neutral ivory) filling the entire frame edge-to-edge. NOT warm cream, NOT yellow-tinted, NOT golden, NOT desaturated grey-blue. A clean modern ivory like premium uncoated magazine paper.",
+    "  • Text: #01253f (rich navy) — the only chromatic anchor.",
+    "  • Natural subject colours are fine but must live comfortably inside this restrained ivory + navy palette. Skin, fabric and natural textures should read true to life, not pushed warm and not pushed cool.",
+  ].join("\n");
+}
+
 function buildEditorialHookPrompt(args: {
   spec: {
     concept?: string;
@@ -215,8 +283,10 @@ function buildEditorialHookPrompt(args: {
   subline: string;
   topic?: string;
   hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
+  direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
+  paperTone: 'white' | 'warm';
 }): string {
-  const { spec, headline, subline, topic } = args;
+  const { spec, headline, subline, topic, direction, paperTone } = args;
 
   // Concept-only framework: hand gpt-image-2 the topic concept + the exact
   // text to bake and let it choose the visual. If the saved spec is from
@@ -228,9 +298,21 @@ function buildEditorialHookPrompt(args: {
     return legacy || topic || "the science of sleep and overnight recovery";
   })();
 
+  // Interpretive lane — the missing variation lever. Same concept, same
+  // chrome, but the lane sets the camera/composition lens so each regen
+  // actually paints something different.
+  const lane = pickEditorialLane(direction);
+
   // Tiny variation nonce — each call should produce a genuinely different
   // visual even with identical concept + text. Plain-language seed phrase.
   const variationNonce = Math.random().toString(36).slice(2, 8);
+
+  // Background hex referenced in guardrail copy below so the "no warm cream"
+  // line doesn't contradict the warm-paper palette when that tone is chosen.
+  const paperHex = paperTone === 'warm' ? '#EFE1C8' : '#EFEFF4';
+  const offToneGuard = paperTone === 'warm'
+    ? "NO cool daylight cast on the warm paper — the LIGHT itself must be warm. NO clinical or fluorescent light. NO pure yellow, NO orange, NO golden-amber-dominant, NO pink. The warmth is late-afternoon / candle-lit on cream paper, never neon or sunset-saturated."
+    : "NO desaturated grey-blue cast and NO warm cream / golden cast. Keep it clean neutral ivory.";
 
   return [
     "Create an editorial poster image for Lunia Life, a sleep & longevity brand.",
@@ -239,7 +321,9 @@ function buildEditorialHookPrompt(args: {
     topic ? `Topic: ${topic}.` : "",
     `Concept: ${concept}`,
     "",
-    "You — the image engine — interpret this concept visually as you see fit. The brief gives you the WHAT, not the HOW. Choose your own subject, composition, lighting, camera angle, props and styling so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept.",
+    lane.instruction,
+    "",
+    "Within that direction, you — the image engine — still choose subject, composition, lighting, props and styling freely so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept.",
     "",
     // ── Mandatory baked text (the only prescriptive part) ──
     "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",
@@ -249,10 +333,7 @@ function buildEditorialHookPrompt(args: {
     "Text colour: rich navy (#01253f). The navy text is the only chromatic anchor in the image. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines.",
     "",
     // ── Palette (strict) ──
-    "PALETTE — STRICT:",
-    "  • Background: #EFEFF4 (clean neutral ivory) filling the entire frame edge-to-edge. NOT warm cream, NOT yellow-tinted, NOT golden, NOT desaturated grey-blue. A clean modern ivory like premium uncoated magazine paper.",
-    "  • Text: #01253f (rich navy) — the only chromatic anchor.",
-    "  • Natural subject colours are fine but must live comfortably inside this restrained ivory + navy palette. Skin, fabric and natural textures should read true to life, not pushed warm and not pushed cool.",
+    paperToneBlock(paperTone),
     "",
     // ── Hard guardrails ──
     "HARD GUARDRAILS (do not violate):",
@@ -260,9 +341,9 @@ function buildEditorialHookPrompt(args: {
     "  • NO product, NO supplement bottle, capsule, pill, tincture, jar, dropper, amber glass, or any packaging.",
     "  • NO additional text beyond the headline / body / overlay listed above. No labels, captions, signage, UI, quotes, or price tags.",
     "  • NO chromatic accents beyond ivory + navy. NO teal, sage, mint, mustard, orange, pink, purple, gold or heavy saturation.",
-    "  • NO desaturated grey-blue cast and NO warm cream / golden cast. Keep it clean neutral ivory.",
+    `  • ${offToneGuard}`,
     "",
-    `Photoreal, magazine-cover quality, calm and contemplative. (variation seed: ${variationNonce})`,
+    `Photoreal, magazine-cover quality, calm and contemplative. (paper: ${paperHex}, lane: ${lane.key}, variation seed: ${variationNonce})`,
   ].filter(Boolean).join("\n");
 }
 

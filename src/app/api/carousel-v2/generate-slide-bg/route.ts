@@ -25,9 +25,11 @@ function slideMentionsProduct(text: string): boolean {
  *  Lunia Restore amber bottle becomes the focal subject (still-life on linen
  *  / stone / pedestal). Otherwise, we render an editorial scene that matches
  *  the slide's subject (calm bedroom, hands, surface) with NO product. */
-function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string; includeBottle: boolean }): string {
+function buildEditorialBgPrompt(args: { headline: string; body: string; topic?: string; includeBottle: boolean; paperTone: 'white' | 'warm' }): string {
   const subject = `${args.headline}. ${args.body}`.slice(0, 240);
-  const palette = 'soft pearl ivory (#EFEFF4) base filling the frame edge-to-edge, with rich navy (#01253f) reserved for any printed/text accents and slate blue (#2C3F51) limited to deepest shadow tones only. Aesthetic: natural warm-ivory editorial wellness photography — gentle window daylight, subjects in their natural colours but bathed in pearl-ivory light. Think Aesop / Hims / Goop ivory editorial — warm pearl ivory NOT cool grey, NOT desaturated black-and-white. Forbidden chromatic accents: NO teal, NO sage green, NO mint, NO mustard yellow, NO orange, NO pink, NO purple, NO heavy saturation. Natural muted earth tones from the subject itself are fine.';
+  const palette = args.paperTone === 'warm'
+    ? 'warm ecru cream (#EFE1C8) base filling the frame edge-to-edge — uncoated cream paper / lime-washed plaster wall feel, the kind of surface that absorbs and re-emits warm light. Highlights may tip toward #F3E7D0, shadows fall to #E2D2B0. Light quality: warm golden late-afternoon / candle-lit light through gauzy curtains, visible light direction (window glow on one side, soft falloff into deeper warm shadow on the other). The LIGHT itself is warm, not just the paper. Rich navy (#01253f) is reserved for any printed/text accents. Subjects (skin, hair, fabric, linen) are gently warmed by the ambient light — bedding reads as cream linen, not white. NOT clinical daylight on warm paper. NOT yellow, NOT orange, NOT golden-amber-dominant, NOT pink, NOT cool grey. Forbidden chromatic accents: NO teal, NO sage, NO mint, NO mustard, NO orange, NO pink, NO purple, NO heavy saturation. Aesthetic reference: warm Aesop catalogue / candle-lit editorial.'
+    : 'soft pearl ivory (#EFEFF4) base filling the frame edge-to-edge, with rich navy (#01253f) reserved for any printed/text accents and slate blue (#2C3F51) limited to deepest shadow tones only. Aesthetic: natural warm-ivory editorial wellness photography — gentle window daylight, subjects in their natural colours but bathed in pearl-ivory light. Think Aesop / Hims / Goop ivory editorial — warm pearl ivory NOT cool grey, NOT desaturated black-and-white. Forbidden chromatic accents: NO teal, NO sage green, NO mint, NO mustard yellow, NO orange, NO pink, NO purple, NO heavy saturation. Natural muted earth tones from the subject itself are fine.';
 
   if (args.includeBottle) {
     return [
@@ -111,8 +113,12 @@ export async function POST(req: Request) {
     // product (mentions an ingredient, dose, the brand, etc.) — otherwise the
     // bottle would feel forced into unrelated topics.
     if (stylePreset === 'editorial-scientific') {
+      const VALID_PAPER_TONES = ['white', 'warm'] as const;
+      const paperTone: 'white' | 'warm' = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
+        ? (body.paperTone as 'white' | 'warm')
+        : 'white';
       const includeBottle = slideMentionsProduct(`${headline} ${slideBody} ${topic ?? ''}`);
-      const editorialPrompt = buildEditorialBgPrompt({ headline, body: slideBody, topic, includeBottle });
+      const editorialPrompt = buildEditorialBgPrompt({ headline, body: slideBody, topic, includeBottle, paperTone });
 
       let referenceImageUrls: string[] = [];
       if (includeBottle) {
@@ -137,7 +143,7 @@ export async function POST(req: Request) {
         quality: 'medium',
         referenceImageUrls,
       });
-      console.log(`[v2/generate-slide-bg] editorial bottle=${includeBottle} refs=${referenceImageUrls.length} prompt="${editorialPrompt.slice(0, 120)}..."`);
+      console.log(`[v2/generate-slide-bg] editorial bottle=${includeBottle} refs=${referenceImageUrls.length} paper=${paperTone} prompt="${editorialPrompt.slice(0, 120)}..."`);
       return Response.json({ url });
     }
 

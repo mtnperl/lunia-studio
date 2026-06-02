@@ -342,6 +342,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Regenerate-only override: "auto" lets the server pick (Recraft default).
   // "gpt-image-2" forces OpenAI GPT Image 2 via fal for higher fidelity / text rendering.
   const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2">("auto");
+  // Editorial Scientific extras. Session-only — not persisted on the carousel.
+  // "auto" lets the server rotate the interpretive lane per regen so the same
+  // hook concept stops painting the same composition every time.
+  const [imageDirection, setImageDirection] = useState<
+    "auto" | "macro" | "environmental" | "abstract" | "symbolic" | "natural"
+  >("auto");
+  // "white" = #EFEFF4 (current behavior). "warm" = #EFE1C8 warm ecru ivory.
+  // Only affects AI-generated images (hook + content slide bgs). The rendered
+  // slide backgrounds stay on slideBgColor — intentionally untouched.
+  const [paperTone, setPaperTone] = useState<"white" | "warm">("white");
 
   // Hook image history — newest first. Populated whenever a regenerate
   // displaces the current image, so the user can revert to any prior take.
@@ -458,6 +468,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
         ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+        ...(isEditorial ? { imageDirection, paperTone } : {}),
       }),
     })
       .then(async (r) => {
@@ -476,7 +487,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       .finally(() => { if (!aborted) setFullPromptLoading(false); });
     return () => { aborted = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview]);
+  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone]);
 
   // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
@@ -1128,6 +1139,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
           ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+          ...(isEditorial ? { imageDirection, paperTone } : {}),
           // If the user edited the full prompt in the "Edit hook-image prompt"
           // panel, send that verbatim — bypasses server-side assembly.
           ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
@@ -1294,6 +1306,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           slideBgColor,
           imageAspect: reelsMode ? "9:16" : "4:5",
           stylePreset,
+          ...(isEditorial ? { paperTone } : {}),
         }),
       });
       // Capture the body as text first so we can surface useful errors even when the response isn't JSON (Vercel auth wall, framework 404 page, etc.).
@@ -1877,6 +1890,54 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 );
               })}
             </div>
+            {isEditorial && (
+              <>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Direction</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {([
+                    { value: "auto",          label: "Auto" },
+                    { value: "macro",         label: "Macro" },
+                    { value: "environmental", label: "Environmental" },
+                    { value: "abstract",      label: "Abstract" },
+                    { value: "symbolic",      label: "Symbolic" },
+                    { value: "natural",       label: "Natural" },
+                  ] as const).map((opt) => {
+                    const active = imageDirection === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setImageDirection(opt.value)} style={{
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>{opt.label}</button>
+                    );
+                  })}
+                </div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Paper tone</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                  {([
+                    { value: "white", label: "White ivory", swatch: "#EFEFF4" },
+                    { value: "warm",  label: "Warm ivory",  swatch: "#EFE1C8" },
+                  ] as const).map((opt) => {
+                    const active = paperTone === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setPaperTone(opt.value)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>
+                        <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             {/* Previous hook images — click any thumb to revert. Session-only. */}
             {hookImageHistory.length > 0 && (
               <div style={{ marginBottom: 10 }}>
@@ -3390,6 +3451,54 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 );
               })}
             </div>
+            {isEditorial && (
+              <>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Direction</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {([
+                    { value: "auto",          label: "Auto" },
+                    { value: "macro",         label: "Macro" },
+                    { value: "environmental", label: "Environmental" },
+                    { value: "abstract",      label: "Abstract" },
+                    { value: "symbolic",      label: "Symbolic" },
+                    { value: "natural",       label: "Natural" },
+                  ] as const).map((opt) => {
+                    const active = imageDirection === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setImageDirection(opt.value)} style={{
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>{opt.label}</button>
+                    );
+                  })}
+                </div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Paper tone</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                  {([
+                    { value: "white", label: "White ivory", swatch: "#EFEFF4" },
+                    { value: "warm",  label: "Warm ivory",  swatch: "#EFE1C8" },
+                  ] as const).map((opt) => {
+                    const active = paperTone === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setPaperTone(opt.value)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>
+                        <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             {/* Previous hook images — click any thumb to revert. Session-only. */}
             {hookImageHistory.length > 0 && (
               <div style={{ marginBottom: 10 }}>
