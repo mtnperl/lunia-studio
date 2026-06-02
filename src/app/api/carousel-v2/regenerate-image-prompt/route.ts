@@ -21,10 +21,32 @@ export async function POST(req: Request) {
     const guidelines: string = (body.guidelines ?? "").slice(0, 400); // cap to prevent prompt injection
     const currentPrompt: string = body.currentPrompt ?? "";
     const moodId: string = typeof body.moodId === "string" ? body.moodId : "";
+    // Subject lock — orthogonal to mood. When "person", we flip the editorial
+    // system prompt's default "No people" rule to a hard "person required"
+    // rule so the suggested concepts match what /generate-image will render.
+    const VALID_IMAGE_SUBJECTS = ['auto', 'person', 'still-life', 'environment'] as const;
+    type ImageSubject = typeof VALID_IMAGE_SUBJECTS[number];
+    const imageSubject: ImageSubject = (VALID_IMAGE_SUBJECTS as readonly string[]).includes(body.imageSubject)
+      ? (body.imageSubject as ImageSubject)
+      : 'auto';
 
     if (!topic && !headline) {
       return Response.json({ error: "topic or headline required" }, { status: 400 });
     }
+
+    // Subject-lock overrides for the editorial system prompt. "auto" preserves
+    // the prior no-people rule. The other three swap in hard requirements so
+    // the suggested concepts agree with what /generate-image will render.
+    const SUBJECT_RULE: Record<ImageSubject, string> = {
+      auto:
+        "- No people, no faces, no text, no logos",
+      person:
+        "- A single human element MUST appear in the focal area. Partial framing only: a hand on a temple, a hand on linen bedding, a back-of-head silhouette against a window, an over-the-shoulder crop, or an editorial close-crop of a closed-eye face. Never a full studio portrait. Never direct eye contact. Never a smiling stock model. Skin reads natural. No text, no logos.",
+      'still-life':
+        "- Object-only still life. NO human figures, NO hands, NO faces, NO silhouettes, NO body parts in the frame. No text, no logos.",
+      environment:
+        "- Wide architectural interior or landscape scene at scale. A person is permitted but optional, never the focal subject — if included, a small partial silhouette or back-of-frame detail only. No text, no logos.",
+    };
 
     const EDITORIAL_SYSTEM_PROMPT = `You are a top-tier visual creative director writing image generation prompts for Recraft V3 (realistic_image photography style).
 
@@ -40,7 +62,7 @@ Direction types to use (pick three different ones):
 - NATURAL/ORGANIC: nature, biology, organic textures that mirror the concept
 
 Rules (hard):
-- No people, no faces, no text, no logos
+${SUBJECT_RULE[imageSubject]}
 - Ultra-sharp, editorial, premium brand aesthetic
 - Max 55 words per prompt
 - Output ONLY a JSON array with exactly 3 strings — no explanation, no labels, no markdown

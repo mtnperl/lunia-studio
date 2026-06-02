@@ -68,6 +68,16 @@ export async function POST(req: Request) {
       ? (body.paperTone as PaperTone)
       : 'white';
 
+    // Subject lock — orthogonal to Direction. "auto" preserves prior behavior
+    // (engine chooses). "person" hard-requires a partial-frame human element;
+    // "still-life" forbids humans; "environment" permits but does not require
+    // a person. Defaults to "auto" so unrelated callers stay unchanged.
+    const VALID_IMAGE_SUBJECTS = ['auto', 'person', 'still-life', 'environment'] as const;
+    type ImageSubject = typeof VALID_IMAGE_SUBJECTS[number];
+    const imageSubject: ImageSubject = (VALID_IMAGE_SUBJECTS as readonly string[]).includes(body.imageSubject)
+      ? (body.imageSubject as ImageSubject)
+      : 'auto';
+
     // Parse the structured hook image spec early — we need it both for the
     // ref-attachment decision and for the prompt assembly below. New shape
     // uses `concept` + optional `overlay`. Legacy fields are accepted for
@@ -176,6 +186,7 @@ export async function POST(req: Request) {
           hasRefs:  referenceImageUrls.length > 0,
           direction: imageDirection,
           paperTone,
+          imageSubject,
         })
       : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
 
@@ -270,6 +281,18 @@ function paperToneBlock(tone: 'white' | 'warm'): string {
   ].join("\n");
 }
 
+// Subject-lock instruction blocks. Injected into the editorial hook prompt
+// after the lane instruction so the lane sets the camera/composition and the
+// subject sets WHO/WHAT must appear. "auto" injects nothing — current behavior.
+const SUBJECT_BLOCKS: Record<'person' | 'still-life' | 'environment', string> = {
+  person:
+    "SUBJECT (HARD REQUIREMENT — overrides any 'no people' rule the lane carries): a single human element MUST appear in the focal area of the composition. Partial framing only — a hand resting on a temple, a hand on linen bedding, a back-of-head silhouette against a window, an over-the-shoulder crop, or an editorial close-crop of a closed-eye face. Never a full studio portrait. Never direct eye contact with the camera. Never a smiling stock model. The person is a quiet, real, contemplative detail inside the editorial frame, not the spectacle. Skin reads natural — never airbrushed, never glossy, never pushed warm or cool beyond the palette. Their presence anchors the science concept emotionally.",
+  'still-life':
+    "SUBJECT (HARD REQUIREMENT): an object-only still life. NO human figures, NO hands, NO faces, NO silhouettes, NO body parts in the frame. Build the composition from inanimate subjects — linen, ceramic, glass, paper, fabric, plant matter, stone, water, light on surface. The science concept reads through object choice and light, not through a person.",
+  environment:
+    "SUBJECT (HARD REQUIREMENT): a wide architectural interior or landscape scene at scale — a bedroom at dawn, a kitchen by a window, a quiet corridor with daylight, an open landscape. A person is permitted but optional, and never the focal subject. If included, they appear as a small partial silhouette, back-of-frame detail, or distant figure. Privilege architecture, daylight direction, ambient depth, and negative space.",
+};
+
 function buildEditorialHookPrompt(args: {
   spec: {
     concept?: string;
@@ -285,8 +308,9 @@ function buildEditorialHookPrompt(args: {
   hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
   direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
   paperTone: 'white' | 'warm';
+  imageSubject: 'auto' | 'person' | 'still-life' | 'environment';
 }): string {
-  const { spec, headline, subline, topic, direction, paperTone } = args;
+  const { spec, headline, subline, topic, direction, paperTone, imageSubject } = args;
 
   // Concept-only framework: hand gpt-image-2 the topic concept + the exact
   // text to bake and let it choose the visual. If the saved spec is from
@@ -314,6 +338,8 @@ function buildEditorialHookPrompt(args: {
     ? "NO cool daylight cast on the warm paper — the LIGHT itself must be warm. NO clinical or fluorescent light. NO pure yellow, NO orange, NO golden-amber-dominant, NO pink. The warmth is late-afternoon / candle-lit on cream paper, never neon or sunset-saturated."
     : "NO desaturated grey-blue cast and NO warm cream / golden cast. Keep it clean neutral ivory.";
 
+  const subjectBlock = imageSubject !== 'auto' ? SUBJECT_BLOCKS[imageSubject] : '';
+
   return [
     "Create an editorial poster image for Lunia Life, a sleep & longevity brand.",
     "",
@@ -322,8 +348,11 @@ function buildEditorialHookPrompt(args: {
     `Concept: ${concept}`,
     "",
     lane.instruction,
+    subjectBlock,
     "",
-    "Within that direction, you — the image engine — still choose subject, composition, lighting, props and styling freely so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept.",
+    subjectBlock
+      ? "Within that direction and subject lock, you — the image engine — still choose composition, lighting, props and styling freely so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept."
+      : "Within that direction, you — the image engine — still choose subject, composition, lighting, props and styling freely so long as the result reads as a calm, contemplative editorial poster for a sleep & longevity brand. Each generation should feel like a fresh take on the concept.",
     "",
     // ── Mandatory baked text (the only prescriptive part) ──
     "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",

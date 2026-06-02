@@ -348,6 +348,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [imageDirection, setImageDirection] = useState<
     "auto" | "macro" | "environmental" | "abstract" | "symbolic" | "natural"
   >("auto");
+  // Subject lock — orthogonal to Direction. "auto" lets the engine choose;
+  // "person" hard-requires a partial-frame human element (hand on temple,
+  // silhouette, back-of-head, closed-eye close-crop — never a full portrait).
+  // "still-life" forbids humans, "environment" allows but does not require one.
+  // Sent to /generate-image and /regenerate-image-prompt so suggestions and
+  // final renders both respect the choice.
+  const [imageSubject, setImageSubject] = useState<
+    "auto" | "person" | "still-life" | "environment"
+  >("auto");
   // "white" = #EFEFF4 (current behavior). "warm" = #EFE1C8 warm ecru ivory.
   // Only affects AI-generated images (hook + content slide bgs). The rendered
   // slide backgrounds stay on slideBgColor — intentionally untouched.
@@ -468,7 +477,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
         ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-        ...(isEditorial ? { imageDirection, paperTone } : {}),
+        ...(isEditorial ? { imageDirection, paperTone, imageSubject } : {}),
       }),
     })
       .then(async (r) => {
@@ -487,7 +496,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       .finally(() => { if (!aborted) setFullPromptLoading(false); });
     return () => { aborted = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone]);
+  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone, imageSubject]);
 
   // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
@@ -1113,6 +1122,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             currentPrompt: finalPrompt,
             guidelines: imageGuidelines.trim(),
             ...(moodId ? { moodId } : {}),
+            ...(isEditorial ? { imageSubject } : {}),
           }),
         });
         const promptData = await promptRes.json();
@@ -1139,7 +1149,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
           ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-          ...(isEditorial ? { imageDirection, paperTone } : {}),
+          ...(isEditorial ? { imageDirection, paperTone, imageSubject } : {}),
           // If the user edited the full prompt in the "Edit hook-image prompt"
           // panel, send that verbatim — bypasses server-side assembly.
           ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
@@ -1200,6 +1210,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           currentPrompt: currentImagePrompt,
           guidelines: imageGuidelines.trim(),
           ...(moodId ? { moodId } : {}),
+          ...(isEditorial ? { imageSubject } : {}),
         }),
       });
       const data = await res.json();
@@ -1229,6 +1240,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           subline: hook.subline,
           // No currentPrompt — so Claude generates fresh divergent concepts
           ...(moodId ? { moodId } : {}),
+          ...(isEditorial ? { imageSubject } : {}),
         }),
       });
       const data = await res.json();
@@ -1905,6 +1917,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     const active = imageDirection === opt.value;
                     return (
                       <button key={opt.value} onClick={() => setImageDirection(opt.value)} style={{
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>{opt.label}</button>
+                    );
+                  })}
+                </div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Subject</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {([
+                    { value: "auto",        label: "Auto" },
+                    { value: "person",      label: "Person" },
+                    { value: "still-life",  label: "Still life" },
+                    { value: "environment", label: "Environment" },
+                  ] as const).map((opt) => {
+                    const active = imageSubject === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => { setImageSubject(opt.value); setSuggestedPrompts([]); }} style={{
                         padding: "4px 10px", borderRadius: 20,
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
@@ -3466,6 +3498,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     const active = imageDirection === opt.value;
                     return (
                       <button key={opt.value} onClick={() => setImageDirection(opt.value)} style={{
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>{opt.label}</button>
+                    );
+                  })}
+                </div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Subject</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {([
+                    { value: "auto",        label: "Auto" },
+                    { value: "person",      label: "Person" },
+                    { value: "still-life",  label: "Still life" },
+                    { value: "environment", label: "Environment" },
+                  ] as const).map((opt) => {
+                    const active = imageSubject === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => { setImageSubject(opt.value); setSuggestedPrompts([]); }} style={{
                         padding: "4px 10px", borderRadius: 20,
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
