@@ -42,6 +42,40 @@ const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "personal-story": "Personal-story tone: write as if a real person is sharing their journey with sleep problems and Lunia.",
   "did-you-know": "Did-you-know tone: open every hook headline with 'DID YOU KNOW' followed by a surprising, specific fact about the topic. The subline deepens the curiosity with a second layer of intrigue. Make the reader feel they have been missing something important. Every content slide should also open with a surprising revelation.",
   "smart-tip": "Smart-tip tone: frame the hook as 'BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]'. Be specific with numbers, durations, or mechanisms. The subline adds the science backing. Content slides should each deliver one actionable, evidence-based tip.",
+  "paradox": `Paradox tone: open the hook with a frustrating contradiction the reader lives every day. They do the right thing and still get the wrong result, and the hook names that contradiction.
+HOOK FORMULA: "Why are you [still experiencing X] when you [just did Y]?"
+  X = a real symptom the reader feels (exhausted, wired at midnight, foggy, waking at 3am, puffy, unrested).
+  Y = something the reader genuinely does and feels should have earned the opposite result (slept a full 8 hours, went to bed early, cut out caffeine, slept through the night).
+  The tension between X and Y IS the hook. If Y is weak or generic there is no paradox. Pair a real symptom with a real, earned behavior. Second person. Present tense. Specific. One sentence. Headline still UPPERCASE, max 8 words.
+Approved calibration examples (do not reuse verbatim every time):
+  "Why are you exhausted all day when you slept a full 8 hours?"
+  "Why do you wake up at 3am every night even when you go to bed early?"
+  "Why are you still tired even though you sleep through the night?"
+  "Why do you feel wired at midnight when you were exhausted by 9pm?"
+STRUCTURE OVERRIDE (mandatory — this OVERRIDES the v2 SURPRISE/MECHANISM/ACTION arc and any other slide-role rules below):
+  Hook slide = the paradox question, nothing else.
+  Content slide 1 = VALIDATION. Confirm the paradox is real and common so the reader feels seen. No mechanism yet, no fix yet. Tie back to the exact symptom in the hook.
+  Content slide 2 = REVEAL + MECHANISM. Name the hidden reason the paradox happens (usually sleep quality vs quantity, cortisol timing, fragmented deep sleep, or a nervous system still activated) and explain the mechanism in plain language, tied to the exact symptom from the hook. This is the turn the hook promised.
+  Content slide 3 = BRIDGE. How the right inputs support that mechanism (magnesium bisglycinate, L-theanine, or apigenin as relevant). Mechanism-led, never a cure claim.
+  CTA = soft, calm recommendation. Not a hard sell.
+HARD RULE: the resolution must answer the SPECIFIC paradox opened in the hook. If the hook is about waking at 3am, the carousel resolves 3am waking, not sleep in general. Do not open one loop and close a different one.
+VOICE: no em dashes. Maximum one exclamation mark across the whole carousel, prefer zero. Never use the "X isn't Z, it's Y" sentence structure. Education-first, mechanism before product, respect the reader's intelligence. Caption MUST end with exactly: "For more sleep science content follow lunialife"`,
+  "tell": `Tell tone: open the hook with a hyper-specific private experience the reader secretly has and assumed was unique to them. The recognition is the lure — "that is exactly me, what does it mean?" — and the carousel exists to explain that exact tell.
+HOOK FORMULA: "If you [oddly specific private experience], here is what your body is actually doing."
+  The experience must be specific enough to feel personal but common enough that a real share of viewers recognise themselves. Too generic ("if you are tired") kills recognition. Too niche kills reach. Aim specific-but-widespread. Frame the second half as a reveal about physiology, not a label or diagnosis. Second person. Present tense. One sentence. Headline still UPPERCASE, max 8 words.
+Approved calibration examples (do not reuse verbatim every time):
+  "If you get a second wind at 11pm, your cortisol is on the wrong schedule."
+  "If you fall asleep fine but wake up wired at 4am, this is for you."
+  "If you wake up and check the clock at the same time every night, read this."
+  "If you can only fall asleep with noise on, here is what is going on."
+STRUCTURE OVERRIDE (mandatory — this OVERRIDES the v2 SURPRISE/MECHANISM/ACTION arc and any other slide-role rules below):
+  Hook slide = the specific tell, nothing else.
+  Content slide 1 = RECOGNITION. Confirm this is real and more common than the reader thinks so they feel seen rather than broken. No mechanism yet.
+  Content slide 2 = REVEAL + MECHANISM. Decode what the tell actually signals (usually cortisol timing, nervous system activation, or fragmented/shallow sleep) and explain the mechanism in plain language, always tied back to the exact tell from the hook.
+  Content slide 3 = BRIDGE. How the right inputs support that mechanism (magnesium bisglycinate, L-theanine, or apigenin as relevant). Mechanism-led, never a cure claim.
+  CTA = soft, calm recommendation. Not a hard sell.
+HARD RULE: the carousel must decode the SPECIFIC tell from the hook. If the tell is the 11pm second wind, the carousel explains the 11pm second wind, not sleep in general.
+VOICE: no em dashes. Maximum one exclamation mark across the whole carousel, prefer zero. Never use the "X isn't Z, it's Y" sentence structure. Education-first, mechanism before product, respect the reader's intelligence. Caption MUST end with exactly: "For more sleep science content follow lunialife"`,
 };
 
 /**

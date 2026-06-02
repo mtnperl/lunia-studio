@@ -48,7 +48,9 @@ export type HookTone =
   | "science-backed"
   | "personal-story"
   | "did-you-know"
-  | "smart-tip";
+  | "smart-tip"
+  | "paradox"
+  | "tell";
 export type CarouselFormat = "standard" | "engagement" | "did_you_know";
 export type EngagementSubType = "reveal" | "diagnostic";
 

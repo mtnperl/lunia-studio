@@ -20,6 +20,8 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
   { value: "personal-story", label: "Personal story", description: "Relatable journey with Lunia" },
   // "did-you-know" tone is intentionally hidden — superseded by the did_you_know CarouselFormat.
   { value: "smart-tip", label: "Smart tip", description: "By doing X for Y you will improve..." },
+  { value: "paradox", label: "The Paradox (did everything right, still feel wrong)", description: "Why are you X when you Y? — names the contradiction" },
+  { value: "tell", label: "The Tell (oddly specific recognition)", description: "If you do this oddly specific thing, here is what it means" },
 ];
 
 const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: string; description: string }[] = [
