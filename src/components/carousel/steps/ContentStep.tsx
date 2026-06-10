@@ -441,9 +441,50 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
         </div>
       ))}
 
+      {/* Takeaway (payoff slide) — standard format only, when the model produced one */}
+      {carouselFormat !== "engagement" && content.takeaway && (() => {
+        const tk = content.takeaway!;
+        const setTk = (patch: Partial<NonNullable<CarouselContent["takeaway"]>>) =>
+          onChange({ ...content, takeaway: { ...tk, ...patch } });
+        const setPoint = (idx: number, val: string) => {
+          const points = [...tk.points];
+          points[idx] = val;
+          setTk({ points });
+        };
+        return (
+          <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 5 — Takeaway (the payoff)</div>
+            <label style={labelStyle}>Headline</label>
+            <input style={{ ...inputStyle, marginBottom: 12 }} value={tk.headline} onChange={(e) => setTk({ headline: e.target.value })} />
+            <label style={labelStyle}>Recap points</label>
+            {tk.points.map((p, i) => (
+              <input key={i} style={{ ...inputStyle, marginBottom: 8 }} value={p} onChange={(e) => setPoint(i, e.target.value)} placeholder={`Point ${i + 1}`} />
+            ))}
+            <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+              <div style={{ flexShrink: 0 }}>
+                <label style={labelStyle}>Ask</label>
+                <select
+                  style={{ ...inputStyle, width: "auto" }}
+                  value={tk.interaction.type}
+                  onChange={(e) => setTk({ interaction: { ...tk.interaction, type: e.target.value as "save" | "send" | "comment" } })}
+                >
+                  <option value="save">Save</option>
+                  <option value="send">Send</option>
+                  <option value="comment">Comment</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Interaction label</label>
+                <input style={inputStyle} value={tk.interaction.label} onChange={(e) => setTk({ interaction: { ...tk.interaction, label: e.target.value } })} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* CTA */}
       <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 5 — CTA</div>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide {carouselFormat !== "engagement" && content.takeaway ? 6 : 5} — CTA</div>
         <label style={labelStyle}>Headline</label>
         <input style={{ ...inputStyle, marginBottom: 8 }} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
         <label style={labelStyle}>Follow line</label>

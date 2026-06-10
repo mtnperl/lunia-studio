@@ -333,7 +333,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
             {version === "v2"
-              ? "Experimental flow — Ideogram, Haiku drafts, and infographic regeneration. Saves into the same library."
+              ? "Experimental flow — Opus 4.7 content, Recraft imagery, and infographic regeneration. Saves into the same library."
               : "Generate a 5-slide Instagram carousel for Lunia Life."}
           </p>
         </div>
