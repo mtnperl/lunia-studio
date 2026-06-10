@@ -44,6 +44,31 @@ export const redis = {
 const SCRIPTS_KEY = "lunia:scripts";
 const TTL_SECONDS = 60 * 60 * 24 * 365;
 
+// Soft retention guard for the single-key array collections below.
+//
+// These collections used to truncate with `all.slice(0, N)` on every write,
+// which silently destroyed the OLDEST saved entry once the cap was hit — real,
+// unrecoverable data loss (Upstash backups, if enabled at all, are daily
+// snapshots and cannot reliably recover an evicted-then-overwritten blob).
+//
+// We no longer evict. Payloads here are URL-only (~10–20 KB each), and these
+// are single-user tools, so a few hundred entries is a low-single-MB blob —
+// fine to keep whole. The threshold just warns when a blob is growing large
+// enough that migrating that collection to per-id keys is worth considering.
+// Nothing is dropped; the warning is purely a heads-up.
+const RETENTION_WARN_THRESHOLD = 250;
+
+function retain<T>(key: string, items: T[]): T[] {
+  if (items.length > RETENTION_WARN_THRESHOLD) {
+    console.warn(
+      `[kv] ${key} holds ${items.length} entries (warn threshold ` +
+        `${RETENTION_WARN_THRESHOLD}). No data is being evicted, but the ` +
+        `single-key blob is growing — consider migrating to per-id keys.`,
+    );
+  }
+  return items;
+}
+
 export async function getScripts(): Promise<Script[]> {
   try {
     const scripts = await redis.get<Script[]>(SCRIPTS_KEY);
@@ -135,7 +160,7 @@ export async function saveCarousel(carousel: SavedCarousel): Promise<void> {
   } else {
     all.unshift(carousel);
   }
-  await redis.set(CAROUSELS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+  await redis.set(CAROUSELS_KEY, retain(CAROUSELS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getCarouselById(id: string): Promise<SavedCarousel | null> {
@@ -168,7 +193,7 @@ export async function saveCampaignEmail(campaign: SavedCampaign): Promise<void> 
   } else {
     all.unshift(campaign);
   }
-  await redis.set(CAMPAIGN_EMAILS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+  await redis.set(CAMPAIGN_EMAILS_KEY, retain(CAMPAIGN_EMAILS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getCampaignEmailById(id: string): Promise<SavedCampaign | null> {
@@ -333,7 +358,7 @@ export async function saveVideoAd(ad: SavedVideoAd): Promise<void> {
   } else {
     all.unshift(ad);
   }
-  await redis.set(VIDEO_ADS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+  await redis.set(VIDEO_ADS_KEY, retain(VIDEO_ADS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getVideoAdById(id: string): Promise<SavedVideoAd | null> {
@@ -387,7 +412,7 @@ export async function saveEmail(email: SavedEmail): Promise<void> {
   } else {
     all.unshift(email);
   }
-  await redis.set(EMAILS_KEY, all.slice(0, 50), { ex: TTL_SECONDS });
+  await redis.set(EMAILS_KEY, retain(EMAILS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getEmailById(id: string): Promise<SavedEmail | null> {
@@ -401,8 +426,8 @@ export async function deleteEmailKv(id: string): Promise<void> {
 }
 
 // ─── Email Flow Reviews ──────────────────────────────────────────────────────
-// Single-key list pattern (same shape as getEmails / getCarousels). Last 100
-// reviews kept; older entries fall off.
+// Single-key list pattern (same shape as getEmails / getCarousels). Full
+// retention — nothing is evicted (see retain() / RETENTION_WARN_THRESHOLD).
 const FLOW_REVIEWS_KEY = "lunia:flow_reviews";
 
 export async function getFlowReviews(): Promise<SavedFlowReview[]> {
@@ -421,7 +446,7 @@ export async function saveFlowReview(review: SavedFlowReview): Promise<void> {
   } else {
     all.unshift(review);
   }
-  await redis.set(FLOW_REVIEWS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+  await redis.set(FLOW_REVIEWS_KEY, retain(FLOW_REVIEWS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getFlowReviewById(id: string): Promise<SavedFlowReview | null> {
@@ -491,7 +516,7 @@ export async function mutateFlowReview(
     if (idx < 0) return null;
     const next = mutator(all[idx]);
     all[idx] = next;
-    await redis.set(FLOW_REVIEWS_KEY, all.slice(0, 100), { ex: TTL_SECONDS });
+    await redis.set(FLOW_REVIEWS_KEY, retain(FLOW_REVIEWS_KEY, all), { ex: TTL_SECONDS });
     return next;
   });
 }
@@ -525,7 +550,7 @@ export async function saveCampaign(campaign: UGCCampaign): Promise<void> {
   } else {
     all.unshift(campaign);
   }
-  await redis.set(UGC_CAMPAIGNS_KEY, all.slice(0, 24), { ex: TTL_SECONDS });
+  await redis.set(UGC_CAMPAIGNS_KEY, retain(UGC_CAMPAIGNS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getCampaignById(id: string): Promise<UGCCampaign | null> {
@@ -556,7 +581,7 @@ export async function saveBrief(brief: UGCBrief): Promise<void> {
   } else {
     all.unshift(brief);
   }
-  await redis.set(UGC_BRIEFS_KEY, all.slice(0, 500), { ex: TTL_SECONDS });
+  await redis.set(UGC_BRIEFS_KEY, retain(UGC_BRIEFS_KEY, all), { ex: TTL_SECONDS });
 }
 
 export async function getBriefById(id: string): Promise<UGCBrief | null> {
