@@ -6,6 +6,7 @@ import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
+import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import { BrandStyle, CarouselConfig, CarouselFormat, HookTone } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
@@ -387,7 +388,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   }
 
   // Full-size hidden refs for accurate PNG export
-  const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
 
   const { content, selectedHook, topic, brandStyle, hookImageUrl, slideImages } = config;
   const currentImagePrompt = imagePromptDraft || content.imagePrompt || "";
@@ -404,6 +405,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const imagesLoading = imgs[0] === null;
   const bs: BrandStyle | undefined = brandStyle;
   const hook = content.hooks[selectedHook];
+
+  // Optional penultimate "payoff" slide. v2 standard format only — engagement
+  // carousels keep their comment-CTA, and decks saved before this slide existed
+  // have no `takeaway`. When present the carousel is 6 slides instead of 5, so
+  // labels, loop bounds, and the CTA index are all derived from here.
+  const hasTakeaway = isV2 && carouselFormat !== "engagement" && !!content.takeaway;
+  const slideLabels = hasTakeaway
+    ? ["Hook", "Slide 2", "Slide 3", "Slide 4", "Takeaway", "CTA"]
+    : SLIDE_LABELS;
+  const slideCount = slideLabels.length;
 
   // Cache of image-URL → data-URL. Keyed by the resolved <img.src> (proxied
   // path or local path). html-to-image's SVG foreignObject silently drops
@@ -624,7 +635,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const el = exportRefs.current[index];
     if (!el) throw new Error("Export element not found");
 
-    const label = SLIDE_LABELS[index].toLowerCase().replace(" ", "-");
+    const label = (slideLabels[index] ?? `slide-${index + 1}`).toLowerCase().replace(" ", "-");
     const filename = reelsMode
       ? `lunia-reel-${index + 1}-${label}.png`
       : `lunia-slide-${index + 1}-${label}.png`;
@@ -697,7 +708,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       if (isIOS && typeof navigator.share === "function") {
         const files: File[] = [];
-        for (let i = 0; i < 5; i++) files.push(await buildSlideFile(i));
+        for (let i = 0; i < slideCount; i++) files.push(await buildSlideFile(i));
         try {
           await navigator.share({ files, title: "Lunia carousel slides" });
         } catch (err) {
@@ -705,7 +716,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           for (const f of files) await saveFile(f);
         }
       } else {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < slideCount; i++) {
           const file = await buildSlideFile(i);
           await saveFile(file);
         }
@@ -1476,7 +1487,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       return {
-        title: `${SLIDE_LABELS[focusedSlide]} text`,
+        title: `${slideLabels[focusedSlide]} text`,
         body: (
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Headline</label>
@@ -1505,7 +1516,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const loadingSuggestions = suggestingIcons === slideIdx;
       const iconById = (id: string) => CAROUSEL_ICONS.find((ic) => ic.id === id);
       return {
-        title: `${SLIDE_LABELS[focusedSlide]} icons`,
+        title: `${slideLabels[focusedSlide]} icons`,
         subtitle: `${selected.length}/4 selected`,
         body: (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1651,7 +1662,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       try { currentComp = JSON.parse(slide.graphic ?? "{}").component; } catch {}
       const atLimit = (graphicRegenCount[slideIdx] ?? 0) >= GRAPHIC_REGEN_LIMIT;
       return {
-        title: `${SLIDE_LABELS[focusedSlide]} graphic type`,
+        title: `${slideLabels[focusedSlide]} graphic type`,
         body: (
           <PanelErrorBoundary label="Graphic type picker" onClose={() => setInspectorMode(null)}>
             <GraphicTypePicker
@@ -1678,7 +1689,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       return {
-        title: `${SLIDE_LABELS[focusedSlide]} graphic data`,
+        title: `${slideLabels[focusedSlide]} graphic data`,
         body: (
           <PanelErrorBoundary label="Graphic data editor" onClose={() => setInspectorMode(null)}>
             <GraphicDataEditor
@@ -2040,9 +2051,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlideComponent key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[0] ?? undefined} bgImageShimmer={contentBgGenerating.has(0)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlideComponent key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[1] ?? undefined} bgImageShimmer={contentBgGenerating.has(1)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[2] ?? undefined} bgImageShimmer={contentBgGenerating.has(2)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    ...(hasTakeaway && content.takeaway
+      ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      : []),
     carouselFormat === "engagement" && content.commentKeyword
-      ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
+      ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
+      : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
   ];
 
   // Export nodes use proxied URLs so html-to-image canvas export works (avoids CORS taint)
@@ -2054,9 +2068,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <ContentSlideComponent key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[0])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlideComponent key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[1])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
     <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[2])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} />,
+    ...(hasTakeaway && content.takeaway
+      ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      : []),
     carouselFormat === "engagement" && content.commentKeyword
-      ? <CommentCTASlide key={4} headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
-      : <CTASlide key={4} headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
+      ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
+      : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />,
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -2092,7 +2109,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             Your carousel
           </h2>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
-            {topic} · 5 slides
+            {topic} · {slideCount} slides
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2122,7 +2139,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 Exporting…
               </>
             ) : (
-              "↓ Download all (5 PNGs)"
+              `↓ Download all (${slideCount} PNGs)`
             )}
           </button>
           {carouselFormat === "engagement" && (
@@ -2664,10 +2681,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   textTransform: "uppercase",
                   color: isActive ? "var(--text)" : "var(--muted)",
                 }}>
-                  {SLIDE_LABELS[i]}
+                  {slideLabels[i]}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--subtle)" }}>
-                  {i + 1}/5
+                  {i + 1}/{slideCount}
                 </span>
               </div>
 
@@ -3666,7 +3683,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       {/* Dot indicators */}
       <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 8 }}>
-        {[0,1,2,3,4].map(i => (
+        {Array.from({ length: slideCount }, (_, i) => i).map(i => (
           <button
             key={i}
             onClick={() => setActiveSlide(i)}
@@ -3729,7 +3746,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               transition: "grid-template-columns 0.22s ease-out, gap 0.22s ease-out",
             }}>
               {/* Rail */}
-              <SlideRail slides={slideNodes} labels={SLIDE_LABELS} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} />
+              <SlideRail slides={slideNodes} labels={slideLabels} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} />
 
               {/* Canvas */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, minWidth: 0 }}>
@@ -3762,7 +3779,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   const sIdx = focusedSlide - 1;
                   const isContent = focusedSlide >= 1 && focusedSlide <= 3;
                   const isHook = focusedSlide === 0;
-                  const isCta = focusedSlide === 4;
+                  const isCta = focusedSlide === slideCount - 1;
                   const isDownloading = downloading === focusedSlide;
                   const bgGenerating = isContent && contentBgGenerating.has(sIdx);
                   const hasBg = isContent && !!contentBgImages[sIdx];

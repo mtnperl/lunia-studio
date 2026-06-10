@@ -320,6 +320,15 @@ export type CarouselContent = {
    *  is rendered on the CTA). Lets the user attach a row of icons to the
    *  finish screen in the editorial preset. */
   cta: { headline: string; followLine: string; graphic?: string };
+  /** Optional penultimate "payoff" slide (v2 standard format only). Recaps the
+   *  deck into save-worthy takeaways and asks for one explicit interaction.
+   *  Inserted BEFORE the CTA. Absent on engagement carousels and on saved
+   *  carousels generated before this slide existed — renderers must guard. */
+  takeaway?: {
+    headline: string;                                  // short payoff headline (uppercase, ≤6 words)
+    points: string[];                                  // 2-3 one-line recap takeaways
+    interaction: { type: "save" | "send" | "comment"; label: string };
+  };
   caption: string; // IG caption including hashtags
   imagePrompt?: string; // Claude-written Recraft V3 prompt for the hook slide background
   commentKeyword?: string; // engagement format: auto-generated keyword for comment CTA

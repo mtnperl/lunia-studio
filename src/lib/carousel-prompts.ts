@@ -213,7 +213,12 @@ Return ONLY valid JSON in this exact format, no other text:
   "cta": {
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
-  },
+  },${v2Mode ? `
+  "takeaway": {
+    "headline": "string",
+    "points": ["string", "string", "string"],
+    "interaction": { "type": "save | send | comment", "label": "string" }
+  },` : ""}
   "caption": "string",
   "imagePrompt": "string"${isEditorial ? `,
   "hookImageSpec": {
@@ -240,6 +245,17 @@ Slide 3 — THE ACTION
   Body: One specific habit, timing window, dose, or behavior. No "consider", no "try to". Cite the study supporting the recommendation.
 
 The 3 slides MUST NOT all read as statements of fact. Slide 1 surprises, slide 2 explains, slide 3 directs. Different verbs, different rhythms, different jobs. If slide 1 and slide 3 feel interchangeable, you have failed the arc.
+
+FORWARD-REFERENCE TEASE (mandatory): the LAST sentence of Slide 3's body must plant a soft pull toward the final slide — a one-line promise that the distilled version / the full recap is coming next. Keep it calm and specific, never "swipe up!!". Examples: "The full routine is on the last slide." / "Here's the whole thing in three lines, next." Do not over-hype; one quiet sentence.
+
+TAKEAWAY SLIDE (mandatory for v2 — populate the "takeaway" object): a penultimate payoff slide shown BETWEEN the content and the CTA. It pays off the tease and earns the save. Build it so a reader who saw nothing else still gets the value.
+  takeaway.headline: the single sharpest payoff line. UPPERCASE, max 6 words. Not a question. This is the "why I saved this" line.
+  takeaway.points: 2-3 items, each ONE line, max 12 words, NO period. Distil the arc — point 1 from the surprise, point 2 from the mechanism, point 3 from the action — into plain, do-it-tonight language. Each point must stand alone and be skimmable. These are what the reader screenshots. No citations, no hedging, no "may support" padding here — just the takeaway.
+  takeaway.interaction: ONE explicit ask, matched to the content:
+    - type "save" when the deck is a routine/checklist/how-to the reader will act on later (default for actionable topics).
+    - type "send" when the deck is relatable or diagnostic — something the reader knows applies to a specific friend/partner.
+    - type "comment" when the deck poses a question or invites the reader to self-identify.
+    label: a short, specific, second-person instruction that names WHY (max 12 words). Examples: "Save this for your next 3am wake-up", "Send this to someone who's always tired", "Comment your bedtime and I'll tell you what to fix". Match the verb to the chosen type. Do not default to a generic "save this post".
 ` : ""}
 Brand rules (follow exactly):
 - No em dashes anywhere. Use commas or short sentences instead.
