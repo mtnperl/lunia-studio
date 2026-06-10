@@ -122,6 +122,28 @@ export async function POST(req: Request) {
               }
             }
           }
+          // Normalize the optional Takeaway slide. The model occasionally returns
+          // a partial object (missing points/interaction); the renderers read
+          // those fields directly, so an incomplete shape crashes the content
+          // stage. Drop a malformed takeaway entirely — every consumer guards on
+          // its truthiness and falls back to the 5-slide deck.
+          const tk = parsed.takeaway;
+          if (tk) {
+            const points = Array.isArray(tk.points)
+              ? tk.points.filter((p) => typeof p === "string" && p.trim().length > 0)
+              : [];
+            const interactionOk =
+              !!tk.interaction &&
+              typeof tk.interaction.label === "string" &&
+              tk.interaction.label.trim().length > 0 &&
+              ["save", "send", "comment"].includes(tk.interaction.type as string);
+            if (!tk.headline || typeof tk.headline !== "string" || points.length === 0 || !interactionOk) {
+              console.warn("[generate] malformed takeaway dropped");
+              delete parsed.takeaway;
+            } else {
+              tk.points = points;
+            }
+          }
           return parsed;
         } catch (err) {
           if (firstError === null) firstError = err;

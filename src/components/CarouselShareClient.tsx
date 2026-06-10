@@ -96,7 +96,10 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Optional penultimate "payoff" slide — present on v2 standard decks saved
   // after this slide shipped. Engagement decks and older saves have none, so
   // slide count (5 or 6), labels, and loop bounds all derive from here.
-  const hasTakeaway = !isEngagement && !!content.takeaway;
+  const hasTakeaway = !isEngagement
+    && !!content.takeaway
+    && Array.isArray(content.takeaway.points) && content.takeaway.points.length > 0
+    && !!content.takeaway.interaction;
   const slideLabels = hasTakeaway
     ? ["Hook", "Slide 2", "Slide 3", "Slide 4", "Takeaway", "CTA"]
     : SLIDE_LABELS;

@@ -141,6 +141,15 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     letterSpacing: "0.06em",
   };
 
+  // A takeaway is only renderable (and shifts the CTA to slide 6) when it's
+  // well-formed — guards a partial model response from crashing the render.
+  const hasTakeaway =
+    carouselFormat !== "engagement" &&
+    !!content.takeaway &&
+    Array.isArray(content.takeaway.points) &&
+    content.takeaway.points.length > 0 &&
+    !!content.takeaway.interaction;
+
   return (
     <div>
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Review content</h2>
@@ -441,8 +450,10 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
         </div>
       ))}
 
-      {/* Takeaway (payoff slide) — standard format only, when the model produced one */}
-      {carouselFormat !== "engagement" && content.takeaway && (() => {
+      {/* Takeaway (payoff slide) — standard format only, when a well-formed
+          takeaway is present. Guard the sub-fields: a partial object (no points
+          array / no interaction) would otherwise crash this render. */}
+      {hasTakeaway && (() => {
         const tk = content.takeaway!;
         const setTk = (patch: Partial<NonNullable<CarouselContent["takeaway"]>>) =>
           onChange({ ...content, takeaway: { ...tk, ...patch } });
@@ -484,7 +495,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
 
       {/* CTA */}
       <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide {carouselFormat !== "engagement" && content.takeaway ? 6 : 5} — CTA</div>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide {hasTakeaway ? 6 : 5} — CTA</div>
         <label style={labelStyle}>Headline</label>
         <input style={{ ...inputStyle, marginBottom: 8 }} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
         <label style={labelStyle}>Follow line</label>
