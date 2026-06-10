@@ -24,6 +24,7 @@ type InspectorMode =
   | null
   | "settings"
   | "text"
+  | "takeaway"
   | "icons"
   | "graphicType"
   | "graphicData"
@@ -326,6 +327,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const slides = [...content.slides];
     slides[slideIndex] = { ...slides[slideIndex], [field]: value };
     onContentChange({ ...config, content: { ...content, slides } });
+  }
+
+  // Patch the optional Takeaway slide. Merges over the current takeaway so
+  // callers can update one field (headline / points / interaction) at a time.
+  // No-op when the carousel has no takeaway (renderers already guard on it).
+  function updateTakeaway(patch: Partial<NonNullable<typeof content.takeaway>>) {
+    if (!content.takeaway) return;
+    onContentChange({
+      ...config,
+      content: { ...content, takeaway: { ...content.takeaway, ...patch } },
+    });
   }
 
   // Hook image refinement state
@@ -1005,9 +1017,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (cur === null || cur === "settings") return cur;
       const isContent = i >= 1 && i <= 3;
       const isHook = i === 0;
+      const isTakeaway = hasTakeaway && i === 4;
       if ((cur === "icons" || cur === "text" || cur === "graphicType"
         || cur === "graphicData" || cur === "graphicComment") && !isContent) return null;
       if ((cur === "overlays" || cur === "image") && !isHook) return null;
+      if (cur === "takeaway" && !isTakeaway) return null;
       return cur;
     });
   }
@@ -1504,6 +1518,99 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               rows={6}
               style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" }}
             />
+          </div>
+        ),
+      };
+    }
+
+    // ── Takeaway editor (payoff slide) ────────────────────────────────────
+    if (inspectorMode === "takeaway") {
+      const takeaway = content.takeaway;
+      if (!takeaway) return null;
+      const points = takeaway.points;
+      const fieldStyle: React.CSSProperties = { width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.4, fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" };
+      const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 };
+      const miniBtn: React.CSSProperties = { padding: "2px 7px", fontSize: 11, fontWeight: 700, background: "var(--surface)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.4 };
+
+      const setPoints = (next: string[]) => updateTakeaway({ points: next });
+      const updatePoint = (i: number, value: string) => setPoints(points.map((p, idx) => (idx === i ? value : p)));
+      const removePoint = (i: number) => setPoints(points.filter((_, idx) => idx !== i));
+      const movePoint = (i: number, dir: -1 | 1) => {
+        const j = i + dir;
+        if (j < 0 || j >= points.length) return;
+        const next = [...points];
+        [next[i], next[j]] = [next[j], next[i]];
+        setPoints(next);
+      };
+      const addPoint = () => setPoints([...points, ""]);
+
+      const INTERACTION_OPTS: { value: "save" | "send" | "comment"; label: string }[] = [
+        { value: "save", label: "Save" },
+        { value: "send", label: "Send" },
+        { value: "comment", label: "Comment" },
+      ];
+
+      return {
+        title: `${slideLabels[focusedSlide]} text`,
+        body: (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Headline</label>
+              <input
+                type="text"
+                value={takeaway.headline}
+                onChange={(e) => updateTakeaway({ headline: e.target.value })}
+                style={fieldStyle}
+              />
+            </div>
+
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Recap points</label>
+                <span style={{ fontSize: 10, color: "var(--subtle)", fontWeight: 600 }}>{points.length}/3</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {points.map((p, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ flexShrink: 0, width: 18, fontSize: 11, fontWeight: 700, color: "var(--subtle)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+                    <input
+                      type="text"
+                      value={p}
+                      onChange={(e) => updatePoint(i, e.target.value)}
+                      style={{ ...fieldStyle, flex: 1 }}
+                    />
+                    <button onClick={() => movePoint(i, -1)} disabled={i === 0} title="Move up" style={{ ...miniBtn, opacity: i === 0 ? 0.4 : 1, cursor: i === 0 ? "not-allowed" : "pointer" }}>↑</button>
+                    <button onClick={() => movePoint(i, 1)} disabled={i === points.length - 1} title="Move down" style={{ ...miniBtn, opacity: i === points.length - 1 ? 0.4 : 1, cursor: i === points.length - 1 ? "not-allowed" : "pointer" }}>↓</button>
+                    <button onClick={() => removePoint(i)} disabled={points.length <= 1} title="Remove" style={{ ...miniBtn, color: "var(--error)", opacity: points.length <= 1 ? 0.4 : 1, cursor: points.length <= 1 ? "not-allowed" : "pointer" }}>×</button>
+                  </div>
+                ))}
+              </div>
+              {points.length < 3 && (
+                <button onClick={addPoint} style={{ ...miniBtn, marginTop: 8, padding: "4px 10px" }}>+ Add point</button>
+              )}
+            </div>
+
+            <div>
+              <label style={labelStyle}>Interaction</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  value={takeaway.interaction.type}
+                  onChange={(e) => updateTakeaway({ interaction: { ...takeaway.interaction, type: e.target.value as "save" | "send" | "comment" } })}
+                  style={{ ...fieldStyle, width: "auto", flexShrink: 0, cursor: "pointer" }}
+                >
+                  {INTERACTION_OPTS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={takeaway.interaction.label}
+                  onChange={(e) => updateTakeaway({ interaction: { ...takeaway.interaction, label: e.target.value } })}
+                  placeholder="Interaction label"
+                  style={{ ...fieldStyle, flex: 1 }}
+                />
+              </div>
+            </div>
           </div>
         ),
       };
@@ -3780,6 +3887,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   const isContent = focusedSlide >= 1 && focusedSlide <= 3;
                   const isHook = focusedSlide === 0;
                   const isCta = focusedSlide === slideCount - 1;
+                  const isTakeaway = hasTakeaway && focusedSlide === 4;
                   const isDownloading = downloading === focusedSlide;
                   const bgGenerating = isContent && contentBgGenerating.has(sIdx);
                   const hasBg = isContent && !!contentBgImages[sIdx];
@@ -3792,6 +3900,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
                       {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
+                      {isTakeaway && <ToolbarButton label="Edit text" active={inspectorMode === "takeaway"} onClick={() => openInspector("takeaway")} />}
                       {(isContent || ctaIconsAvailable) && <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />}
                       {isContent && <ToolbarButton label="Graphic type" active={inspectorMode === "graphicType"} onClick={() => openInspector("graphicType")} />}
                       {isContent && <ToolbarButton label="Graphic data" active={inspectorMode === "graphicData"} onClick={() => openInspector("graphicData")} />}
