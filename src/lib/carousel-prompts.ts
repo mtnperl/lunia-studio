@@ -34,14 +34,49 @@ Rules:
 - No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
 
 const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
-  "educational": "Educational tone: clear, factual, teaches the reader something they didn't know. Start with an insight.",
-  "clickbait": "Clickbait tone: bold, provocative hooks that create urgency or disbelief. Still factually accurate.",
-  "curiosity": "Curiosity-gap tone: tease an unexpected or counterintuitive insight. Make the reader want to know more.",
-  "myth-bust": "Myth-busting tone: challenge a common misconception about sleep or supplements. Be direct and corrective.",
-  "science-backed": "Science-backed tone: lead with research findings and data. Reference studies confidently.",
-  "personal-story": "Personal-story tone: write as if a real person is sharing their journey with sleep problems and Lunia.",
+  "educational": `Educational tone: clear, factual, teaches the reader one precise thing they did not know. Lead with the insight, not a question.
+HOOK FORMULA: state a specific, slightly counterintuitive fact, then let the subline name the implication. No hype, no urgency, no "did you know". Confident and plain.
+Approved calibration examples (do not reuse verbatim every time):
+  "YOUR BRAIN CLEANS ITSELF ONLY DURING DEEP SLEEP"
+  "MAGNESIUM REGULATES OVER 300 REACTIONS IN THE BODY"
+  "DEEP SLEEP DROPS NEARLY 40% BY AGE FIFTY"`,
+  "clickbait": `Bold-hook tone: provocative hooks that create urgency or disbelief, while staying factually accurate. The reader should feel they are doing something wrong and need to read on.
+HOOK FORMULA: a blunt, slightly confrontational claim or command that challenges what the reader is currently doing. Direct address. No hedging. Still defensible by real science.
+Approved calibration examples (do not reuse verbatim every time):
+  "YOU'RE SLEEPING WRONG AND IT'S AGING YOU"
+  "STOP TAKING MELATONIN EVERY SINGLE NIGHT"
+  "YOUR 8 HOURS ARE LYING TO YOU"`,
+  "curiosity": `Curiosity-gap tone: tease an unexpected or counterintuitive insight WITHOUT revealing it. Open a loop the carousel then closes. Make the reader need to know more.
+HOOK FORMULA: name the surprising effect or hidden cause but withhold the explanation. Often "the real reason…", "why…", "the one thing…". The answer lives in the slides, never in the hook.
+Approved calibration examples (do not reuse verbatim every time):
+  "THE REAL REASON YOU WAKE UP AT 3AM"
+  "ONE MINERAL EXPLAINS YOUR RACING NIGHTTIME MIND"
+  "WHY MORE SLEEP CAN LEAVE YOU MORE TIRED"`,
+  "myth-bust": `Myth-busting tone: challenge a common misconception about sleep or supplements head-on. Direct and corrective, never smug.
+HOOK FORMULA: state the widely-held belief and negate it, or flatly assert the corrected truth. Often "X doesn't…", "X isn't…", "the myth that…". The reader should feel a held belief being overturned.
+Approved calibration examples (do not reuse verbatim every time):
+  "MELATONIN DOESN'T ACTUALLY MAKE YOU SLEEP"
+  "EIGHT HOURS ISN'T THE NUMBER THAT MATTERS"
+  "YOU CAN'T REPAY SLEEP DEBT ON WEEKENDS"`,
+  "science-backed": `Science-backed tone: lead with the research and the data. Reference studies and findings confidently, with a real number where possible.
+HOOK FORMULA: open with the evidence itself — "studies show…", "trials link…", "research ties…" — and pair it with a concrete figure or named mechanism. Authoritative, never breathless. The sourceNote carries the citation.
+Approved calibration examples (do not reuse verbatim every time):
+  "STUDIES LINK MAGNESIUM TO 20% DEEPER SLEEP"
+  "TRIALS SHOW L-THEANINE CALMS WITHOUT SEDATION"
+  "RESEARCH TIES LOW MAGNESIUM TO POOR SLEEP"`,
+  "personal-story": `Personal-story tone: write the hook in FIRST PERSON, as a real person sharing their own journey with sleep problems and Lunia. Intimate and specific, never a generic testimonial.
+HOOK FORMULA: "I" or "MY" voice describing the struggle or the turning point. A specific symptom and a specific moment beat a vague claim. The slides then generalise the mechanism behind that personal experience.
+Approved calibration examples (do not reuse verbatim every time):
+  "I WOKE AT 3AM EVERY NIGHT FOR YEARS"
+  "I TRIED EVERYTHING BEFORE I CHECKED MY MAGNESIUM"
+  "HOW I FINALLY STOPPED LYING AWAKE AT NIGHT"`,
   "did-you-know": "Did-you-know tone: open every hook headline with 'DID YOU KNOW' followed by a surprising, specific fact about the topic. The subline deepens the curiosity with a second layer of intrigue. Make the reader feel they have been missing something important. Every content slide should also open with a surprising revelation.",
-  "smart-tip": "Smart-tip tone: frame the hook as 'BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]'. Be specific with numbers, durations, or mechanisms. The subline adds the science backing. Content slides should each deliver one actionable, evidence-based tip.",
+  "smart-tip": `Smart-tip tone: frame the hook as a concrete, do-it-today instruction. Specific action, specific timing, specific payoff.
+HOOK FORMULA: "BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]" — compressed to fit the 8-word headline limit. Lead with the verb. The subline adds the science backing. Content slides each deliver one actionable, evidence-based tip.
+Approved calibration examples (do not reuse verbatim every time):
+  "CUT CAFFEINE BY 2PM TO FALL ASLEEP FASTER"
+  "TEN MINUTES OF MORNING SUN RESETS YOUR CLOCK"
+  "TAKE MAGNESIUM AT 9PM FOR DEEPER SLEEP"`,
   "paradox": `Paradox tone: open the hook with a frustrating contradiction the reader lives every day. They do the right thing and still get the wrong result, and the hook names that contradiction.
 HOOK FORMULA: "Why are you [still experiencing X] when you [just did Y]?"
   X = a real symptom the reader feels (exhausted, wired at midnight, foggy, waking at 3am, puffy, unrested).
@@ -295,7 +330,13 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
   Examples:
   • hubSpoke slide about magnesium benefits → "Central glowing circle with 4 radiating arcs connecting to smaller nodes, clean minimal vector, white background, teal highlights, geometric precision, no text"
   • iceberg slide about hidden sleep debt → "Iceberg cross-section, small peak above waterline, large mass below, dark ocean blues fading to black, white ice, crisp edges, scientific illustration style, no labels"
-  • vector slide about circadian rhythm → "Sine wave arc representing day-night cycle, sun and moon at opposite peaks, gradient from warm amber to deep midnight blue, minimal geometric, no text"`;
+  • vector slide about circadian rhythm → "Sine wave arc representing day-night cycle, sun and moon at opposite peaks, gradient from warm amber to deep midnight blue, minimal geometric, no text"
+
+=== TONE LOCK (read last, obey first) ===
+Before you finalise the 3 hooks, re-read the hook tone you were given and make every hook unmistakably that tone:
+${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
+HARD RULE: a reader shown only the 3 hooks must be able to name the tone without being told. If a hook would read identically under a different tone, it has failed — rewrite it until the chosen tone is the thing that makes it work. The format rules above (uppercase, 8-word limit, sourceNote) are constraints, not the voice. The voice is the tone.
+===`;
 };
 
 export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
