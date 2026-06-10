@@ -317,24 +317,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
         <div>
           <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
             Carousel builder
-            {version === "v2" && (
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                padding: "3px 8px",
-                borderRadius: 5,
-                background: "var(--accent-dim)",
-                color: "var(--accent)",
-                border: "1px solid var(--accent-mid)",
-              }}>v2 · beta</span>
-            )}
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
-            {version === "v2"
-              ? "Experimental flow — Opus 4.7 content, Recraft imagery, and infographic regeneration. Saves into the same library."
-              : "Generate a 5-slide Instagram carousel for Lunia Life."}
+            Opus 4.7 content, Recraft imagery, and per-slide infographic regeneration.
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
