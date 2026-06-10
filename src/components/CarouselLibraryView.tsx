@@ -6,12 +6,11 @@ import { SavedCarousel } from "@/lib/types";
 const TONE_COLORS: Record<string, string> = {
   educational:     "#5F9E75",
   clickbait:       "#B86040",
-  curiosity:       "#7A6AAA",
   "myth-bust":     "#A04040",
   "science-backed":"#4A82A0",
   "personal-story":"#A07830",
   "did-you-know":  "#6A8E4E",
-  "smart-tip":     "#4A7A6A",
+  symptom:         "#B0763E",
   paradox:         "#8E5A8A",
   tell:            "#3F6F8A",
 };

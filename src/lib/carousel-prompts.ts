@@ -33,6 +33,30 @@ Rules:
 - No em dashes
 - No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
 
+/**
+ * History-aware variant of SUGGESTIONS_PROMPT. Given the topics of the user's
+ * most recent carousels, propose FRESH ideas that don't repeat them or their
+ * core theme — so the feed reads as a coherent, non-repetitive series.
+ */
+export const SUGGESTIONS_FROM_RECENT_PROMPT = (recentTopics: string[]): string => `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 5 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
+
+The user has recently published these carousels — do NOT repeat them, their core mechanism, or their angle. Propose fresh, non-overlapping topics that complement and extend this series (a natural next step, an adjacent mechanism, a different pillar), never a reword of what is already covered:
+${recentTopics.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+
+Return ONLY valid JSON in this exact format, no other text:
+[
+  { "title": "string", "description": "string", "pillar": "string" }
+]
+(exactly 5 objects)
+
+Rules:
+- Title: 4-7 words, punchy, uppercase
+- Description: one sentence explaining the angle AND why it is distinct from the recent topics (max 18 words)
+- Pillar: one of: Sleep Science, Ingredient Education, Cortisol & Stress, Longevity, Wind-Down Routines
+- Spread the 5 across at least 3 different pillars
+- No em dashes
+- No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
+
 const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "educational": `Educational tone: clear, factual, teaches the reader one precise thing they did not know. Lead with the insight, not a question.
 HOOK FORMULA: state a specific, slightly counterintuitive fact, then let the subline name the implication. No hype, no urgency, no "did you know". Confident and plain.
@@ -46,12 +70,6 @@ Approved calibration examples (do not reuse verbatim every time):
   "YOU'RE SLEEPING WRONG AND IT'S AGING YOU"
   "STOP TAKING MELATONIN EVERY SINGLE NIGHT"
   "YOUR 8 HOURS ARE LYING TO YOU"`,
-  "curiosity": `Curiosity-gap tone: tease an unexpected or counterintuitive insight WITHOUT revealing it. Open a loop the carousel then closes. Make the reader need to know more.
-HOOK FORMULA: name the surprising effect or hidden cause but withhold the explanation. Often "the real reason…", "why…", "the one thing…". The answer lives in the slides, never in the hook.
-Approved calibration examples (do not reuse verbatim every time):
-  "THE REAL REASON YOU WAKE UP AT 3AM"
-  "ONE MINERAL EXPLAINS YOUR RACING NIGHTTIME MIND"
-  "WHY MORE SLEEP CAN LEAVE YOU MORE TIRED"`,
   "myth-bust": `Myth-busting tone: challenge a common misconception about sleep or supplements head-on. Direct and corrective, never smug.
 HOOK FORMULA: state the widely-held belief and negate it, or flatly assert the corrected truth. Often "X doesn't…", "X isn't…", "the myth that…". The reader should feel a held belief being overturned.
 Approved calibration examples (do not reuse verbatim every time):
@@ -71,12 +89,23 @@ Approved calibration examples (do not reuse verbatim every time):
   "I TRIED EVERYTHING BEFORE I CHECKED MY MAGNESIUM"
   "HOW I FINALLY STOPPED LYING AWAKE AT NIGHT"`,
   "did-you-know": "Did-you-know tone: open every hook headline with 'DID YOU KNOW' followed by a surprising, specific fact about the topic. The subline deepens the curiosity with a second layer of intrigue. Make the reader feel they have been missing something important. Every content slide should also open with a surprising revelation.",
-  "smart-tip": `Smart-tip tone: frame the hook as a concrete, do-it-today instruction. Specific action, specific timing, specific payoff.
-HOOK FORMULA: "BY DOING [specific action] FOR [specific duration or context] YOU WILL [concrete measurable improvement]" — compressed to fit the 8-word headline limit. Lead with the verb. The subline adds the science backing. Content slides each deliver one actionable, evidence-based tip.
+  "symptom": `Symptom tone: name the precise, pre-aware symptoms of a problem the reader has before they know they have it — so specific it feels like you read their mind — then decode each sign and point to the real cause and the fix.
+HOOK FORMULA (HARD RULE — applies to all 3 hooks): "[optional number] SIGNS YOUR [oddly specific experience] IS ACTUALLY [hidden cause], NOT [the thing they assumed]".
+  Every one of the 3 hook headlines MUST begin with "SIGNS YOUR" or "[NUMBER] SIGNS YOUR" and MUST contain the "is actually Y, not Z" reframe (or a clear "X, not Y" contrast). A hook that is a plain statement of fact ("SLEEP DEBT IS NOT REPAID IN ONE NIGHT"), a question, or a myth-bust has FAILED this tone — rewrite it.
+  The symptom must be lived and precise (never "you're tired"); the contrast reframes something they have misattributed (to stress, to age, to "just how I am"). Second person. Headline UPPERCASE, max 8 words.
 Approved calibration examples (do not reuse verbatim every time):
-  "CUT CAFFEINE BY 2PM TO FALL ASLEEP FASTER"
-  "TEN MINUTES OF MORNING SUN RESETS YOUR CLOCK"
-  "TAKE MAGNESIUM AT 9PM FOR DEEPER SLEEP"`,
+  "SIGNS YOUR 3AM WAKING IS CORTISOL, NOT STRESS"
+  "5 SIGNS YOUR MAGNESIUM IS TOO LOW FOR SLEEP"
+  "SIGNS YOUR TIREDNESS IS SLEEP QUALITY, NOT QUANTITY"
+  "SIGNS YOUR RACING MIND IS BLOOD SUGAR, NOT ANXIETY"
+STRUCTURE OVERRIDE (mandatory — this OVERRIDES the v2 SURPRISE/MECHANISM/ACTION arc and any other slide-role rules below):
+  Hook slide = the "signs" promise, nothing else.
+  Content slide 1 = SIGN ONE. State one concrete sign the reader recognises, then decode what it actually signals (the mechanism), tied to the exact symptom in the hook. The reader should think "that's me".
+  Content slide 2 = SIGN TWO. A different recognisable sign, decoded the same way — one sign, one mechanism. Do not repeat slide 1's sign.
+  Content slide 3 = SIGN THREE (or the shared root cause behind the signs). Decode it, then begin turning toward what the body actually needs.
+  CTA = the fix: the right inputs (magnesium bisglycinate, L-theanine, or apigenin as relevant) or Lunia. Soft, calm, never a cure claim.
+HARD RULE: every content slide names a DISTINCT sign and explains the mechanism behind it, always tied back to the symptom in the hook. Mechanism before product. Education-first.
+VOICE: no em dashes. Maximum one exclamation mark across the whole carousel, prefer zero. Caption MUST end with exactly: "For more sleep science content follow lunialife"`,
   "paradox": `Paradox tone: open the hook with a frustrating contradiction the reader lives every day. They do the right thing and still get the wrong result, and the hook names that contradiction.
 HOOK FORMULA: "Why are you [still experiencing X] when you [just did Y]?"
   X = a real symptom the reader feels (exhausted, wired at midnight, foggy, waking at 3am, puffy, unrested).

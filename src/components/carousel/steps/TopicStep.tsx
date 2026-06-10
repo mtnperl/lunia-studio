@@ -14,12 +14,11 @@ const IMAGE_STYLE_OPTIONS: { value: CarouselImageStyle; label: string; descripti
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
   { value: "science-backed", label: "Science-backed", description: "Lead with research findings and data" },
-  { value: "curiosity", label: "Curiosity gap", description: "Tease a counterintuitive insight" },
   { value: "myth-bust", label: "Myth-bust", description: "Challenge a common misconception" },
   { value: "clickbait", label: "Bold hook", description: "Provocative, creates urgency" },
   { value: "personal-story", label: "Personal story", description: "Relatable journey with Lunia" },
   // "did-you-know" tone is intentionally hidden — superseded by the did_you_know CarouselFormat.
-  { value: "smart-tip", label: "Smart tip", description: "By doing X for Y you will improve..." },
+  { value: "symptom", label: "The Symptom (signs you're missing)", description: "Signs your X is actually Y, not Z — names precise pre-aware symptoms" },
   { value: "paradox", label: "The Paradox (did everything right, still feel wrong)", description: "Why are you X when you Y? — names the contradiction" },
   { value: "tell", label: "The Tell (oddly specific recognition)", description: "If you do this oddly specific thing, here is what it means" },
 ];
@@ -84,6 +83,35 @@ export default function TopicStep({ onNext }: Props) {
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
 
+  // "Suggest topics" — history-aware ideas that avoid the last 7 saved carousels.
+  const [suggestions, setSuggestions] = useState<{ title: string; description: string; pillar: string }[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  async function fetchSuggestions() {
+    setLoadingSuggestions(true);
+    setSuggestError(null);
+    try {
+      const res = await fetch("/api/carousel-v2/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        setSuggestError(data?.error || "Failed to suggest topics. Try again.");
+        setSuggestions([]);
+      } else if (Array.isArray(data)) {
+        setSuggestions(data);
+      } else {
+        setSuggestError("Unexpected response. Try again.");
+      }
+    } catch {
+      setSuggestError("Network error. Try again.");
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }
+
   useEffect(() => {
     fetch("/api/subjects")
       .then((r) => r.json())
@@ -113,7 +141,7 @@ export default function TopicStep({ onNext }: Props) {
     if (!topic || topicTooLong) return;
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
     const effectiveTone =
-      carouselFormat === "engagement" ? ("curiosity" as HookTone)
+      carouselFormat === "engagement" ? ("science-backed" as HookTone)
       : carouselFormat === "did_you_know" ? ("educational" as HookTone)
       : hookTone;
     const effectiveConcise =
@@ -206,7 +234,63 @@ export default function TopicStep({ onNext }: Props) {
         >
           🎲 Try sample subject
         </button>
+        <button
+          onClick={fetchSuggestions}
+          disabled={loadingSuggestions}
+          title="Suggest fresh topics that don't repeat your last 7 carousels"
+          style={{
+            padding: "7px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--accent)",
+            background: "var(--accent-dim)",
+            border: "1px solid var(--accent-mid)",
+            borderRadius: 7,
+            cursor: loadingSuggestions ? "wait" : "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.02em",
+          }}
+        >
+          {loadingSuggestions ? "Thinking…" : "✨ Suggest topics"}
+        </button>
       </div>
+
+      {/* Suggestions panel — history-aware ideas based on the last 7 saved carousels */}
+      {(suggestions.length > 0 || suggestError) && (
+        <div style={{ marginBottom: 24, padding: 16, border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: suggestions.length ? 12 : 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Suggested for you · avoids your recent topics
+            </div>
+            <button
+              onClick={() => { setSuggestions([]); setSuggestError(null); }}
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+            >
+              × Dismiss
+            </button>
+          </div>
+          {suggestError && <div style={{ fontSize: 13, color: "var(--error)" }}>{suggestError}</div>}
+          <div style={{ display: "grid", gap: 8 }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { setMode("custom"); setCustom(s.title); setSelectedSubject(null); setSuggestions([]); }}
+                style={{
+                  textAlign: "left", padding: "10px 12px", borderRadius: 8,
+                  border: "1px solid var(--border)", background: "var(--bg)",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>{s.title}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", flexShrink: 0 }}>{s.pillar}</span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{s.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* List mode */}
       {mode === "list" && (

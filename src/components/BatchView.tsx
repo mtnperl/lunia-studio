@@ -28,7 +28,7 @@ type QueueItem = {
 const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
   { value: "science-backed", label: "Science-backed", description: "Lead with research findings and data" },
-  { value: "curiosity", label: "Curiosity gap", description: "Tease a counterintuitive insight" },
+  { value: "symptom", label: "The Symptom", description: "Signs your X is actually Y, not Z" },
   { value: "myth-bust", label: "Myth-bust", description: "Challenge a common misconception" },
 ];
 

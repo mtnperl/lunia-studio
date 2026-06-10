@@ -43,12 +43,11 @@ export type Script = {
 export type HookTone =
   | "educational"
   | "clickbait"
-  | "curiosity"
   | "myth-bust"
   | "science-backed"
   | "personal-story"
   | "did-you-know"
-  | "smart-tip"
+  | "symptom"
   | "paradox"
   | "tell";
 export type CarouselFormat = "standard" | "engagement" | "did_you_know";
