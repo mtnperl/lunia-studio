@@ -309,7 +309,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Other presets keep the previous defaults (citation L = 36, headline M = 1).
   const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isEditorial ? 26 : 36));
   const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? (isEditorial ? 1.15 : 1));
-  const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1);
+  const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1.2); // default "L"
   const [reelsMode, setReelsMode] = useState(initialReelsMode ?? false);
   // Track the aspect ratio of the current hook image so we can prompt the user to regenerate
   const [hookImageAspect, setHookImageAspect] = useState<'4:5' | '9:16'>('4:5');
