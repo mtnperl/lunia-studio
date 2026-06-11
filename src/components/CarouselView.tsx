@@ -104,6 +104,74 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
 
+  // ─── Auto-save / restore in-progress work ─────────────────────────────────
+  // A reload (deploy version-skew, a tab crash, or an accidental refresh) used
+  // to wipe everything in the builder. We now persist the working state to
+  // localStorage on every change and restore it on mount, so a reload resumes
+  // exactly where you left off instead of losing the carousel.
+  const DRAFT_KEY = `lunia:builder:active:${version}`;
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const restoreAttempted = useRef(false);
+
+  function clearActiveDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setRestoredDraft(false);
+  }
+
+  // Restore once on mount — unless we're opening a specific saved carousel,
+  // which takes precedence over the autosaved draft.
+  useEffect(() => {
+    if (restoreAttempted.current) return;
+    restoreAttempted.current = true;
+    if (initialCarousel) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      const hasWork = d && (d.topic || (d.variants?.length ?? 0) > 0 || (d.didYouKnowVariants?.length ?? 0) > 0);
+      if (!hasWork) return;
+      if (typeof d.topic === "string") setTopic(d.topic);
+      if (d.hookTone) setHookTone(d.hookTone);
+      if (typeof d.concise === "boolean") setConcise(d.concise);
+      if (Array.isArray(d.variants)) setVariants(d.variants);
+      if (typeof d.selectedVariant === "number") setSelectedVariant(d.selectedVariant);
+      if (typeof d.selectedHook === "number") setSelectedHook(d.selectedHook);
+      if (d.brandStyle !== undefined) setBrandStyle(d.brandStyle);
+      if (d.stylePreset) setStylePreset(d.stylePreset);
+      if (typeof d.includeSeoFooter === "boolean") setIncludeSeoFooter(d.includeSeoFooter);
+      if (d.hookImageUrl !== undefined) setHookImageUrl(d.hookImageUrl);
+      if (Array.isArray(d.slideImages)) setSlideImages(d.slideImages);
+      if (d.imageStyle) setImageStyle(d.imageStyle);
+      if (d.moodId !== undefined) setMoodId(d.moodId);
+      if (d.carouselFormat) setCarouselFormat(d.carouselFormat);
+      if (d.engagementSubType) setEngagementSubType(d.engagementSubType);
+      if (Array.isArray(d.didYouKnowVariants)) setDidYouKnowVariants(d.didYouKnowVariants);
+      if (typeof d.selectedDidYouKnow === "number") setSelectedDidYouKnow(d.selectedDidYouKnow);
+      if (typeof d.step === "number" && d.step >= 1 && d.step <= 4) setStep(d.step as Step);
+      setRestoredDraft(true);
+    } catch { /* ignore corrupt draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the working state whenever it changes (skip the empty initial state
+  // so we never clobber a real draft with a blank one).
+  useEffect(() => {
+    if (!topic && variants.length === 0 && didYouKnowVariants.length === 0) return;
+    const draft = {
+      v: 1, step, topic, hookTone, concise, variants, selectedVariant, selectedHook,
+      brandStyle, stylePreset, includeSeoFooter, hookImageUrl, slideImages,
+      imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants,
+      selectedDidYouKnow,
+    };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Storage quota — drop the (regenerable) image refs and retry.
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, slideImages: undefined, hookImageUrl: undefined })); } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, topic, hookTone, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow]);
+
   const content = variants[selectedVariant] ?? null;
 
   const config: CarouselConfig | null = content
@@ -285,6 +353,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     setDidYouKnowVariants([]);
     setSelectedDidYouKnow(0);
     setCarouselFormat("standard");
+    clearActiveDraft();
   }
 
   // ─── fal.ai status badge ──────────────────────────────────────────────────
@@ -354,6 +423,18 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               </div>
             ))}
           </div>
+
+          {restoredDraft && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--accent)" }}>
+              <span>↩ Restored your unsaved carousel from this browser.</span>
+              <button
+                onClick={handleRestart}
+                style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", whiteSpace: "nowrap" }}
+              >
+                Discard & start over
+              </button>
+            </div>
+          )}
 
           {warning && (
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
