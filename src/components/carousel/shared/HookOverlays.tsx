@@ -25,9 +25,12 @@ export type HookOverlaySettings = {
 
 export const DEFAULT_HOOK_OVERLAYS: HookOverlaySettings = {
   frame:      { enabled: true, color: "#c8dde8", opacity: 0.55, inset: 30 },
-  vignette:   { enabled: true, intensity: 0.30 },
+  vignette:   { enabled: false, intensity: 0.30 },
   colorGrade: { enabled: true, intensity: 1.0 },
   grain:      { enabled: true, opacity: 0.06 },
+  // Background wash off by default. Explicit "none" (rather than leaving it
+  // undefined) so the slide does NOT fall back to the legacy dark scrim.
+  backgroundWash: { mode: "none", color: SOFT_WHITE, opacity: 0, gradient: false },
 };
 
 // ─── Editorial frame ──────────────────────────────────────────────────────────
