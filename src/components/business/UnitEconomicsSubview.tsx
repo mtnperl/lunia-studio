@@ -374,6 +374,78 @@ export default function UnitEconomicsSubview() {
         </div>
       )}
 
+      {/* Cohort quality by acquisition month — buckets qualified customers by
+          first-qualified-order month and shows cumulative repeat behavior.
+          UNVALIDATED: confirm the numbers against a known cohort on real data.
+          NOTE: this is repeat-behavior-to-date, not a time-windowed M1/M3/M6
+          retention curve (that needs order-level dates — a follow-up). */}
+      {cohort && Array.isArray(cohort.customers) && cohort.customers.length > 0 && (() => {
+        const map = new Map<string, { size: number; repeat: number; orders: number; revenue: number; sub: number }>();
+        for (const c of cohort.customers) {
+          const d = c.firstQualifiedOrderDate;
+          if (!d || c.trialOnly) continue; // qualified customers only
+          const month = d.slice(0, 7); // YYYY-MM
+          const e = map.get(month) ?? { size: 0, repeat: 0, orders: 0, revenue: 0, sub: 0 };
+          e.size += 1;
+          if (c.qualifiedOrderCount >= 2) e.repeat += 1;
+          e.orders += c.qualifiedOrderCount;
+          e.revenue += c.qualifiedRevenue;
+          if (c.hasSubscriptionOrder) e.sub += 1;
+          map.set(month, e);
+        }
+        const rows = [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])); // newest first
+        if (rows.length === 0) return null;
+        const maxRepeat = Math.max(...rows.map(([, e]) => (e.size > 0 ? e.repeat / e.size : 0)), 0.0001);
+        return (
+          <div style={{ marginTop: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--subtle)" }}>Cohort quality by acquisition month</span>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--warning)", border: "1px solid var(--warning)", borderRadius: 4, padding: "1px 6px" }}>Unvalidated</span>
+            </div>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--muted)", margin: "0 0 14px", lineHeight: 1.5 }}>
+              Repeat behavior to date for each month&apos;s newly-acquired qualified customers (365-day window). Newer cohorts have had less time to reorder, so a lower repeat rate at the bottom is expected, not a problem. This is not a time-windowed M1/M3/M6 curve.
+            </p>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+              <thead>
+                <tr style={{ color: "var(--subtle)", textAlign: "right" }}>
+                  <th style={{ textAlign: "left", fontWeight: 600, padding: "4px 8px 8px 0" }}>Cohort</th>
+                  <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Customers</th>
+                  <th style={{ fontWeight: 600, padding: "4px 8px 8px", minWidth: 130 }}>Repeat rate</th>
+                  <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Avg orders</th>
+                  <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Avg rev</th>
+                  <th style={{ fontWeight: 600, padding: "4px 0 8px 8px" }}>Sub %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(([month, e]) => {
+                  const repeatPct = e.size > 0 ? (e.repeat / e.size) * 100 : 0;
+                  const avgOrders = e.size > 0 ? e.orders / e.size : 0;
+                  const avgRev = e.size > 0 ? e.revenue / e.size : 0;
+                  const subPct = e.size > 0 ? (e.sub / e.size) * 100 : 0;
+                  return (
+                    <tr key={month} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ textAlign: "left", padding: "8px 8px 8px 0", fontFamily: "var(--font-ui)", color: "var(--text)" }}>{month}</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{e.size}</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--text)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+                          <div style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--border)", overflow: "hidden", maxWidth: 70 }}>
+                            <div style={{ width: `${(repeatPct / 100 / maxRepeat) * 100}%`, height: "100%", background: "var(--accent)" }} />
+                          </div>
+                          <span style={{ minWidth: 42, textAlign: "right" }}>{repeatPct.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{avgOrders.toFixed(1)}</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>${avgRev.toFixed(0)}</td>
+                      <td style={{ textAlign: "right", padding: "8px 0 8px 8px", color: "var(--muted)" }}>{subPct.toFixed(0)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
+
       {!isReal && (
         <div style={{ marginTop: 24, fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)", lineHeight: 1.6 }}>
           Want to change subscription mix, churn, repeat rate, or per-unit COGS? Update <strong style={{ color: "var(--muted)" }}>Business → Assumptions</strong> and refresh.
