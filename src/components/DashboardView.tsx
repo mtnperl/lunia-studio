@@ -638,6 +638,54 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
           />
         </div>
 
+        {/* Top products by revenue (reuses shopifyData.products). Per-product
+            subscription mix / margin needs a route extension — see plan Phase 1. */}
+        {shopifyData && shopifyData.products.length > 0 && (() => {
+          const total = shopifyData.summary.revenue || 1;
+          const subPct = shopifyData.summary.revenue > 0
+            ? (shopifyData.summary.subscriptionRevenue / shopifyData.summary.revenue) * 100
+            : 0;
+          const rows = shopifyData.products.slice(0, 8);
+          return (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 20, marginTop: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--subtle)" }}>Top products by revenue</span>
+                <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--muted)" }}>
+                  {subPct.toFixed(0)}% of revenue is subscription
+                </span>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ color: "var(--subtle)", textAlign: "right" }}>
+                    <th style={{ textAlign: "left", fontWeight: 600, padding: "4px 8px 8px 0" }}>Product</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Orders</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Revenue</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>AOV</th>
+                    <th style={{ fontWeight: 600, padding: "4px 0 8px 8px" }}>% rev</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p, i) => {
+                    const aov = p.orders > 0 ? p.revenue / p.orders : 0;
+                    const pct = (p.revenue / total) * 100;
+                    return (
+                      <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                        <td style={{ textAlign: "left", padding: "8px 8px 8px 0", fontFamily: "var(--font-ui)", color: "var(--text)" }}>
+                          {p.productTitle}{p.variantTitle ? <span style={{ color: "var(--muted)" }}> · {p.variantTitle}</span> : null}
+                        </td>
+                        <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{p.orders}</td>
+                        <td style={{ textAlign: "right", padding: "8px", color: "var(--text)" }}>${Math.round(p.revenue).toLocaleString()}</td>
+                        <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>${aov.toFixed(0)}</td>
+                        <td style={{ textAlign: "right", padding: "8px 0 8px 8px", color: "var(--muted)" }}>{pct.toFixed(0)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Chart */}

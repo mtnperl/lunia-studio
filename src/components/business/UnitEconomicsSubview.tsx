@@ -266,6 +266,52 @@ export default function UnitEconomicsSubview() {
         />
       </div>
 
+      {/* Margin-adjusted health — LTV:CAC + payback (the "should we scale?" tiles) */}
+      {(() => {
+        const ratio = ue?.ltvCacRatio ?? 0;
+        const payback = ue?.paybackMonths ?? 0;
+        const haveRatio = isReal && (ue?.cac ?? 0) > 0 && ratio > 0;
+        const ratioStatus = ratio >= 3 ? "good" : ratio >= 1 ? "warn" : "bad";
+        const ratioNote = ratio >= 3 ? "Healthy — room to scale"
+          : ratio >= 1 ? "Watch — margin is thin"
+          : "Unprofitable — fix before scaling";
+        const paybackStatus = payback > 0 && payback <= 12 ? "good" : payback <= 18 ? "warn" : "bad";
+        const paybackNote = payback <= 12 ? "Recovers in under a year"
+          : payback <= 18 ? "12–18 months — watch cash"
+          : "Over 18 months — too slow";
+        return (
+          <div className="ue-grid-2" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 12,
+            marginBottom: cohort ? 24 : 0,
+          }}>
+            <KPICard
+              label="LTV:CAC (contribution)"
+              value={ratio}
+              suffix="x"
+              decimals={2}
+              loading={loading}
+              unavailable={!haveRatio}
+              status={haveRatio ? ratioStatus : undefined}
+              statusNote={haveRatio ? ratioNote : undefined}
+              tooltip="Contribution LTV (gross LTV × gross margin %) ÷ CAC. Benchmark: ≥3 healthy, 1–3 watch, under 1 unprofitable."
+            />
+            <KPICard
+              label="CAC payback"
+              value={payback}
+              suffix=" mo"
+              decimals={1}
+              loading={loading}
+              unavailable={!haveRatio}
+              status={haveRatio ? paybackStatus : undefined}
+              statusNote={haveRatio ? paybackNote : undefined}
+              tooltip="Estimated months to recover CAC = 12 ÷ (LTV:CAC). Assumes contribution accrues evenly across the 365-day window — the cohort view shows the real reorder curve."
+            />
+          </div>
+        );
+      })()}
+
       {/* Real customer base panel */}
       {cohort && (
         <div style={{

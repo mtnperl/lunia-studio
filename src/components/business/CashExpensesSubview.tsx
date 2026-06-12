@@ -202,6 +202,22 @@ export default function CashExpensesSubview() {
         .filter((t) => t.amount < 0)
         .reduce((s, t) => s + Math.abs(t.amount), 0)
     : 0;
+  // Money IN (deposits / payouts) = positive amounts.
+  const received = data
+    ? data.transactions.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0)
+    : 0;
+
+  // Runway = net position ÷ net monthly bank burn at this period's rate.
+  // Net burn = money out − money in over the selected window, normalized to a
+  // month. Bank-based (includes payouts), so it's an approximation, not GAAP
+  // burn — but it's the one number that says "how long do we have".
+  const periodDays = Math.max(
+    1,
+    Math.round((new Date(range.until).getTime() - new Date(range.since).getTime()) / 86_400_000) + 1,
+  );
+  const monthlyNetBurn = (spent - received) * (30 / periodDays);
+  const cashFlowPositive = monthlyNetBurn <= 0;
+  const runwayMonths = cashFlowPositive ? Infinity : Math.max(0, netPosition / monthlyNetBurn);
 
   // Per-category spend (money out only).
   const byCategory = useMemo(() => {
@@ -311,7 +327,7 @@ export default function CashExpensesSubview() {
       <SectionLabel title="Position" subtitle="What we have, what we owe, what moved out this period." />
       <div className="kpi-grid" style={{
         display: "grid",
-        gridTemplateColumns: hasCredit ? "repeat(4, 1fr)" : "repeat(3, 1fr)",
+        gridTemplateColumns: hasCredit ? "repeat(5, 1fr)" : "repeat(4, 1fr)",
         gap: 12,
         marginBottom: 32,
       }}>
@@ -324,6 +340,12 @@ export default function CashExpensesSubview() {
           value={fmtUsd(netPosition, 0)}
           loading={loading && !data}
           negative={netPosition < 0}
+        />
+        <SimpleStat
+          label="Runway"
+          value={cashFlowPositive ? "Cash-flow positive" : `${runwayMonths.toFixed(1)} mo`}
+          loading={loading && !data}
+          negative={!cashFlowPositive && runwayMonths < 6}
         />
         <SimpleStat label="Money Out (period)" value={fmtUsd(spent, 0)} loading={loading && !data} />
       </div>

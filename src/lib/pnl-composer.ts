@@ -112,15 +112,30 @@ export function composePnL(input: {
     contributionMargin: lineWithDelta("Contribution margin", "contributionMargin"),
     netIncome:          lineWithDelta("Net income",          "netIncome"),
     netMarginPct:       current.netMarginPct,
-    unitEconomics: {
-      cac:        current.cac,
-      blendedLtv: current.blendedLtv,
-      subLtv:     current.subLtv,
-      otpLtv:     current.otpLtv,
-      roas:       current.roas,
-      source:     current.unitEconomicsSource,
-      cohort:     current.cohortSummary,
-    },
+    unitEconomics: ((): PnL["unitEconomics"] => {
+      // Margin-adjusted unit economics. LTV here is 365d gross revenue per
+      // customer; the honest health metric is on a contribution basis.
+      //   contributionLtv = gross LTV × gross margin %
+      //   LTV:CAC         = contributionLtv ÷ CAC   (benchmark ≥3 healthy)
+      //   payback (months)= 12 ÷ (LTV:CAC)          (365d LTV spread evenly)
+      // Payback is an estimate — it assumes contribution accrues evenly across
+      // the 365d window, not the real reorder curve (that's the cohort view).
+      const contributionLtv = current.blendedLtv * (current.grossMarginPct / 100);
+      const ltvCacRatio = current.cac > 0 ? contributionLtv / current.cac : 0;
+      const paybackMonths = ltvCacRatio > 0 ? 12 / ltvCacRatio : 0;
+      return {
+        cac:        current.cac,
+        blendedLtv: current.blendedLtv,
+        subLtv:     current.subLtv,
+        otpLtv:     current.otpLtv,
+        roas:       current.roas,
+        contributionLtv,
+        ltvCacRatio,
+        paybackMonths,
+        source:     current.unitEconomicsSource,
+        cohort:     current.cohortSummary,
+      };
+    })(),
     missing,
   };
 }

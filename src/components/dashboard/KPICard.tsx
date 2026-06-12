@@ -11,13 +11,24 @@ type Props = {
   tooltip?: string;
   unavailable?: boolean;
   trend?: { value: number; label: string };
+  /** Benchmark coloring for the value (e.g. LTV:CAC, payback). Omit for neutral. */
+  status?: "good" | "warn" | "bad";
+  /** Short note under the value, colored to match status (e.g. "Healthy", "Payback >18mo"). */
+  statusNote?: string;
+};
+
+const STATUS_COLOR: Record<"good" | "warn" | "bad", string> = {
+  good: "var(--success)",
+  warn: "var(--warning)",
+  bad: "var(--error)",
 };
 
 function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip, unavailable = false, trend }: Props) {
+export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip, unavailable = false, trend, status, statusNote }: Props) {
+  const valueColor = status ? STATUS_COLOR[status] : "var(--text)";
   const [displayValue, setDisplayValue] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -136,11 +147,22 @@ export default function KPICard({ label, value, prefix = "", suffix = "", loadin
             fontVariantNumeric: "tabular-nums",
             fontSize: 28,
             fontWeight: 500,
-            color: "var(--text)",
+            color: valueColor,
             lineHeight: 1,
           }}>
             {prefix}{formatted}{suffix}
           </div>
+          {statusNote && (
+            <div style={{
+              marginTop: 6,
+              fontFamily: "var(--font-ui)",
+              fontSize: 12,
+              fontWeight: 600,
+              color: status ? STATUS_COLOR[status] : "var(--muted)",
+            }}>
+              {statusNote}
+            </div>
+          )}
           {trend && (
             <div style={{
               marginTop: 6,

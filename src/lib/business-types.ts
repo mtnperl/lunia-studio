@@ -233,6 +233,12 @@ export type PnL = {
     otpLtv: number;
     /** Period-blended ROAS = total Shopify revenue ÷ Meta ad spend (this period). */
     roas: number;
+    /** Gross LTV × gross margin % — per-customer contribution over the 365d window. */
+    contributionLtv: number;
+    /** contributionLtv ÷ CAC. Benchmark: ≥3 healthy, 1–3 watch, <1 unprofitable. 0 when CAC unavailable. */
+    ltvCacRatio: number;
+    /** Estimated CAC payback in months = 12 ÷ ltvCacRatio (0 when unavailable). */
+    paybackMonths: number;
     /**
      * "shopify-cohort" = computed from real 12-month customer data.
      * "unavailable"    = no cohort loaded — UE values are 0/null and the UI hides them.

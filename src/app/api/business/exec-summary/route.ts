@@ -17,7 +17,7 @@ Your job:
 - Write 2 to 3 short sentences (max ~80 words total) that surface what is ACTUALLY moving in the business right now and one specific next move.
 - Lead with the biggest material change (revenue, margin, ad spend, or a fixed-expense category that shifted).
 - Cite specific numbers from the data — do NOT speak generically.
-- If unit economics are concerning (LTV:CAC < 3, payback > 6 months, net margin < 5%), name it and recommend a concrete action.
+- If unit economics are concerning (contribution LTV:CAC < 3, CAC payback > 12 months, net margin < 5%), name it and recommend a concrete action. The LTV:CAC and payback figures, when present, are margin-adjusted and authoritative — cite them directly.
 - If the P&L has \`missing\` sources, do not pretend they're zero — note the caveat briefly.
 
 Tone: direct, plainspoken, founder-to-founder. No fluff, no hedging, no filler. No emoji. No headers or bullet points — pure prose.
@@ -108,10 +108,16 @@ function formatPnlForPrompt(pnl: PnL): string {
   lines.push(`Net income: ${fmt(pnl.netIncome.amount)}${deltaStr(pnl.netIncome)} — net margin ${pnl.netMarginPct.toFixed(1)}%`);
   lines.push("");
 
+  const ue = pnl.unitEconomics;
   lines.push(`Unit economics (gross-revenue LTV per customer):`);
-  lines.push(`  CAC: ${fmt(pnl.unitEconomics.cac)}`);
-  lines.push(`  LTV blended: ${fmt(pnl.unitEconomics.blendedLtv)}  (subscriber ${fmt(pnl.unitEconomics.subLtv)} / one-time ${fmt(pnl.unitEconomics.otpLtv)})`);
-  lines.push(`  ROAS (period-blended): ${pnl.unitEconomics.roas.toFixed(2)}x`);
+  lines.push(`  CAC: ${fmt(ue.cac)}`);
+  lines.push(`  LTV blended: ${fmt(ue.blendedLtv)}  (subscriber ${fmt(ue.subLtv)} / one-time ${fmt(ue.otpLtv)})`);
+  lines.push(`  ROAS (period-blended): ${ue.roas.toFixed(2)}x`);
+  if (ue.source === "shopify-cohort" && ue.cac > 0) {
+    lines.push(`  Contribution LTV (margin-adjusted): ${fmt(ue.contributionLtv)}`);
+    lines.push(`  LTV:CAC (contribution basis): ${ue.ltvCacRatio.toFixed(2)}x  (benchmark: 3x+ healthy, under 1x unprofitable)`);
+    lines.push(`  Estimated CAC payback: ${ue.paybackMonths.toFixed(1)} months  (benchmark: under 12 months healthy)`);
+  }
 
   return lines.join("\n");
 }
