@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
 import RefreshButton from "../dashboard/RefreshButton";
 import KPICard from "../dashboard/KPICard";
+import SubscriptionCockpit from "./SubscriptionCockpit";
 import type { CustomerCohort, PnL } from "@/lib/business-types";
 
 function defaultRange(): DateRange {
@@ -205,6 +206,9 @@ export default function UnitEconomicsSubview() {
           .ue-cust-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
+
+      {/* Subscription cockpit — true MRR/churn from Shopify contracts (Katching). */}
+      <SubscriptionCockpit />
 
       {/* Headline tiles — CAC / LTV / ROAS */}
       <div className="ue-grid-3" style={{
