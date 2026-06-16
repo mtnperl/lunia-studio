@@ -362,6 +362,140 @@ export async function getFlowMetrics(flowId: string, days = 60): Promise<FlowMes
   return [];
 }
 
+// --- Owned-channel revenue (email/SMS attribution) --------------------------
+// Implements what the getFlowMetrics stub couldn't: the account's conversion
+// metric ("Placed Order") is resolved at runtime (its id varies per account),
+// then the Klaviyo *-values-reports endpoints return attributed revenue
+// (conversion_value) per flow and per campaign. Validated against the live
+// account: POST /flow-values-reports + /campaign-values-reports.
+
+export type OwnedChannelEntry = {
+  id: string;
+  name: string;
+  channel: "email" | "sms" | "other";
+  revenue: number;       // attributed conversion_value
+  conversions: number;
+  recipients: number;
+  openRate: number;
+  clickRate: number;
+};
+
+export type OwnedChannelRevenue = {
+  timeframe: string;
+  conversionMetricResolved: boolean;
+  totalRevenue: number;     // flows + campaigns
+  flowRevenue: number;
+  campaignRevenue: number;
+  flows: OwnedChannelEntry[];      // sorted by revenue desc
+  campaigns: OwnedChannelEntry[];  // sorted by revenue desc
+};
+
+type KMetricsResponse = {
+  data: { id: string; attributes: { name: string; integration?: { key?: string } } }[];
+};
+
+/** Resolve the account's "Placed Order" conversion metric id (Shopify). */
+async function resolveConversionMetricId(): Promise<string | null> {
+  return cachedFetch("klaviyo:conversion-metric-id:v1", async () => {
+    const res = await klaviyoFetch<KMetricsResponse>("/metrics?fields[metric]=name,integration");
+    const metrics = res.data ?? [];
+    const pick =
+      metrics.find((m) => m.attributes.name === "Placed Order" && m.attributes.integration?.key === "shopify") ??
+      metrics.find((m) => m.attributes.name === "Placed Order") ??
+      metrics.find((m) => /placed order/i.test(m.attributes.name));
+    return pick?.id ?? null;
+  });
+}
+
+type KValuesReport = {
+  data?: { attributes?: { results?: { groupings?: Record<string, string>; statistics?: Record<string, number> }[] } };
+};
+
+function inferChannel(name: string): "email" | "sms" | "other" {
+  if (/\bsms\b|\btext\b/i.test(name)) return "sms";
+  if (/\bemail\b/i.test(name)) return "email";
+  return "other";
+}
+
+/** Aggregate a *-values-report's per-message results up to the parent id. */
+function aggregateValues(
+  report: KValuesReport,
+  idKey: string,
+  names: Map<string, string>,
+): OwnedChannelEntry[] {
+  const byId = new Map<string, { revenue: number; conversions: number; recipients: number; opens: number; clicks: number }>();
+  for (const r of report.data?.attributes?.results ?? []) {
+    const id = r.groupings?.[idKey];
+    if (!id) continue;
+    const s = r.statistics ?? {};
+    const e = byId.get(id) ?? { revenue: 0, conversions: 0, recipients: 0, opens: 0, clicks: 0 };
+    e.revenue += s.conversion_value ?? 0;
+    e.conversions += s.conversions ?? 0;
+    e.recipients += s.recipients ?? 0;
+    e.opens += s.opens_unique ?? 0;
+    e.clicks += s.clicks_unique ?? 0;
+    byId.set(id, e);
+  }
+  return [...byId.entries()]
+    .map(([id, e]) => {
+      const name = names.get(id) ?? id;
+      return {
+        id, name, channel: inferChannel(name),
+        revenue: Math.round(e.revenue * 100) / 100,
+        conversions: e.conversions,
+        recipients: e.recipients,
+        openRate: e.recipients > 0 ? e.opens / e.recipients : 0,
+        clickRate: e.recipients > 0 ? e.clicks / e.recipients : 0,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+}
+
+const VALUE_STATS = ["conversion_value", "conversions", "recipients", "opens_unique", "clicks_unique"];
+
+/**
+ * Account-wide owned-channel (email + SMS) revenue for analytics. Returns zeros
+ * with conversionMetricResolved=false when the Placed Order metric can't be
+ * found, so the caller degrades gracefully (no throw).
+ * timeframe: a Klaviyo reporting key, e.g. "last_30_days" | "last_90_days".
+ */
+export async function getOwnedChannelRevenue(timeframe = "last_90_days"): Promise<OwnedChannelRevenue> {
+  const empty: OwnedChannelRevenue = {
+    timeframe, conversionMetricResolved: false,
+    totalRevenue: 0, flowRevenue: 0, campaignRevenue: 0, flows: [], campaigns: [],
+  };
+  const metricId = await resolveConversionMetricId();
+  if (!metricId) return empty;
+
+  return cachedFetch(`klaviyo:owned-revenue:v1:${timeframe}`, async () => {
+    const body = (type: string) => ({
+      data: { type, attributes: { statistics: VALUE_STATS, timeframe: { key: timeframe }, conversion_metric_id: metricId } },
+    });
+    // Names: reuse the existing list endpoints. Failures are non-fatal (id shown).
+    const [flowReport, campaignReport, flowList, campaignList] = await Promise.all([
+      klaviyoFetch<KValuesReport>("/flow-values-reports/", { method: "POST", body: body("flow-values-report") }).catch(() => ({} as KValuesReport)),
+      klaviyoFetch<KValuesReport>("/campaign-values-reports/", { method: "POST", body: body("campaign-values-report") }).catch(() => ({} as KValuesReport)),
+      listFlows().catch(() => []),
+      listCampaigns().catch(() => []),
+    ]);
+    const flowNames = new Map(flowList.map((f) => [f.id, f.name]));
+    const campaignNames = new Map(campaignList.map((c) => [c.id, c.name]));
+
+    const flows = aggregateValues(flowReport, "flow_id", flowNames);
+    const campaigns = aggregateValues(campaignReport, "campaign_id", campaignNames);
+    const flowRevenue = Math.round(flows.reduce((s, f) => s + f.revenue, 0) * 100) / 100;
+    const campaignRevenue = Math.round(campaigns.reduce((s, c) => s + c.revenue, 0) * 100) / 100;
+
+    return {
+      timeframe, conversionMetricResolved: true,
+      totalRevenue: Math.round((flowRevenue + campaignRevenue) * 100) / 100,
+      flowRevenue, campaignRevenue,
+      flows: flows.slice(0, 12),
+      campaigns: campaigns.slice(0, 12),
+    };
+  });
+}
+
 // --- Public write API -------------------------------------------------------
 
 export type CloneTemplateInput = {

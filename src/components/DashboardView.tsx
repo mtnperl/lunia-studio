@@ -6,6 +6,7 @@ import KPICard from "./dashboard/KPICard";
 import PerformanceChart from "./dashboard/PerformanceChart";
 import CampaignTable from "./dashboard/CampaignTable";
 import InsightsPanel from "./dashboard/InsightsPanel";
+import EmailRevenuePanel from "./dashboard/EmailRevenuePanel";
 import RefreshButton from "./dashboard/RefreshButton";
 import PasswordGate from "./dashboard/PasswordGate";
 import DateRangePicker, { type DateRange } from "./dashboard/DateRangePicker";
@@ -687,6 +688,9 @@ export default function DashboardView({ skipGate = false }: DashboardViewProps =
         })()}
 
       </div>
+
+      {/* Owned-channel (email/SMS) revenue — Klaviyo. Hides itself if not connected. */}
+      <EmailRevenuePanel shopifyRevenue={shopifyData?.summary.revenue} />
 
       {/* Chart */}
       <div style={{
