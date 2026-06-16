@@ -446,6 +446,74 @@ export default function UnitEconomicsSubview() {
         );
       })()}
 
+      {/* Reorder / winback — for a consumable, who is overdue to reorder.
+          UNVALIDATED: per-customer cadence is approximated as
+          (lastOrder − firstOrder) / (orders − 1), since CustomerSummary carries
+          first/last dates + count, not every order date. Confirm on real data. */}
+      {cohort && Array.isArray(cohort.customers) && cohort.customers.length > 0 && (() => {
+        const DAY = 86_400_000;
+        const now = Date.now();
+        const withInterval = cohort.customers
+          .filter((c) => !c.trialOnly && c.orderCount >= 2 && c.firstOrderDate && c.lastOrderDate)
+          .map((c) => {
+            const first = new Date(c.firstOrderDate).getTime();
+            const last = new Date(c.lastOrderDate).getTime();
+            const interval = (last - first) / DAY / (c.orderCount - 1);
+            const daysSinceLast = (now - last) / DAY;
+            const aov = c.qualifiedOrderCount > 0 ? c.qualifiedRevenue / c.qualifiedOrderCount : 0;
+            return { c, interval, daysSinceLast, overdueBy: daysSinceLast - interval, aov };
+          })
+          .filter((x) => x.interval > 0 && isFinite(x.interval));
+        if (withInterval.length === 0) return null;
+        const intervals = withInterval.map((x) => x.interval).sort((a, b) => a - b);
+        const medianInterval = intervals[Math.floor(intervals.length / 2)];
+        // Overdue = past their own cadence by a 25% buffer.
+        const overdue = withInterval.filter((x) => x.overdueBy > x.interval * 0.25).sort((a, b) => b.aov - a.aov);
+        const revenueAtRisk = overdue.reduce((s, x) => s + x.aov, 0);
+        const label = (c: typeof withInterval[number]["c"]) =>
+          [c.firstName, c.lastName ? c.lastName[0] + "." : ""].filter(Boolean).join(" ") || c.email || "Customer";
+        return (
+          <div style={{ marginTop: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--subtle)" }}>Reorder &amp; winback</span>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--warning)", border: "1px solid var(--warning)", borderRadius: 4, padding: "1px 6px" }}>Unvalidated</span>
+            </div>
+            <div className="ue-cust-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 16 }}>
+              <Stat label="Typical reorder window" value={`${medianInterval.toFixed(0)} days`} hint="median cadence across repeat customers" />
+              <Stat label="Overdue to reorder" value={overdue.length.toLocaleString()} hint="past their own cadence by 25%+" />
+              <Stat label="Reorder revenue at risk" value={`$${Math.round(revenueAtRisk).toLocaleString()}`} hint="one reorder each, at their AOV" />
+            </div>
+            {overdue.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ color: "var(--subtle)", textAlign: "right" }}>
+                    <th style={{ textAlign: "left", fontWeight: 600, padding: "4px 8px 8px 0" }}>Customer</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Last order</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Cadence</th>
+                    <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Overdue</th>
+                    <th style={{ fontWeight: 600, padding: "4px 0 8px 8px" }}>Est. value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overdue.slice(0, 10).map((x) => (
+                    <tr key={x.c.key} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ textAlign: "left", padding: "8px 8px 8px 0", fontFamily: "var(--font-ui)", color: "var(--text)" }}>{label(x.c)}</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{x.c.lastOrderDate}</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{x.interval.toFixed(0)}d</td>
+                      <td style={{ textAlign: "right", padding: "8px", color: "var(--text)" }}>{x.overdueBy.toFixed(0)}d</td>
+                      <td style={{ textAlign: "right", padding: "8px 0 8px 8px", color: "var(--muted)" }}>${x.aov.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--muted)", margin: "12px 0 0", lineHeight: 1.5 }}>
+              Feed the overdue list into a Klaviyo winback flow or an ad audience. Cadence is approximate (evenly-spaced orders assumed).
+            </p>
+          </div>
+        );
+      })()}
+
       {!isReal && (
         <div style={{ marginTop: 24, fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)", lineHeight: 1.6 }}>
           Want to change subscription mix, churn, repeat rate, or per-unit COGS? Update <strong style={{ color: "var(--muted)" }}>Business → Assumptions</strong> and refresh.
