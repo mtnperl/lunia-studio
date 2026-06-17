@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
+import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -69,13 +70,44 @@ function retain<T>(key: string, items: T[]): T[] {
   return items;
 }
 
-export async function getScripts(): Promise<Script[]> {
+// ─── Durable persistence for single-key array collections ─────────────────────
+//
+// Every collection below is a single Redis key holding a JSON array. These two
+// helpers add a durable Blob mirror so a Redis flush/eviction can't lose data:
+//   • writeCollection — writes Redis (fast primary) AND a Blob snapshot.
+//   • readCollection  — reads Redis first; if it's empty (or unreachable), it
+//     restores from the newest Blob snapshot and rehydrates Redis, so the app
+//     self-heals on the very next read after a flush.
+// Both are best-effort on the Blob side: a backup/restore failure never breaks
+// the underlying Redis operation.
+
+async function writeCollection<T>(key: string, items: T[]): Promise<void> {
+  await redis.set(key, retain(key, items), { ex: TTL_SECONDS });
+  await backupCollectionToBlob(key, items);
+}
+
+async function readCollection<T>(key: string): Promise<T[]> {
+  let stored: T[] | null = null;
   try {
-    const scripts = await redis.get<Script[]>(SCRIPTS_KEY);
-    return scripts ?? [];
+    stored = await redis.get<T[]>(key);
+    if (stored && stored.length > 0) return stored;
   } catch {
-    return [];
+    /* Redis unreachable — fall through to the durable backup */
   }
+  const restored = await restoreCollectionFromBlob<T>(key);
+  if (restored && restored.length > 0) {
+    try {
+      await redis.set(key, restored, { ex: TTL_SECONDS });
+    } catch {
+      /* rehydrate is best-effort; still return the restored data */
+    }
+    return restored;
+  }
+  return stored ?? [];
+}
+
+export async function getScripts(): Promise<Script[]> {
+  return readCollection<Script>(SCRIPTS_KEY);
 }
 
 export async function saveScriptKv(script: Script): Promise<void> {
@@ -86,7 +118,7 @@ export async function saveScriptKv(script: Script): Promise<void> {
   } else {
     scripts.unshift(script);
   }
-  await redis.set(SCRIPTS_KEY, scripts, { ex: TTL_SECONDS });
+  await writeCollection(SCRIPTS_KEY, scripts);
 }
 
 export async function getScriptById(id: string): Promise<Script | null> {
@@ -97,7 +129,7 @@ export async function getScriptById(id: string): Promise<Script | null> {
 export async function deleteScriptKv(id: string): Promise<void> {
   const scripts = await getScripts();
   const filtered = scripts.filter((s) => s.id !== id);
-  await redis.set(SCRIPTS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(SCRIPTS_KEY, filtered);
 }
 
 // Rate limiting: fixed window per IP per bucket
@@ -145,11 +177,7 @@ export async function checkRateLimit(ip: string, bucket = "generate"): Promise<b
 const CAROUSELS_KEY = "lunia:carousels";
 
 export async function getCarousels(): Promise<SavedCarousel[]> {
-  try {
-    return (await redis.get<SavedCarousel[]>(CAROUSELS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<SavedCarousel>(CAROUSELS_KEY);
 }
 
 export async function saveCarousel(carousel: SavedCarousel): Promise<void> {
@@ -160,7 +188,7 @@ export async function saveCarousel(carousel: SavedCarousel): Promise<void> {
   } else {
     all.unshift(carousel);
   }
-  await redis.set(CAROUSELS_KEY, retain(CAROUSELS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(CAROUSELS_KEY, all);
 }
 
 export async function getCarouselById(id: string): Promise<SavedCarousel | null> {
@@ -171,18 +199,14 @@ export async function getCarouselById(id: string): Promise<SavedCarousel | null>
 export async function deleteCarouselKv(id: string): Promise<void> {
   const all = await getCarousels();
   const filtered = all.filter((c) => c.id !== id);
-  await redis.set(CAROUSELS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(CAROUSELS_KEY, filtered);
 }
 
 // ─── Campaign emails (campaign builder) ───────────────────────────────────────
 const CAMPAIGN_EMAILS_KEY = "lunia:campaign-emails";
 
 export async function getCampaignEmails(): Promise<SavedCampaign[]> {
-  try {
-    return (await redis.get<SavedCampaign[]>(CAMPAIGN_EMAILS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<SavedCampaign>(CAMPAIGN_EMAILS_KEY);
 }
 
 export async function saveCampaignEmail(campaign: SavedCampaign): Promise<void> {
@@ -193,7 +217,7 @@ export async function saveCampaignEmail(campaign: SavedCampaign): Promise<void> 
   } else {
     all.unshift(campaign);
   }
-  await redis.set(CAMPAIGN_EMAILS_KEY, retain(CAMPAIGN_EMAILS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(CAMPAIGN_EMAILS_KEY, all);
 }
 
 export async function getCampaignEmailById(id: string): Promise<SavedCampaign | null> {
@@ -204,24 +228,20 @@ export async function getCampaignEmailById(id: string): Promise<SavedCampaign | 
 export async function deleteCampaignEmailKv(id: string): Promise<void> {
   const all = await getCampaignEmails();
   const filtered = all.filter((c) => c.id !== id);
-  await redis.set(CAMPAIGN_EMAILS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(CAMPAIGN_EMAILS_KEY, filtered);
 }
 
 // ─── Asset metadata ───────────────────────────────────────────────────────────
 const ASSETS_KEY = "lunia:assets";
 
 export async function getAssets(): Promise<AssetMetadata[]> {
-  try {
-    return (await redis.get<AssetMetadata[]>(ASSETS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<AssetMetadata>(ASSETS_KEY);
 }
 
 export async function saveAsset(asset: AssetMetadata): Promise<void> {
   const all = await getAssets();
   all.unshift(asset);
-  await redis.set(ASSETS_KEY, all, { ex: TTL_SECONDS });
+  await writeCollection(ASSETS_KEY, all);
 }
 
 /** Add an asset only if no existing entry already references the same URL.
@@ -233,14 +253,14 @@ export async function saveAssetIfNew(asset: AssetMetadata): Promise<boolean> {
   const all = await getAssets();
   if (all.some((a) => a.url === asset.url)) return false;
   all.unshift(asset);
-  await redis.set(ASSETS_KEY, all, { ex: TTL_SECONDS });
+  await writeCollection(ASSETS_KEY, all);
   return true;
 }
 
 export async function deleteAsset(id: string): Promise<void> {
   const all = await getAssets();
   const filtered = all.filter((a) => a.id !== id);
-  await redis.set(ASSETS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(ASSETS_KEY, filtered);
 }
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────
@@ -250,17 +270,22 @@ export async function getSubjects(): Promise<Subject[]> {
   try {
     const { DEFAULT_SUBJECTS } = await import("./default-subjects");
     const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
-    if (!stored || stored.length === 0) {
-      await redis.set(SUBJECTS_KEY, DEFAULT_SUBJECTS, { ex: TTL_SECONDS });
+    let base = stored;
+    if (!base || base.length === 0) {
+      const restored = await restoreCollectionFromBlob<Subject>(SUBJECTS_KEY);
+      if (restored && restored.length > 0) base = restored;
+    }
+    if (!base || base.length === 0) {
+      await writeCollection(SUBJECTS_KEY, DEFAULT_SUBJECTS);
       return DEFAULT_SUBJECTS;
     }
     // Merge: append any DEFAULT_SUBJECTS not already present (by case-insensitive text).
     // Lets new seed categories (e.g. "Did You Know") show up without wiping user data.
-    const haveTexts = new Set(stored.map((s) => s.text.trim().toLowerCase()));
+    const haveTexts = new Set(base.map((s) => s.text.trim().toLowerCase()));
     const newcomers = DEFAULT_SUBJECTS.filter((d) => !haveTexts.has(d.text.trim().toLowerCase()));
-    if (newcomers.length === 0) return stored;
-    const merged = [...stored, ...newcomers];
-    await redis.set(SUBJECTS_KEY, merged, { ex: TTL_SECONDS });
+    if (newcomers.length === 0) return base;
+    const merged = [...base, ...newcomers];
+    await writeCollection(SUBJECTS_KEY, merged);
     return merged;
   } catch {
     // Redis unavailable (e.g. local dev without KV_URL) — return defaults in-memory
@@ -270,7 +295,7 @@ export async function getSubjects(): Promise<Subject[]> {
 }
 
 export async function saveSubjects(subjects: Subject[]): Promise<void> {
-  await redis.set(SUBJECTS_KEY, subjects, { ex: TTL_SECONDS });
+  await writeCollection(SUBJECTS_KEY, subjects);
 }
 
 export async function updateSubject(id: string, text: string): Promise<void> {
@@ -278,7 +303,7 @@ export async function updateSubject(id: string, text: string): Promise<void> {
   const idx = all.findIndex((s) => s.id === id);
   if (idx >= 0) {
     all[idx] = { ...all[idx], text };
-    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+    await writeCollection(SUBJECTS_KEY, all);
   }
 }
 
@@ -287,7 +312,7 @@ export async function markSubjectUsed(id: string): Promise<void> {
   const idx = all.findIndex((s) => s.id === id);
   if (idx >= 0) {
     all[idx] = { ...all[idx], usedAt: new Date().toISOString() };
-    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+    await writeCollection(SUBJECTS_KEY, all);
   }
 }
 
@@ -297,25 +322,21 @@ export async function markSubjectUnused(id: string): Promise<void> {
   if (idx >= 0) {
     const { usedAt: _removed, ...rest } = all[idx];
     all[idx] = rest;
-    await redis.set(SUBJECTS_KEY, all, { ex: TTL_SECONDS });
+    await writeCollection(SUBJECTS_KEY, all);
   }
 }
 
 export async function deleteSubject(id: string): Promise<void> {
   const all = await getSubjects();
   const filtered = all.filter((s) => s.id !== id);
-  await redis.set(SUBJECTS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(SUBJECTS_KEY, filtered);
 }
 
 // ─── Carousel Templates ───────────────────────────────────────────────────────
 const TEMPLATES_KEY = "lunia:carousel-templates";
 
 export async function getCarouselTemplates(): Promise<CarouselTemplate[]> {
-  try {
-    return (await redis.get<CarouselTemplate[]>(TEMPLATES_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<CarouselTemplate>(TEMPLATES_KEY);
 }
 
 export async function saveCarouselTemplate(template: CarouselTemplate): Promise<void> {
@@ -326,12 +347,12 @@ export async function saveCarouselTemplate(template: CarouselTemplate): Promise<
   } else {
     all.unshift(template);
   }
-  await redis.set(TEMPLATES_KEY, all, { ex: TTL_SECONDS });
+  await writeCollection(TEMPLATES_KEY, all);
 }
 
 export async function deleteCarouselTemplate(id: string): Promise<void> {
   const all = await getCarouselTemplates();
-  await redis.set(TEMPLATES_KEY, all.filter((t) => t.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(TEMPLATES_KEY, all.filter((t) => t.id !== id));
 }
 
 export async function getCarouselTemplateById(id: string): Promise<CarouselTemplate | null> {
@@ -343,11 +364,7 @@ export async function getCarouselTemplateById(id: string): Promise<CarouselTempl
 const VIDEO_ADS_KEY = "lunia:video-ads";
 
 export async function getVideoAds(): Promise<SavedVideoAd[]> {
-  try {
-    return (await redis.get<SavedVideoAd[]>(VIDEO_ADS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<SavedVideoAd>(VIDEO_ADS_KEY);
 }
 
 export async function saveVideoAd(ad: SavedVideoAd): Promise<void> {
@@ -358,7 +375,7 @@ export async function saveVideoAd(ad: SavedVideoAd): Promise<void> {
   } else {
     all.unshift(ad);
   }
-  await redis.set(VIDEO_ADS_KEY, retain(VIDEO_ADS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(VIDEO_ADS_KEY, all);
 }
 
 export async function getVideoAdById(id: string): Promise<SavedVideoAd | null> {
@@ -368,40 +385,32 @@ export async function getVideoAdById(id: string): Promise<SavedVideoAd | null> {
 
 export async function deleteVideoAd(id: string): Promise<void> {
   const all = await getVideoAds();
-  await redis.set(VIDEO_ADS_KEY, all.filter((a) => a.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(VIDEO_ADS_KEY, all.filter((a) => a.id !== id));
 }
 
 // ─── Video Assets ─────────────────────────────────────────────────────────────
 const VIDEO_ASSETS_KEY = "lunia:video-assets";
 
 export async function getVideoAssets(): Promise<VideoAssetMetadata[]> {
-  try {
-    return (await redis.get<VideoAssetMetadata[]>(VIDEO_ASSETS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<VideoAssetMetadata>(VIDEO_ASSETS_KEY);
 }
 
 export async function saveVideoAsset(asset: VideoAssetMetadata): Promise<void> {
   const all = await getVideoAssets();
   all.unshift(asset);
-  await redis.set(VIDEO_ASSETS_KEY, all, { ex: TTL_SECONDS });
+  await writeCollection(VIDEO_ASSETS_KEY, all);
 }
 
 export async function deleteVideoAsset(id: string): Promise<void> {
   const all = await getVideoAssets();
-  await redis.set(VIDEO_ASSETS_KEY, all.filter((a) => a.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(VIDEO_ASSETS_KEY, all.filter((a) => a.id !== id));
 }
 
 // ─── Email Intelligence ───────────────────────────────────────────────────────
 const EMAILS_KEY = "lunia:emails";
 
 export async function getEmails(): Promise<SavedEmail[]> {
-  try {
-    return (await redis.get<SavedEmail[]>(EMAILS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<SavedEmail>(EMAILS_KEY);
 }
 
 export async function saveEmail(email: SavedEmail): Promise<void> {
@@ -412,7 +421,7 @@ export async function saveEmail(email: SavedEmail): Promise<void> {
   } else {
     all.unshift(email);
   }
-  await redis.set(EMAILS_KEY, retain(EMAILS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(EMAILS_KEY, all);
 }
 
 export async function getEmailById(id: string): Promise<SavedEmail | null> {
@@ -422,7 +431,7 @@ export async function getEmailById(id: string): Promise<SavedEmail | null> {
 
 export async function deleteEmailKv(id: string): Promise<void> {
   const all = await getEmails();
-  await redis.set(EMAILS_KEY, all.filter((e) => e.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(EMAILS_KEY, all.filter((e) => e.id !== id));
 }
 
 // ─── Email Flow Reviews ──────────────────────────────────────────────────────
@@ -431,11 +440,7 @@ export async function deleteEmailKv(id: string): Promise<void> {
 const FLOW_REVIEWS_KEY = "lunia:flow_reviews";
 
 export async function getFlowReviews(): Promise<SavedFlowReview[]> {
-  try {
-    return (await redis.get<SavedFlowReview[]>(FLOW_REVIEWS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<SavedFlowReview>(FLOW_REVIEWS_KEY);
 }
 
 export async function saveFlowReview(review: SavedFlowReview): Promise<void> {
@@ -446,7 +451,7 @@ export async function saveFlowReview(review: SavedFlowReview): Promise<void> {
   } else {
     all.unshift(review);
   }
-  await redis.set(FLOW_REVIEWS_KEY, retain(FLOW_REVIEWS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(FLOW_REVIEWS_KEY, all);
 }
 
 export async function getFlowReviewById(id: string): Promise<SavedFlowReview | null> {
@@ -516,14 +521,14 @@ export async function mutateFlowReview(
     if (idx < 0) return null;
     const next = mutator(all[idx]);
     all[idx] = next;
-    await redis.set(FLOW_REVIEWS_KEY, retain(FLOW_REVIEWS_KEY, all), { ex: TTL_SECONDS });
+    await writeCollection(FLOW_REVIEWS_KEY, all);
     return next;
   });
 }
 
 export async function deleteFlowReviewKv(id: string): Promise<void> {
   const all = await getFlowReviews();
-  await redis.set(FLOW_REVIEWS_KEY, all.filter((r) => r.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(FLOW_REVIEWS_KEY, all.filter((r) => r.id !== id));
 }
 
 // ─── UGC Tracker ──────────────────────────────────────────────────────────────
@@ -534,11 +539,7 @@ const UGC_BRIEFS_KEY = "lunia:ugc:briefs";
 const UGC_OUTREACH_KEY = "lunia:ugc:outreach";
 
 export async function getCampaigns(): Promise<UGCCampaign[]> {
-  try {
-    return (await redis.get<UGCCampaign[]>(UGC_CAMPAIGNS_KEY)) ?? [];
-  } catch {
-    return [];
-  }
+  return readCollection<UGCCampaign>(UGC_CAMPAIGNS_KEY);
 }
 
 export async function saveCampaign(campaign: UGCCampaign): Promise<void> {
@@ -550,7 +551,7 @@ export async function saveCampaign(campaign: UGCCampaign): Promise<void> {
   } else {
     all.unshift(campaign);
   }
-  await redis.set(UGC_CAMPAIGNS_KEY, retain(UGC_CAMPAIGNS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(UGC_CAMPAIGNS_KEY, all);
 }
 
 export async function getCampaignById(id: string): Promise<UGCCampaign | null> {
@@ -561,16 +562,12 @@ export async function getCampaignById(id: string): Promise<UGCCampaign | null> {
 export async function deleteCampaignKv(id: string): Promise<void> {
   const all = await getCampaigns();
   const filtered = all.filter((c) => c.id !== id);
-  await redis.set(UGC_CAMPAIGNS_KEY, filtered, { ex: TTL_SECONDS });
+  await writeCollection(UGC_CAMPAIGNS_KEY, filtered);
 }
 
 export async function getBriefs(): Promise<UGCBrief[]> {
-  try {
-    const raw = (await redis.get<UGCBrief[]>(UGC_BRIEFS_KEY)) ?? [];
-    return raw.map((b) => ({ ...b, caption: b.caption ?? "" }));
-  } catch {
-    return [];
-  }
+  const raw = await readCollection<UGCBrief>(UGC_BRIEFS_KEY);
+  return raw.map((b) => ({ ...b, caption: b.caption ?? "" }));
 }
 
 export async function saveBrief(brief: UGCBrief): Promise<void> {
@@ -581,7 +578,7 @@ export async function saveBrief(brief: UGCBrief): Promise<void> {
   } else {
     all.unshift(brief);
   }
-  await redis.set(UGC_BRIEFS_KEY, retain(UGC_BRIEFS_KEY, all), { ex: TTL_SECONDS });
+  await writeCollection(UGC_BRIEFS_KEY, all);
 }
 
 export async function getBriefById(id: string): Promise<UGCBrief | null> {
@@ -596,7 +593,7 @@ export async function getBriefByPublicId(publicBriefId: string): Promise<UGCBrie
 
 export async function deleteBriefKv(id: string): Promise<void> {
   const all = await getBriefs();
-  await redis.set(UGC_BRIEFS_KEY, all.filter((b) => b.id !== id), { ex: TTL_SECONDS });
+  await writeCollection(UGC_BRIEFS_KEY, all.filter((b) => b.id !== id));
 }
 
 export async function archiveBrief(id: string): Promise<void> {
@@ -604,7 +601,7 @@ export async function archiveBrief(id: string): Promise<void> {
   const idx = all.findIndex((b) => b.id === id);
   if (idx >= 0) {
     all[idx] = { ...all[idx], status: "archived", updatedAt: Date.now() };
-    await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+    await writeCollection(UGC_BRIEFS_KEY, all);
   }
 }
 
@@ -613,7 +610,7 @@ export async function revokeBriefShare(id: string): Promise<void> {
   const idx = all.findIndex((b) => b.id === id);
   if (idx >= 0) {
     all[idx] = { ...all[idx], revokedAt: Date.now(), updatedAt: Date.now() };
-    await redis.set(UGC_BRIEFS_KEY, all, { ex: TTL_SECONDS });
+    await writeCollection(UGC_BRIEFS_KEY, all);
   }
 }
 
