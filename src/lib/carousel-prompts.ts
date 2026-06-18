@@ -57,6 +57,48 @@ Rules:
 - No em dashes
 - No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
 
+/**
+ * Recommend the best hook tone(s) for a given topic. Given the topic (and
+ * optionally its library category), Claude ranks the 3 strongest of the 8
+ * builder-visible tones for storytelling fit AND swipe/save/comment potential,
+ * each with a one-line rationale. Distilled from HOOK_TONE_INSTRUCTIONS below —
+ * keep the strategic strengths here in sync if those formulas change.
+ *
+ * Output contract: ONLY a JSON array of exactly 3 { tone, reason } objects,
+ * ranked best-first, tone being one of the 8 builder values (NOT the labels).
+ */
+export const RECOMMEND_HOOK_PROMPT = (topic: string, category?: string): string => `You are a content strategist for Lunia Life, a sleep supplement brand. A creator is about to build an Instagram carousel on the topic below. Recommend which HOOK TONE will tell the strongest story for THIS specific topic and drive the most swipes, saves, and comments.
+
+TOPIC: ${topic}${category ? `\nLIBRARY CATEGORY: ${category}` : ""}
+
+The 8 hook tones (use the lowercase value, never the label):
+- educational — leads with one precise, slightly counterintuitive fact. Best for clean mechanism/teaching topics.
+- science-backed — opens with research and a real number. Best for data, studies, ingredient dosing, measurable effects.
+- myth-bust — negates a widely held belief head-on. Best when the topic contradicts a common assumption (melatonin, "8 hours", sleep debt).
+- clickbait — this is the "Bold hook" option: a blunt, confrontational, urgent claim about what the reader is doing wrong. Best for habit-change topics that need urgency.
+- personal-story — first-person "I/MY" journey with a specific symptom and turning point. Best for relatable, emotional, struggle-to-fix topics.
+- symptom — "SIGNS YOUR X IS ACTUALLY Y, NOT Z": names precise pre-aware symptoms and reframes a misattributed cause. Best when the topic is a lived experience the reader hasn't diagnosed yet.
+- paradox — "Why are you X when you Y?": names a frustrating contradiction (did everything right, still feel wrong). Best when the topic is a real behavior that fails to deliver the expected result.
+- tell — "If you [oddly specific private experience], here is what your body is doing": hyper-specific recognition. Best when the topic maps to one weirdly specific, widely-shared habit or moment.
+
+Guidance:
+- Reward the "you"-recognition formats (symptom, paradox, tell) when the topic is a lived, felt experience — they drive the highest swipe-through because the reader sees themselves.
+- Reward the evidence formats (science-backed, educational, myth-bust) when the topic is mechanism, data, or misconception driven.
+- Use personal-story for emotional journeys, clickbait only when urgency genuinely fits. Let the topic decide — do not default to the same tone every time.
+
+Return ONLY valid JSON in this exact format, no other text:
+[
+  { "tone": "value", "reason": "string" }
+]
+(exactly 3 objects, ranked best-first)
+
+Rules:
+- tone: one of educational, science-backed, myth-bust, clickbait, personal-story, symptom, paradox, tell
+- reason: one sentence on why this tone fits THIS topic and drives engagement (max 15 words)
+- The 3 tones must be distinct
+- No em dashes
+- No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
+
 const HOOK_TONE_INSTRUCTIONS: Record<string, string> = {
   "educational": `Educational tone: clear, factual, teaches the reader one precise thing they did not know. Lead with the insight, not a question.
 HOOK FORMULA: state a specific, slightly counterintuitive fact, then let the subline name the implication. No hype, no urgency, no "did you know". Confident and plain.

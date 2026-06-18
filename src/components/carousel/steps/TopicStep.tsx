@@ -23,6 +23,13 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
   { value: "tell", label: "The Tell (oddly specific recognition)", description: "If you do this oddly specific thing, here is what it means" },
 ];
 
+// value → label lookup for rendering hook-tone recommendations.
+const TONE_LABEL = Object.fromEntries(
+  HOOK_TONE_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<HookTone, string>;
+
+type HookRecommendation = { tone: HookTone; reason: string };
+
 const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: string; description: string }[] = [
   { value: "reveal", label: "Reveal", description: "Unveil items one by one — builds anticipation" },
   { value: "diagnostic", label: "Diagnostic", description: "Symptom/habit check — reader self-identifies" },
@@ -112,6 +119,12 @@ export default function TopicStep({ onNext }: Props) {
     }
   }
 
+  // "Recommend hook" — Claude ranks the best hook tones for the chosen topic.
+  // Auto-runs (debounced) whenever the topic changes in the standard format.
+  const [hookRec, setHookRec] = useState<HookRecommendation[]>([]);
+  const [loadingRec, setLoadingRec] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/subjects")
       .then((r) => r.json())
@@ -124,6 +137,45 @@ export default function TopicStep({ onNext }: Props) {
     : custom.trim();
 
   const topicTooLong = topic.length > 500;
+
+  // Hook tone only exists for the standard format — only recommend there.
+  const recCategory = mode === "list" ? selectedSubject?.category : undefined;
+  useEffect(() => {
+    if (carouselFormat !== "standard" || !topic || topic.length > 500) {
+      setHookRec([]);
+      setRecError(null);
+      setLoadingRec(false);
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      setLoadingRec(true);
+      setRecError(null);
+      try {
+        const res = await fetch("/api/carousel-v2/recommend-hook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic, category: recCategory }),
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!res.ok || data?.error) {
+          setRecError(data?.error || "Couldn't recommend a hook. Try again.");
+          setHookRec([]);
+        } else if (Array.isArray(data)) {
+          setHookRec(data as HookRecommendation[]);
+        } else {
+          setRecError("Unexpected response. Try again.");
+        }
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return; // stale request, ignore
+        setRecError("Network error. Try again.");
+      } finally {
+        setLoadingRec(false);
+      }
+    }, 600);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [topic, carouselFormat, recCategory]);
 
   // In the carousel builder, only show unused subjects — used ones are hidden to avoid repetition.
   // The full list (including used) is visible in the Subjects tab.
@@ -557,15 +609,71 @@ export default function TopicStep({ onNext }: Props) {
       {carouselFormat === "standard" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook tone</label>
+
+        {/* Recommendation banner — auto-runs on topic select. Opt-in: clicking
+            a tone applies it; the current selection is never changed for you. */}
+        {(loadingRec || recError || hookRec.length > 0) && (
+          <div style={{ marginBottom: 12, padding: "12px 14px", border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)" }}>
+            {loadingRec && hookRec.length === 0 && !recError && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Finding the best hook for this topic…</div>
+            )}
+            {recError && <div style={{ fontSize: 13, color: "var(--error)" }}>{recError}</div>}
+            {hookRec.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  Recommended hook · for this topic{loadingRec ? " · refreshing…" : ""}
+                </div>
+                <button
+                  onClick={() => setHookTone(hookRec[0].tone)}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "10px 12px", borderRadius: 8, marginBottom: hookRec.length > 1 ? 8 : 0,
+                    border: `1.5px solid ${hookTone === hookRec[0].tone ? "var(--accent)" : "var(--border)"}`,
+                    background: "var(--bg)", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>{TONE_LABEL[hookRec[0].tone] ?? hookRec[0].tone}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em", border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 5px" }}>Top pick</span>
+                  </div>
+                  {hookRec[0].reason && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{hookRec[0].reason}</div>}
+                </button>
+                {hookRec.length > 1 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", alignSelf: "center" }}>Also strong:</span>
+                    {hookRec.slice(1).map((r) => (
+                      <button
+                        key={r.tone}
+                        onClick={() => setHookTone(r.tone)}
+                        title={r.reason}
+                        style={{
+                          fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 9999,
+                          border: `1px solid ${hookTone === r.tone ? "var(--accent)" : "var(--border)"}`,
+                          background: "var(--bg)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit",
+                        }}
+                      >
+                        {TONE_LABEL[r.tone] ?? r.tone}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
           {HOOK_TONE_OPTIONS.map((opt) => {
             const sel = hookTone === opt.value;
+            const recIdx = hookRec.findIndex((r) => r.tone === opt.value);
+            const isRec = recIdx !== -1;
             return (
               <div
                 key={opt.value}
                 onClick={() => setHookTone(opt.value)}
                 style={{
-                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  position: "relative",
+                  border: `1.5px solid ${sel ? "var(--accent)" : isRec ? "var(--accent-mid)" : "var(--border)"}`,
                   borderRadius: 8,
                   padding: "10px 12px",
                   cursor: "pointer",
@@ -574,7 +682,18 @@ export default function TopicStep({ onNext }: Props) {
                   boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                {isRec && (
+                  <span style={{
+                    position: "absolute", top: 6, right: 6,
+                    fontSize: 8, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em",
+                    border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 4px",
+                    background: "var(--accent-dim)",
+                    opacity: recIdx === 0 ? 1 : 0.7,
+                  }}>
+                    {recIdx === 0 ? "Top pick" : "Suggested"}
+                  </span>
+                )}
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, paddingRight: isRec ? 56 : 0, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
                 <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
               </div>
             );
