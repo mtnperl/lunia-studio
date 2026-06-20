@@ -4,6 +4,7 @@ import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
 import RefreshButton from "../dashboard/RefreshButton";
 import KPICard from "../dashboard/KPICard";
 import SubscriptionCockpit from "./SubscriptionCockpit";
+import DecisionModel from "./DecisionModel";
 import type { CustomerCohort, PnL } from "@/lib/business-types";
 
 function defaultRange(): DateRange {
@@ -523,6 +524,9 @@ export default function UnitEconomicsSubview() {
           Want to change subscription mix, churn, repeat rate, or per-unit COGS? Update <strong style={{ color: "var(--muted)" }}>Business → Assumptions</strong> and refresh.
         </div>
       )}
+
+      {/* Lunia Decision Model — monthly gate-review tool (its own data pull + calc). */}
+      <DecisionModel />
     </div>
   );
 }

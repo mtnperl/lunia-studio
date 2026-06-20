@@ -29,6 +29,24 @@ export type DecisionModelInputs = {
   targetLtvCac?: number;     // default 3.0
 };
 
+/** Shopify-derived actuals (the "inputs from data" half), returned by the
+ *  /api/decision-model/orders route after tag classification. */
+export type DecisionModelActuals = {
+  source: "shopify" | "unavailable";
+  nSub: number;
+  nOneTime: number;
+  nPack: number;
+  nRecurring: number;
+  newCustomers: number;
+  pSubFirst: number;
+  pSubRec: number;
+  pOneTime: number;
+  pPack: number;
+  ordersScanned: number;
+  truncated: boolean;
+  range: { since: string; until: string };
+};
+
 export type Verdict = "HEALTHY" | "THIN" | "UNDERWATER";
 
 export type ScenarioGrid = {
