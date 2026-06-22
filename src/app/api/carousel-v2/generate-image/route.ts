@@ -184,6 +184,7 @@ export async function POST(req: Request) {
           subline:  hookSubline,
           topic:    topic,
           hasRefs:  referenceImageUrls.length > 0,
+          userPrompt: imagePrompt,
           direction: imageDirection,
           paperTone,
           imageSubject,
@@ -250,12 +251,25 @@ const EDITORIAL_LANES: Record<
     "Direction — NATURAL / ORGANIC: render this through botany, biology, mineral or other organic material — plant cross-sections, water, stone, skin, fibre — textures that mirror the concept. No man-made objects in the focal area.",
 };
 
-function pickEditorialLane(direction: string): { key: keyof typeof EDITORIAL_LANES; instruction: string } {
+// Faithful lane — used when the user has written a concrete scene and left
+// Direction on "auto". The random-lane rotator exists to add variety to a
+// vague concept; it must NOT fire when the prompt already names a specific
+// scene, or it silently swaps the described subject for botany / macro / etc.
+const FAITHFUL_LANE =
+  "Direction — FAITHFUL TO BRIEF: render the scene exactly as described in the Concept above. Honour the specific objects, setting, lighting, framing and mood it names — do NOT substitute a different subject, material or visual metaphor. You choose only the fine compositional details (precise crop, camera angle, focal length, prop placement).";
+
+function pickEditorialLane(
+  direction: string,
+  authoritative: boolean,
+): { key: string; instruction: string } {
   if (direction in EDITORIAL_LANES) {
     const key = direction as keyof typeof EDITORIAL_LANES;
     return { key, instruction: EDITORIAL_LANES[key] };
   }
-  // auto / unknown → random lane each call
+  // auto / unknown. When the user wrote a concrete scene, stay faithful to it
+  // instead of rolling a random lane that would override the subject.
+  if (authoritative) return { key: 'faithful', instruction: FAITHFUL_LANE };
+  // Vague concept → random lane each call for variety.
   const keys = Object.keys(EDITORIAL_LANES) as (keyof typeof EDITORIAL_LANES)[];
   const key = keys[Math.floor(Math.random() * keys.length)];
   return { key, instruction: EDITORIAL_LANES[key] };
@@ -306,26 +320,32 @@ function buildEditorialHookPrompt(args: {
   subline: string;
   topic?: string;
   hasRefs: boolean;  // kept for signature stability; editorial hook never has refs now
+  userPrompt?: string;  // live "CURRENT PROMPT" textarea — authoritative when present
   direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
   paperTone: 'white' | 'warm';
   imageSubject: 'auto' | 'person' | 'still-life' | 'environment';
 }): string {
-  const { spec, headline, subline, topic, direction, paperTone, imageSubject } = args;
+  const { spec, headline, subline, topic, userPrompt, direction, paperTone, imageSubject } = args;
 
-  // Concept-only framework: hand gpt-image-2 the topic concept + the exact
-  // text to bake and let it choose the visual. If the saved spec is from
-  // before the rewrite, derive a concept from the legacy subject so older
-  // carousels still produce coherent images.
+  // Concept resolution, in priority order:
+  //   1. The live "CURRENT PROMPT" the user sees and edits — authoritative.
+  //   2. Claude's saved hookImageSpec.concept.
+  //   3. Legacy subject/composition fields (pre-concept-rewrite carousels).
+  //   4. Topic, then a safe fallback.
+  // Previously (1) was ignored entirely, so the editable prompt didn't drive
+  // the image — the engine only ever saw the saved spec.concept.
+  const userConcept = userPrompt?.trim();
   const concept = (() => {
+    if (userConcept) return userConcept;
     if (spec.concept && spec.concept.trim()) return spec.concept.trim();
     const legacy = [spec.subject, spec.composition].filter(Boolean).join(". ");
     return legacy || topic || "the science of sleep and overnight recovery";
   })();
 
-  // Interpretive lane — the missing variation lever. Same concept, same
-  // chrome, but the lane sets the camera/composition lens so each regen
-  // actually paints something different.
-  const lane = pickEditorialLane(direction);
+  // Interpretive lane — the variation lever. When the user wrote a concrete
+  // scene (userConcept present), "auto" stays faithful to it instead of
+  // rolling a random lane that would override the described subject.
+  const lane = pickEditorialLane(direction, Boolean(userConcept));
 
   // Tiny variation nonce — each call should produce a genuinely different
   // visual even with identical concept + text. Plain-language seed phrase.
