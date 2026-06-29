@@ -91,7 +91,8 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
           fontFamily: 'Outfit, sans-serif',
           fontSize: 26,
           fontWeight: 700,
-          letterSpacing: '0.1em',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
           color: bodyColor,
           textAlign: 'center',
         }}>
