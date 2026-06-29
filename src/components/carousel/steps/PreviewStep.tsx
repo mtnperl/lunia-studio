@@ -276,6 +276,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+  // "Preview HD" — render the focused content slide via Remotion and show the
+  // PNG inline, so the server-rendered (exported) output is visible in-builder.
+  const [hdLoading, setHdLoading] = useState<number | null>(null);
+  const [hdPreviewUrl, setHdPreviewUrl] = useState<string | null>(null);
+  const [hdError, setHdError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
@@ -681,6 +686,22 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (!res.ok) throw new Error(`render-slide ${res.status}`);
     const blob = await res.blob();
     return new File([blob], filename, { type: "image/png" });
+  }
+
+  async function previewHD(index: number) {
+    const contentIdx = index - 1;
+    if (contentIdx < 0 || contentIdx >= content.slides.length) return;
+    setHdLoading(index);
+    setHdError(null);
+    try {
+      const file = await renderContentSlideViaRemotion(content.slides[contentIdx], "lunia-slide-hd.png");
+      if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl);
+      setHdPreviewUrl(URL.createObjectURL(file));
+    } catch {
+      setHdError("HD render failed — the Remotion route may still be deploying, or this slide type isn't supported yet.");
+    } finally {
+      setHdLoading(null);
+    }
   }
 
   async function buildSlideFile(index: number): Promise<File> {
@@ -3952,6 +3973,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   return (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
                       <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
+                      {isContent && <ToolbarButton label={hdLoading === focusedSlide ? "Rendering…" : "✨ Preview HD"} active={!!hdPreviewUrl} onClick={() => previewHD(focusedSlide)} disabled={hdLoading !== null} />}
                       <ToolbarButton label="Settings" active={inspectorMode === "settings"} onClick={() => openInspector("settings")} />
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
@@ -3979,6 +4001,29 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Preview HD modal — the Remotion-rendered (exported) PNG, shown inline. */}
+      {(hdPreviewUrl || hdError) && (
+        <div
+          onClick={() => { if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl); setHdPreviewUrl(null); setHdError(null); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: "min(92vw, 460px)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Remotion HD render — exactly what export produces</span>
+              <button onClick={() => { if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl); setHdPreviewUrl(null); setHdError(null); }} style={{ border: "none", background: "transparent", color: "var(--muted)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>✕</button>
+            </div>
+            {hdError ? (
+              <div style={{ fontSize: 13, color: "var(--error, #c40000)", padding: "12px 4px" }}>{hdError}</div>
+            ) : (
+              <>
+                <img src={hdPreviewUrl!} alt="Remotion HD render" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", display: "block" }} />
+                <a href={hdPreviewUrl!} download="lunia-slide-hd.png" style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>↓ Download this PNG</a>
+              </>
+            )}
+          </div>
         </div>
       )}
 
