@@ -25,74 +25,61 @@ export function ComparisonBars({
 
   const numerics = items.map(i => parseNumeric(i.value));
   const maxVal = Math.max(...numerics, 1);
+  // Fewer rows → bigger hero number; more rows → keep it compact so it fits.
+  const valueSize = items.length <= 2 ? 68 : items.length === 3 ? 54 : 44;
 
   return (
     <div style={{
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
-      gap: 20,
+      gap: items.length <= 2 ? 36 : 26,
       fontFamily: 'Outfit, sans-serif',
     }}>
       {items.map((item, i) => {
-        const pct = Math.max((numerics[i] / maxVal) * 100, 2);
-        // Highlight the MAX-value bar (the meaningful comparison) in accent;
-        // the rest stay muted. Was always the first bar, which mis-emphasized
-        // cases like "BASELINE 100%" vs "REBOUND 130%".
+        const pct = Math.max((numerics[i] / maxVal) * 100, 3);
+        // Highlight the MAX-value bar (the meaningful comparison) in accent.
         const isTop = numerics[i] === maxVal;
-        const fill = isTop ? accent : `${secondary}cc`;
-
         return (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {/* Label row */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              paddingLeft: 2,
-              paddingRight: 2,
-            }}>
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Label + the value as a big hero number */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
               <span style={{
-                fontSize: 24,
-                fontWeight: 400,
-                color: bodyColor,
-                lineHeight: 1.2,
+                fontSize: 25,
+                fontWeight: 600,
+                letterSpacing: '0.09em',
+                textTransform: 'uppercase',
+                color: isTop ? bodyColor : `${bodyColor}99`,
+                paddingBottom: 12,
+                lineHeight: 1.15,
               }}>
                 {item.label}
               </span>
               <span style={{
-                fontSize: 24,
+                fontSize: valueSize,
                 fontWeight: 700,
+                lineHeight: 0.82,
+                letterSpacing: '-0.02em',
                 color: isTop ? accent : bodyColor,
-                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
               }}>
                 {item.value}
               </span>
             </div>
-            {/* Bar track */}
+            {/* Thin elegant bar */}
             <div style={{
               position: 'relative',
-              height: 36,
-              borderRadius: 18,
-              background: `${bodyColor}15`,
+              width: '100%',
+              height: 14,
+              borderRadius: 7,
+              background: `${bodyColor}14`,
               overflow: 'hidden',
             }}>
-              {/* Glow halo on top bar */}
-              {isTop && (
-                <div style={{
-                  position: 'absolute',
-                  inset: -2,
-                  borderRadius: 20,
-                  background: `${accent}20`,
-                }} />
-              )}
-              {/* Value bar */}
               <div style={{
-                position: 'relative',
                 width: `${pct}%`,
                 height: '100%',
-                borderRadius: 18,
-                background: fill,
+                borderRadius: 7,
+                background: isTop ? accent : `${secondary}bb`,
               }} />
             </div>
           </div>

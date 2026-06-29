@@ -2195,58 +2195,49 @@ function ComparisonBars({
   const bodyColor = (brandStyle == null ? void 0 : brandStyle.body) ?? "#4a5568";
   const numerics = items.map((i) => parseNumeric(i.value));
   const maxVal = Math.max(...numerics, 1);
+  const valueSize = items.length <= 2 ? 68 : items.length === 3 ? 54 : 44;
   return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
-    gap: 20,
+    gap: items.length <= 2 ? 36 : 26,
     fontFamily: "Outfit, sans-serif"
   }, children: items.map((item, i) => {
-    const pct = Math.max(numerics[i] / maxVal * 100, 2);
+    const pct = Math.max(numerics[i] / maxVal * 100, 3);
     const isTop = numerics[i] === maxVal;
-    const fill = isTop ? accent : `${secondary}cc`;
-    return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 6 }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        paddingLeft: 2,
-        paddingRight: 2
-      }, children: [
+    return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 10 }, children: [
+      /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }, children: [
         /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-          fontSize: 24,
-          fontWeight: 400,
-          color: bodyColor,
-          lineHeight: 1.2
+          fontSize: 25,
+          fontWeight: 600,
+          letterSpacing: "0.09em",
+          textTransform: "uppercase",
+          color: isTop ? bodyColor : `${bodyColor}99`,
+          paddingBottom: 12,
+          lineHeight: 1.15
         }, children: item.label }),
         /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-          fontSize: 24,
+          fontSize: valueSize,
           fontWeight: 700,
+          lineHeight: 0.82,
+          letterSpacing: "-0.02em",
           color: isTop ? accent : bodyColor,
-          lineHeight: 1.2
+          whiteSpace: "nowrap"
         }, children: item.value })
       ] }),
-      /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
+      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
         position: "relative",
-        height: 36,
-        borderRadius: 18,
-        background: `${bodyColor}15`,
+        width: "100%",
+        height: 14,
+        borderRadius: 7,
+        background: `${bodyColor}14`,
         overflow: "hidden"
-      }, children: [
-        isTop && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-          position: "absolute",
-          inset: -2,
-          borderRadius: 20,
-          background: `${accent}20`
-        } }),
-        /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-          position: "relative",
-          width: `${pct}%`,
-          height: "100%",
-          borderRadius: 18,
-          background: fill
-        } })
-      ] })
+      }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
+        width: `${pct}%`,
+        height: "100%",
+        borderRadius: 7,
+        background: isTop ? accent : `${secondary}bb`
+      } }) })
     ] }, i);
   }) });
 }
