@@ -20,19 +20,23 @@ export async function POST(req: Request) {
     const topic: string = (body.topic ?? "").slice(0, 400);
     const role: string = body.role === "hero" ? "hero" : "secondary";
     const currentPrompt: string = (body.currentPrompt ?? "").slice(0, 600);
+    // The actual email copy (subject + promo + body blocks) so the scene
+    // reflects THIS email's message, not a generic stock bedroom.
+    const emailContext: string = (body.emailContext ?? "").slice(0, 1200);
 
-    const instructions = `You write a single image-generation prompt for a Lunia Life sleep-wellness marketing email.
+    const instructions = `You write a single image-generation prompt for ONE image in a Lunia Life (sleep-wellness DTC) marketing email.
+
+The image must visually express the THEME and FEELING of THIS specific email — the moment, benefit, or mood its copy evokes — NOT a generic stock scene. Read the email content below and pick the lifestyle / atmosphere scene an art director would actually pair with it.
+
+Email content:
+${emailContext || topic || "better sleep, calm nights"}
 
 Rules:
-- Describe ONE photorealistic lifestyle / atmosphere scene — a calm bedroom, soft morning or evening light, someone resting, restful domestic detail.
+- ONE photorealistic lifestyle / atmosphere scene that clearly RELATES to the email's message above (a moment, benefit, or feeling it describes). Real people, spaces, and light — editorial, premium DTC-wellness mood.
 - Absolutely NO text, words, signage, logos, product packaging, or supplement bottles in the scene.
-- Warm, calm, premium DTC-wellness mood. Natural light. Editorial.
 - Two or three vivid sentences: scene, light, palette, mood.
-- ${role === "hero" ? "This is the hero image — make it the strongest, most evocative scene." : "This is a secondary supporting image — a smaller calm detail or moment."}
-${currentPrompt ? `- Write something clearly DIFFERENT from the current prompt below.` : ""}
-
-Email topic / angle: ${topic || "better sleep, calm nights"}
-${currentPrompt ? `Current prompt: ${currentPrompt}` : ""}
+- ${role === "hero" ? "This is the HERO image — the strongest, most evocative scene for the email's core message." : "This is a SECONDARY supporting image — a smaller, complementary moment or detail tied to the content."}
+${currentPrompt ? `- Write something clearly DIFFERENT from the current prompt: ${currentPrompt}` : ""}
 
 Output ONLY the new prompt text — no quotes, no preamble, no explanation.`;
 

@@ -113,6 +113,17 @@ export default function CampaignEditor({
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
 
+  // Concise email copy (subject + promo + body) handed to the image-prompt
+  // generator so regenerated prompts reflect THIS email's message, not a
+  // generic stock scene.
+  const emailContext = useMemo(() => {
+    const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+    return [subject, content.promoBand, ...content.blocks.map((b) => b.body)]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 1200);
+  }, [content]);
+
   // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
   // every content change. Without this, some browsers don't re-fetch images
   // inside a srcDoc when the URL changes — the iframe element is preserved,
@@ -674,7 +685,7 @@ export default function CampaignEditor({
                 : `Image ${secondaryImages.indexOf(img) + 2}`;
               return (
                 <div key={img.id} style={{ position: "relative" }}>
-                  <ImageSlotControl slot={img} label={label} topic={topic} onChange={updateImage} onGenerated={(url) => markGenerated(img.id, url)} />
+                  <ImageSlotControl slot={img} label={label} topic={topic} emailContext={emailContext} onChange={updateImage} onGenerated={(url) => markGenerated(img.id, url)} />
                   {img.role === "secondary" && secondaryImages.length > 2 && (
                     <button
                       onClick={() => removeImage(img.id)}

@@ -34,12 +34,16 @@ export default function ImageSlotControl({
   slot,
   label,
   topic,
+  emailContext,
   onChange,
   onGenerated,
 }: {
   slot: CampaignImageSlot;
   label: string;
   topic: string;
+  /** The email's actual copy (subject + body) so regenerated image prompts
+   *  reflect THIS email's message, not a generic scene. */
+  emailContext?: string;
   onChange: (next: CampaignImageSlot) => void;
   /** Called immediately AFTER a successful generation with the new URL,
    *  BEFORE the onChange propagates. Lets the parent register the URL in
@@ -89,7 +93,7 @@ export default function ImageSlotControl({
       const res = await fetch("/api/campaign/regenerate-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, role: slot.role, currentPrompt: effectivePrompt }),
+        body: JSON.stringify({ topic, role: slot.role, currentPrompt: effectivePrompt, emailContext }),
       });
       const data = await res.json();
       if (!res.ok || !data.prompt) {

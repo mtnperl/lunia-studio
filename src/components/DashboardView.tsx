@@ -12,9 +12,11 @@ import PasswordGate from "./dashboard/PasswordGate";
 import DateRangePicker, { type DateRange } from "./dashboard/DateRangePicker";
 
 function defaultRange(): DateRange {
+  // Default to month-to-date (start of the current month → today). Matches the
+  // picker's "This Month" preset; the user can still change it via the picker.
   const now = new Date();
+  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const since = new Date(today.getTime() - 6 * 86_400_000);
   return {
     since: since.toISOString().slice(0, 10),
     until: today.toISOString().slice(0, 10),
