@@ -36,8 +36,11 @@ export function ComparisonBars({
     }}>
       {items.map((item, i) => {
         const pct = Math.max((numerics[i] / maxVal) * 100, 2);
-        const fill = i === 0 ? accent : i === 1 ? secondary : `${secondary}99`;
-        const isTop = i === 0;
+        // Highlight the MAX-value bar (the meaningful comparison) in accent;
+        // the rest stay muted. Was always the first bar, which mis-emphasized
+        // cases like "BASELINE 100%" vs "REBOUND 130%".
+        const isTop = numerics[i] === maxVal;
+        const fill = isTop ? accent : `${secondary}cc`;
 
         return (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -298,37 +298,14 @@ export default function ContentSlide({
   const boldSentence = firstPeriod >= 0 ? body.slice(0, firstPeriod + 1) : body;
   const restBody = firstPeriod >= 0 ? body.slice(firstPeriod + 2).trim() : "";
 
-  // Dynamic font sizes — when graphic present, text is compact to give graphic space
-  function bodySize(len: number, hasGraphic: boolean): number {
-    if (hasGraphic) {
-      if (len < 80)  return 36;
-      if (len < 160) return 30;
-      return 26;
-    } else {
-      if (len < 80)  return 72;
-      if (len < 160) return 62;
-      if (len < 240) return 52;
-      return 44;
-    }
-  }
-  function headlineSize(len: number): number {
-    if (len < 20) return 76;
-    if (len < 35) return 64;
-    if (len < 50) return 56;
-    return 48;
-  }
-
-  // When a graphic is present, cap the body zone so the graphic still has
-  // breathing room. Cap scales up with bodyScale so larger body text gets
-  // a bigger zone before it starts clipping.
-  const contentH = slideH - py * 2;           // 1350 − 160 = 1190
-  const bodyZoneFraction = Math.min(0.78, 0.5 + Math.max(0, bodyScale - 1) * 0.35);
-  const bodyMaxH = (hasInlineGraphic || hasLegacyGraphic)
-    ? Math.floor(contentH * bodyZoneFraction)
-    : undefined;
-
-  const bodyFontSize = Math.round(bodySize(body.length, hasInlineGraphic || hasLegacyGraphic) * bodyScale);
-  const headlineFontSize = Math.round(headlineSize(headline.length) * headlineScale);
+  // Fixed, consistent type sizes for EVERY content slide — no per-slide,
+  // length-based resizing — so the three content slides read as one set.
+  // Long copy is absorbed by the flexible graphic zone below (which shrinks),
+  // never by resizing the text. headlineScale/bodyScale still apply uniformly.
+  const BASE_HEADLINE = reels ? 72 : 56;
+  const BASE_BODY = reels ? 40 : 34;
+  const headlineFontSize = Math.round(BASE_HEADLINE * headlineScale);
+  const bodyFontSize = Math.round(BASE_BODY * bodyScale);
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg, overflow: 'hidden' }}>
@@ -381,7 +358,7 @@ export default function ContentSlide({
       )}
       <LuniaLogo variant={useDarkInk ? "dark" : "light"} sizeScale={logoScale} />
 
-      {/* Flex column layout — headline / body+citation / graphic */}
+      {/* Flex column layout — headline / body / graphic / citation */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -417,41 +394,21 @@ export default function ContentSlide({
           {headline}
         </div>
 
-        {/* Body zone — shares space with graphic; capped when graphic present */}
+        {/* Body — fixed size, never clipped (the graphic zone flexes instead). */}
         <div style={{
-          flex: hasInlineGraphic ? '0 0 auto' : 1,
-          maxHeight: bodyMaxH,
-          overflow: bodyMaxH ? 'hidden' : undefined,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: bodyFontSize,
+          color: bodyColor,
+          lineHeight: 1.55,
+          flexShrink: 0,
         }}>
-          <div style={{
-            fontFamily: 'Inter, system-ui, sans-serif',
-            fontSize: bodyFontSize,
-            color: bodyColor,
-            lineHeight: 1.55,
-          }}>
-            <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
-            {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
-          </div>
-
-          {showCitationBars && (
-            <div style={{
-              fontFamily: isEditorial ? editorialFontFamily : 'Cormorant Garamond, Lora, serif',
-              fontWeight: isEditorial ? 300 : 400,
-              fontStyle: isEditorial ? 'normal' : 'italic',
-              fontSize: citationFontSize,
-              color: citationColor,
-              lineHeight: 1.4,
-            }}>
-              {citation}
-            </div>
-          )}
+          <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
+          {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
         </div>
 
-        {/* Graphic zone — Path 0 (AI image), Path 1 (GraphicSpec SVG), Path 2 (raw SVG) */}
-        {hasInlineGraphic && (
+        {/* Graphic zone — sits BETWEEN body and citation. Flexes to fill the gap
+            and shrinks gracefully so it never collides with the citation. */}
+        {hasInlineGraphic ? (
           <div style={{ minHeight: graphicMinH, flex: '1 1 0px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
@@ -493,6 +450,25 @@ export default function ContentSlide({
                 dangerouslySetInnerHTML={{ __html: sanitizeSvg(graphic!) }}
               />
             )}
+          </div>
+        ) : (
+          // No graphic — spacer so the citation still settles near the bottom.
+          <div style={{ flex: '1 1 0px' }} />
+        )}
+
+        {/* Citation — below the graphic, lifted off the bottom edge. */}
+        {showCitationBars && (
+          <div style={{
+            fontFamily: isEditorial ? editorialFontFamily : 'Cormorant Garamond, Lora, serif',
+            fontWeight: isEditorial ? 300 : 400,
+            fontStyle: isEditorial ? 'normal' : 'italic',
+            fontSize: citationFontSize,
+            color: citationColor,
+            lineHeight: 1.4,
+            flexShrink: 0,
+            marginBottom: reels ? 40 : 28,
+          }}>
+            {citation}
           </div>
         )}
       </div>
