@@ -29,7 +29,7 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean): st
     .filter(Boolean)
     .map(
       (p) =>
-        `<p style="margin:0 0 12px;color:#ffffff;font-size:${size};font-weight:300;${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.4;text-align:${align};">${esc(
+        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:300;${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${esc(
           p,
         ).replace(/\n/g, "<br>")}</p>`,
     )
@@ -202,7 +202,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .email-container{width:100% !important;max-width:100% !important;}
     .h-padding{padding-left:14px !important;padding-right:14px !important;}
     .text-block{padding:8px !important;}
-    .text-block p{font-size:16px !important;line-height:1.45 !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
     /* Stack 2-up image grids on narrow screens. */
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
@@ -222,7 +222,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
   <tr><td align="center" style="padding:0;">
     <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
       ${renderTopBanner(content.topBanner ?? "")}
-      ${renderLogoStrip(content.logoUrl)}
+      ${content.showLogo === false ? "" : renderLogoStrip(content.logoUrl)}
       <tr><td style="height:16px;font-size:0;line-height:0;background:${NAVY};">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}

@@ -525,6 +525,9 @@ export type CampaignContent = {
   /** Resolved Lunia logo url (from the asset library, assetType "logo").
    *  Server sets this on generate. Renderer skips the logo strip if unset. */
   logoUrl?: string | null;
+  /** When false, the logo strip is hidden even if logoUrl is set.
+   *  Unset/true = shown (back-compatible with saves that predate the toggle). */
+  showLogo?: boolean;
   promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
   blocks: CampaignBlock[];       // ordered body text blocks
   cta: { label: string; url: string };

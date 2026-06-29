@@ -52,6 +52,10 @@ export default function CampaignEditor({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [subjectsBusy, setSubjectsBusy] = useState(false);
+  const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Preview scaling — the email is hard-coded to 600px so we render the
   // iframe at the email's NATIVE width and CSS-scale it down to fit the
@@ -85,6 +89,26 @@ export default function CampaignEditor({
   const generatedUrlLock = useRef<Map<string, string>>(new Map());
   function markGenerated(slotId: string, url: string) {
     generatedUrlLock.current.set(slotId, url);
+  }
+
+  // Always-fresh mirror of `content`. Async handlers (image generation, banner
+  // / subject suggestions) can resolve LONG after the click that started them —
+  // by then the `content` captured in their closure is stale, and splatting it
+  // back reverts whatever the user edited in the meantime (the "upload an image
+  // and my top banner resets" bug). Merging into `latestContent.current`
+  // instead keeps every other field intact. Mirrors the `latestSlot` ref inside
+  // ImageSlotControl, one level up.
+  const latestContent = useRef(content);
+  useEffect(() => { latestContent.current = content; }, [content]);
+  // Commit a full next-content, updating the mirror synchronously so back-to-back
+  // patches compose without waiting for the effect. `patch` is the partial-update
+  // shorthand every field handler funnels through.
+  function commit(next: CampaignContent) {
+    latestContent.current = next;
+    onChange(next);
+  }
+  function patch(p: Partial<CampaignContent>) {
+    commit({ ...latestContent.current, ...p });
   }
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
@@ -144,17 +168,24 @@ export default function CampaignEditor({
   const previewScale = Math.min(1, Math.max(0, paneWidth - 2) / nativeWidth);
 
   // ── field updates ──────────────────────────────────────────────────────────
-  function updateBlock(id: string, patch: Partial<CampaignBlock>) {
-    onChange({ ...content, blocks: content.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) });
+  // Every updater reads from `latestContent.current` (not the closure `content`)
+  // and commits through `commit`, so a slow async handler resolving mid-edit
+  // never clobbers a field the user just changed.
+  function updateBlock(id: string, changes: Partial<CampaignBlock>) {
+    const c = latestContent.current;
+    commit({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...changes } : b)) });
   }
   function removeBlock(id: string) {
-    onChange({ ...content, blocks: content.blocks.filter((b) => b.id !== id) });
+    const c = latestContent.current;
+    commit({ ...c, blocks: c.blocks.filter((b) => b.id !== id) });
   }
   function addBlock() {
-    onChange({ ...content, blocks: [...content.blocks, { id: newId(), body: "", align: "left" }] });
+    const c = latestContent.current;
+    commit({ ...c, blocks: [...c.blocks, { id: newId(), body: "", align: "left" }] });
   }
   function updateImage(next: CampaignImageSlot) {
-    const prev = content.images.find((i) => i.id === next.id);
+    const c = latestContent.current;
+    const prev = c.images.find((i) => i.id === next.id);
     let final = next;
 
     // If the user explicitly switched the source from generated → asset,
@@ -175,7 +206,6 @@ export default function CampaignEditor({
     if (next.source === "generated") {
       const locked = generatedUrlLock.current.get(next.id);
       if (locked && next.url !== null && next.url !== locked) {
-        // eslint-disable-next-line no-console
         console.warn("[CampaignEditor] suspicious URL change on generated slot — preserving locked URL", {
           slotId: next.id,
           attemptedUrl: next.url,
@@ -185,16 +215,18 @@ export default function CampaignEditor({
       }
     }
 
-    onChange({ ...content, images: content.images.map((i) => (i.id === next.id ? final : i)) });
+    commit({ ...c, images: c.images.map((i) => (i.id === next.id ? final : i)) });
   }
   function removeImage(id: string) {
-    onChange({ ...content, images: content.images.filter((i) => i.id !== id) });
+    const c = latestContent.current;
+    commit({ ...c, images: c.images.filter((i) => i.id !== id) });
   }
   function addImage() {
-    if (content.images.length >= 5) return;
-    onChange({
-      ...content,
-      images: [...content.images, { id: newId(), role: "secondary", source: "generated", aspect: "1:1", prompt: "", url: null }],
+    const c = latestContent.current;
+    if (c.images.length >= 5) return;
+    commit({
+      ...c,
+      images: [...c.images, { id: newId(), role: "secondary", source: "generated", aspect: "1:1", prompt: "", url: null }],
     });
   }
 
@@ -241,11 +273,58 @@ export default function CampaignEditor({
         setPromoError(data.error ?? "Suggestion failed");
         return;
       }
-      onChange({ ...content, promoBand: data.promoBand });
+      patch({ promoBand: data.promoBand });
     } catch (err) {
       setPromoError(err instanceof Error ? err.message : "Network error");
     } finally {
       setPromoBusy(false);
+    }
+  }
+
+  async function suggestTopBanner() {
+    if (bannerBusy) return;
+    setBannerBusy(true);
+    setBannerError(null);
+    try {
+      const res = await fetch("/api/campaign/suggest-banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, current: content.topBanner ?? "" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.topBanner) {
+        setBannerError(data.error ?? "Suggestion failed");
+        return;
+      }
+      patch({ topBanner: data.topBanner });
+    } catch (err) {
+      setBannerError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setBannerBusy(false);
+    }
+  }
+
+  async function regenerateSubjects() {
+    if (subjectsBusy) return;
+    setSubjectsBusy(true);
+    setSubjectsError(null);
+    try {
+      const res = await fetch("/api/campaign/regenerate-subjects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, current: content.subjectLines }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.subjectLines) || data.subjectLines.length === 0) {
+        setSubjectsError(data.error ?? "Regeneration failed");
+        return;
+      }
+      // Replace all options and reset the selection to the first.
+      patch({ subjectLines: data.subjectLines, selectedSubject: 0 });
+    } catch (err) {
+      setSubjectsError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setSubjectsBusy(false);
     }
   }
 
@@ -428,18 +507,54 @@ export default function CampaignEditor({
             via CSS; wrap a fragment with **double asterisks** to highlight
             it with the brand color (navy pill). */}
         <div>
-          <label style={fieldLabel}>Top banner (optional)</label>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Top banner (optional)</label>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={suggestTopBanner}
+              disabled={bannerBusy}
+              title="Generate a short top-banner line from the campaign topic"
+            >
+              {bannerBusy && <Spinner size={10} />}
+              {bannerBusy ? "Thinking…" : "✨ Suggest"}
+            </button>
+          </div>
           <input type="text" value={content.topBanner ?? ""}
             placeholder="e.g. SAVE **26%** WITH A 3-MONTH SUBSCRIPTION"
-            onChange={(e) => onChange({ ...content, topBanner: e.target.value || undefined })} style={input} />
+            onChange={(e) => patch({ topBanner: e.target.value || undefined })} style={input} />
+          {bannerError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{bannerError}</div>}
           <div style={{ marginTop: 4, fontSize: 11, color: "var(--subtle)", lineHeight: 1.4 }}>
             Wrap a phrase in <code style={{ fontFamily: "monospace" }}>**double asterisks**</code> to mark it with the brand color. Renders in caps automatically.
           </div>
+          {/* Logo visibility — the logo strip sits at the very top of the email,
+              just below this banner. Off hides it without losing the logo url. */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={content.showLogo !== false}
+              onChange={(e) => patch({ showLogo: e.target.checked })}
+              style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show logo</span>
+            <span style={{ fontSize: 10, color: "var(--subtle)" }}>Hide the logo strip at the top of the email</span>
+          </label>
         </div>
 
         {/* Subject */}
         <div>
-          <div style={sectionLabel}>Subject line</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ ...sectionLabel, marginBottom: 0 }}>Subject line</span>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={regenerateSubjects}
+              disabled={subjectsBusy}
+              title="Replace all three subject lines with fresh options"
+            >
+              {subjectsBusy && <Spinner size={10} />}
+              {subjectsBusy ? "Writing…" : "↻ Regenerate"}
+            </button>
+          </div>
+          {subjectsError && <div style={{ marginBottom: 6, fontSize: 11, color: "var(--error)" }}>{subjectsError}</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {content.subjectLines.map((s, i) => {
               const active = content.selectedSubject === i;
@@ -449,7 +564,7 @@ export default function CampaignEditor({
               return (
                 <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
                   <button
-                    onClick={() => onChange({ ...content, selectedSubject: i })}
+                    onClick={() => patch({ selectedSubject: i })}
                     style={{
                       flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 6,
                       border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
@@ -485,7 +600,7 @@ export default function CampaignEditor({
             </button>
           </div>
           <input type="text" value={content.previewText}
-            onChange={(e) => onChange({ ...content, previewText: e.target.value })} style={input} />
+            onChange={(e) => patch({ previewText: e.target.value })} style={input} />
         </div>
 
         {/* Promo band */}
@@ -504,7 +619,7 @@ export default function CampaignEditor({
           </div>
           <input type="text" value={content.promoBand ?? ""}
             placeholder="e.g. MEMORIAL DAY WEEKEND SALE"
-            onChange={(e) => onChange({ ...content, promoBand: e.target.value || undefined })} style={input} />
+            onChange={(e) => patch({ promoBand: e.target.value || undefined })} style={input} />
           {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
         </div>
 
@@ -582,11 +697,11 @@ export default function CampaignEditor({
           <div style={sectionLabel}>Call to action</div>
           <label style={fieldLabel}>Button label</label>
           <input type="text" value={content.cta.label}
-            onChange={(e) => onChange({ ...content, cta: { ...content.cta, label: e.target.value } })}
+            onChange={(e) => patch({ cta: { ...latestContent.current.cta, label: e.target.value } })}
             style={{ ...input, marginBottom: 8 }} />
           <label style={fieldLabel}>Button link</label>
           <input type="text" value={content.cta.url}
-            onChange={(e) => onChange({ ...content, cta: { ...content.cta, url: e.target.value } })}
+            onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
             style={input} />
         </div>
 
