@@ -20,9 +20,9 @@ export function StatCallout({
   const secondary = brandStyle?.secondary ?? '#6b7280';
   const trendColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : null;
 
-  // Dynamic font size based on stat length
-  const statSize = stat.length <= 4 ? 140 : stat.length <= 6 ? 100 : 72;
-  const unitSize = Math.round(statSize * 0.3);
+  // Hero number — bigger, length-aware so it never overflows.
+  const statSize = stat.length <= 4 ? 168 : stat.length <= 6 ? 120 : 84;
+  const unitSize = Math.round(statSize * 0.26);
 
   return (
     <div style={{
@@ -32,77 +32,39 @@ export function StatCallout({
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: 'Outfit, sans-serif',
-      gap: 0,
     }}>
-      {/* Top rule */}
-      <div style={{
-        width: '75%',
-        height: 1.5,
-        background: accent,
-        flexShrink: 0,
-      }} />
-
-      {/* Stat + unit + trend container */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'baseline',
-        justifyContent: 'center',
-        gap: unit ? 14 : 12,
-        position: 'relative',
-      }}>
-        <span style={{
-          fontSize: statSize,
-          fontWeight: 700,
-          color: accent,
-          lineHeight: 1,
-          letterSpacing: '-0.02em',
-        }}>
+      {/* Hero stat */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: unit ? 14 : 12 }}>
+        <span style={{ fontSize: statSize, fontWeight: 700, color: accent, lineHeight: 0.9, letterSpacing: '-0.03em' }}>
           {stat}
         </span>
         {unit && (
-          <span style={{
-            fontSize: unitSize,
-            fontWeight: 500,
-            color: secondary,
-            lineHeight: 1,
-            letterSpacing: '0.04em',
-            textTransform: 'lowercase',
-          }}>
+          <span style={{ fontSize: unitSize, fontWeight: 500, color: secondary, lineHeight: 1, letterSpacing: '0.02em', textTransform: 'lowercase' }}>
             {unit}
           </span>
         )}
         {trend && trendColor && (
-          <span style={{
-            fontSize: 64,
-            fontWeight: 700,
-            color: trendColor,
-            lineHeight: 1,
-          }}>
+          <span style={{ fontSize: 72, fontWeight: 700, color: trendColor, lineHeight: 1 }}>
             {trend === 'up' ? '↑' : '↓'}
           </span>
         )}
       </div>
 
-      {/* Bottom rule */}
-      <div style={{
-        width: '75%',
-        height: 1.5,
-        background: accent,
-        flexShrink: 0,
-      }} />
+      {/* Thin accent underline (replaces the old top/bottom rules) */}
+      <div style={{ width: 64, height: 3, borderRadius: 2, background: accent, marginTop: 26, marginBottom: 24 }} />
 
       {/* Label */}
       <div style={{
-        marginTop: 28,
-        fontSize: 30,
-        fontWeight: 400,
+        fontSize: 27,
+        fontWeight: 600,
         color: bodyColor,
-        letterSpacing: '0.1em',
+        letterSpacing: '0.09em',
+        textTransform: 'uppercase',
         textAlign: 'center',
-        lineHeight: 1.3,
+        lineHeight: 1.35,
         paddingLeft: 40,
         paddingRight: 40,
+        opacity: 0.85,
       }}>
         {label}
       </div>

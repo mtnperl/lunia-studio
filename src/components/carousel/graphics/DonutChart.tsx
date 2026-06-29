@@ -32,8 +32,8 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
   const h = 460;
   const cx = w / 2;
   const cy = h / 2 - 10;
-  const outerR = 155;
-  const innerR = 103;
+  const outerR = 158;
+  const innerR = 122; // thinner, more elegant ring (was 103)
   const trackW = outerR - innerR;
 
   // Dynamic font size for center value
@@ -43,7 +43,7 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
     <div style={{ width: '100%', aspectRatio: `${w} / ${h}`, position: 'relative' }}>
       {/* SVG for arcs only */}
       <svg width="100%" height="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" style={{ position: 'absolute', top: 0, left: 0 }}>
-        <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={`${bodyColor}18`} strokeWidth={trackW} />
+        <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke={`${bodyColor}12`} strokeWidth={trackW} strokeLinecap="round" />
         <path
           d={donutArc(cx, cy, (outerR + innerR) / 2, pct)}
           fill="none"
@@ -68,9 +68,10 @@ export function DonutChart({ value = '85%', label = 'EFFECTIVENESS', sublabel, b
         <span style={{
           fontFamily: 'Outfit, sans-serif',
           fontSize: valueSize,
-          fontWeight: 800,
+          fontWeight: 700,
           color: accent,
           lineHeight: 1,
+          letterSpacing: '-0.02em',
         }}>
           {value}
         </span>

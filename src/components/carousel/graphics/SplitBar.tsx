@@ -32,60 +32,40 @@ export function SplitBar({
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 24,
+      gap: 30,
       fontFamily: 'Outfit, sans-serif',
-      minHeight: 340,
     }}>
-      {/* Bar */}
+      {/* Hero numbers */}
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-around' }}>
+        {parts.map((p, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 64, fontWeight: 700, lineHeight: 0.85, letterSpacing: '-0.02em', color: i === 0 ? accent : bodyColor }}>
+              {p.value ?? `${p.percent}%`}
+            </span>
+            <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: bodyColor, opacity: 0.6 }}>
+              {p.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Thin split bar */}
       <div style={{
         width: '100%',
-        height: 64,
-        borderRadius: 32,
-        background: `${bodyColor}08`,
+        height: 18,
+        borderRadius: 9,
+        background: `${bodyColor}10`,
         display: 'flex',
         overflow: 'hidden',
+        gap: 3,
       }}>
         {parts.map((p, i) => (
           <div key={i} style={{
             width: `${(p.percent / total) * 100}%`,
             height: '100%',
             background: fills[i % fills.length],
-            borderRadius: i === 0 ? '32px 0 0 32px' : i === parts.length - 1 ? '0 32px 32px 0' : 0,
+            borderRadius: 9,
           }} />
-        ))}
-      </div>
-
-      {/* Labels */}
-      <div style={{
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'space-around',
-      }}>
-        {parts.map((p, i) => (
-          <div key={i} style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 4,
-          }}>
-            <span style={{
-              fontSize: 52,
-              fontWeight: 800,
-              color: i === 0 ? accent : bodyColor,
-              lineHeight: 1,
-            }}>
-              {p.value ?? `${p.percent}%`}
-            </span>
-            <span style={{
-              fontSize: 20,
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              color: bodyColor,
-              opacity: 0.6,
-            }}>
-              {p.label}
-            </span>
-          </div>
         ))}
       </div>
     </div>

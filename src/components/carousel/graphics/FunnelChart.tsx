@@ -15,19 +15,17 @@ const DEFAULTS: Stage[] = [
 
 export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
   const accent = brandStyle?.accent ?? '#1e7a8a';
-  const bodyColor = brandStyle?.body ?? '#4a5568';
-  const secondary = brandStyle?.secondary ?? '#a8d4da';
   const onAccent = brandStyle?.background ?? '#ffffff';
 
   const n = Math.min(stages.length, 5);
   const list = stages.slice(0, n);
 
-  // Compute widths from percent or linear fallback
   const percents = list.map((s, i) => s.percent ?? Math.round(100 - i * (60 / (n - 1))));
   const maxP = Math.max(...percents, 1);
-  const widths = percents.map(p => Math.max(30, Math.round((p / maxP) * 100)));
+  const widths = percents.map(p => Math.max(34, Math.round((p / maxP) * 100)));
 
-  const opacities = [1, 0.82, 0.64, 0.46, 0.32];
+  // Gentle fade only — deeper stages stay legible (was fading to 0.32).
+  const opacities = [1, 0.9, 0.8, 0.7, 0.62];
 
   return (
     <div style={{
@@ -35,55 +33,32 @@ export function FunnelChart({ stages = DEFAULTS, brandStyle }: Props) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 4,
+      gap: 10,
       fontFamily: 'Outfit, sans-serif',
     }}>
-      {list.map((stage, i) => {
-        const widthPct = widths[i];
-        const opacity = opacities[i] ?? 0.32;
-        const isLight = opacity >= 0.6;
-
-        return (
-          <div key={i} style={{
-            width: `${widthPct}%`,
-            minWidth: 200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            padding: '16px 24px',
-            borderRadius: 8,
-            background: accent,
-            opacity,
-            position: 'relative',
-          }}>
-            {/* Label */}
-            <span style={{
-              fontSize: 24,
-              fontWeight: 700,
-              color: isLight ? onAccent : bodyColor,
-              textAlign: 'center',
-              lineHeight: 1.2,
-            }}>
-              {stage.label}
+      {list.map((stage, i) => (
+        <div key={i} style={{
+          width: `${widths[i]}%`,
+          minWidth: 240,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 18,
+          padding: '18px 30px',
+          borderRadius: 10,
+          background: accent,
+          opacity: opacities[i] ?? 0.6,
+        }}>
+          <span style={{ fontSize: 23, fontWeight: 600, color: onAccent, lineHeight: 1.15 }}>
+            {stage.label}
+          </span>
+          {(stage.value || percents[i]) && (
+            <span style={{ fontSize: 32, fontWeight: 700, color: onAccent, whiteSpace: 'nowrap', letterSpacing: '-0.01em', flexShrink: 0 }}>
+              {stage.value ?? `${percents[i]}%`}
             </span>
-            {/* Value or percent on the right */}
-            {(stage.value || percents[i]) && (
-              <span style={{
-                position: 'absolute',
-                right: -80,
-                fontSize: 22,
-                fontWeight: 700,
-                color: secondary,
-                whiteSpace: 'nowrap',
-                opacity: 1 / opacity, // counteract parent opacity
-              }}>
-                {stage.value ?? `${percents[i]}%`}
-              </span>
-            )}
-          </div>
-        );
-      })}
+          )}
+        </div>
+      ))}
     </div>
   );
 }

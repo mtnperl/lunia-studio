@@ -2107,69 +2107,33 @@ function StatCallout({
   const bodyColor = (brandStyle == null ? void 0 : brandStyle.body) ?? "#4a5568";
   const secondary = (brandStyle == null ? void 0 : brandStyle.secondary) ?? "#6b7280";
   const trendColor = trend === "up" ? "#22c55e" : trend === "down" ? "#ef4444" : null;
-  const statSize = stat.length <= 4 ? 140 : stat.length <= 6 ? 100 : 72;
-  const unitSize = Math.round(statSize * 0.3);
+  const statSize = stat.length <= 4 ? 168 : stat.length <= 6 ? 120 : 84;
+  const unitSize = Math.round(statSize * 0.26);
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "Outfit, sans-serif",
-    gap: 0
+    fontFamily: "Outfit, sans-serif"
   }, children: [
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      width: "75%",
-      height: 1.5,
-      background: accent,
-      flexShrink: 0
-    } }),
-    /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
-      flex: 1,
-      display: "flex",
-      alignItems: "baseline",
-      justifyContent: "center",
-      gap: unit ? 14 : 12,
-      position: "relative"
-    }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: statSize,
-        fontWeight: 700,
-        color: accent,
-        lineHeight: 1,
-        letterSpacing: "-0.02em"
-      }, children: stat }),
-      unit && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: unitSize,
-        fontWeight: 500,
-        color: secondary,
-        lineHeight: 1,
-        letterSpacing: "0.04em",
-        textTransform: "lowercase"
-      }, children: unit }),
-      trend && trendColor && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: 64,
-        fontWeight: 700,
-        color: trendColor,
-        lineHeight: 1
-      }, children: trend === "up" ? "\u2191" : "\u2193" })
+    /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: unit ? 14 : 12 }, children: [
+      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: statSize, fontWeight: 700, color: accent, lineHeight: 0.9, letterSpacing: "-0.03em" }, children: stat }),
+      unit && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: unitSize, fontWeight: 500, color: secondary, lineHeight: 1, letterSpacing: "0.02em", textTransform: "lowercase" }, children: unit }),
+      trend && trendColor && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 72, fontWeight: 700, color: trendColor, lineHeight: 1 }, children: trend === "up" ? "\u2191" : "\u2193" })
     ] }),
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { width: 64, height: 3, borderRadius: 2, background: accent, marginTop: 26, marginBottom: 24 } }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      width: "75%",
-      height: 1.5,
-      background: accent,
-      flexShrink: 0
-    } }),
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      marginTop: 28,
-      fontSize: 30,
-      fontWeight: 400,
+      fontSize: 27,
+      fontWeight: 600,
       color: bodyColor,
-      letterSpacing: "0.1em",
+      letterSpacing: "0.09em",
+      textTransform: "uppercase",
       textAlign: "center",
-      lineHeight: 1.3,
+      lineHeight: 1.35,
       paddingLeft: 40,
-      paddingRight: 40
+      paddingRight: 40,
+      opacity: 0.85
     }, children: label })
   ] });
 }
@@ -2471,13 +2435,13 @@ function DonutChart({ value = "85%", label = "EFFECTIVENESS", sublabel, brandSty
   const h = 460;
   const cx = w / 2;
   const cy = h / 2 - 10;
-  const outerR = 155;
-  const innerR = 103;
+  const outerR = 158;
+  const innerR = 122;
   const trackW = outerR - innerR;
   const valueSize = value.length <= 4 ? 90 : value.length <= 6 ? 70 : 54;
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { width: "100%", aspectRatio: `${w} / ${h}`, position: "relative" }, children: [
     /* @__PURE__ */ (0,jsx_runtime.jsxs)("svg", { width: "100%", height: "100%", viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "xMidYMid meet", style: { position: "absolute", top: 0, left: 0 }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("circle", { cx, cy, r: (outerR + innerR) / 2, fill: "none", stroke: `${bodyColor}18`, strokeWidth: trackW }),
+      /* @__PURE__ */ (0,jsx_runtime.jsx)("circle", { cx, cy, r: (outerR + innerR) / 2, fill: "none", stroke: `${bodyColor}12`, strokeWidth: trackW, strokeLinecap: "round" }),
       /* @__PURE__ */ (0,jsx_runtime.jsx)(
         "path",
         {
@@ -2501,9 +2465,10 @@ function DonutChart({ value = "85%", label = "EFFECTIVENESS", sublabel, brandSty
     }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
       fontFamily: "Outfit, sans-serif",
       fontSize: valueSize,
-      fontWeight: 800,
+      fontWeight: 700,
       color: accent,
-      lineHeight: 1
+      lineHeight: 1,
+      letterSpacing: "-0.02em"
     }, children: value }) }),
     /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
       position: "absolute",
@@ -2738,47 +2703,27 @@ function SplitBar({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 24,
-    fontFamily: "Outfit, sans-serif",
-    minHeight: 340
+    gap: 30,
+    fontFamily: "Outfit, sans-serif"
   }, children: [
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { width: "100%", display: "flex", justifyContent: "space-around" }, children: parts.map((p, i) => /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }, children: [
+      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 64, fontWeight: 700, lineHeight: 0.85, letterSpacing: "-0.02em", color: i === 0 ? accent : bodyColor }, children: p.value ?? `${p.percent}%` }),
+      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 22, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: bodyColor, opacity: 0.6 }, children: p.label })
+    ] }, i)) }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
       width: "100%",
-      height: 64,
-      borderRadius: 32,
-      background: `${bodyColor}08`,
+      height: 18,
+      borderRadius: 9,
+      background: `${bodyColor}10`,
       display: "flex",
-      overflow: "hidden"
+      overflow: "hidden",
+      gap: 3
     }, children: parts.map((p, i) => /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
       width: `${p.percent / total * 100}%`,
       height: "100%",
       background: fills[i % fills.length],
-      borderRadius: i === 0 ? "32px 0 0 32px" : i === parts.length - 1 ? "0 32px 32px 0" : 0
-    } }, i)) }),
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      width: "100%",
-      display: "flex",
-      justifyContent: "space-around"
-    }, children: parts.map((p, i) => /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 4
-    }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: 52,
-        fontWeight: 800,
-        color: i === 0 ? accent : bodyColor,
-        lineHeight: 1
-      }, children: p.value ?? `${p.percent}%` }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: 20,
-        fontWeight: 600,
-        letterSpacing: "0.08em",
-        color: bodyColor,
-        opacity: 0.6
-      }, children: p.label })
-    ] }, i)) })
+      borderRadius: 9
+    } }, i)) })
   ] });
 }
 /* harmony default export */ const graphics_SplitBar = ((/* unused pure expression or super */ null && (SplitBar)));
@@ -3261,58 +3206,35 @@ const FunnelChart_DEFAULTS = [
 ];
 function FunnelChart({ stages = FunnelChart_DEFAULTS, brandStyle }) {
   const accent = (brandStyle == null ? void 0 : brandStyle.accent) ?? "#1e7a8a";
-  const bodyColor = (brandStyle == null ? void 0 : brandStyle.body) ?? "#4a5568";
-  const secondary = (brandStyle == null ? void 0 : brandStyle.secondary) ?? "#a8d4da";
   const onAccent = (brandStyle == null ? void 0 : brandStyle.background) ?? "#ffffff";
   const n = Math.min(stages.length, 5);
   const list = stages.slice(0, n);
   const percents = list.map((s, i) => s.percent ?? Math.round(100 - i * (60 / (n - 1))));
   const maxP = Math.max(...percents, 1);
-  const widths = percents.map((p) => Math.max(30, Math.round(p / maxP * 100)));
-  const opacities = [1, 0.82, 0.64, 0.46, 0.32];
+  const widths = percents.map((p) => Math.max(34, Math.round(p / maxP * 100)));
+  const opacities = [1, 0.9, 0.8, 0.7, 0.62];
   return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 4,
+    gap: 10,
     fontFamily: "Outfit, sans-serif"
-  }, children: list.map((stage, i) => {
-    const widthPct = widths[i];
-    const opacity = opacities[i] ?? 0.32;
-    const isLight = opacity >= 0.6;
-    return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
-      width: `${widthPct}%`,
-      minWidth: 200,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 12,
-      padding: "16px 24px",
-      borderRadius: 8,
-      background: accent,
-      opacity,
-      position: "relative"
-    }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: 24,
-        fontWeight: 700,
-        color: isLight ? onAccent : bodyColor,
-        textAlign: "center",
-        lineHeight: 1.2
-      }, children: stage.label }),
-      (stage.value || percents[i]) && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        position: "absolute",
-        right: -80,
-        fontSize: 22,
-        fontWeight: 700,
-        color: secondary,
-        whiteSpace: "nowrap",
-        opacity: 1 / opacity
-        // counteract parent opacity
-      }, children: stage.value ?? `${percents[i]}%` })
-    ] }, i);
-  }) });
+  }, children: list.map((stage, i) => /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
+    width: `${widths[i]}%`,
+    minWidth: 240,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 18,
+    padding: "18px 30px",
+    borderRadius: 10,
+    background: accent,
+    opacity: opacities[i] ?? 0.6
+  }, children: [
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 23, fontWeight: 600, color: onAccent, lineHeight: 1.15 }, children: stage.label }),
+    (stage.value || percents[i]) && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 32, fontWeight: 700, color: onAccent, whiteSpace: "nowrap", letterSpacing: "-0.01em", flexShrink: 0 }, children: stage.value ?? `${percents[i]}%` })
+  ] }, i)) });
 }
 /* harmony default export */ const graphics_FunnelChart = ((/* unused pure expression or super */ null && (FunnelChart)));
 
@@ -3323,63 +3245,19 @@ function ScoreCard({ score = "A+", label = "SLEEP QUALITY RATING", sublabel, bra
   const accent = (brandStyle == null ? void 0 : brandStyle.accent) ?? "#1e7a8a";
   const bodyColor = (brandStyle == null ? void 0 : brandStyle.body) ?? "#4a5568";
   const secondary = (brandStyle == null ? void 0 : brandStyle.secondary) ?? "#a8d4da";
-  const scoreSize = score.length <= 2 ? 180 : score.length <= 4 ? 120 : 80;
+  const scoreSize = score.length <= 2 ? 200 : score.length <= 4 ? 130 : 88;
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "Outfit, sans-serif",
-    position: "relative"
+    fontFamily: "Outfit, sans-serif"
   }, children: [
-    /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      width: 456,
-      height: 320,
-      border: `3px solid ${accent}`,
-      borderRadius: 4,
-      background: `${accent}08`,
-      position: "relative"
-    }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", top: -3, left: -3, width: 60, height: 3, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", top: -3, left: -3, width: 3, height: 52, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", top: -3, right: -3, width: 60, height: 3, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", top: -3, right: -3, width: 3, height: 52, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", bottom: -3, left: -3, width: 60, height: 3, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", bottom: -3, left: -3, width: 3, height: 52, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", bottom: -3, right: -3, width: 60, height: 3, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "absolute", bottom: -3, right: -3, width: 3, height: 52, background: accent } }),
-      /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-        fontSize: scoreSize,
-        fontWeight: 800,
-        color: accent,
-        lineHeight: 1
-      }, children: score })
-    ] }),
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      width: 296,
-      height: 1,
-      background: `${bodyColor}25`,
-      marginTop: 20,
-      marginBottom: 14
-    } }),
-    /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-      fontSize: 26,
-      fontWeight: 700,
-      letterSpacing: "0.12em",
-      color: bodyColor,
-      textAlign: "center"
-    }, children: label }),
-    sublabel && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: {
-      fontSize: 18,
-      color: secondary,
-      marginTop: 6,
-      textAlign: "center"
-    }, children: sublabel })
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: scoreSize, fontWeight: 700, color: accent, lineHeight: 0.9, letterSpacing: "-0.03em" }, children: score }),
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { width: 64, height: 3, borderRadius: 2, background: accent, marginTop: 24, marginBottom: 22 } }),
+    /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 27, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: bodyColor, textAlign: "center", opacity: 0.85 }, children: label }),
+    sublabel && /* @__PURE__ */ (0,jsx_runtime.jsx)("span", { style: { fontSize: 20, color: secondary, marginTop: 8, textAlign: "center" }, children: sublabel })
   ] });
 }
 /* harmony default export */ const graphics_ScoreCard = ((/* unused pure expression or super */ null && (ScoreCard)));

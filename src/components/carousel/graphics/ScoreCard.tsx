@@ -12,8 +12,8 @@ export function ScoreCard({ score = 'A+', label = 'SLEEP QUALITY RATING', sublab
   const bodyColor = brandStyle?.body ?? '#4a5568';
   const secondary = brandStyle?.secondary ?? '#a8d4da';
 
-  // Scale font size based on score length
-  const scoreSize = score.length <= 2 ? 180 : score.length <= 4 ? 120 : 80;
+  // Hero grade — length-aware so long scores still fit.
+  const scoreSize = score.length <= 2 ? 200 : score.length <= 4 ? 130 : 88;
 
   return (
     <div style={{
@@ -23,73 +23,20 @@ export function ScoreCard({ score = 'A+', label = 'SLEEP QUALITY RATING', sublab
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: 'Outfit, sans-serif',
-      position: 'relative',
     }}>
-      {/* Score frame */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 456,
-        height: 320,
-        border: `3px solid ${accent}`,
-        borderRadius: 4,
-        background: `${accent}08`,
-        position: 'relative',
-      }}>
-        {/* Corner accents */}
-        {/* Top-left */}
-        <div style={{ position: 'absolute', top: -3, left: -3, width: 60, height: 3, background: accent }} />
-        <div style={{ position: 'absolute', top: -3, left: -3, width: 3, height: 52, background: accent }} />
-        {/* Top-right */}
-        <div style={{ position: 'absolute', top: -3, right: -3, width: 60, height: 3, background: accent }} />
-        <div style={{ position: 'absolute', top: -3, right: -3, width: 3, height: 52, background: accent }} />
-        {/* Bottom-left */}
-        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 60, height: 3, background: accent }} />
-        <div style={{ position: 'absolute', bottom: -3, left: -3, width: 3, height: 52, background: accent }} />
-        {/* Bottom-right */}
-        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 60, height: 3, background: accent }} />
-        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 3, height: 52, background: accent }} />
-
-        {/* Score */}
-        <span style={{
-          fontSize: scoreSize,
-          fontWeight: 800,
-          color: accent,
-          lineHeight: 1,
-        }}>
-          {score}
-        </span>
-      </div>
-
-      {/* Divider */}
-      <div style={{
-        width: 296,
-        height: 1,
-        background: `${bodyColor}25`,
-        marginTop: 20,
-        marginBottom: 14,
-      }} />
-
-      {/* Label */}
-      <span style={{
-        fontSize: 26,
-        fontWeight: 700,
-        letterSpacing: '0.12em',
-        color: bodyColor,
-        textAlign: 'center',
-      }}>
-        {label}
+      {/* Hero score (clean — no heavy frame / corner ticks) */}
+      <span style={{ fontSize: scoreSize, fontWeight: 700, color: accent, lineHeight: 0.9, letterSpacing: '-0.03em' }}>
+        {score}
       </span>
 
+      {/* Thin accent underline */}
+      <div style={{ width: 64, height: 3, borderRadius: 2, background: accent, marginTop: 24, marginBottom: 22 }} />
+
+      <span style={{ fontSize: 27, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: bodyColor, textAlign: 'center', opacity: 0.85 }}>
+        {label}
+      </span>
       {sublabel && (
-        <span style={{
-          fontSize: 18,
-          color: secondary,
-          marginTop: 6,
-          textAlign: 'center',
-        }}>
+        <span style={{ fontSize: 20, color: secondary, marginTop: 8, textAlign: 'center' }}>
           {sublabel}
         </span>
       )}
