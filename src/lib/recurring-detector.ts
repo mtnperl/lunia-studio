@@ -1,4 +1,5 @@
 import type { Categorization, ExpenseCategory, SimpleFinTxn } from "./business-types";
+import { isCardPaymentOrTransfer } from "./non-operating";
 
 export type RecurringCadence = "weekly" | "monthly" | "quarterly" | "annual" | "irregular";
 
@@ -52,6 +53,9 @@ export function detectRecurring(
 
   for (const t of transactions) {
     if (t.amount >= 0) continue; // skip inbound
+    // Card payments / transfers are money movement, not recurring expenses —
+    // a monthly card payment was being averaged into a phantom constant run-rate.
+    if (isCardPaymentOrTransfer(t)) continue;
     const key = canonicalPayeeKey(t);
     if (!key) continue;
 

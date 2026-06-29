@@ -9,6 +9,7 @@ import {
   type PnLLine,
   type SimpleFinTxn,
 } from "./business-types";
+import { isCardPaymentOrTransfer } from "./non-operating";
 
 /**
  * Pure function — composes a `PnL` from the four upstream sources.
@@ -229,6 +230,10 @@ function computeStatement(input: {
   if (simplefin && categorizations) {
     for (const t of simplefin.transactions) {
       if (t.amount >= 0) continue; // skip inbound
+      // Card payments / internal transfers aren't OpEx — they settle charges
+      // already counted elsewhere (e.g. ads via Meta adSpend) and would
+      // double-count. Excluded here and from recurring detection.
+      if (isCardPaymentOrTransfer(t)) continue;
       const cat = categorizations.get(t.id)?.category ?? "uncategorized";
       const abs = Math.abs(t.amount);
       fixedByCategory[cat] = (fixedByCategory[cat] ?? 0) + abs;
