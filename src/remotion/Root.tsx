@@ -1,6 +1,7 @@
 import { Composition, registerRoot } from "remotion";
 import { VideoAd } from "./VideoAd";
 import { VideoAdCaptions } from "./VideoAdCaptions";
+import { CarouselSlide, CarouselSlideProps } from "./CarouselSlide";
 import { VideoAdData, VideoCaptionsData } from "@/lib/types";
 
 const DEFAULT_PROPS: VideoAdData = {
@@ -31,9 +32,31 @@ const DEFAULT_CAPTIONS_PROPS: VideoCaptionsData = {
   ],
 };
 
+// Real saved content slide (carousel "REM REBOUND") so the composition renders
+// authentic copy + a relevant graphic, not a placeholder.
+const CAROUSEL_SLIDE_SAMPLE: CarouselSlideProps = {
+  headline: "THE BRAIN REPAYS REM FIRST",
+  body: "After REM deprivation, recovery nights show up to 30% more REM than baseline. The brain treats dream sleep as a debt, not a bonus.",
+  citation: "Brunner DP, et al. Effect of partial sleep deprivation on sleep stages. Electroencephalogr Clin Neurophysiol. 1990;75(6):492-499.",
+  graphic: JSON.stringify({
+    component: "bars",
+    data: { items: [{ label: "BASELINE REM", value: "100%" }, { label: "REBOUND NIGHT", value: "130%" }] },
+  }),
+  slideBgColor: "#01253f",
+};
+
 function RemotionRoot() {
   return (
     <>
+      <Composition
+        id="CarouselSlide"
+        component={CarouselSlide}
+        durationInFrames={1}
+        fps={1}
+        width={1080}
+        height={1350}
+        defaultProps={CAROUSEL_SLIDE_SAMPLE}
+      />
       <Composition
         id="VideoAd"
         component={VideoAd}

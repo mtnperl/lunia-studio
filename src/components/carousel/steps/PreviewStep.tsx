@@ -646,6 +646,43 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     return new File([blob], filename, { type: "image/png" });
   }
 
+  // Render a content slide server-side via Remotion renderStill (the real
+  // <ContentSlide> component) instead of html-to-image — deterministic, crisp,
+  // no canvas-taint / Safari quirks. Same props the preview uses, so the PNG
+  // matches the preview exactly.
+  async function renderContentSlideViaRemotion(
+    slide: { headline: string; body: string; citation: string; graphic?: string },
+    filename: string,
+  ): Promise<File> {
+    const res = await fetch("/api/carousel-v2/render-slide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        headline: slide.headline,
+        body: slide.body,
+        citation: slide.citation,
+        graphic: slide.graphic,
+        brandStyle: bs,
+        slideBgColor,
+        darkBackground,
+        citationFontSize,
+        headlineScale,
+        bodyScale,
+        logoScale,
+        arrowScale,
+        stylePreset,
+        showSlideArrows,
+        showSlideNumbers,
+        showCitationBars,
+        showLuniaLifeWatermark,
+        prominentWatermark: isV2,
+      }),
+    });
+    if (!res.ok) throw new Error(`render-slide ${res.status}`);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: "image/png" });
+  }
+
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
     if (!el) throw new Error("Export element not found");
@@ -655,6 +692,22 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       ? `lunia-reel-${index + 1}-${label}.png`
       : `lunia-slide-${index + 1}-${label}.png`;
     const exportH = reelsMode ? 1920 : 1350;
+
+    // Infographic content slides (slides 1..N) with a GraphicSpec graphic, no AI
+    // background image, and standard (non-Reels) format render via Remotion for
+    // pixel-deterministic output. Hook/CTA, image-backed, and Reels slides keep
+    // the html-to-image path. Any failure falls back to it too.
+    const contentIdx = index - 1;
+    const isContentSlide = contentIdx >= 0 && contentIdx < content.slides.length;
+    const hasBgImage = isContentSlide && !!contentBgImages[contentIdx];
+    if (isContentSlide && !hasBgImage && !reelsMode) {
+      try {
+        return await renderContentSlideViaRemotion(content.slides[contentIdx], filename);
+      } catch (err) {
+        console.warn("[carousel] remotion render failed, using html-to-image", err);
+        // fall through to the html-to-image path below
+      }
+    }
 
     // Wait for any <img> in the slide to finish loading first.
     const imgEls = Array.from(el.querySelectorAll("img")) as HTMLImageElement[];
