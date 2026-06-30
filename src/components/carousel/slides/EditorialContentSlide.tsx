@@ -2,6 +2,7 @@
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
+import FitBox from "@/components/carousel/shared/FitBox";
 import { BrandStyle } from "@/lib/types";
 import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
 import { parseGraphicSpec } from "@/lib/carousel-utils";
@@ -87,6 +88,14 @@ export default function EditorialContentSlide({
 }: Props) {
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 200 : PAD.y;
+  // Reserve a band at the bottom for the citation (up to ~2 lines) so the
+  // editorial column never runs its graphic into it.
+  const citationReserve = (showCitationBars && citation)
+    ? Math.round(citationFontSize * 1.4 * 2) + 28
+    : 48;
+  // Cap the in-column graphic so it stays compact and hugs the body; FitBox
+  // scales it down further when a long headline/body leaves less room.
+  const graphicMaxH = reels ? 420 : 320;
 
   // Lunia palette defaults — preset already passes EDITORIAL_BRAND_STYLE in.
   const bg          = brandStyle?.background     ?? "#EFEFF4";
@@ -171,7 +180,7 @@ export default function EditorialContentSlide({
         left: PAD.x,
         // Only narrow the column when a product photo actually sits on the right.
         right: hasPhoto ? 560 : PAD.x,
-        bottom: py + 60,                                            // just enough room for the citation
+        bottom: py + citationReserve,                              // clear the citation band below
         display: "flex", flexDirection: "column", gap: 28,
         // Backstop: clip the column so a tall body + graphic can never paint
         // over the citation that sits below it (bottom: py).
@@ -222,13 +231,18 @@ export default function EditorialContentSlide({
         {hasOtherGraphic && otherGraphicSpec && (
           <div style={{
             marginTop: 12,
+            // Hug the body and stay compact: capped height + FitBox so the
+            // graphic scales down instead of running into the citation. The
+            // spacer below pushes any slack to the bottom of the column.
+            flex: "0 1 auto",
+            minHeight: 0,
+            maxHeight: graphicMaxH,
+            overflow: "hidden",
             display: "flex",
             // Centre the graphic block in the body column so its internal
             // centred content (e.g. StatCallout's 75% rules + centred number)
-            // aligns visually with the body text's column-centre. flex-start
-            // was leaving the stat offset left of the body's optical centre.
+            // aligns visually with the body text's column-centre.
             justifyContent: "center",
-            alignItems: "flex-start",
             width: "100%",
           }}>
             <div style={{
@@ -236,8 +250,11 @@ export default function EditorialContentSlide({
               // dominate the editorial layout when the column is wide.
               width: "100%",
               maxWidth: hasPhoto ? "100%" : 760,
+              height: "100%",
             }}>
-              {renderGraphicSpec(otherGraphicSpec, brandStyle)}
+              <FitBox align="top">
+                {renderGraphicSpec(otherGraphicSpec, brandStyle)}
+              </FitBox>
             </div>
           </div>
         )}

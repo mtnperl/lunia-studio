@@ -7050,6 +7050,7 @@ function graphicComponentMap_renderGraphicSpec(spec, brandStyle) {
 
 
 
+
 const SLIDE_W = 1080;
 const EditorialContentSlide_SLIDE_H = { carousel: 1350, reels: 1920 };
 const PAD = { x: 84, y: 88 };
@@ -7093,6 +7094,8 @@ function EditorialContentSlide({
 }) {
   const slideH = reels ? EditorialContentSlide_SLIDE_H.reels : EditorialContentSlide_SLIDE_H.carousel;
   const py = reels ? 200 : PAD.y;
+  const citationReserve = showCitationBars && citation ? Math.round(citationFontSize * 1.4 * 2) + 28 : 48;
+  const graphicMaxH = reels ? 420 : 320;
   const bg = (brandStyle == null ? void 0 : brandStyle.background) ?? "#EFEFF4";
   const headlineCol = (brandStyle == null ? void 0 : brandStyle.headline) ?? "#01253f";
   const bodyCol = (brandStyle == null ? void 0 : brandStyle.body) ?? "#01253f";
@@ -7152,8 +7155,8 @@ function EditorialContentSlide({
       left: PAD.x,
       // Only narrow the column when a product photo actually sits on the right.
       right: hasPhoto ? 560 : PAD.x,
-      bottom: py + 60,
-      // just enough room for the citation
+      bottom: py + citationReserve,
+      // clear the citation band below
       display: "flex",
       flexDirection: "column",
       gap: 28,
@@ -7194,20 +7197,26 @@ function EditorialContentSlide({
       ),
       hasOtherGraphic && otherGraphicSpec && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
         marginTop: 12,
+        // Hug the body and stay compact: capped height + FitBox so the
+        // graphic scales down instead of running into the citation. The
+        // spacer below pushes any slack to the bottom of the column.
+        flex: "0 1 auto",
+        minHeight: 0,
+        maxHeight: graphicMaxH,
+        overflow: "hidden",
         display: "flex",
         // Centre the graphic block in the body column so its internal
         // centred content (e.g. StatCallout's 75% rules + centred number)
-        // aligns visually with the body text's column-centre. flex-start
-        // was leaving the stat offset left of the body's optical centre.
+        // aligns visually with the body text's column-centre.
         justifyContent: "center",
-        alignItems: "flex-start",
         width: "100%"
       }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
         // Soft cap so very wide graphics (tables, matrix2x2, etc.) don't
         // dominate the editorial layout when the column is wide.
         width: "100%",
-        maxWidth: hasPhoto ? "100%" : 760
-      }, children: graphicComponentMap_renderGraphicSpec(otherGraphicSpec, brandStyle) }) }),
+        maxWidth: hasPhoto ? "100%" : 760,
+        height: "100%"
+      }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(FitBox, { align: "top", children: graphicComponentMap_renderGraphicSpec(otherGraphicSpec, brandStyle) }) }) }),
       iconRows.length > 0 && iconPosition === "between" && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
         marginTop: "auto",
         marginBottom: "auto",
