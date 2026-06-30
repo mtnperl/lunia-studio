@@ -7,6 +7,7 @@
     "prebuild": "node scripts/bundle-remotion.mjs --skip-on-vercel",
     "build": "next build",
     "bundle-remotion": "node scripts/bundle-remotion.mjs",
+    "check:bundle": "node scripts/check-remotion-bundle.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
