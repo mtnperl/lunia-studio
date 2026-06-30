@@ -47,6 +47,10 @@ import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
+// Cap the graphic so it stays compact and hugs the body rather than ballooning
+// to fill the slide. FitBox scales the graphic down to this (or smaller, when a
+// long headline/body leaves less room) — the text is never resized.
+const GRAPHIC_MAX_HEIGHT = 360;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
 
 // ─── Rendering priority:
@@ -229,6 +233,7 @@ export default function ContentSlide({
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
+  const graphicMaxH = reels ? 440 : GRAPHIC_MAX_HEIGHT;
   // Determine rendering path
   // Path 0: fal.ai AI-generated image (TIER B/C) — highest priority, overrides SVG components
   const hasAiGraphicImage = !!graphicImageUrl || shimmerGraphic; // Path 0
@@ -240,8 +245,8 @@ export default function ContentSlide({
   const hasSvg = !hasAiGraphicImage && !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10; // Path 2
   const hasLegacyGraphic = !hasAiGraphicImage && !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
   const hasInlineGraphic = hasAiGraphicImage || hasGraphicSpec || hasSvg;   // shown inside flex column
-  // Tighten gap when graphic needs space
-  const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.6) : sectionGapBase;
+  // Tighten gap when a graphic is present so it hugs the body copy.
+  const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.5) : sectionGapBase;
 
   // Colors. Resolution order:
   //   1. `slideBgColor` (user-picked) — auto-derives ink from luminance
@@ -405,14 +410,17 @@ export default function ContentSlide({
           {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
         </div>
 
-        {/* Graphic zone — sits BETWEEN body and citation. Flexes to fill the gap
-            and shrinks gracefully so it never collides with the citation. The
-            inner FitBox scales any graphic (old or new) DOWN to fit the space
-            actually left after a long headline/body, so it can never overlap
-            the citation; overflow:hidden is the hard backstop. */}
+        {/* Graphic zone — sits just below the body (hugs the copy, not floating
+            in the middle) and is capped to graphicMaxH so it stays compact. The
+            inner FitBox scales any graphic (old or new) DOWN — to the cap, or
+            smaller when a long headline/body leaves less room — so the text is
+            never resized and the graphic can never overlap the citation;
+            overflow:hidden is the hard backstop. The spacer below pushes the
+            citation to the bottom. */}
         {hasInlineGraphic ? (
-          <div style={{ minHeight: 0, flex: '1 1 0px', overflow: 'hidden', display: 'flex' }}>
-           <FitBox>
+          <>
+          <div style={{ flex: '0 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex' }}>
+           <FitBox align="top">
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (
@@ -455,6 +463,10 @@ export default function ContentSlide({
             )}
            </FitBox>
           </div>
+          {/* Spacer — absorbs the slack so the citation sits at the bottom while
+              the graphic stays tucked under the body. */}
+          <div style={{ flex: '1 1 0px' }} />
+          </>
         ) : (
           // No graphic — spacer so the citation still settles near the bottom.
           <div style={{ flex: '1 1 0px' }} />

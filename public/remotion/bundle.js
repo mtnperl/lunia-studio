@@ -6626,6 +6626,7 @@ function pickInk(bg) {
 
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
+const GRAPHIC_MAX_HEIGHT = 360;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
 function sanitizeSvg(svg) {
   return svg.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "").replace(/<use\s[^>]*>/gi, "").replace(/<animate\b[^>]*>/gi, "").replace(/<set\b[^>]*>/gi, "").replace(/<handler\b[^>]*>/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "").replace(/data:/gi, "").replace(/<svg(?![^>]*\bwidth=)/, '<svg width="100%"');
@@ -6740,6 +6741,7 @@ function ContentSlide({
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
+  const graphicMaxH = reels ? 440 : GRAPHIC_MAX_HEIGHT;
   const hasAiGraphicImage = !!graphicImageUrl || shimmerGraphic;
   const graphicSpec = !hasAiGraphicImage ? parseGraphicSpec(graphic) : null;
   const hasGraphicSpec = graphicSpec !== null;
@@ -6747,7 +6749,7 @@ function ContentSlide({
   const hasSvg = !hasAiGraphicImage && !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10;
   const hasLegacyGraphic = !hasAiGraphicImage && !hasGraphicSpec && !hasSvg && graphicStyle !== "textOnly";
   const hasInlineGraphic = hasAiGraphicImage || hasGraphicSpec || hasSvg;
-  const sectionGap = hasInlineGraphic || hasLegacyGraphic ? Math.round(sectionGapBase * 0.6) : sectionGapBase;
+  const sectionGap = hasInlineGraphic || hasLegacyGraphic ? Math.round(sectionGapBase * 0.5) : sectionGapBase;
   const fallbackBg = darkBackground ? "#F7F4EF" : "#01253f";
   const brandBg = darkBackground ? brandStyle == null ? void 0 : brandStyle.hookBackground : brandStyle == null ? void 0 : brandStyle.background;
   const bg = slideBgColor ?? brandBg ?? fallbackBg;
@@ -6870,52 +6872,55 @@ function ContentSlide({
           restBody
         ] }) : null
       ] }),
-      hasInlineGraphic ? /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { minHeight: 0, flex: "1 1 0px", overflow: "hidden", display: "flex" }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(FitBox, { children: hasAiGraphicImage ? (
-        // Path 0 — fal.ai AI-generated image for TIER B/C slides
-        graphicImageUrl ? /* @__PURE__ */ (0,jsx_runtime.jsx)(
-          "img",
-          {
-            src: graphicImageUrl,
-            alt: "",
-            crossOrigin: "anonymous",
-            style: {
-              width: "100%",
-              maxHeight: 500,
-              objectFit: "contain",
-              objectPosition: "center bottom",
-              display: "block",
-              borderRadius: 8
+      hasInlineGraphic ? /* @__PURE__ */ (0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [
+        /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { flex: "0 1 auto", minHeight: 0, maxHeight: graphicMaxH, overflow: "hidden", display: "flex" }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(FitBox, { align: "top", children: hasAiGraphicImage ? (
+          // Path 0 — fal.ai AI-generated image for TIER B/C slides
+          graphicImageUrl ? /* @__PURE__ */ (0,jsx_runtime.jsx)(
+            "img",
+            {
+              src: graphicImageUrl,
+              alt: "",
+              crossOrigin: "anonymous",
+              style: {
+                width: "100%",
+                maxHeight: 500,
+                objectFit: "contain",
+                objectPosition: "center bottom",
+                display: "block",
+                borderRadius: 8
+              }
             }
-          }
+          ) : (
+            // Shimmer while AI image is generating
+            /* @__PURE__ */ (0,jsx_runtime.jsx)(
+              "div",
+              {
+                style: {
+                  width: "100%",
+                  height: 300,
+                  borderRadius: 8,
+                  background: "linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 100%)",
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.6s ease-in-out infinite"
+                }
+              }
+            )
+          )
+        ) : hasGraphicSpec ? (
+          // Path 1 — React SVG component (TIER A data-precise)
+          /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicErrorBoundary, { graphicSpec, children: renderGraphicSpec(graphicSpec, graphicBrandStyle) })
         ) : (
-          // Shimmer while AI image is generating
+          // Path 2 — raw SVG (saved carousels only)
           /* @__PURE__ */ (0,jsx_runtime.jsx)(
             "div",
             {
-              style: {
-                width: "100%",
-                height: 300,
-                borderRadius: 8,
-                background: "linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 100%)",
-                backgroundSize: "200% 100%",
-                animation: "shimmer 1.6s ease-in-out infinite"
-              }
+              style: { overflow: "hidden" },
+              dangerouslySetInnerHTML: { __html: sanitizeSvg(graphic) }
             }
           )
-        )
-      ) : hasGraphicSpec ? (
-        // Path 1 — React SVG component (TIER A data-precise)
-        /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicErrorBoundary, { graphicSpec, children: renderGraphicSpec(graphicSpec, graphicBrandStyle) })
-      ) : (
-        // Path 2 — raw SVG (saved carousels only)
-        /* @__PURE__ */ (0,jsx_runtime.jsx)(
-          "div",
-          {
-            style: { overflow: "hidden" },
-            dangerouslySetInnerHTML: { __html: sanitizeSvg(graphic) }
-          }
-        )
-      ) }) }) : (
+        ) }) }),
+        /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { flex: "1 1 0px" } })
+      ] }) : (
         // No graphic — spacer so the citation still settles near the bottom.
         /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { flex: "1 1 0px" } })
       ),
