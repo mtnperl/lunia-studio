@@ -173,6 +173,9 @@ export default function EditorialContentSlide({
         right: hasPhoto ? 560 : PAD.x,
         bottom: py + 60,                                            // just enough room for the citation
         display: "flex", flexDirection: "column", gap: 28,
+        // Backstop: clip the column so a tall body + graphic can never paint
+        // over the citation that sits below it (bottom: py).
+        overflow: "hidden",
       }}>
         <h1 style={{
           margin: 0,

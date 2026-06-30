@@ -4,6 +4,7 @@ import React from 'react';
 import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
+import FitBox from '@/components/carousel/shared/FitBox';
 import { StatCallout } from '@/components/carousel/graphics/StatCallout';
 import { ComparisonBars } from '@/components/carousel/graphics/ComparisonBars';
 import { StepList } from '@/components/carousel/graphics/StepList';
@@ -46,7 +47,6 @@ import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
-const GRAPHIC_MIN_HEIGHT = 280;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
 
 // ─── Rendering priority:
@@ -229,7 +229,6 @@ export default function ContentSlide({
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
-  const graphicMinH = reels ? 120 : GRAPHIC_MIN_HEIGHT;
   // Determine rendering path
   // Path 0: fal.ai AI-generated image (TIER B/C) — highest priority, overrides SVG components
   const hasAiGraphicImage = !!graphicImageUrl || shimmerGraphic; // Path 0
@@ -407,9 +406,13 @@ export default function ContentSlide({
         </div>
 
         {/* Graphic zone — sits BETWEEN body and citation. Flexes to fill the gap
-            and shrinks gracefully so it never collides with the citation. */}
+            and shrinks gracefully so it never collides with the citation. The
+            inner FitBox scales any graphic (old or new) DOWN to fit the space
+            actually left after a long headline/body, so it can never overlap
+            the citation; overflow:hidden is the hard backstop. */}
         {hasInlineGraphic ? (
-          <div style={{ minHeight: graphicMinH, flex: '1 1 0px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ minHeight: 0, flex: '1 1 0px', overflow: 'hidden', display: 'flex' }}>
+           <FitBox>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (
@@ -450,6 +453,7 @@ export default function ContentSlide({
                 dangerouslySetInnerHTML={{ __html: sanitizeSvg(graphic!) }}
               />
             )}
+           </FitBox>
           </div>
         ) : (
           // No graphic — spacer so the citation still settles near the bottom.

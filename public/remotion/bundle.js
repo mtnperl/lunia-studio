@@ -2,7 +2,7 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 2330
+/***/ 8757
 (__unused_webpack_module, __unused_webpack___webpack_exports__, __webpack_require__) {
 
 
@@ -2085,6 +2085,69 @@ function SlideWrapper({ scale = 1, height = 1350, children, style, id }) {
             transform: `scale(${scale})`,
             overflow: "hidden",
             ...style
+          },
+          children
+        }
+      )
+    }
+  );
+}
+
+// EXTERNAL MODULE: ./node_modules/react/index.js
+var react = __webpack_require__(6540);
+;// ./src/components/carousel/shared/FitBox.tsx
+
+"use client";
+
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? react.useLayoutEffect : react.useEffect;
+function FitBox({
+  children,
+  align = "center"
+}) {
+  const boxRef = (0,react.useRef)(null);
+  const innerRef = (0,react.useRef)(null);
+  const [scale, setScale] = (0,react.useState)(1);
+  useIsoLayoutEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+    const measure = () => {
+      const boxH = box.clientHeight;
+      const boxW = box.clientWidth;
+      const naturalH = inner.offsetHeight;
+      const naturalW = inner.offsetWidth;
+      if (!boxH || !naturalH || !naturalW) return;
+      const next = Math.min(1, boxH / naturalH, boxW / naturalW);
+      setScale((prev) => Math.abs(prev - next) > 5e-3 ? next : prev);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(box);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [children]);
+  return /* @__PURE__ */ (0,jsx_runtime.jsx)(
+    "div",
+    {
+      ref: boxRef,
+      style: {
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: align === "center" ? "center" : "flex-start",
+        justifyContent: "center"
+      },
+      children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
+        "div",
+        {
+          ref: innerRef,
+          style: {
+            width: "100%",
+            flexShrink: 0,
+            transform: `scale(${scale})`,
+            transformOrigin: align === "center" ? "center center" : "top center"
           },
           children
         }
@@ -4369,8 +4432,6 @@ function VectorIllustration({ keywords, label, mood, brandStyle }) {
   ] });
 }
 
-// EXTERNAL MODULE: ./node_modules/react/index.js
-var react = __webpack_require__(6540);
 ;// ./src/components/carousel/graphics/GraphicErrorBoundary.tsx
 
 "use client";
@@ -6562,9 +6623,9 @@ function pickInk(bg) {
 
 
 
+
 const SLIDE_PADDING = { x: 72, y: 80 };
 const SECTION_GAP = 32;
-const GRAPHIC_MIN_HEIGHT = 280;
 const SLIDE_H = { carousel: 1350, reels: 1920 };
 function sanitizeSvg(svg) {
   return svg.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "").replace(/<use\s[^>]*>/gi, "").replace(/<animate\b[^>]*>/gi, "").replace(/<set\b[^>]*>/gi, "").replace(/<handler\b[^>]*>/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "").replace(/data:/gi, "").replace(/<svg(?![^>]*\bwidth=)/, '<svg width="100%"');
@@ -6679,7 +6740,6 @@ function ContentSlide({
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
-  const graphicMinH = reels ? 120 : GRAPHIC_MIN_HEIGHT;
   const hasAiGraphicImage = !!graphicImageUrl || shimmerGraphic;
   const graphicSpec = !hasAiGraphicImage ? parseGraphicSpec(graphic) : null;
   const hasGraphicSpec = graphicSpec !== null;
@@ -6810,7 +6870,7 @@ function ContentSlide({
           restBody
         ] }) : null
       ] }),
-      hasInlineGraphic ? /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { minHeight: graphicMinH, flex: "1 1 0px", display: "flex", alignItems: "center", justifyContent: "center" }, children: hasAiGraphicImage ? (
+      hasInlineGraphic ? /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { minHeight: 0, flex: "1 1 0px", overflow: "hidden", display: "flex" }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(FitBox, { children: hasAiGraphicImage ? (
         // Path 0 — fal.ai AI-generated image for TIER B/C slides
         graphicImageUrl ? /* @__PURE__ */ (0,jsx_runtime.jsx)(
           "img",
@@ -6855,7 +6915,7 @@ function ContentSlide({
             dangerouslySetInnerHTML: { __html: sanitizeSvg(graphic) }
           }
         )
-      ) }) : (
+      ) }) }) : (
         // No graphic — spacer so the citation still settles near the bottom.
         /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { flex: "1 1 0px" } })
       ),
@@ -7091,7 +7151,10 @@ function EditorialContentSlide({
       // just enough room for the citation
       display: "flex",
       flexDirection: "column",
-      gap: 28
+      gap: 28,
+      // Backstop: clip the column so a tall body + graphic can never paint
+      // over the citation that sits below it (bottom: py).
+      overflow: "hidden"
     }, children: [
       /* @__PURE__ */ (0,jsx_runtime.jsx)("h1", { style: {
         margin: 0,
@@ -49861,7 +49924,7 @@ config(en());
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
 /******/ 	__webpack_require__(6507);
-/******/ 	__webpack_require__(2330);
+/******/ 	__webpack_require__(8757);
 /******/ 	__webpack_require__(3610);
 /******/ 	var __webpack_exports__ = __webpack_require__(3482);
 /******/ 	
