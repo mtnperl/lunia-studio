@@ -73,11 +73,11 @@ export default function TakeawaySlide({
   const onAccentInk = isDarkColor(accent) ? "#F7F4EF" : "#01253f";
 
   const headlineFont = isEditorial
-    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 64, textTransform: "none" as const, letterSpacing: "-0.015em" }
-    : { fontFamily: "Jost, Montserrat, sans-serif", fontWeight: 400, fontSize: 60, textTransform: "uppercase" as const, letterSpacing: "0.12em" };
+    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 78, textTransform: "none" as const, letterSpacing: "-0.015em" }
+    : { fontFamily: "Jost, Montserrat, sans-serif", fontWeight: 400, fontSize: 72, textTransform: "uppercase" as const, letterSpacing: "0.1em" };
   const pointFont = isEditorial
-    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 34 }
-    : { fontFamily: "Cormorant Garamond, Lora, serif", fontWeight: 500, fontSize: 38 };
+    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 46 }
+    : { fontFamily: "Cormorant Garamond, Lora, serif", fontWeight: 500, fontSize: 50 };
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
@@ -125,16 +125,26 @@ export default function TakeawaySlide({
         </div>
       )}
 
-      <div style={{ position: "absolute", top: contentTop, left: 72, right: 72 }}>
+      <div style={{
+        position: "absolute",
+        top: 0, left: 0, right: 0, bottom: 0,
+        paddingTop: contentTop,
+        paddingBottom: reels ? 200 : 150,
+        paddingLeft: 72, paddingRight: 72,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+      }}>
         {/* Eyebrow */}
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 600,
-          fontSize: 22,
+          fontSize: 26,
           letterSpacing: "0.32em",
           textTransform: "uppercase",
           color: accent,
-          marginBottom: 24,
+          marginBottom: 30,
         }}>
           The Takeaway
         </div>
@@ -145,17 +155,17 @@ export default function TakeawaySlide({
         </div>
 
         {/* Recap points — the save-bait. Numbered, skimmable, one line each. */}
-        <div style={{ marginTop: 56, display: "flex", flexDirection: "column", gap: 30 }}>
+        <div style={{ marginTop: 72, display: "flex", flexDirection: "column", gap: 42 }}>
           {points.filter((p) => p && p.trim().length > 0).slice(0, 3).map((p, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 30 }}>
               <div style={{
                 flexShrink: 0,
-                width: 50, height: 50, borderRadius: "50%",
+                width: 64, height: 64, borderRadius: "50%",
                 background: accent,
                 color: onAccentInk,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: "Jost, Montserrat, sans-serif",
-                fontWeight: 600, fontSize: 26,
+                fontWeight: 600, fontSize: 34,
                 marginTop: 2,
               }}>
                 {i + 1}
@@ -169,30 +179,30 @@ export default function TakeawaySlide({
 
         {/* Interaction ask — the explicit engagement driver. */}
         <div style={{
-          marginTop: 64,
-          display: "inline-flex",
+          marginTop: 80,
+          display: "flex",
           alignItems: "center",
-          gap: 20,
-          padding: "22px 34px",
-          borderRadius: 18,
+          gap: 28,
+          padding: "34px 46px",
+          borderRadius: 24,
           border: `2px solid ${accent}`,
           background: bgIsDark ? "rgba(255,255,255,0.04)" : "rgba(1,37,63,0.03)",
         }}>
           <div style={{
             flexShrink: 0,
-            width: 60, height: 60, borderRadius: "50%",
+            width: 76, height: 76, borderRadius: "50%",
             background: accent,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <svg viewBox="0 0 24 24" fill="none" stroke={onAccentInk} strokeWidth="1.8"
-              strokeLinecap="round" strokeLinejoin="round" style={{ width: 30, height: 30 }}>
+              strokeLinecap="round" strokeLinejoin="round" style={{ width: 38, height: 38 }}>
               <path d={INTERACTION_GLYPH[interaction.type]} />
             </svg>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{
               fontFamily: "Jost, Montserrat, sans-serif",
-              fontWeight: 700, fontSize: 20, letterSpacing: "0.18em",
+              fontWeight: 700, fontSize: 25, letterSpacing: "0.18em",
               textTransform: "uppercase", color: accent,
             }}>
               {INTERACTION_VERB[interaction.type]}
@@ -201,10 +211,9 @@ export default function TakeawaySlide({
               fontFamily: isEditorial ? "Inter, system-ui, -apple-system, sans-serif" : "Cormorant Garamond, Lora, serif",
               fontWeight: isEditorial ? 300 : 500,
               fontStyle: isEditorial ? "normal" : "italic",
-              fontSize: 30,
+              fontSize: 38,
               color: bodyColor,
               lineHeight: 1.25,
-              maxWidth: 720,
             }}>
               {interaction.label}
             </div>
@@ -213,9 +222,9 @@ export default function TakeawaySlide({
 
         {/* faint forward cue toward the closing CTA */}
         <div style={{
-          marginTop: 40,
+          marginTop: 52,
           fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 500, fontSize: 18, letterSpacing: "0.22em",
+          fontWeight: 500, fontSize: 23, letterSpacing: "0.22em",
           textTransform: "uppercase", color: mutedColor,
         }}>
           Keep swiping →
