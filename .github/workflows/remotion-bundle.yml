@@ -1,0 +1,37 @@
+name: Remotion bundle drift
+
+# Guards against a stale committed Remotion bundle. `prebuild` is
+# `--skip-on-vercel`, so production serves the COMMITTED public/remotion/*.js —
+# Vercel never rebuilds it. Editing a carousel graphic/slide or the Remotion
+# entry without running `npm run bundle-remotion` makes the in-app preview
+# diverge from HD renders and exported PNGs, with no error anywhere. This job
+# rebuilds the bundle and fails if the committed .js is out of date.
+
+on:
+  pull_request:
+    paths:
+      - 'src/remotion/**'
+      - 'src/components/carousel/**'
+      - 'src/lib/**'
+      - 'public/remotion/**'
+      - 'scripts/bundle-remotion.mjs'
+      - 'scripts/check-remotion-bundle.mjs'
+      - 'package-lock.json'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bundle-drift:
+    # macOS runner matches the dev platform the bundle is committed from, which
+    # keeps minified .js byte-identical and avoids false-positive drift.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Check committed bundle is in sync with source
+        run: npm run check:bundle
