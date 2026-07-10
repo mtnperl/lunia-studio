@@ -416,6 +416,8 @@ export type SavedCarousel = {
   citationFontSize?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** Multiplier on rendered icon size for icon-layout graphics. */
+  iconScale?: number;
   /** v2 hook image overlays (frame / vignette / color grade / grain). */
   hookOverlays?: SavedHookOverlays;
   /** Carousel-wide style preset (default → "default"). */

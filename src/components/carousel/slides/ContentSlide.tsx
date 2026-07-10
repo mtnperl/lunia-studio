@@ -122,7 +122,7 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   iconLayout: IconLayout as React.FC<any>,
 };
 
-function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {
+function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle, iconScale?: number): React.ReactNode {
   const GraphicComponent = GRAPHIC_COMPONENT_MAP[spec.component];
   if (!GraphicComponent) {
     if (process.env.NODE_ENV !== 'production') {
@@ -130,7 +130,9 @@ function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.Re
     }
     return null;
   }
-  return <GraphicComponent {...(spec.data as object)} brandStyle={brandStyle} />;
+  // iconScale only means anything to the icon layouts; other components ignore it.
+  const extra = spec.component === 'iconLayout' || spec.component === 'icon' ? { iconScale } : {};
+  return <GraphicComponent {...(spec.data as object)} brandStyle={brandStyle} {...extra} />;
 }
 
 // ─── Legacy graphic zone (Path 3) ────────────────────────────────────────────
@@ -193,6 +195,7 @@ type Props = {
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
   bodyScale?: number;               // multiplier on the auto-sized body (default 1)
+  iconScale?: number;               // multiplier on rendered icon size for icon-layout graphics (default 1)
   stylePreset?: "default" | "editorial-scientific";
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
@@ -224,6 +227,7 @@ export default function ContentSlide({
   reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  iconScale = 1,
   stylePreset = "default",
   showSlideArrows = true,
   showSlideNumbers: _showSlideNumbers = true,
@@ -453,7 +457,7 @@ export default function ContentSlide({
             ) : hasGraphicSpec ? (
               // Path 1 — React SVG component (TIER A data-precise)
               <GraphicErrorBoundary graphicSpec={graphicSpec}>
-                {renderGraphicSpec(graphicSpec, graphicBrandStyle)}
+                {renderGraphicSpec(graphicSpec, graphicBrandStyle, iconScale)}
               </GraphicErrorBoundary>
             ) : (
               // Path 2 — raw SVG (saved carousels only)

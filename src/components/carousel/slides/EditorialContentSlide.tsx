@@ -33,6 +33,8 @@ type Props = {
   reels?: boolean;
   headlineScale?: number;
   bodyScale?: number;
+  /** Multiplier on rendered icon size when the graphic is an icon layout. */
+  iconScale?: number;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
@@ -83,6 +85,7 @@ export default function EditorialContentSlide({
   reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  iconScale = 1,
   showCitationBars = true,
   showSlideArrows = true,
   arrowScale = 1,
@@ -225,6 +228,7 @@ export default function EditorialContentSlide({
             rows={iconRows}
             showLabels={showIconLabels}
             bodySize={bodySize}
+            iconScale={iconScale}
             headlineCol={headlineCol}
             ruleCol={ruleCol}
             bg={bg}
@@ -282,6 +286,7 @@ export default function EditorialContentSlide({
               rows={iconRows}
               showLabels={showIconLabels}
               bodySize={bodySize}
+              iconScale={iconScale}
               headlineCol={headlineCol}
               ruleCol={ruleCol}
               bg={bg}
@@ -349,16 +354,20 @@ export default function EditorialContentSlide({
 // vertical list constrains its width and centres on its own axis; the icons-
 // only horizontal row simply centres its row content.
 function IconBlock({
-  rows, showLabels, bodySize, headlineCol, ruleCol, bg, centered,
+  rows, showLabels, bodySize, iconScale = 1, headlineCol, ruleCol, bg, centered,
 }: {
   rows: { id: string; label: string; svg: string; category: string }[];
   showLabels: boolean;
   bodySize: number;
+  iconScale?: number;
   headlineCol: string;
   ruleCol: string;
   bg: string;
   centered: boolean;
 }) {
+  // Icon-size control: scale the circle and glyph together off the 56/28 base.
+  const circle = Math.round(56 * iconScale);
+  const glyph = Math.round(28 * iconScale);
   return (
     <div style={{
       marginTop: centered ? 0 : 8,
@@ -395,14 +404,14 @@ function IconBlock({
             </div>
           )}
           <div style={{
-            width: 56, height: 56, borderRadius: "50%",
+            width: circle, height: circle, borderRadius: "50%",
             background: headlineCol,
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
           }}>
             <svg viewBox="0 0 24 24" fill="none" stroke={bg} strokeWidth="1.6"
               strokeLinecap="round" strokeLinejoin="round"
-              style={{ width: 28, height: 28 }}
+              style={{ width: glyph, height: glyph }}
               dangerouslySetInnerHTML={{ __html: ic.svg }} />
           </div>
         </div>

@@ -12,6 +12,8 @@ type Props = {
   layout: LayoutMode;
   brandStyle?: BrandStyle;
   showLabels?: boolean;
+  /** Multiplier on the count-derived icon size (editor's icon-size control). */
+  iconScale?: number;
 };
 
 // Scattered positions for 1–4 icons: [x%, y%, size, rotate]
@@ -74,13 +76,16 @@ function IconCell({ id, size, color, textColor, showLabels }: { id: string; size
   );
 }
 
-export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Props) {
+export function IconLayout({ icons, layout, brandStyle, showLabels = true, iconScale = 1 }: Props) {
   const color = brandStyle?.accent ?? '#1e7a8a';
   const textColor = brandStyle?.headline ?? '#1a2535';
   const count = icons.length;
+  // Scale the count-derived base size. Labels derive from the icon size below,
+  // so they track the control automatically.
+  const sz = (base: number) => Math.round(base * iconScale);
 
   if (layout === 'row') {
-    const iconSize = count <= 2 ? 110 : count === 3 ? 88 : 72;
+    const iconSize = sz(count <= 2 ? 110 : count === 3 ? 88 : 72);
     return (
       <div style={{
         display: 'flex',
@@ -98,7 +103,7 @@ export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Pro
   }
 
   if (layout === 'column') {
-    const iconSize = count <= 2 ? 96 : count === 3 ? 72 : 60;
+    const iconSize = sz(count <= 2 ? 96 : count === 3 ? 72 : 60);
     return (
       <div style={{
         display: 'flex',
@@ -133,7 +138,7 @@ export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Pro
   }
 
   if (layout === 'grid') {
-    const iconSize = 88;
+    const iconSize = sz(88);
     // 1 icon → center; 2 → row; 3 or 4 → 2×2 grid
     const cols = count <= 2 ? count : 2;
     return (
@@ -157,6 +162,7 @@ export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Pro
     <div style={{ position: 'relative', width: '100%', height: 260, flexShrink: 0 }}>
       {icons.map((ic, i) => {
         const cfg = configs[i];
+        const scaledSize = sz(cfg.size);
         const icon = getIconById(ic.id);
         return (
           <div key={ic.id} style={{
@@ -169,12 +175,12 @@ export function IconLayout({ icons, layout, brandStyle, showLabels = true }: Pro
             alignItems: 'center',
             gap: showLabels ? 8 : 0,
           }}>
-            <IconSvg id={ic.id} size={cfg.size} color={color} />
+            <IconSvg id={ic.id} size={scaledSize} color={color} />
             {showLabels && (
               <div style={{
                 fontFamily: 'Jost, Montserrat, sans-serif',
                 fontWeight: 600,
-                fontSize: Math.round(cfg.size * 0.18),
+                fontSize: Math.round(scaledSize * 0.18),
                 color: textColor,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',

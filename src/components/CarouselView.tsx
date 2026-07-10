@@ -548,6 +548,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialArrowScale={initialCarousel?.arrowScale}
               initialHeadlineScale={initialCarousel?.headlineScale}
               initialBodyScale={initialCarousel?.bodyScale}
+              initialIconScale={initialCarousel?.iconScale}
               initialShowLuniaLifeWatermark={initialCarousel?.showLuniaLifeWatermark}
               initialHookOverlays={initialCarousel?.hookOverlays}
               initialShowSlideArrows={initialCarousel?.showSlideArrows}

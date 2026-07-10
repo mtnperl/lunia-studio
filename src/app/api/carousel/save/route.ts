@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
-      headlineScale, bodyScale,
+      headlineScale, bodyScale, iconScale,
       format, engagementSubType, didYouKnowContent,
     } = body;
 
@@ -102,6 +102,7 @@ export async function POST(req: Request) {
       citationFontSize: citationFontSize ?? undefined,
       headlineScale: headlineScale ?? undefined,
       bodyScale: bodyScale ?? undefined,
+      iconScale: iconScale ?? undefined,
       savedAt: new Date().toISOString(),
     };
 
