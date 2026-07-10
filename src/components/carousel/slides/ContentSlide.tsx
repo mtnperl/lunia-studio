@@ -44,14 +44,15 @@ import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 
-// ─── Layout tokens ────────────────────────────────────────────────────────────
-const SLIDE_PADDING = { x: 72, y: 80 };
-const SECTION_GAP = 32;
+// ─── Layout tokens (shared with the render + regression pipeline) ────────────
+import { SLIDE } from '@/lib/brand-tokens';
+const SLIDE_PADDING = SLIDE.pad;
+const SECTION_GAP = SLIDE.sectionGap;
 // Cap the graphic so it stays compact and hugs the body rather than ballooning
 // to fill the slide. FitBox scales the graphic down to this (or smaller, when a
 // long headline/body leaves less room) — the text is never resized.
-const GRAPHIC_MAX_HEIGHT = 360;
-const SLIDE_H = { carousel: 1350, reels: 1920 };
+const GRAPHIC_MAX_HEIGHT = SLIDE.graphicMaxHeight.carousel;
+const SLIDE_H = SLIDE.height;
 
 // ─── Rendering priority:
 //   Path 1 — GraphicSpec JSON (new generation)  → curated React component

@@ -6,6 +6,13 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/api/login",
   "/api/health",
+  // Headless render surface for infographic PNGs. The carousel render-slide API
+  // launches Puppeteer to screenshot this page server-side, so the navigation
+  // carries no auth cookie — without this it would be redirected to /login and
+  // the screenshot would capture the login page. Safe to expose: it renders
+  // only caller-supplied props from the query string (no user data, no library
+  // or secret access), exactly like the read-only share pages below.
+  "/render/",
   // Share routes — read-only public pages
   "/carousels/",
   "/scripts/",

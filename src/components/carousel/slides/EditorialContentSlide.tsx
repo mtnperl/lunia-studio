@@ -8,11 +8,12 @@ import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
 import { parseGraphicSpec } from "@/lib/carousel-utils";
 import { renderGraphicSpec } from "@/components/carousel/graphics/graphicComponentMap";
 
-const SLIDE_W = 1080;
-const SLIDE_H = { carousel: 1350, reels: 1920 };
-const PAD = { x: 84, y: 88 };
+import { SLIDE, BRAND_FONT_FAMILY, FONT_WEIGHT } from "@/lib/brand-tokens";
 
-const EDITORIAL_FONT = "Inter, system-ui, -apple-system, sans-serif";
+const SLIDE_H = SLIDE.height;
+const PAD = SLIDE.editorialPad;
+
+const EDITORIAL_FONT = BRAND_FONT_FAMILY;
 
 type Props = {
   headline: string;
@@ -204,7 +205,10 @@ export default function EditorialContentSlide({
         <p style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
-          fontWeight: 200,
+          // Weight 300 (brand body weight) — 200 was never loaded in headless
+          // renders, so Chromium synthesized it with different metrics than
+          // the in-app preview (one root cause of the overflow drift).
+          fontWeight: FONT_WEIGHT.body,
           fontSize: bodySize,
           color: bodyCol,
           lineHeight: 1.5,
