@@ -4994,7 +4994,93 @@ function BentoTiles({ tiles = BentoTiles_DEFAULTS, brandStyle }) {
 }
 /* harmony default export */ const graphics_BentoTiles = ((/* unused pure expression or super */ null && (BentoTiles)));
 
+;// ./src/lib/brand-tokens.ts
+
+const BRAND_COLORS = {
+  /** Primary text / headers on light surfaces. */
+  deepNavy: "#102635",
+  /** Dark backgrounds (email shell, dark slides). */
+  richNavy: "#01253F",
+  /** Secondary text, rules, citations. */
+  slateBlue: "#2C3F51",
+  /** Light background / light ink on dark surfaces. */
+  softIvory: "#F7F4EF",
+  /** Accent — use sparingly (data highlights). */
+  aqua: "#BFFBF8",
+  /** Accent — promo highlights only. */
+  signalYellow: "#FFD800"
+};
+const FORBIDDEN_HUES = (/* unused pure expression or super */ null && (["purple", "magenta", "lavender"]));
+const INK = {
+  onDark: BRAND_COLORS.softIvory,
+  onLight: BRAND_COLORS.richNavy,
+  onDarkMuted: "rgba(247,244,239,0.88)",
+  onLightMuted: "rgba(1,37,63,0.78)",
+  onDarkSubtle: "rgba(247,244,239,0.55)",
+  onLightSubtle: "rgba(1,37,63,0.55)"
+};
+const BRAND_FONT_FAMILY = "Inter, system-ui, -apple-system, sans-serif";
+const FONT_WEIGHT = {
+  heading: 600,
+  subheading: 400,
+  body: 300,
+  /** Oversized editorial display headlines only (≥72px). */
+  display: 300
+};
+const INTER_WEIGHTS = (/* unused pure expression or super */ null && ([300, 400, 500, 600, 700]));
+const GOOGLE_FONTS_CSS_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Jost:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Outfit:wght@500;700&display=block";
+const SLIDE = {
+  width: 1080,
+  height: { carousel: 1350, reels: 1920 },
+  /** Content padding — nothing but full-bleed imagery may cross it. */
+  pad: { x: 72, y: 80 },
+  /** Editorial preset padding. */
+  editorialPad: { x: 84, y: 88 },
+  sectionGap: 32,
+  /** Cap for in-column infographics (FitBox scales down to fit). */
+  graphicMaxHeight: { carousel: 360, reels: 440 },
+  /** Hard safe zone: rendered text/graphic boxes must stay inside
+   *  [safeZone, width - safeZone] horizontally and clear of top/bottom pad. */
+  safeZone: 48
+};
+const SLIDE_TYPE = {
+  headline: { carousel: 56, reels: 72 },
+  editorialHeadline: 96,
+  body: { carousel: 34, reels: 40 },
+  editorialBody: 38,
+  citation: 18,
+  editorialCitation: 22
+};
+const EMAIL = {
+  shellWidth: 600,
+  shellPadX: 24,
+  heroAspect: "4:5",
+  secondaryAspect: "1:1",
+  /** Exact pixel targets the email layout is designed around. Generated
+   *  images MUST come back at these aspects (cropped server-side if the
+   *  model can't produce them natively). */
+  imageSizes: {
+    "4:5": { width: 1024, height: 1280 },
+    "1:1": { width: 1024, height: 1024 },
+    "16:9": { width: 1280, height: 720 }
+  }
+};
+const GPT_IMAGE_NATIVE_SIZES = {
+  square: { width: 1024, height: 1024 },
+  portrait: { width: 1024, height: 1536 },
+  landscape: { width: 1536, height: 1024 }
+};
+const CAMPAIGN_IMAGE_MOOD_TRIO = (/* unused pure expression or super */ null && ([
+  "lifestyle-health",
+  // hero — bright, warm, human
+  "organic-natural",
+  // secondary 1 — earthy textures
+  "cinematic-dark"
+  // secondary 2 — moody navy contrast
+]));
+
 ;// ./src/components/carousel/graphics/ConceptFlowGraphic.tsx
+
 
 
 
@@ -5005,31 +5091,30 @@ const ConceptFlowGraphic_DEFAULTS = [
   { label: "More stress", sublabel: "cycle repeats" }
 ];
 function ConceptFlowGraphic({ nodes = ConceptFlowGraphic_DEFAULTS, title, brandStyle }) {
-  const accent = (brandStyle == null ? void 0 : brandStyle.accent) ?? "#1e7a8a";
+  const ink = (brandStyle == null ? void 0 : brandStyle.accent) ?? (brandStyle == null ? void 0 : brandStyle.headline) ?? "#01253f";
   const secondary = (brandStyle == null ? void 0 : brandStyle.secondary) ?? "#6b7280";
-  const bodyColor = (brandStyle == null ? void 0 : brandStyle.body) ?? "#1a2535";
-  const onAccent = (brandStyle == null ? void 0 : brandStyle.background) ?? "#ffffff";
+  const bg = (brandStyle == null ? void 0 : brandStyle.background) ?? "#F7F4EF";
   const n = Math.min(Math.max((nodes ?? []).length, 2), 5);
   const list = (nodes ?? []).slice(0, n);
-  const labelSize = n <= 3 ? 21 : n <= 4 ? 18 : 15;
+  const labelSize = n <= 3 ? 22 : n <= 4 ? 18 : 15;
   const subSize = n <= 3 ? 15 : 13;
   const hasSublabel = list.some((node) => !!node.sublabel);
   return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
-    padding: "28px 32px",
+    padding: "24px 12px",
     boxSizing: "border-box",
-    gap: 0
+    fontFamily: BRAND_FONT_FAMILY
   }, children: [
     title && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: BRAND_FONT_FAMILY,
       fontSize: 13,
-      fontWeight: 700,
+      fontWeight: FONT_WEIGHT.heading,
       color: secondary,
-      letterSpacing: "0.1em",
+      letterSpacing: "0.18em",
       textTransform: "uppercase",
-      marginBottom: 16,
+      marginBottom: 22,
       textAlign: "center"
     }, children: title }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
@@ -5042,49 +5127,69 @@ function ConceptFlowGraphic({ nodes = ConceptFlowGraphic_DEFAULTS, title, brandS
       return /* @__PURE__ */ (0,jsx_runtime.jsxs)(react.Fragment, { children: [
         /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
           flex: 1,
-          background: isFeatured ? accent : `${accent}12`,
-          border: `2px solid ${isFeatured ? "transparent" : accent}`,
-          borderRadius: 16,
-          padding: "20px 14px",
+          background: isFeatured ? ink : "transparent",
+          border: `1px solid ${ink}`,
+          borderRadius: 12,
+          padding: "18px 14px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
           minWidth: 0,
-          minHeight: hasSublabel ? 120 : 90
+          minHeight: hasSublabel ? 118 : 84
         }, children: [
           /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-            fontFamily: "Outfit, sans-serif",
+            fontFamily: BRAND_FONT_FAMILY,
             fontSize: labelSize,
-            fontWeight: 700,
-            color: isFeatured ? onAccent : accent,
-            lineHeight: 1.3,
+            fontWeight: FONT_WEIGHT.heading,
+            color: isFeatured ? bg : ink,
+            lineHeight: 1.2,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
             wordBreak: "break-word",
             overflowWrap: "break-word"
           }, children: node.label }),
-          node.sublabel && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-            fontFamily: "Outfit, sans-serif",
-            fontSize: subSize,
-            color: isFeatured ? onAccent : secondary,
-            opacity: isFeatured ? 0.75 : 1,
-            marginTop: 8,
-            lineHeight: 1.3,
-            wordBreak: "break-word",
-            fontStyle: "italic"
-          }, children: node.sublabel })
+          node.sublabel && /* @__PURE__ */ (0,jsx_runtime.jsxs)(jsx_runtime.Fragment, { children: [
+            /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
+              width: 22,
+              height: 1,
+              background: isFeatured ? bg : ink,
+              opacity: isFeatured ? 0.5 : 0.35,
+              margin: "10px 0"
+            } }),
+            /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
+              fontFamily: BRAND_FONT_FAMILY,
+              fontSize: subSize,
+              fontWeight: FONT_WEIGHT.body,
+              color: isFeatured ? bg : secondary,
+              opacity: isFeatured ? 0.82 : 1,
+              lineHeight: 1.35,
+              wordBreak: "break-word"
+            }, children: node.sublabel })
+          ] })
         ] }),
         i < n - 1 && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "0 8px",
-          flexShrink: 0,
-          color: accent,
-          fontSize: 22,
-          fontWeight: 300,
-          opacity: 0.7
-        }, children: "\u2192" })
+          padding: "0 10px",
+          flexShrink: 0
+        }, children: /* @__PURE__ */ (0,jsx_runtime.jsx)(
+          "svg",
+          {
+            width: "18",
+            height: "18",
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: ink,
+            strokeWidth: "1.5",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            style: { opacity: 0.55 },
+            children: /* @__PURE__ */ (0,jsx_runtime.jsx)("path", { d: "M9 6l6 6-6 6" })
+          }
+        ) })
       ] }, i);
     }) })
   ] });
@@ -6134,12 +6239,13 @@ function IconCell({ id, size, color, textColor, showLabels }) {
     }, children: icon.label })
   ] });
 }
-function IconLayout({ icons, layout, brandStyle, showLabels = true }) {
+function IconLayout({ icons, layout, brandStyle, showLabels = true, iconScale = 1 }) {
   const color = (brandStyle == null ? void 0 : brandStyle.accent) ?? "#1e7a8a";
   const textColor = (brandStyle == null ? void 0 : brandStyle.headline) ?? "#1a2535";
   const count = icons.length;
+  const sz = (base) => Math.round(base * iconScale);
   if (layout === "row") {
-    const iconSize = count <= 2 ? 110 : count === 3 ? 88 : 72;
+    const iconSize = sz(count <= 2 ? 110 : count === 3 ? 88 : 72);
     return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
       display: "flex",
       flexDirection: "row",
@@ -6150,7 +6256,7 @@ function IconLayout({ icons, layout, brandStyle, showLabels = true }) {
     }, children: icons.map((ic) => /* @__PURE__ */ (0,jsx_runtime.jsx)(IconCell, { id: ic.id, size: iconSize, color, textColor, showLabels }, ic.id)) });
   }
   if (layout === "column") {
-    const iconSize = count <= 2 ? 96 : count === 3 ? 72 : 60;
+    const iconSize = sz(count <= 2 ? 96 : count === 3 ? 72 : 60);
     return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
       display: "flex",
       flexDirection: "column",
@@ -6174,7 +6280,7 @@ function IconLayout({ icons, layout, brandStyle, showLabels = true }) {
     }) });
   }
   if (layout === "grid") {
-    const iconSize = 88;
+    const iconSize = sz(88);
     const cols = count <= 2 ? count : 2;
     return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
       display: "grid",
@@ -6187,6 +6293,7 @@ function IconLayout({ icons, layout, brandStyle, showLabels = true }) {
   const configs = SCATTERED_CONFIGS[count] ?? SCATTERED_CONFIGS[1];
   return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: { position: "relative", width: "100%", height: 260, flexShrink: 0 }, children: icons.map((ic, i) => {
     const cfg = configs[i];
+    const scaledSize = sz(cfg.size);
     const icon = getIconById(ic.id);
     return /* @__PURE__ */ (0,jsx_runtime.jsxs)("div", { style: {
       position: "absolute",
@@ -6198,11 +6305,11 @@ function IconLayout({ icons, layout, brandStyle, showLabels = true }) {
       alignItems: "center",
       gap: showLabels ? 8 : 0
     }, children: [
-      /* @__PURE__ */ (0,jsx_runtime.jsx)(IconSvg, { id: ic.id, size: cfg.size, color }),
+      /* @__PURE__ */ (0,jsx_runtime.jsx)(IconSvg, { id: ic.id, size: scaledSize, color }),
       showLabels && /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
         fontFamily: "Jost, Montserrat, sans-serif",
         fontWeight: 600,
-        fontSize: Math.round(cfg.size * 0.18),
+        fontSize: Math.round(scaledSize * 0.18),
         color: textColor,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
@@ -6579,91 +6686,6 @@ function pickInk(bg) {
   return isDarkColor(bg) ? INK_LIGHT : INK_DARK;
 }
 
-;// ./src/lib/brand-tokens.ts
-
-const BRAND_COLORS = {
-  /** Primary text / headers on light surfaces. */
-  deepNavy: "#102635",
-  /** Dark backgrounds (email shell, dark slides). */
-  richNavy: "#01253F",
-  /** Secondary text, rules, citations. */
-  slateBlue: "#2C3F51",
-  /** Light background / light ink on dark surfaces. */
-  softIvory: "#F7F4EF",
-  /** Accent — use sparingly (data highlights). */
-  aqua: "#BFFBF8",
-  /** Accent — promo highlights only. */
-  signalYellow: "#FFD800"
-};
-const FORBIDDEN_HUES = (/* unused pure expression or super */ null && (["purple", "magenta", "lavender"]));
-const INK = {
-  onDark: BRAND_COLORS.softIvory,
-  onLight: BRAND_COLORS.richNavy,
-  onDarkMuted: "rgba(247,244,239,0.88)",
-  onLightMuted: "rgba(1,37,63,0.78)",
-  onDarkSubtle: "rgba(247,244,239,0.55)",
-  onLightSubtle: "rgba(1,37,63,0.55)"
-};
-const BRAND_FONT_FAMILY = "Inter, system-ui, -apple-system, sans-serif";
-const FONT_WEIGHT = {
-  heading: 600,
-  subheading: 400,
-  body: 300,
-  /** Oversized editorial display headlines only (≥72px). */
-  display: 300
-};
-const INTER_WEIGHTS = (/* unused pure expression or super */ null && ([300, 400, 500, 600, 700]));
-const GOOGLE_FONTS_CSS_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Jost:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Outfit:wght@500;700&display=block";
-const SLIDE = {
-  width: 1080,
-  height: { carousel: 1350, reels: 1920 },
-  /** Content padding — nothing but full-bleed imagery may cross it. */
-  pad: { x: 72, y: 80 },
-  /** Editorial preset padding. */
-  editorialPad: { x: 84, y: 88 },
-  sectionGap: 32,
-  /** Cap for in-column infographics (FitBox scales down to fit). */
-  graphicMaxHeight: { carousel: 360, reels: 440 },
-  /** Hard safe zone: rendered text/graphic boxes must stay inside
-   *  [safeZone, width - safeZone] horizontally and clear of top/bottom pad. */
-  safeZone: 48
-};
-const SLIDE_TYPE = {
-  headline: { carousel: 56, reels: 72 },
-  editorialHeadline: 96,
-  body: { carousel: 34, reels: 40 },
-  editorialBody: 38,
-  citation: 18,
-  editorialCitation: 22
-};
-const EMAIL = {
-  shellWidth: 600,
-  shellPadX: 24,
-  heroAspect: "4:5",
-  secondaryAspect: "1:1",
-  /** Exact pixel targets the email layout is designed around. Generated
-   *  images MUST come back at these aspects (cropped server-side if the
-   *  model can't produce them natively). */
-  imageSizes: {
-    "4:5": { width: 1024, height: 1280 },
-    "1:1": { width: 1024, height: 1024 },
-    "16:9": { width: 1280, height: 720 }
-  }
-};
-const GPT_IMAGE_NATIVE_SIZES = {
-  square: { width: 1024, height: 1024 },
-  portrait: { width: 1024, height: 1536 },
-  landscape: { width: 1536, height: 1024 }
-};
-const CAMPAIGN_IMAGE_MOOD_TRIO = (/* unused pure expression or super */ null && ([
-  "lifestyle-health",
-  // hero — bright, warm, human
-  "organic-natural",
-  // secondary 1 — earthy textures
-  "cinematic-dark"
-  // secondary 2 — moody navy contrast
-]));
-
 ;// ./src/components/carousel/slides/ContentSlide.tsx
 
 "use client";
@@ -6756,14 +6778,15 @@ const GRAPHIC_COMPONENT_MAP = {
   icon: IconGraphic,
   iconLayout: IconLayout
 };
-function renderGraphicSpec(spec, brandStyle) {
+function renderGraphicSpec(spec, brandStyle, iconScale) {
   const GraphicComponent = GRAPHIC_COMPONENT_MAP[spec.component];
   if (!GraphicComponent) {
     if (false) // removed by dead control flow
 {}
     return null;
   }
-  return /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicComponent, { ...spec.data, brandStyle });
+  const extra = spec.component === "iconLayout" || spec.component === "icon" ? { iconScale } : {};
+  return /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicComponent, { ...spec.data, brandStyle, ...extra });
 }
 function LegacyGraphicZone({ style, headline, body, brandStyle }) {
   if (style === "textOnly") return null;
@@ -6817,6 +6840,7 @@ function ContentSlide({
   reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  iconScale = 1,
   stylePreset = "default",
   showSlideArrows = true,
   showSlideNumbers: _showSlideNumbers = true,
@@ -6994,7 +7018,7 @@ function ContentSlide({
           )
         ) : hasGraphicSpec ? (
           // Path 1 — React SVG component (TIER A data-precise)
-          /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicErrorBoundary, { graphicSpec, children: renderGraphicSpec(graphicSpec, graphicBrandStyle) })
+          /* @__PURE__ */ (0,jsx_runtime.jsx)(GraphicErrorBoundary, { graphicSpec, children: renderGraphicSpec(graphicSpec, graphicBrandStyle, iconScale) })
         ) : (
           // Path 2 — raw SVG (saved carousels only)
           /* @__PURE__ */ (0,jsx_runtime.jsx)(
@@ -7174,6 +7198,7 @@ function EditorialContentSlide({
   reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  iconScale = 1,
   showCitationBars = true,
   showSlideArrows = true,
   arrowScale = 1
@@ -7278,6 +7303,7 @@ function EditorialContentSlide({
           rows: iconRows,
           showLabels: showIconLabels,
           bodySize,
+          iconScale,
           headlineCol,
           ruleCol,
           bg,
@@ -7320,6 +7346,7 @@ function EditorialContentSlide({
           rows: iconRows,
           showLabels: showIconLabels,
           bodySize,
+          iconScale,
           headlineCol,
           ruleCol,
           bg,
@@ -7364,11 +7391,14 @@ function IconBlock({
   rows,
   showLabels,
   bodySize,
+  iconScale = 1,
   headlineCol,
   ruleCol,
   bg,
   centered
 }) {
+  const circle = Math.round(56 * iconScale);
+  const glyph = Math.round(28 * iconScale);
   return /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
     marginTop: centered ? 0 : 8,
     display: "flex",
@@ -7398,8 +7428,8 @@ function IconBlock({
       textAlign: "left"
     }, children: ic.label }),
     /* @__PURE__ */ (0,jsx_runtime.jsx)("div", { style: {
-      width: 56,
-      height: 56,
+      width: circle,
+      height: circle,
       borderRadius: "50%",
       background: headlineCol,
       display: "flex",
@@ -7415,7 +7445,7 @@ function IconBlock({
         strokeWidth: "1.6",
         strokeLinecap: "round",
         strokeLinejoin: "round",
-        style: { width: 28, height: 28 },
+        style: { width: glyph, height: glyph },
         dangerouslySetInnerHTML: { __html: ic.svg }
       }
     ) })

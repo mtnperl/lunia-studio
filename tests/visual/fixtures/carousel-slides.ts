@@ -12,6 +12,9 @@ export type SlideFixture = {
 };
 
 const g = (spec: GraphicSpec) => JSON.stringify(spec);
+// iconLayout is parsed by the slides directly, not through the GraphicSpec Zod
+// union, so it needs a loosely-typed serializer.
+const gRaw = (spec: Record<string, unknown>) => JSON.stringify(spec);
 
 export const CAROUSEL_FIXTURES: SlideFixture[] = [
   {
@@ -83,6 +86,39 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       body: "It is the compound in chamomile that makes the tea feel calming. Gentler, non-habit-forming, and clinically dosed at 50mg.",
       citation: "Salgueiro et al., Phytomedicine, 2016",
       graphic: g({ component: "stat", data: { stat: "50mg", label: "clinical apigenin dose per serving" } }),
+    },
+  },
+  {
+    // Locks in the editorial restyle of conceptFlow (hairline cards, uppercase
+    // Inter labels, chevron connectors, featured first node).
+    name: "editorial-conceptflow-restyled",
+    props: {
+      stylePreset: "editorial-scientific",
+      headline: "Your cellular clock runs on NAD+",
+      body: "NAD+ powers the enzymes that keep your circadian rhythm on time. As it falls, this feedback loop weakens and sleep wake timing drifts.",
+      citation: "Yoshino J, et al. Cell Metabolism. 2018;27(3):513-528.",
+      graphic: g({ component: "conceptFlow", data: { nodes: [
+        { label: "NAD+", sublabel: "cellular fuel" },
+        { label: "SIRT1", sublabel: "clock regulator" },
+        { label: "BMAL1/CLOCK", sublabel: "sleep-wake timing" },
+      ] } }),
+    },
+  },
+  {
+    // Locks in the icon-size control at XL (1.6×) — regression guard for the
+    // iconScale plumbing through the editorial IconBlock.
+    name: "editorial-iconlayout-xl",
+    props: {
+      stylePreset: "editorial-scientific",
+      headline: "Three signals that you slept deeply",
+      body: "Your body leaves clues. These three are the ones worth tracking.",
+      citation: "Lunia Life, 2025",
+      iconScale: 1.6,
+      graphic: gRaw({ component: "iconLayout", data: {
+        icons: [{ id: "moon" }, { id: "bed" }, { id: "stars" }],
+        showLabels: true,
+        iconRowPosition: "hug-body",
+      } }),
     },
   },
 ];
