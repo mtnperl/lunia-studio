@@ -1,9 +1,12 @@
 import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { checkRateLimit, getAssets } from "@/lib/kv";
+import { generateCampaignSlotImage } from "@/lib/campaign-image";
+import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
 import type { CampaignContent, CampaignImageSlot, AssetType } from "@/lib/types";
 import { randomUUID } from "crypto";
 
-export const maxDuration = 60;
+// Long enough for the LLM pass + three parallel gpt-image-2 generations.
+export const maxDuration = 240;
 
 const LUNIA_VOICE_SPEC = `Lunia Life brand voice: Aspirational, minimal, wellness-science grounded. Tone: calm confidence. No hype. No FOMO manipulation. Language: clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimizing their sleep. Write like a trusted expert friend, not a marketer. Lunia Life sells a sleep supplement (magnesium glycinate, L-theanine, apigenin. Transparent dosing. Melatonin-free).
 
@@ -13,6 +16,8 @@ type RawImage = {
   role: "hero" | "secondary";
   source: "generated" | "asset";
   prompt?: string;
+  /** 0-based index of the text block this image illustrates. */
+  blockIndex?: number;
   assetTypeHint?: string;
 };
 
@@ -121,10 +126,10 @@ ${offer ? `- Offer: ${offer}` : ""}
 The email layout is fixed: a hero image, an optional promo band, an intro text block, a row of 2–4 secondary images, one or two closing text blocks (the last is a short italic urgency line), and a single CTA button.
 
 Image rules — CRITICAL:
-- "source": "asset" for ANY image that shows the Lunia product, the supplement bottle, the label, or the Lunia logo. These are NOT generated — they come from an uploaded asset library. Give an "assetTypeHint" of "product-image" (bottle/product shots) or "logo".
-- "source": "generated" for pure lifestyle / atmosphere images (a calm bedroom, soft morning light, someone resting). For these write a detailed photorealistic "prompt". The prompt MUST NOT contain any text, words, signage, logos, bottles, or product packaging — only an editorial wellness lifestyle scene. Describe scene, light, mood, palette (warm, calm, dim, natural).
-- The hero MUST be "source": "generated" with a detailed photorealistic prompt that visually expresses THIS specific campaign topic / angle (the reader's first impression should be the editorial scene, not a stock product shot). Only use "source": "asset" for the hero if the campaign is explicitly product-focused (a product launch, a bundle promo, a "what's in the bottle" educational angle).
-- Provide 2 to 4 secondary images, mixing asset (bottle shots) and generated (lifestyle).
+- Provide EXACTLY three "source": "generated" images: one hero + two secondary. Each one must be tied to a specific text block of the email: set "blockIndex" to the index (0-based) of the block it illustrates, and write a detailed photorealistic "prompt" that visually expresses THAT block's specific message (not a generic wellness scene). The prompt MUST NOT contain any text, words, signage, logos, bottles, or product packaging — only an editorial wellness lifestyle scene. Describe scene, light, mood, palette.
+- The hero is always the first generated image and illustrates the campaign's core angle (blockIndex 0).
+- The three generated prompts must describe three clearly DIFFERENT scenes (different setting, subject, and time of day) — they will also be rendered in three different photographic styles downstream.
+- Optionally add ONE extra "source": "asset" secondary showing the Lunia product. Assets are NOT generated — they come from an uploaded library. Give "assetTypeHint": "product-image" (bottle/product shots) or "logo". Include it only when a bottle shot genuinely strengthens this campaign.
 
 Return ONLY valid JSON, no markdown, matching this exact schema:
 
@@ -139,13 +144,14 @@ Return ONLY valid JSON, no markdown, matching this exact schema:
   ],
   "cta": "string — CTA button label, e.g. 'Start Sleeping Better'",
   "images": [
-    { "role": "hero", "source": "generated", "prompt": "..." },
-    { "role": "secondary", "source": "asset", "assetTypeHint": "product-image" },
-    { "role": "secondary", "source": "generated", "prompt": "..." }
+    { "role": "hero", "source": "generated", "blockIndex": 0, "prompt": "..." },
+    { "role": "secondary", "source": "generated", "blockIndex": 1, "prompt": "..." },
+    { "role": "secondary", "source": "generated", "blockIndex": 2, "prompt": "..." },
+    { "role": "secondary", "source": "asset", "assetTypeHint": "product-image" }
   ]
 }
 
-Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2–4 secondary).`;
+Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero + 2 secondary), and at most 1 asset image.`;
 
     const response = await createContentMessage({
       model: CONTENT_MODEL,
@@ -193,20 +199,64 @@ Provide exactly 3 subjectLines, 2–3 blocks, and 3–5 images total (1 hero + 2
       return { assetId: pick.id, url: pick.url };
     }
 
-    const images: CampaignImageSlot[] = parsed.images.slice(0, 5).map((img) => {
-      const role: "hero" | "secondary" = img.role === "hero" ? "hero" : "secondary";
+    // ── The three-image contract ───────────────────────────────────────────
+    // Every campaign ships exactly 3 generated images (1 hero + 2 secondary),
+    // each tied to a text block and assigned a DISTINCT visual mood from the
+    // brand-safe trio, so no two images in one email read as the same style.
+    // At most one extra asset (bottle) secondary is kept from the LLM output.
+    const rawGenerated = parsed.images.filter((i) => i.source === "generated");
+    const rawAsset = parsed.images.filter((i) => i.source === "asset").slice(0, 1);
+
+    const fallbackPromptFor = (blockIndex: number): string => {
+      const block = parsed.blocks[blockIndex]?.body ?? parsed.blocks[0]?.body ?? topic;
+      return `A calm, photoreal wellness lifestyle scene that visually expresses: "${block.slice(0, 200)}". Soft natural light, warm neutral tones, a quiet restful mood.`;
+    };
+
+    // Normalize to exactly 3 generated slots, synthesizing block-tied prompts
+    // for any the model failed to supply.
+    const generatedSlots: CampaignImageSlot[] = [0, 1, 2].map((i) => {
+      const raw = rawGenerated[i];
+      const role: "hero" | "secondary" = i === 0 ? "hero" : "secondary";
       const aspect: "4:5" | "1:1" = role === "hero" ? "4:5" : "1:1";
-      if (img.source === "asset") {
-        const { assetId, url } = suggestAsset(img.assetTypeHint);
-        return { id: randomUUID(), role, source: "asset", aspect, assetId, url: url ?? null };
-      }
-      const genPrompt = img.prompt?.trim()
-        ? img.prompt
-        : "A calm, photoreal wellness lifestyle scene — soft natural light, warm neutral tones, a quiet restful mood.";
-      return { id: randomUUID(), role, source: "generated", aspect, prompt: genPrompt, mood: "lifestyle-health", url: null };
+      const blockIndex = typeof raw?.blockIndex === "number" ? raw.blockIndex : Math.min(i, parsed.blocks.length - 1);
+      return {
+        id: randomUUID(),
+        role,
+        source: "generated",
+        aspect,
+        prompt: raw?.prompt?.trim() || fallbackPromptFor(blockIndex),
+        mood: CAMPAIGN_IMAGE_MOOD_TRIO[i],
+        url: null,
+      };
     });
-    // Guarantee exactly one hero.
-    if (!images.some((i) => i.role === "hero") && images[0]) images[0].role = "hero";
+
+    const assetSlots: CampaignImageSlot[] = rawAsset.map((img) => {
+      const { assetId, url } = suggestAsset(img.assetTypeHint);
+      return { id: randomUUID(), role: "secondary", source: "asset", aspect: "1:1", assetId, url: url ?? null };
+    });
+
+    // Auto-generate the three images in parallel at creation time. A failed
+    // slot keeps url: null — the editor's per-slot Generate button remains the
+    // manual fallback, so one flaky generation never fails the campaign.
+    if (process.env.FAL_KEY) {
+      await Promise.allSettled(
+        generatedSlots.map(async (slot) => {
+          try {
+            slot.url = await generateCampaignSlotImage({
+              prompt: slot.prompt!,
+              aspect: slot.aspect,
+              mood: slot.mood,
+              topic,
+              role: slot.role,
+            });
+          } catch (err) {
+            console.warn(`[api/campaign/generate] auto-image (${slot.role}) failed:`, err);
+          }
+        }),
+      );
+    }
+
+    const images: CampaignImageSlot[] = [...generatedSlots, ...assetSlots];
 
     // Defensive em / en dash scrubber — replaces any em-dash with a comma
     // and any en-dash with a hyphen. Belt-and-braces in case the model
