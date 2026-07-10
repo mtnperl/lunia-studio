@@ -1,0 +1,61 @@
+name: Visual regression
+
+# Screenshot-diffs the carousel infographic renderer and the campaign-email
+# layout against approved baselines (tests/visual/baselines), and asserts hard
+# layout invariants (no element past slide bounds; email never scrolls
+# horizontally). Catches silent reintroduction of the overflow bug the
+# Puppeteer slide renderer replaced Remotion to fix.
+#
+# To intentionally update baselines after an approved visual change:
+#   npm run test:visual:update   (with the dev server running)
+# then commit the changed PNGs under tests/visual/baselines/.
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/carousel/**'
+      - 'src/app/render/**'
+      - 'src/app/api/carousel-v2/render-slide/**'
+      - 'src/lib/brand-tokens.ts'
+      - 'src/lib/campaign-email-html.ts'
+      - 'src/lib/email-image-engine.ts'
+      - 'tests/visual/**'
+      - 'package-lock.json'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  visual:
+    # macOS matches the platform baselines are captured on, keeping font
+    # rasterization identical and avoiding false-positive diffs.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Puppeteer browser
+        run: npx puppeteer browsers install chrome
+      - name: Build app
+        run: npm run build
+        env:
+          # Build-time only; render page + email HTML need no live keys.
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Start app
+        run: |
+          npm run start -- --port 3030 &
+          npx wait-on http://localhost:3030 --timeout 120000
+      - name: Run visual regression suite
+        run: npm run test:visual
+        env:
+          VISUAL_BASE_URL: http://localhost:3030
+      - name: Upload diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs
+          path: tests/visual/output/
+          retention-days: 7
