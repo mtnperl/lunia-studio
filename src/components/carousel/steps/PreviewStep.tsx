@@ -108,6 +108,68 @@ function ToolbarButton({ label, onClick, active = false, disabled = false }: {
   );
 }
 
+// ─── Toolbar dropdown — groups related actions under one trigger ──────────────
+// Trigger reads as active when the menu is open OR any child item is active
+// (so a "Graphic ▾" chip stays highlighted while one of its inspectors is
+// open). Popover uses a solid surface + border (no shadow) per DESIGN.md's
+// light-mode elevation rule. Closes on item click or outside click.
+type ToolbarMenuItem = { label: string; active?: boolean; disabled?: boolean; onClick: () => void };
+function ToolbarMenu({ label, active = false, disabled = false, items }: {
+  label: string;
+  active?: boolean;
+  disabled?: boolean;
+  items: ToolbarMenuItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        style={{ ...toolbarBtnStyle(active || open), opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      >
+        {label} ▾
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+          display: "flex", flexDirection: "column", minWidth: 150,
+          background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 8, padding: 4,
+        }}>
+          {items.map((it) => (
+            <button
+              key={it.label}
+              onClick={() => { if (it.disabled) return; setOpen(false); it.onClick(); }}
+              disabled={it.disabled}
+              style={{
+                textAlign: "left", padding: "7px 10px", borderRadius: 5, border: "none",
+                background: it.active ? "var(--accent-dim)" : "transparent",
+                color: it.active ? "var(--accent)" : "var(--text)",
+                fontSize: 11, fontWeight: it.active ? 700 : 500, fontFamily: "inherit",
+                letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap",
+                cursor: it.disabled ? "not-allowed" : "pointer", opacity: it.disabled ? 0.5 : 1,
+              }}
+              onMouseEnter={(e) => { if (!it.active && !it.disabled) e.currentTarget.style.background = "var(--surface-h)"; }}
+              onMouseLeave={(e) => { if (!it.active) e.currentTarget.style.background = "transparent"; }}
+            >
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Hook overlay panel helpers ───────────────────────────────────────────────
 function OverlayRow({ label, hint, enabled, onToggle, children, compact = false }: {
   label: string;
@@ -3985,10 +4047,23 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
                       {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
                       {isTakeaway && <ToolbarButton label="Edit text" active={inspectorMode === "takeaway"} onClick={() => openInspector("takeaway")} />}
-                      {(isContent || ctaIconsAvailable) && <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />}
-                      {isContent && <ToolbarButton label="Graphic type" active={inspectorMode === "graphicType"} onClick={() => openInspector("graphicType")} />}
-                      {isContent && <ToolbarButton label="Graphic data" active={inspectorMode === "graphicData"} onClick={() => openInspector("graphicData")} />}
-                      {isContent && <ToolbarButton label="Regen graphic" active={inspectorMode === "graphicComment"} onClick={() => openInspector("graphicComment")} />}
+                      {/* Content slides: the four graphic actions collapse into one
+                          "Graphic ▾" menu. On the CTA slide only icons apply, so it
+                          stays a standalone button there. */}
+                      {isContent ? (
+                        <ToolbarMenu
+                          label="Graphic"
+                          active={inspectorMode === "icons" || inspectorMode === "graphicType" || inspectorMode === "graphicData" || inspectorMode === "graphicComment"}
+                          items={[
+                            { label: "Icons", active: inspectorMode === "icons", onClick: openIconInspector },
+                            { label: "Type", active: inspectorMode === "graphicType", onClick: () => openInspector("graphicType") },
+                            { label: "Data", active: inspectorMode === "graphicData", onClick: () => openInspector("graphicData") },
+                            { label: "Regenerate", active: inspectorMode === "graphicComment", onClick: () => openInspector("graphicComment") },
+                          ]}
+                        />
+                      ) : ctaIconsAvailable ? (
+                        <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />
+                      ) : null}
                       {isContent && <ToolbarButton label={regenerating === sIdx ? "Regenerating…" : "Regen slide"} onClick={() => handleRegenerateSlide(sIdx)} disabled={regenerating === sIdx || regeneratingGraphic === sIdx} />}
                       {isContent && <ToolbarButton label={bgGenerating ? "Generating…" : hasBg ? "Regen background" : "AI background"} onClick={() => handleGenerateContentBg(sIdx)} disabled={bgGenerating} />}
                       {isContent && hasBg && !bgGenerating && <ToolbarButton label="Clear background" onClick={() => handleClearContentBg(sIdx)} />}
