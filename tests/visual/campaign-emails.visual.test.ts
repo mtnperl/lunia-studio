@@ -37,7 +37,18 @@ describe("campaign email renders", () => {
         const page = await browser.newPage();
         try {
           await page.setViewport({ width: EMAIL.shellWidth, height: 900, deviceScaleFactor: 1 });
-          await page.setContent(html, { waitUntil: "networkidle0", timeout: 30_000 });
+          // "load" (fires on the load event), NOT "networkidle0": the email links
+          // Google Fonts, and on CI the font connections keep the network from
+          // going idle within the timeout — a flaky hang unrelated to layout.
+          // Wait for the load event, then explicitly for fonts, with a bounded
+          // fallback so a slow/blocked font CDN can never stall the run.
+          await page.setContent(html, { waitUntil: "load", timeout: 30_000 });
+          await page.evaluate(
+            () => Promise.race([
+              document.fonts.ready.then(() => undefined),
+              new Promise<void>((r) => setTimeout(r, 5_000)),
+            ]),
+          );
 
           // Hard layout assertion — no horizontal overflow past the shell.
           const overflow = await page.evaluate((shellWidth: number) => {
