@@ -2,7 +2,7 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 8757
+/***/ 4480
 (__unused_webpack_module, __unused_webpack___webpack_exports__, __webpack_require__) {
 
 
@@ -6579,6 +6579,91 @@ function pickInk(bg) {
   return isDarkColor(bg) ? INK_LIGHT : INK_DARK;
 }
 
+;// ./src/lib/brand-tokens.ts
+
+const BRAND_COLORS = {
+  /** Primary text / headers on light surfaces. */
+  deepNavy: "#102635",
+  /** Dark backgrounds (email shell, dark slides). */
+  richNavy: "#01253F",
+  /** Secondary text, rules, citations. */
+  slateBlue: "#2C3F51",
+  /** Light background / light ink on dark surfaces. */
+  softIvory: "#F7F4EF",
+  /** Accent — use sparingly (data highlights). */
+  aqua: "#BFFBF8",
+  /** Accent — promo highlights only. */
+  signalYellow: "#FFD800"
+};
+const FORBIDDEN_HUES = (/* unused pure expression or super */ null && (["purple", "magenta", "lavender"]));
+const INK = {
+  onDark: BRAND_COLORS.softIvory,
+  onLight: BRAND_COLORS.richNavy,
+  onDarkMuted: "rgba(247,244,239,0.88)",
+  onLightMuted: "rgba(1,37,63,0.78)",
+  onDarkSubtle: "rgba(247,244,239,0.55)",
+  onLightSubtle: "rgba(1,37,63,0.55)"
+};
+const BRAND_FONT_FAMILY = "Inter, system-ui, -apple-system, sans-serif";
+const FONT_WEIGHT = {
+  heading: 600,
+  subheading: 400,
+  body: 300,
+  /** Oversized editorial display headlines only (≥72px). */
+  display: 300
+};
+const INTER_WEIGHTS = (/* unused pure expression or super */ null && ([300, 400, 500, 600, 700]));
+const GOOGLE_FONTS_CSS_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Jost:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Outfit:wght@500;700&display=block";
+const SLIDE = {
+  width: 1080,
+  height: { carousel: 1350, reels: 1920 },
+  /** Content padding — nothing but full-bleed imagery may cross it. */
+  pad: { x: 72, y: 80 },
+  /** Editorial preset padding. */
+  editorialPad: { x: 84, y: 88 },
+  sectionGap: 32,
+  /** Cap for in-column infographics (FitBox scales down to fit). */
+  graphicMaxHeight: { carousel: 360, reels: 440 },
+  /** Hard safe zone: rendered text/graphic boxes must stay inside
+   *  [safeZone, width - safeZone] horizontally and clear of top/bottom pad. */
+  safeZone: 48
+};
+const SLIDE_TYPE = {
+  headline: { carousel: 56, reels: 72 },
+  editorialHeadline: 96,
+  body: { carousel: 34, reels: 40 },
+  editorialBody: 38,
+  citation: 18,
+  editorialCitation: 22
+};
+const EMAIL = {
+  shellWidth: 600,
+  shellPadX: 24,
+  heroAspect: "4:5",
+  secondaryAspect: "1:1",
+  /** Exact pixel targets the email layout is designed around. Generated
+   *  images MUST come back at these aspects (cropped server-side if the
+   *  model can't produce them natively). */
+  imageSizes: {
+    "4:5": { width: 1024, height: 1280 },
+    "1:1": { width: 1024, height: 1024 },
+    "16:9": { width: 1280, height: 720 }
+  }
+};
+const GPT_IMAGE_NATIVE_SIZES = {
+  square: { width: 1024, height: 1024 },
+  portrait: { width: 1024, height: 1536 },
+  landscape: { width: 1536, height: 1024 }
+};
+const CAMPAIGN_IMAGE_MOOD_TRIO = (/* unused pure expression or super */ null && ([
+  "lifestyle-health",
+  // hero — bright, warm, human
+  "organic-natural",
+  // secondary 1 — earthy textures
+  "cinematic-dark"
+  // secondary 2 — moody navy contrast
+]));
+
 ;// ./src/components/carousel/slides/ContentSlide.tsx
 
 "use client";
@@ -6624,10 +6709,11 @@ function pickInk(bg) {
 
 
 
-const SLIDE_PADDING = { x: 72, y: 80 };
-const SECTION_GAP = 32;
-const GRAPHIC_MAX_HEIGHT = 360;
-const SLIDE_H = { carousel: 1350, reels: 1920 };
+
+const SLIDE_PADDING = SLIDE.pad;
+const SECTION_GAP = SLIDE.sectionGap;
+const GRAPHIC_MAX_HEIGHT = SLIDE.graphicMaxHeight.carousel;
+const SLIDE_H = SLIDE.height;
 function sanitizeSvg(svg) {
   return svg.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, "").replace(/<use\s[^>]*>/gi, "").replace(/<animate\b[^>]*>/gi, "").replace(/<set\b[^>]*>/gi, "").replace(/<handler\b[^>]*>/gi, "").replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").replace(/javascript:/gi, "").replace(/data:/gi, "").replace(/<svg(?![^>]*\bwidth=)/, '<svg width="100%"');
 }
@@ -7051,10 +7137,10 @@ function graphicComponentMap_renderGraphicSpec(spec, brandStyle) {
 
 
 
-const SLIDE_W = 1080;
-const EditorialContentSlide_SLIDE_H = { carousel: 1350, reels: 1920 };
-const PAD = { x: 84, y: 88 };
-const EDITORIAL_FONT = "Inter, system-ui, -apple-system, sans-serif";
+
+const EditorialContentSlide_SLIDE_H = SLIDE.height;
+const PAD = SLIDE.editorialPad;
+const EDITORIAL_FONT = BRAND_FONT_FAMILY;
 function parseIconLayout(graphic) {
   var _a, _b;
   if (!graphic) return null;
@@ -7177,7 +7263,10 @@ function EditorialContentSlide({
       /* @__PURE__ */ (0,jsx_runtime.jsx)("p", { style: {
         margin: 0,
         fontFamily: EDITORIAL_FONT,
-        fontWeight: 200,
+        // Weight 300 (brand body weight) — 200 was never loaded in headless
+        // renders, so Chromium synthesized it with different metrics than
+        // the in-app preview (one root cause of the overflow drift).
+        fontWeight: FONT_WEIGHT.body,
         fontSize: bodySize,
         color: bodyCol,
         lineHeight: 1.5
@@ -49938,7 +50027,7 @@ config(en());
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
 /******/ 	__webpack_require__(6507);
-/******/ 	__webpack_require__(8757);
+/******/ 	__webpack_require__(4480);
 /******/ 	__webpack_require__(3610);
 /******/ 	var __webpack_exports__ = __webpack_require__(3482);
 /******/ 	
