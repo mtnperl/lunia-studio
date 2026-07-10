@@ -47,7 +47,12 @@ jobs:
       - name: Start app
         run: |
           npm run start -- --port 3030 &
-          npx wait-on http://localhost:3030 --timeout 120000
+          # Gate readiness on the render page, not "/". The dashboard root is a
+          # server component that reads KV/Redis at request time (unconfigured
+          # in CI) and errors, so it never returns 200 — but the render page is
+          # self-contained (force-dynamic, no data deps) and is all the suite
+          # needs. http-get:// forces a GET rather than the default HEAD.
+          npx wait-on http-get://localhost:3030/render/carousel-slide --timeout 120000
       - name: Run visual regression suite
         run: npm run test:visual
         env:
