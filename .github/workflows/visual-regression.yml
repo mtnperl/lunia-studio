@@ -46,17 +46,20 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
       - name: Start app
         run: |
-          npm run start -- --port 3030 &
+          # Bind + probe on 127.0.0.1 explicitly. `localhost` on the macOS
+          # runner can resolve to ::1 while next binds IPv4 (or vice versa),
+          # so wait-on never connects — pin the whole chain to IPv4.
+          npm run start -- --hostname 127.0.0.1 --port 3030 &
           # Gate readiness on the render page, not "/". The dashboard root is a
           # server component that reads KV/Redis at request time (unconfigured
           # in CI) and errors, so it never returns 200 — but the render page is
           # self-contained (force-dynamic, no data deps) and is all the suite
           # needs. http-get:// forces a GET rather than the default HEAD.
-          npx wait-on http-get://localhost:3030/render/carousel-slide --timeout 120000
+          npx wait-on http-get://127.0.0.1:3030/render/carousel-slide --timeout 120000
       - name: Run visual regression suite
         run: npm run test:visual
         env:
-          VISUAL_BASE_URL: http://localhost:3030
+          VISUAL_BASE_URL: http://127.0.0.1:3030
       - name: Upload diffs on failure
         if: failure()
         uses: actions/upload-artifact@v4
