@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
     "/api/carousel/generate-pdf": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    // v2 Chromium routes — these were added without tracing the brotli-packed
+    // Chromium binary, so the functions shipped without bin/ and threw
+    // "input directory .../@sparticuz/chromium/bin does not exist" at launch.
+    // That silently broke Preview HD (no fallback) and made the crisp/in-bounds
+    // PNG + PDF paths fall back to html-to-image in prod.
+    "/api/carousel-v2/render-slide": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/carousel-v2/export": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/carousel-v2/generate-pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
   },
   turbopack: {
     // Project root. Avoid `__dirname` — it is undefined when Vercel's build
