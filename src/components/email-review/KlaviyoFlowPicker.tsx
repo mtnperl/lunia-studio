@@ -11,9 +11,13 @@ type Props = {
    * hand the populated EmailFlow back to the parent. */
   onPicked: (flow: EmailFlow) => void;
   onCancel?: () => void;
+  /** Hide the Flows/Campaigns toggle and only offer flows. The campaign branch
+   * fetches the flow-detail endpoint (which 404s for campaign ids), so callers
+   * that only support flows (e.g. the Campaign-builder import) pass this. */
+  flowsOnly?: boolean;
 };
 
-export default function KlaviyoFlowPicker({ onPicked, onCancel }: Props) {
+export default function KlaviyoFlowPicker({ onPicked, onCancel, flowsOnly }: Props) {
   const [mode, setMode] = useState<Mode>("flows");
   const [flows, setFlows] = useState<FlowSummary[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +80,7 @@ export default function KlaviyoFlowPicker({ onPicked, onCancel }: Props) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          {(["flows", "campaigns"] as const).map((m) => (
+          {(flowsOnly ? (["flows"] as const) : (["flows", "campaigns"] as const)).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}

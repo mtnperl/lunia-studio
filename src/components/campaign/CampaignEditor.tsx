@@ -56,6 +56,12 @@ export default function CampaignEditor({
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [subjectsBusy, setSubjectsBusy] = useState(false);
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
+  const [improveBusy, setImproveBusy] = useState(false);
+  const [improveError, setImproveError] = useState<string | null>(null);
+  // Snapshot of the content taken right before an "Improve with Claude" rewrite,
+  // so the user can revert to the verbatim import. Null when there's nothing to
+  // revert to.
+  const [preImprove, setPreImprove] = useState<CampaignContent | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Preview scaling — the email is hard-coded to 600px so we render the
   // iframe at the email's NATIVE width and CSS-scale it down to fit the
@@ -337,6 +343,53 @@ export default function CampaignEditor({
     } finally {
       setSubjectsBusy(false);
     }
+  }
+
+  // Opt-in Lunia-voice rewrite of the copy only (selected subject + every text
+  // block). Images, promo band, CTA, and layout are left untouched. Reversible.
+  async function improveWithClaude() {
+    if (improveBusy) return;
+    const c = latestContent.current;
+    if (c.blocks.length === 0 && c.subjectLines.length === 0) return;
+    setImproveBusy(true);
+    setImproveError(null);
+    const snapshot = c;
+    try {
+      const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
+      const res = await fetch("/api/campaign/rewrite-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, subject, blocks: c.blocks.map((b) => b.body) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.blocks)) {
+        setImproveError(data.error ?? "Improve failed");
+        return;
+      }
+      // Apply onto the LATEST content (not the stale snapshot) so any edits made
+      // while the request was in flight survive; map rewrites by block index.
+      const cur = latestContent.current;
+      const idx = cur.selectedSubject;
+      const nextSubjects = data.subject
+        ? cur.subjectLines.map((s, i) => (i === idx ? String(data.subject) : s))
+        : cur.subjectLines;
+      const nextBlocks = cur.blocks.map((b, i) =>
+        typeof data.blocks[i] === "string" ? { ...b, body: data.blocks[i] } : b,
+      );
+      setPreImprove(snapshot);
+      commit({ ...cur, subjectLines: nextSubjects, blocks: nextBlocks });
+    } catch (err) {
+      setImproveError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setImproveBusy(false);
+    }
+  }
+
+  function revertImprove() {
+    if (!preImprove) return;
+    commit(preImprove);
+    setPreImprove(null);
+    setImproveError(null);
   }
 
   async function copyHtml() {
@@ -731,6 +784,25 @@ export default function CampaignEditor({
           <button className="btn-ghost" onClick={copyHtml}>📋 {copyLabel}</button>
           <button
             className="btn-ghost"
+            onClick={improveWithClaude}
+            disabled={improveBusy}
+            title="Rewrite the subject and body copy in Lunia voice. Images and links are left unchanged; you can revert."
+            style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+          >
+            {improveBusy && <Spinner size={13} />}
+            {improveBusy ? "Improving…" : "✨ Improve with Claude"}
+          </button>
+          {preImprove && !improveBusy && (
+            <button
+              className="btn-ghost"
+              onClick={revertImprove}
+              title="Restore the original imported copy"
+            >
+              ↩ Revert
+            </button>
+          )}
+          <button
+            className="btn-ghost"
             onClick={pushToKlaviyo}
             disabled={klaviyoBusy}
             style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
@@ -750,6 +822,7 @@ export default function CampaignEditor({
             </a>
           )}
           {klaviyoError && <span style={{ fontSize: 12, color: "var(--error)" }}>{klaviyoError}</span>}
+          {improveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{improveError}</span>}
           {saveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{saveError}</span>}
         </div>
       </div>

@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import type { CampaignContent, SavedCampaign, SavedCarousel } from "@/lib/types";
+import type { CampaignContent, EmailFlow, SavedCampaign, SavedCarousel } from "@/lib/types";
 import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
+import FlowDeck, { type DeckEmail } from "@/components/campaign/FlowDeck";
+import KlaviyoFlowPicker from "@/components/email-review/KlaviyoFlowPicker";
 import { CampaignGenLoader } from "@/components/campaign/Loaders";
 
 export default function CampaignView({
@@ -22,6 +24,10 @@ export default function CampaignView({
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState<CampaignContent | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  // Klaviyo-import state: the inline flow picker and the resulting email deck.
+  const [showPicker, setShowPicker] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [deck, setDeck] = useState<{ flowName: string; emails: DeckEmail[] } | null>(null);
 
   // Load a saved campaign from the library. Guard against re-loading the
   // SAME campaign more than once: if the library hands us the same id we
@@ -105,12 +111,49 @@ export default function CampaignView({
     onCarouselConsumed?.();
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Import a Klaviyo flow: convert every email verbatim into a branded
+  // CampaignContent, then drop into the step-through deck.
+  async function handleImportFlow(flow: EmailFlow) {
+    setShowPicker(false);
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaign/from-klaviyo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flow }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.emails) || data.emails.length === 0) {
+        setError(data.error ?? "Import failed — please try another flow.");
+        return;
+      }
+      const flowName: string = data.flowName ?? flow.flowName;
+      const emails: DeckEmail[] = data.emails.map((e: { emailId: string; position: number; subject: string; content: CampaignContent; flagged?: boolean }) => ({
+        emailId: e.emailId,
+        position: e.position,
+        subject: e.subject,
+        topic: `${flowName} · E${e.position}${e.subject ? ` · ${e.subject}` : ""}`.slice(0, 120),
+        content: e.content,
+        savedId: null,
+        flagged: e.flagged,
+      }));
+      setDeck({ flowName, emails });
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function handleRestart() {
     setStep(1);
     setTopic("");
     setContent(null);
     setSavedId(null);
     setError(null);
+    setShowPicker(false);
+    setDeck(null);
     // Reset the loaded-id ref so the next library open re-seeds editor state.
     loadedIdRef.current = null;
     // Likewise reset the carousel seed ref so re-opening the same carousel
@@ -152,11 +195,40 @@ export default function CampaignView({
         </div>
       )}
 
-      {loading && <CampaignGenLoader />}
+      {(loading || importing) && <CampaignGenLoader />}
 
-      {!loading && step === 1 && <BriefStep onGenerate={handleGenerate} />}
+      {!loading && !importing && deck && (
+        <FlowDeck flowName={deck.flowName} initialEmails={deck.emails} onExit={handleRestart} />
+      )}
 
-      {!loading && step === 2 && content && (
+      {!loading && !importing && !deck && step === 1 && (
+        <>
+          {/* Klaviyo import entry — pull an existing flow's images + copy into
+              this same template, one branded email per flow message. */}
+          <div style={{ marginBottom: 18 }}>
+            {showPicker ? (
+              <KlaviyoFlowPicker flowsOnly onPicked={handleImportFlow} onCancel={() => setShowPicker(false)} />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                  Already have a flow in Klaviyo?{" "}
+                  <span style={{ color: "var(--text)", fontWeight: 600 }}>Import it</span> to rebuild each email in this template — verbatim.
+                </div>
+                <button
+                  onClick={() => setShowPicker(true)}
+                  className="btn-ghost"
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  ↓ Import from Klaviyo
+                </button>
+              </div>
+            )}
+          </div>
+          {!showPicker && <BriefStep onGenerate={handleGenerate} />}
+        </>
+      )}
+
+      {!loading && !importing && !deck && step === 2 && content && (
         <CampaignEditor
           topic={topic}
           content={content}
