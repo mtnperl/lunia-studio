@@ -30,6 +30,78 @@ const miniBtn = (active = false): React.CSSProperties => ({
   borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
 });
 
+// ── Block toolbar primitives ────────────────────────────────────────────────
+// Apple-style controls per DESIGN.md: 1px borders, near-black active state,
+// no shadows / lift / emoji. Grouping related actions into segmented controls
+// (align, weight) keeps the toolbar from reading as a wall of pills.
+type BlockWeight = NonNullable<CampaignBlock["weight"]>;
+
+const BLOCK_WEIGHTS: { key: BlockWeight; label: string; title: string }[] = [
+  { key: "extralight", label: "200", title: "Inter ExtraLight (200)" },
+  { key: "light", label: "300", title: "Inter Light (300)" },
+  { key: "normal", label: "400", title: "Inter Normal (400)" },
+];
+
+const segWrap: React.CSSProperties = {
+  display: "inline-flex", border: "1px solid var(--border)",
+  borderRadius: 6, overflow: "hidden", background: "var(--bg)",
+};
+
+function SegButton({ active, onClick, title, last, children }: {
+  active: boolean; onClick: () => void; title: string; last?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={`blk-seg${active ? " is-active" : ""}`}
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      style={{
+        minWidth: 32, height: 28, padding: "0 10px",
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        fontSize: 11, fontWeight: 600, lineHeight: 1, fontFamily: "inherit",
+        border: "none", borderRight: last ? "none" : "1px solid var(--border)",
+        background: active ? "var(--accent-dim)" : "transparent",
+        color: active ? "var(--text)" : "var(--muted)", cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ onClick, title, active, children }: {
+  onClick: () => void; title: string; active?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="blk-icon"
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 28, height: 28, padding: 0,
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
+        color: active ? "var(--text)" : "var(--muted)", cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const iconProps = {
+  width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
+  stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+};
+const IcAlignLeft = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="14" y2="12" /><line x1="3" y1="18" x2="18" y2="18" /></svg>);
+const IcAlignCenter = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2="6" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></svg>);
+const IcCopy = () => (<svg {...iconProps}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>);
+const IcCheck = () => (<svg {...iconProps} strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
+const IcTrash = () => (<svg {...iconProps}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" /></svg>);
+
 export default function CampaignEditor({
   topic,
   content,
@@ -693,45 +765,66 @@ export default function CampaignEditor({
             <span style={sectionLabel}>Text blocks</span>
             <button style={miniBtn(false)} onClick={addBlock}>+ Block</button>
           </div>
+          <style>{`
+            .blk-seg{ transition: background 130ms ease, color 130ms ease; }
+            .blk-seg:hover:not(.is-active){ background: var(--surface-h); color: var(--text); }
+            .blk-icon{ transition: background 130ms ease, color 130ms ease, border-color 130ms ease; }
+            .blk-icon:hover{ background: var(--surface-h); color: var(--text); border-color: var(--border-strong); }
+          `}</style>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {content.blocks.map((b, i) => (
-              <div key={b.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10, background: "var(--surface)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Block {i + 1}
-                  </span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <button style={miniBtn(b.align === "left")} onClick={() => updateBlock(b.id, { align: "left" })}>Left</button>
-                    <button style={miniBtn(b.align === "center")} onClick={() => updateBlock(b.id, { align: "center" })}>Center</button>
-                    <button style={miniBtn(!!b.italic)} onClick={() => updateBlock(b.id, { italic: !b.italic })}>Italic</button>
-                    <button
-                      style={miniBtn((b.weight ?? "light") === "normal")}
-                      onClick={() => updateBlock(b.id, { weight: "normal" })}
-                      title="Inter Normal (400)"
-                    >Normal</button>
-                    <button
-                      style={miniBtn((b.weight ?? "light") === "light")}
-                      onClick={() => updateBlock(b.id, { weight: "light" })}
-                      title="Inter Light (300)"
-                    >Light</button>
-                    <button
-                      style={miniBtn(copiedKey === `block:${b.id}`)}
-                      onClick={() => copyText(`block:${b.id}`, b.body)}
-                      title="Copy this block's text to the clipboard"
-                    >
-                      {copiedKey === `block:${b.id}` ? "✓" : copiedKey === `err:block:${b.id}` ? "Err" : "📋"}
-                    </button>
-                    <button style={miniBtn(false)} onClick={() => removeBlock(b.id)}>✕</button>
+            {content.blocks.map((b, i) => {
+              const weight = b.weight ?? "light";
+              const copied = copiedKey === `block:${b.id}`;
+              const copyErr = copiedKey === `err:block:${b.id}`;
+              return (
+                <div key={b.id} style={{ border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", overflow: "hidden" }}>
+                  {/* Header — block identity + block-level actions */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      Block {i + 1}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
+                        {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy />}
+                      </IconButton>
+                      <IconButton onClick={() => removeBlock(b.id)} title="Delete block"><IcTrash /></IconButton>
+                    </div>
+                  </div>
+                  {/* Toolbar — alignment · italic · weight, grouped */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px" }}>
+                    <div style={segWrap}>
+                      <SegButton active={b.align === "left"} onClick={() => updateBlock(b.id, { align: "left" })} title="Align left"><IcAlignLeft /></SegButton>
+                      <SegButton active={b.align === "center"} onClick={() => updateBlock(b.id, { align: "center" })} title="Align center" last><IcAlignCenter /></SegButton>
+                    </div>
+                    <div style={segWrap}>
+                      <SegButton active={!!b.italic} onClick={() => updateBlock(b.id, { italic: !b.italic })} title="Italic" last>
+                        <span style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 13, fontWeight: 600 }}>I</span>
+                      </SegButton>
+                    </div>
+                    <div style={{ ...segWrap, marginLeft: "auto" }}>
+                      {BLOCK_WEIGHTS.map((w, wi) => (
+                        <SegButton
+                          key={w.key}
+                          active={weight === w.key}
+                          onClick={() => updateBlock(b.id, { weight: w.key })}
+                          title={w.title}
+                          last={wi === BLOCK_WEIGHTS.length - 1}
+                        >{w.label}</SegButton>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Body */}
+                  <div style={{ padding: "0 10px 10px" }}>
+                    <textarea
+                      value={b.body}
+                      onChange={(e) => updateBlock(b.id, { body: e.target.value })}
+                      rows={3}
+                      style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                    />
                   </div>
                 </div>
-                <textarea
-                  value={b.body}
-                  onChange={(e) => updateBlock(b.id, { body: e.target.value })}
-                  rows={4}
-                  style={{ ...input, resize: "vertical", lineHeight: 1.5, fontSize: 12 }}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -20,11 +20,12 @@ function esc(s: string): string {
 }
 
 /** A block body → paragraphs (split on blank lines), newlines → <br>. */
-function paragraphs(body: string, align: "left" | "center", italic: boolean, weight: "normal" | "light" = "light"): string {
+function paragraphs(body: string, align: "left" | "center", italic: boolean, weight: "extralight" | "light" | "normal" = "light"): string {
   const fontStyle = italic ? "font-style:italic;" : "";
   const size = italic ? "16px" : "18.7px";
-  // Inter 300 (light) is the template default; 400 (normal) is the opt-in.
-  const fontWeight = weight === "normal" ? 400 : 300;
+  // Inter 300 (light) is the template default; 200 (extralight) and 400
+  // (normal) are the opt-ins.
+  const fontWeight = weight === "normal" ? 400 : weight === "extralight" ? 200 : 300;
   return body
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -149,7 +150,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     : "";
 
   // A padded text block
-  const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean; weight?: "normal" | "light" }) =>
+  const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean; weight?: "extralight" | "light" | "normal" }) =>
     `<tr><td class="h-padding" style="padding:0 24px 16px;">
        <div class="text-block" style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light")}</div>
      </td></tr>`;
@@ -185,7 +186,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="x-apple-disable-message-reformatting">
 <title>${esc(subject)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 <style>
   /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
      table, and the inner email container. Stops any default user-agent
