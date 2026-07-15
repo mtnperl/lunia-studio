@@ -516,9 +516,10 @@ export type CampaignBlock = {
   align: "left" | "center";
   italic?: boolean;
   /** Body font weight. "light" = Inter 300 (default, matches the template's
-   *  original look); "normal" = Inter 400; "extralight" = Inter 200. Unset is
-   *  treated as "light" so campaigns saved before this control render identically. */
-  weight?: "extralight" | "light" | "normal";
+   *  original look); "normal" = Inter 400; "extralight" = Inter 200; "thin" =
+   *  Inter 100. Unset is treated as "light" so campaigns saved before this
+   *  control render identically. */
+  weight?: "thin" | "extralight" | "light" | "normal";
 };
 
 export type CampaignContent = {

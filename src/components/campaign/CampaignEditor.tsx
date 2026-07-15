@@ -37,6 +37,7 @@ const miniBtn = (active = false): React.CSSProperties => ({
 type BlockWeight = NonNullable<CampaignBlock["weight"]>;
 
 const BLOCK_WEIGHTS: { key: BlockWeight; label: string; title: string }[] = [
+  { key: "thin", label: "100", title: "Inter Thin (100)" },
   { key: "extralight", label: "200", title: "Inter ExtraLight (200)" },
   { key: "light", label: "300", title: "Inter Light (300)" },
   { key: "normal", label: "400", title: "Inter Normal (400)" },
