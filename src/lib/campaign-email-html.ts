@@ -20,16 +20,18 @@ function esc(s: string): string {
 }
 
 /** A block body → paragraphs (split on blank lines), newlines → <br>. */
-function paragraphs(body: string, align: "left" | "center", italic: boolean): string {
+function paragraphs(body: string, align: "left" | "center", italic: boolean, weight: "normal" | "light" = "light"): string {
   const fontStyle = italic ? "font-style:italic;" : "";
   const size = italic ? "16px" : "18.7px";
+  // Inter 300 (light) is the template default; 400 (normal) is the opt-in.
+  const fontWeight = weight === "normal" ? 400 : 300;
   return body
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
     .map(
       (p) =>
-        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:300;${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${esc(
+        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${esc(
           p,
         ).replace(/\n/g, "<br>")}</p>`,
     )
@@ -147,9 +149,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     : "";
 
   // A padded text block
-  const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean }) =>
+  const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean; weight?: "normal" | "light" }) =>
     `<tr><td class="h-padding" style="padding:0 24px 16px;">
-       <div class="text-block" style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic)}</div>
+       <div class="text-block" style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light")}</div>
      </td></tr>`;
 
   // Secondary images — rows of 2 (stack on mobile via the secondary-cell class)

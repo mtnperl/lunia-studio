@@ -700,10 +700,20 @@ export default function CampaignEditor({
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Block {i + 1}
                   </span>
-                  <div style={{ display: "flex", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
                     <button style={miniBtn(b.align === "left")} onClick={() => updateBlock(b.id, { align: "left" })}>Left</button>
                     <button style={miniBtn(b.align === "center")} onClick={() => updateBlock(b.id, { align: "center" })}>Center</button>
                     <button style={miniBtn(!!b.italic)} onClick={() => updateBlock(b.id, { italic: !b.italic })}>Italic</button>
+                    <button
+                      style={miniBtn((b.weight ?? "light") === "normal")}
+                      onClick={() => updateBlock(b.id, { weight: "normal" })}
+                      title="Inter Normal (400)"
+                    >Normal</button>
+                    <button
+                      style={miniBtn((b.weight ?? "light") === "light")}
+                      onClick={() => updateBlock(b.id, { weight: "light" })}
+                      title="Inter Light (300)"
+                    >Light</button>
                     <button
                       style={miniBtn(copiedKey === `block:${b.id}`)}
                       onClick={() => copyText(`block:${b.id}`, b.body)}
