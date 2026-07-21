@@ -129,7 +129,7 @@ export default function CampaignView({
         return;
       }
       const flowName: string = data.flowName ?? flow.flowName;
-      const emails: DeckEmail[] = data.emails.map((e: { emailId: string; position: number; subject: string; content: CampaignContent; flagged?: boolean }) => ({
+      const emails: DeckEmail[] = data.emails.map((e: { emailId: string; position: number; subject: string; content: CampaignContent; flagged?: boolean; usedFallback?: boolean }) => ({
         emailId: e.emailId,
         position: e.position,
         subject: e.subject,
@@ -137,6 +137,7 @@ export default function CampaignView({
         content: e.content,
         savedId: null,
         flagged: e.flagged,
+        usedFallback: e.usedFallback,
       }));
       setDeck({ flowName, emails });
     } catch {

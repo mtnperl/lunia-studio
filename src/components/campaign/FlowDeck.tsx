@@ -16,6 +16,10 @@ export type DeckEmail = {
   content: CampaignContent;
   savedId: string | null;
   flagged?: boolean;
+  /** True when this email's copy/images came from the deterministic fallback
+   *  structuring instead of the LLM pass (no text, LLM error, or unparseable
+   *  response) — worth a closer look, the hero/CTA guesses may be off. */
+  usedFallback?: boolean;
 };
 
 export default function FlowDeck({
@@ -116,6 +120,7 @@ export default function FlowDeck({
                 E{e.position}
                 {e.savedId && <span title="Saved to gallery" style={{ color: "var(--accent)" }}>✓</span>}
                 {e.flagged && <span title="No content found — fill this one in manually" style={{ color: "var(--error)" }}>!</span>}
+                {!e.flagged && e.usedFallback && <span title="AI structuring didn't run — hero/CTA/blocks were guessed, review closely" style={{ color: "var(--warning)" }}>~</span>}
               </span>
               <span style={{ fontSize: 12, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 196 }}>
                 {e.subject || "(no subject)"}
@@ -128,6 +133,12 @@ export default function FlowDeck({
       {current?.flagged && (
         <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
           This email had no readable HTML or text in Klaviyo, so it came in empty. Add copy and images below, or skip it.
+        </div>
+      )}
+
+      {!current?.flagged && current?.usedFallback && (
+        <div style={{ background: "rgba(184,96,64,0.08)", border: "1px solid rgba(184,96,64,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
+          AI structuring did not run for this email (no response, or it could not be parsed), so the hero image, CTA, and text blocks were assembled with a simple fallback instead of being intelligently chosen. Double-check them before saving.
         </div>
       )}
 
