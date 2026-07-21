@@ -45,5 +45,11 @@
     "src/app/api/carousel-v2/export/route.ts": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/campaign/cleanup-temp-images",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

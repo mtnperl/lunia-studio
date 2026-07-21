@@ -498,7 +498,7 @@ export type MultiVariantResponse = {
 export type CampaignImageSlot = {
   id: string;
   role: "hero" | "secondary";
-  source: "generated" | "asset";
+  source: "generated" | "asset" | "upload";
   /** generated: gpt-image-2 lifestyle prompt — no text, no bottle, no logo. */
   prompt?: string;
   /** generated: visual mood id (from VISUAL_MOODS) steering the look. */
@@ -506,7 +506,10 @@ export type CampaignImageSlot = {
   aspect: "4:5" | "1:1";
   /** asset: chosen uploaded asset id (from the asset library). */
   assetId?: string;
-  /** Resolved final image url — mirrored blob url (generated) or asset url. */
+  /** Resolved final image url — mirrored blob url (generated), asset url,
+   *  or (upload) a temp/-prefixed blob url that auto-expires after a few
+   *  days (see /api/campaign/cleanup-temp-images) and is never added to the
+   *  permanent asset library. */
   url?: string | null;
 };
 

@@ -278,9 +278,9 @@ export default function CampaignEditor({
     const prev = c.images.find((i) => i.id === next.id);
     let final = next;
 
-    // If the user explicitly switched the source from generated → asset,
+    // If the user explicitly switched the source away from generated,
     // they're abandoning the generated image — clear the lock.
-    if (prev?.source === "generated" && next.source === "asset") {
+    if (prev?.source === "generated" && next.source !== "generated") {
       generatedUrlLock.current.delete(next.id);
     }
 

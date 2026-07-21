@@ -73,6 +73,8 @@ export default function ImageSlotControl({
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Keep a live ref to the current slot so async handlers (generate /
   // regeneratePrompt) merge into the latest version of the slot, not the
   // snapshot they closed over when the click happened. Without this, any
@@ -101,6 +103,43 @@ export default function ImageSlotControl({
       assetId: undefined,
       url: null,
     });
+  }
+
+  // Flip to upload — clear prior asset/generated metadata so the slot is
+  // unambiguously waiting on a fresh file pick.
+  function switchToUpload() {
+    onChange({
+      ...slot,
+      source: "upload",
+      assetId: undefined,
+      url: null,
+    });
+  }
+
+  async function uploadFile(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/campaign/upload-temp-image", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Upload failed");
+        return;
+      }
+      onChange({ ...latestSlot.current, source: "upload", assetId: undefined, url: data.url });
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (file) uploadFile(file);
   }
 
   async function regeneratePrompt() {
@@ -219,6 +258,7 @@ export default function ImageSlotControl({
           <button style={miniBtn(slot.source === "generated")} onClick={switchToGenerated}>Generated</button>
           <button style={miniBtn(slot.source === "asset")}
             onClick={() => onChange({ ...slot, source: "asset" })}>Asset</button>
+          <button style={miniBtn(slot.source === "upload")} onClick={switchToUpload}>Upload</button>
           {onRemove && (
             <button
               type="button"
@@ -314,6 +354,49 @@ export default function ImageSlotControl({
                 >
                   {slot.url ? "Regenerate" : "Generate image"}
                 </button>
+              </>
+            ) : slot.source === "upload" ? (
+              <>
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px", lineHeight: 1.45 }}>
+                  Temporary — used for this email only, not saved to your asset library. Expires after 7 days.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleFileSelected}
+                  style={{ display: "none" }}
+                />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      ...miniBtn(false),
+                      cursor: uploading ? "wait" : "pointer",
+                    }}
+                  >
+                    {uploading && <Spinner size={10} />}
+                    {uploading ? "Uploading…" : slot.url ? "Replace image" : "Choose file"}
+                  </button>
+                  <button
+                    onClick={generateNew}
+                    disabled={seeding}
+                    title="Draft a prompt from this email and switch to a fresh AI-generated image"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "4px 9px", fontSize: 10, fontWeight: 700,
+                      textTransform: "uppercase", letterSpacing: "0.04em",
+                      border: "1px solid var(--border)", background: "transparent",
+                      color: "var(--muted)", borderRadius: 5, fontFamily: "inherit",
+                      cursor: seeding ? "wait" : "pointer",
+                    }}
+                  >
+                    {seeding && <Spinner size={10} />}
+                    {seeding ? "Drafting…" : "Generate new"}
+                  </button>
+                </div>
               </>
             ) : (
               <>
