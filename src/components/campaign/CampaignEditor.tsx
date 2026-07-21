@@ -849,7 +849,9 @@ export default function CampaignEditor({
                   emailContext={emailContext}
                   onChange={updateImage}
                   onGenerated={(url) => markGenerated(img.id, url)}
-                  onRemove={() => removeImage(img.id)}
+                  // Hero carries the primary CTA overlay — no remove control,
+                  // so it can't be silently dropped from the email.
+                  onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}
                 />
               );
             })}
