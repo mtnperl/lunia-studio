@@ -841,20 +841,16 @@ export default function CampaignEditor({
                 ? "Hero image"
                 : `Image ${secondaryImages.indexOf(img) + 2}`;
               return (
-                <div key={img.id} style={{ position: "relative" }}>
-                  <ImageSlotControl slot={img} label={label} topic={topic} emailContext={emailContext} onChange={updateImage} onGenerated={(url) => markGenerated(img.id, url)} />
-                  {img.role === "secondary" && secondaryImages.length > 2 && (
-                    <button
-                      onClick={() => removeImage(img.id)}
-                      title="Remove image"
-                      style={{
-                        position: "absolute", top: 8, right: 8, width: 20, height: 20,
-                        border: "1px solid var(--border)", borderRadius: 5, background: "var(--bg)",
-                        color: "var(--muted)", cursor: "pointer", fontSize: 11, lineHeight: 1,
-                      }}
-                    >✕</button>
-                  )}
-                </div>
+                <ImageSlotControl
+                  key={img.id}
+                  slot={img}
+                  label={label}
+                  topic={topic}
+                  emailContext={emailContext}
+                  onChange={updateImage}
+                  onGenerated={(url) => markGenerated(img.id, url)}
+                  onRemove={() => removeImage(img.id)}
+                />
               );
             })}
           </div>

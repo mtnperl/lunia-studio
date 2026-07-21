@@ -30,6 +30,16 @@ const moodChip = (active: boolean): React.CSSProperties => ({
   borderRadius: 20, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
 });
 
+// Small line icon — matches the SVG-icon chrome pattern used in CampaignEditor
+// (DESIGN.md: no emoji in functional UI, elevation/affordance via 1px borders).
+const IcTrash = () => (
+  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" />
+  </svg>
+);
+
 export default function ImageSlotControl({
   slot,
   label,
@@ -37,6 +47,7 @@ export default function ImageSlotControl({
   emailContext,
   onChange,
   onGenerated,
+  onRemove,
 }: {
   slot: CampaignImageSlot;
   label: string;
@@ -50,9 +61,16 @@ export default function ImageSlotControl({
    *  the freshly-generated-URL lock so any subsequent state mutation that
    *  tries to revert the slot back to the previous asset URL is rejected. */
   onGenerated?: (url: string) => void;
+  /** Remove this image slot entirely. When provided, a trash control shows
+   *  in the slot header. Used to drop imported (or any) images. */
+  onRemove?: () => void;
 }) {
   const [generating, setGenerating] = useState(false);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
+  // Seeding an email-relevant prompt while switching an asset slot → generated
+  // (the "Generate new" affordance). Separate from regeneratingPrompt so the
+  // asset-branch button shows its own spinner.
+  const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   // Keep a live ref to the current slot so async handlers (generate /
@@ -109,6 +127,44 @@ export default function ImageSlotControl({
     }
   }
 
+  // "Generate new" from an asset slot: switch the slot to generated mode and
+  // seed a prompt drawn from THIS email's copy (same regenerate-prompt →
+  // gpt-image-2 pipeline as the rest of the builder), then stop so the user can
+  // review/tweak before hitting Generate. Never auto-spends a generation.
+  async function generateNew() {
+    if (seeding) return;
+    setSeeding(true);
+    setError(null);
+    let prompt = buildDefaultPrompt();
+    try {
+      const res = await fetch("/api/campaign/regenerate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, role: slot.role, currentPrompt: prompt, emailContext }),
+      });
+      const data = await res.json();
+      if (res.ok && data.prompt) {
+        prompt = data.prompt;
+      } else {
+        setError("Couldn't draft a prompt from the email — starting from a default one.");
+      }
+    } catch {
+      setError("Network error drafting the prompt — starting from a default one.");
+    } finally {
+      // Regardless of prompt-draft success, flip to generated with a ready prompt
+      // and clear the asset so the slot is unambiguously a fresh generation.
+      onChange({
+        ...latestSlot.current,
+        source: "generated",
+        prompt,
+        mood: latestSlot.current.mood ?? DEFAULT_MOOD,
+        assetId: undefined,
+        url: null,
+      });
+      setSeeding(false);
+    }
+  }
+
   async function generate() {
     if (generating || !effectivePrompt.trim()) return;
     setGenerating(true);
@@ -159,10 +215,27 @@ export default function ImageSlotControl({
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {label}
         </span>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
           <button style={miniBtn(slot.source === "generated")} onClick={switchToGenerated}>Generated</button>
           <button style={miniBtn(slot.source === "asset")}
             onClick={() => onChange({ ...slot, source: "asset" })}>Asset</button>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              title="Remove this image"
+              aria-label="Remove this image"
+              style={{
+                marginLeft: 2, width: 26, height: 24, display: "inline-flex",
+                alignItems: "center", justifyContent: "center",
+                border: "1px solid var(--border)", borderRadius: 5,
+                background: "transparent", color: "var(--muted)",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              <IcTrash />
+            </button>
+          )}
         </div>
       </div>
 
@@ -245,11 +318,29 @@ export default function ImageSlotControl({
             ) : (
               <>
                 <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px", lineHeight: 1.45 }}>
-                  Uses an uploaded asset (bottle / logo / product). Never AI-generated.
+                  Uses an uploaded or imported image. Swap for another asset, or generate a new one from this email.
                 </p>
-                <button style={miniBtn(false)} onClick={() => setPickerOpen((v) => !v)}>
-                  {slot.url ? "Swap asset" : "Choose asset"}
-                </button>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button style={miniBtn(false)} onClick={() => setPickerOpen((v) => !v)}>
+                    {slot.url ? "Swap asset" : "Choose asset"}
+                  </button>
+                  <button
+                    onClick={generateNew}
+                    disabled={seeding}
+                    title="Draft a prompt from this email and switch to a fresh AI-generated image"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "4px 9px", fontSize: 10, fontWeight: 700,
+                      textTransform: "uppercase", letterSpacing: "0.04em",
+                      border: "1px solid var(--border)", background: "transparent",
+                      color: "var(--muted)", borderRadius: 5, fontFamily: "inherit",
+                      cursor: seeding ? "wait" : "pointer",
+                    }}
+                  >
+                    {seeding && <Spinner size={10} />}
+                    {seeding ? "Drafting…" : "Generate new"}
+                  </button>
+                </div>
               </>
             )}
             {error && <p style={{ fontSize: 10, color: "var(--error)", margin: "6px 0 0" }}>{error}</p>}
