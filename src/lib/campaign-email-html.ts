@@ -126,7 +126,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
   const heroCtaLabel = content.cta.label?.trim();
   const heroOverlay = hero?.url && heroCtaLabel
     ? `<div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:44px;height:44px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
+         <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
        </div>`
     : "";
   const heroHtml = hero?.url
@@ -174,7 +174,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // CTA button
   const ctaHtml = `<tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
     <a class="cta-link" href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
-      <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:48px;height:48px;text-align:center;letter-spacing:0.12em;border-radius:2px;">${esc(
+      <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">${esc(
         content.cta.label,
       )}</span>
     </a>
@@ -215,7 +215,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:38px !important;height:38px !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
   }
 </style>
 </head>
