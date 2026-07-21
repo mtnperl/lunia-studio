@@ -186,3 +186,17 @@ export function computeDecisionModel(input: DecisionModelInputs): DecisionModelO
     scenario: { mixes: SCENARIO_MIXES, lives: SCENARIO_LIVES, cells, liveRowIndex },
   };
 }
+
+/** A saved monthly gate-review run — the window, the pulled actuals, the
+ *  assumptions/Meta inputs used, and the computed outputs, stamped with a
+ *  date. Snapshots are a plain record of what computeDecisionModel produced
+ *  for a given input; they carry no logic of their own. */
+export type DecisionModelSnapshot = {
+  id: string;
+  savedAt: string;           // ISO timestamp
+  range: { since: string; until: string };
+  actualsSource: DecisionModelActuals["source"];
+  input: DecisionModelInputs;
+  output: DecisionModelOutputs;
+  note?: string;
+};

@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
+import type { DecisionModelSnapshot } from "./decision-model";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
 // or falls back to KV_REST_API_URL as last resort.
@@ -200,6 +201,33 @@ export async function deleteCarouselKv(id: string): Promise<void> {
   const all = await getCarousels();
   const filtered = all.filter((c) => c.id !== id);
   await writeCollection(CAROUSELS_KEY, filtered);
+}
+
+// ─── Decision Model snapshot persistence ─────────────────────────────────────
+// Monthly gate-review runs — the window, pulled actuals, assumptions used, and
+// computed outputs, stamped with a date. Newest first (unshift), same durable
+// Blob-backed collection pattern as carousels.
+const DECISION_MODEL_SNAPSHOTS_KEY = "lunia:decision-model:snapshots";
+
+export async function getDecisionModelSnapshots(): Promise<DecisionModelSnapshot[]> {
+  return readCollection<DecisionModelSnapshot>(DECISION_MODEL_SNAPSHOTS_KEY);
+}
+
+export async function saveDecisionModelSnapshot(snapshot: DecisionModelSnapshot): Promise<void> {
+  const all = await getDecisionModelSnapshots();
+  const idx = all.findIndex((s) => s.id === snapshot.id);
+  if (idx >= 0) {
+    all[idx] = snapshot;
+  } else {
+    all.unshift(snapshot);
+  }
+  await writeCollection(DECISION_MODEL_SNAPSHOTS_KEY, all);
+}
+
+export async function deleteDecisionModelSnapshot(id: string): Promise<void> {
+  const all = await getDecisionModelSnapshots();
+  const filtered = all.filter((s) => s.id !== id);
+  await writeCollection(DECISION_MODEL_SNAPSHOTS_KEY, filtered);
 }
 
 // ─── Campaign emails (campaign builder) ───────────────────────────────────────

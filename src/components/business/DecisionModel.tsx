@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
-import { computeDecisionModel, type DecisionModelInputs, type DecisionModelActuals } from "@/lib/decision-model";
+import { computeDecisionModel, type DecisionModelInputs, type DecisionModelActuals, type DecisionModelSnapshot } from "@/lib/decision-model";
 
 // Lunia Decision Model — monthly gate-review tool. Pulls tag-classified Shopify
 // actuals, takes Meta inputs + editable assumptions, and recomputes cohort LTV,
@@ -61,6 +61,26 @@ export default function DecisionModel() {
   const [customCac, setCustomCac] = useState(80);
   const [priceOverrides, setPriceOverrides] = useState<Partial<Prices>>({});
 
+  // Snapshot history — persisted server-side (KV), not localStorage, so the
+  // monthly trend survives across browsers/devices.
+  const [snapshots, setSnapshots] = useState<DecisionModelSnapshot[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/decision-model/snapshots");
+        const body = await res.json();
+        if (!cancelled) setSnapshots(Array.isArray(body?.snapshots) ? body.snapshots : []);
+      } catch { /* ignore — history is best-effort */ }
+      finally { if (!cancelled) setSnapshotsLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Restore persisted state.
   useEffect(() => {
     try {
@@ -104,7 +124,9 @@ export default function DecisionModel() {
     pPack: priceOverrides.pPack ?? actuals?.pPack ?? 0,
   };
 
-  const out = useMemo(() => {
+  // input is kept alongside its output so a snapshot can persist exactly what
+  // produced the numbers on screen, not just the numbers themselves.
+  const { input, out } = useMemo(() => {
     const nSub = actuals?.nSub ?? 0, nOneTime = actuals?.nOneTime ?? 0, nPack = actuals?.nPack ?? 0;
     const cac = cacMode === "custom" ? customCac
       : cacMode === "meta" ? (metaPurchases > 0 ? adSpend / metaPurchases : 0)
@@ -113,9 +135,34 @@ export default function DecisionModel() {
       adSpend, metaPurchases, nSub, nOneTime, nPack, nRecurring: actuals?.nRecurring ?? 0,
       ...prices, ...assumptions, cac,
     };
-    return computeDecisionModel(input);
+    return { input, out: computeDecisionModel(input) };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actuals, adSpend, metaPurchases, assumptions, cacMode, customCac, prices.pSubFirst, prices.pSubRec, prices.pOneTime, prices.pPack]);
+
+  const saveSnapshot = useCallback(async () => {
+    setSaving(true); setSaveMsg(null);
+    try {
+      const res = await fetch("/api/decision-model/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ range, actualsSource: actuals?.source ?? "unavailable", input, output: out }),
+      });
+      const body = await res.json();
+      if (!res.ok || body?.error) { setSaveMsg(body?.error ?? "Could not save"); return; }
+      const snap = body as DecisionModelSnapshot;
+      setSnapshots((prev) => {
+        const idx = prev.findIndex((s) => s.id === snap.id);
+        if (idx >= 0) { const next = [...prev]; next[idx] = snap; return next; }
+        return [snap, ...prev];
+      });
+      setSaveMsg("Saved");
+      setTimeout(() => setSaveMsg((m) => (m === "Saved" ? null : m)), 1800);
+    } catch {
+      setSaveMsg("Network error");
+    } finally {
+      setSaving(false);
+    }
+  }, [range, actuals, input, out]);
 
   const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 18, marginBottom: 16 };
   const sectionLabel: React.CSSProperties = { fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 12 };
@@ -222,7 +269,16 @@ export default function DecisionModel() {
 
       {/* 5. Decision read */}
       <div style={card}>
-        <div style={sectionLabel}>Decision read</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
+          <div style={{ ...sectionLabel, marginBottom: 0 }}>Decision read</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {saveMsg && <span style={{ fontSize: 11, fontFamily: "var(--font-ui)", color: saveMsg === "Saved" ? "var(--success)" : "var(--error)" }}>{saveMsg}</span>}
+            <button onClick={saveSnapshot} disabled={saving || !actuals} title={!actuals ? "Pull actuals before saving a snapshot" : "Save this run to the monthly history"} style={{
+              padding: "6px 14px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: saving || !actuals ? "not-allowed" : "pointer",
+              background: "transparent", color: "var(--accent)", border: "1.5px solid var(--accent)", borderRadius: 6, opacity: !actuals ? 0.5 : 1,
+            }}>{saving ? "Saving…" : "Save snapshot"}</button>
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 22, flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 13 }}>
           <span><span style={{ color: "var(--muted)" }}>Blended CAC </span><b>{fmtUsd(out.blendedCac, 2)}</b></span>
           <span><span style={{ color: "var(--muted)" }}>Meta CAC </span><b>{fmtUsd(out.metaCac, 2)}</b></span>
@@ -268,6 +324,43 @@ export default function DecisionModel() {
           </tbody>
         </table>
         <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--muted)", margin: "10px 0 0" }}>Green ≥3, amber 1–3, red &lt;1. Highlighted row is nearest your current sub mix.</p>
+      </div>
+
+      {/* 7. Snapshot history — month-over-month trend */}
+      <div style={card}>
+        <div style={sectionLabel}>Snapshot history</div>
+        {snapshotsLoading ? (
+          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)" }}>Loading…</div>
+        ) : snapshots.length === 0 ? (
+          <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--subtle)" }}>No snapshots yet. Pull actuals and click Save snapshot to start the monthly trend.</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums", fontSize: 12 }}>
+            <thead><tr style={{ color: "var(--subtle)", textAlign: "right" }}>
+              <th style={{ textAlign: "left", fontWeight: 600, padding: "4px 8px 8px 0" }}>Saved</th>
+              <th style={{ textAlign: "left", fontWeight: 600, padding: "4px 8px 8px" }}>Window</th>
+              <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>New customers</th>
+              <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Sub mix</th>
+              <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Blended CAC</th>
+              <th style={{ fontWeight: 600, padding: "4px 8px 8px" }}>Blended LTV:CAC</th>
+              <th style={{ fontWeight: 600, padding: "4px 0 8px 8px" }}>Verdict</th>
+            </tr></thead>
+            <tbody>
+              {[...snapshots].sort((a, b) => b.savedAt.localeCompare(a.savedAt)).map((s) => (
+                <tr key={s.id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ textAlign: "left", padding: "8px 8px 8px 0", fontFamily: "var(--font-ui)", color: "var(--text)" }}>{new Date(s.savedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</td>
+                  <td style={{ textAlign: "left", padding: "8px", color: "var(--muted)" }}>{s.range.since} → {s.range.until}</td>
+                  <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{s.output.newCustomers}</td>
+                  <td style={{ textAlign: "right", padding: "8px", color: "var(--muted)" }}>{(s.output.subMix * 100).toFixed(1)}%</td>
+                  <td style={{ textAlign: "right", padding: "8px", color: "var(--text)" }}>{fmtUsd(s.output.blendedCac, 2)}</td>
+                  <td style={{ textAlign: "right", padding: "8px", color: s.output.blendedLtvCac >= 3 ? "var(--success)" : s.output.blendedLtvCac >= 1 ? "var(--warning)" : "var(--error)" }}>{fmtX(s.output.blendedLtvCac)}</td>
+                  <td style={{ textAlign: "right", padding: "8px 0 8px 8px" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", padding: "2px 7px", borderRadius: 4, color: "#fff", background: VERDICT_COLOR[s.output.verdict] }}>{s.output.verdict}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
