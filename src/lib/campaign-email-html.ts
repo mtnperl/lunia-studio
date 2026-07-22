@@ -75,16 +75,107 @@ function statBlock(b: CampaignBlock): string {
   </div>`;
 }
 
-/** Dashed-border coupon callout — code + what it does. */
+/** Dashed-border coupon callout — code + what it does, and/or a struck-
+ *  through original price next to a new/free price (the "$87.99 value,
+ *  FREE" pattern, which has no literal coupon code). Renders if either a
+ *  code or an original price is present — a value-stack offer shouldn't
+ *  require a code that doesn't exist. */
 function discountBlock(b: CampaignBlock): string {
   const code = b.discountCode?.trim();
-  if (!code) return "";
+  const originalPrice = b.originalPrice?.trim();
+  const newPrice = b.newPrice?.trim();
+  if (!code && !originalPrice) return "";
   return `<div style="border:1.5px dashed ${CREAM};border-radius:8px;padding:16px;text-align:center;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${CREAM};">${esc(code)}</div>
+    ${code
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${CREAM};">${esc(code)}</div>`
+      : ""}
+    ${originalPrice
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;${code ? "margin-top:8px;" : ""}">
+           <span style="color:#ffffff;opacity:0.6;text-decoration:line-through;">${esc(originalPrice)}</span>
+           ${newPrice ? `<span style="color:${CREAM};margin-left:8px;">${esc(newPrice)}</span>` : ""}
+         </div>`
+      : ""}
     ${b.discountDescription?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;margin-top:4px;">${esc(b.discountDescription)}</div>`
       : ""}
   </div>`;
+}
+
+/** Star rating + quote + attribution — social proof, centered. */
+function testimonialBlock(b: CampaignBlock): string {
+  const quote = b.testimonialQuote?.trim();
+  if (!quote) return "";
+  const stars = Math.min(5, Math.max(1, b.testimonialStars ?? 5));
+  return `<div style="text-align:center;">
+    <div style="color:${CREAM};font-size:16px;letter-spacing:2px;margin-bottom:10px;">${"★".repeat(stars)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-style:italic;font-weight:300;color:#ffffff;line-height:1.5;">"${esc(quote)}"</div>
+    ${b.testimonialAuthor?.trim()
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${CREAM};margin-top:10px;">— ${esc(b.testimonialAuthor)}</div>`
+      : ""}
+  </div>`;
+}
+
+/** Results-over-time progression — a vertical list of time-labeled rows,
+ *  each a bold label + claim, separated by thin dividers. */
+function timelineBlock(b: CampaignBlock): string {
+  const rows = (b.timelineRows ?? []).filter((r) => r.label?.trim() || r.text?.trim());
+  if (rows.length === 0) return "";
+  return rows
+    .map(
+      (r, i) => `<div style="padding:${i === 0 ? "0" : "12px"} 0 12px;${i > 0 ? `border-top:1px solid rgba(245,245,233,0.2);` : ""}">
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${CREAM};margin-bottom:4px;">${esc(r.label ?? "")}</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">${esc(r.text ?? "")}</div>
+      </div>`,
+    )
+    .join("");
+}
+
+/** "Why we're different" trust argument — a 2-column grid of small image
+ *  + caption pairs. imageUrl is a plain pasted URL (no asset picker); a
+ *  row with no caption is dropped, an image with no url shows a solid
+ *  placeholder (same pattern as imageCell()). */
+function trustgridBlock(b: CampaignBlock): string {
+  const items = (b.trustItems ?? []).filter((i) => i.caption?.trim());
+  if (items.length === 0) return "";
+  let html = "";
+  for (let i = 0; i < items.length; i += 2) {
+    const left = items[i];
+    const right = items[i + 1];
+    const cell = (item?: { imageUrl?: string; caption: string }) => {
+      if (!item) return `<td width="48.91%" style="width:48.91%;">&nbsp;</td>`;
+      const img = item.imageUrl?.trim()
+        ? `<img src="${esc(item.imageUrl)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
+        : `<div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;margin-bottom:8px;"></div>`;
+      return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${img}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.4;">${esc(item.caption)}</div></td>`;
+    };
+    html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;${i > 0 ? "margin-top:16px;" : ""}">
+      <tr>${cell(left)}<td width="12" style="width:12px;font-size:0;">&nbsp;</td>${cell(right)}</tr>
+    </table>`;
+  }
+  return html;
+}
+
+/** Fixed 2-column "one-time vs subscribe" comparison. Right column (the
+ *  recommended option) gets a cream background to visually favor it, same
+ *  emphasis pattern competitor subscription emails use. Renders only when
+ *  both labels are set — a one-sided comparison isn't a comparison. */
+function comparisonBlock(b: CampaignBlock): string {
+  const leftLabel = b.comparisonLeftLabel?.trim();
+  const rightLabel = b.comparisonRightLabel?.trim();
+  if (!leftLabel || !rightLabel) return "";
+  const card = (label: string, price?: string, perk?: string, emphasized = false) => `
+    <td width="48.91%" style="width:48.91%;vertical-align:top;background:${emphasized ? CREAM : "transparent"};border:1px solid ${emphasized ? CREAM : "rgba(245,245,233,0.3)"};border-radius:8px;padding:14px;">
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? NAVY : CREAM};margin-bottom:6px;">${esc(label)}</div>
+      ${price?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${emphasized ? NAVY : "#ffffff"};margin-bottom:4px;">${esc(price)}</div>` : ""}
+      ${perk?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:${emphasized ? NAVY : "#ffffff"};line-height:1.4;">${esc(perk)}</div>` : ""}
+    </td>`;
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+    <tr>
+      ${card(leftLabel, b.comparisonLeftPrice, b.comparisonLeftPerk, false)}
+      <td width="12" style="width:12px;font-size:0;">&nbsp;</td>
+      ${card(rightLabel, b.comparisonRightPrice, b.comparisonRightPerk, true)}
+    </tr>
+  </table>`;
 }
 
 /** Benefit/ingredient list. One <p> per item (no flexbox/absolute
@@ -220,6 +311,10 @@ export function renderCampaignEmail(content: CampaignContent): string {
       b.kind === "stat" ? statBlock(b)
       : b.kind === "discount" ? discountBlock(b)
       : b.kind === "checklist" ? checklistBlock(b)
+      : b.kind === "testimonial" ? testimonialBlock(b)
+      : b.kind === "timeline" ? timelineBlock(b)
+      : b.kind === "trustgrid" ? trustgridBlock(b)
+      : b.kind === "comparison" ? comparisonBlock(b)
       : paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light");
     if (!inner) return "";
     return `<tr><td class="h-padding" style="padding:0 24px 16px;">

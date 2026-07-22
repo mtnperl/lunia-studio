@@ -530,9 +530,9 @@ export type CampaignBlock = {
   weight?: "thin" | "extralight" | "light" | "normal";
   /** Block content type. Unset/"text" = the original free-prose paragraph
    *  (back-compat: every block saved before this field existed renders
-   *  identically). "stat"/"discount"/"checklist" are structured callouts —
-   *  see the kind-specific fields below. */
-  kind?: "text" | "stat" | "discount" | "checklist";
+   *  identically). All other kinds are structured callouts — see the
+   *  kind-specific fields below. */
+  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison";
   /** kind "stat": the big number/headline, e.g. "558 reviews". */
   statValue?: string;
   /** kind "stat": the supporting caption, e.g. "91% five-star". */
@@ -541,8 +541,37 @@ export type CampaignBlock = {
   discountCode?: string;
   /** kind "discount": what it does, e.g. "20% off your first order". */
   discountDescription?: string;
+  /** kind "discount": the struck-through original price, e.g. "$87.99". Renders
+   *  alongside discountCode/discountDescription — the "was $X, now free/on
+   *  sale" pattern, distinct from a coupon code. */
+  originalPrice?: string;
+  /** kind "discount": the new/free price shown next to originalPrice, e.g.
+   *  "FREE" or "$29.20". */
+  newPrice?: string;
   /** kind "checklist": one line per benefit/ingredient item. */
   items?: string[];
+  /** kind "testimonial": the review/quote text. */
+  testimonialQuote?: string;
+  /** kind "testimonial": attribution, e.g. "Sarah K., verified customer". */
+  testimonialAuthor?: string;
+  /** kind "testimonial": star rating 1-5. Defaults to 5 when unset. */
+  testimonialStars?: number;
+  /** kind "timeline": ordered rows like { label: "30 DAYS", text: "85% felt
+   *  more energy" } — a results-over-time progression. */
+  timelineRows?: { label: string; text: string }[];
+  /** kind "trustgrid": a 2-column grid of image + caption pairs for a
+   *  "why we're different" trust argument. imageUrl is a plain pasted URL,
+   *  not an asset-picker selection — caption is the required field, an
+   *  image with no caption is dropped at render time. */
+  trustItems?: { imageUrl?: string; caption: string }[];
+  /** kind "comparison": fixed 2-column "one-time vs subscribe" shape. Renders
+   *  only when both comparisonLeftLabel and comparisonRightLabel are set. */
+  comparisonLeftLabel?: string;
+  comparisonLeftPrice?: string;
+  comparisonLeftPerk?: string;
+  comparisonRightLabel?: string;
+  comparisonRightPrice?: string;
+  comparisonRightPerk?: string;
 };
 
 /** A reusable block, banked from any campaign so it can be dropped into any

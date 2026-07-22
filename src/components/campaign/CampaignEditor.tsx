@@ -10,9 +10,13 @@ import { PRODUCT } from "@/lib/lunia-brand-guidelines";
 type BlockKind = NonNullable<CampaignBlock["kind"]>;
 const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
   { key: "text", label: "Text", title: "A paragraph block" },
-  { key: "stat", label: "Stat", title: "A big-number stat or testimonial callout" },
-  { key: "discount", label: "Discount", title: "A discount/coupon callout" },
+  { key: "stat", label: "Stat", title: "A big-number stat callout" },
+  { key: "discount", label: "Discount", title: "A discount/coupon callout, or a value-stack price" },
   { key: "checklist", label: "Checklist", title: "A bulleted benefit/ingredient list" },
+  { key: "testimonial", label: "Testimonial", title: "A star rating + review quote + attribution" },
+  { key: "timeline", label: "Timeline", title: "A results-over-time progression (e.g. Day 30, Day 60...)" },
+  { key: "trustgrid", label: "Trust grid", title: "A 2-column grid of image + caption trust points" },
+  { key: "comparison", label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
 ];
 
 // Klaviyo merge-tag presets. `|default:'...'` keeps a broken/missing profile
@@ -135,6 +139,51 @@ const IcAlignCenter = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2=
 const IcCopy = () => (<svg {...iconProps}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>);
 const IcCheck = () => (<svg {...iconProps} strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
 const IcTrash = () => (<svg {...iconProps}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" /></svg>);
+
+/** Shared "add/remove row" list editor for block kinds whose content is an
+ *  array of small multi-field records (timeline's {label,text}, trust
+ *  grid's {imageUrl,caption}) — checklist's textarea-as-lines trick doesn't
+ *  generalize past a single field per line, so this is the one reusable
+ *  pattern for both. */
+function RepeatableRows<T extends Record<string, string>>({
+  rows, fields, onChange, addLabel = "+ Row",
+}: {
+  rows: T[];
+  fields: { key: keyof T; placeholder: string }[];
+  onChange: (next: T[]) => void;
+  addLabel?: string;
+}) {
+  function updateRow(i: number, patch: Partial<T>) {
+    onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function removeRow(i: number) {
+    onChange(rows.filter((_, idx) => idx !== i));
+  }
+  function addRow() {
+    const blank = Object.fromEntries(fields.map((f) => [f.key, ""])) as T;
+    onChange([...rows, blank]);
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {rows.map((row, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {fields.map((f) => (
+            <input
+              key={String(f.key)}
+              type="text"
+              value={row[f.key] ?? ""}
+              onChange={(e) => updateRow(i, { [f.key]: e.target.value } as Partial<T>)}
+              placeholder={f.placeholder}
+              style={{ ...input, fontSize: 12, flex: 1 }}
+            />
+          ))}
+          <IconButton onClick={() => removeRow(i)} title="Remove row"><IcTrash /></IconButton>
+        </div>
+      ))}
+      <button type="button" onClick={addRow} style={{ ...miniBtn(false), alignSelf: "flex-start" }}>{addLabel}</button>
+    </div>
+  );
+}
 const IcBookmarkPlus = () => (<svg {...iconProps}><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="12" y1="5" x2="12" y2="11" /></svg>);
 
 export default function CampaignEditor({
@@ -481,6 +530,9 @@ export default function CampaignEditor({
     const c = latestContent.current;
     const base: CampaignBlock = { id: newId(), body: "", align: "left", kind };
     if (kind === "checklist") base.items = [];
+    if (kind === "testimonial") base.testimonialStars = 5;
+    if (kind === "timeline") base.timelineRows = [];
+    if (kind === "trustgrid") base.trustItems = [];
     commit({ ...c, blocks: [...c.blocks, base] });
   }
   function updateImage(next: CampaignImageSlot) {
@@ -1193,6 +1245,22 @@ export default function CampaignEditor({
                         placeholder="e.g. 20% off your first order"
                         style={{ ...input, fontSize: 12 }}
                       />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <input
+                          type="text"
+                          value={b.originalPrice ?? ""}
+                          onChange={(e) => updateBlock(b.id, { originalPrice: e.target.value })}
+                          placeholder="Original price, e.g. $87.99"
+                          style={{ ...input, fontSize: 12, flex: 1 }}
+                        />
+                        <input
+                          type="text"
+                          value={b.newPrice ?? ""}
+                          onChange={(e) => updateBlock(b.id, { newPrice: e.target.value })}
+                          placeholder="New price, e.g. FREE"
+                          style={{ ...input, fontSize: 12, flex: 1 }}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -1205,6 +1273,81 @@ export default function CampaignEditor({
                         placeholder={"One benefit per line, e.g.\nMagnesium bisglycinate\nL-theanine\nApigenin"}
                         style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
                       />
+                    </div>
+                  )}
+
+                  {kind === "testimonial" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <textarea
+                        value={b.testimonialQuote ?? ""}
+                        onChange={(e) => updateBlock(b.id, { testimonialQuote: e.target.value })}
+                        rows={2}
+                        placeholder="e.g. Falling asleep used to take an hour. Now it takes ten minutes."
+                        style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                      />
+                      <input
+                        type="text"
+                        value={b.testimonialAuthor ?? ""}
+                        onChange={(e) => updateBlock(b.id, { testimonialAuthor: e.target.value })}
+                        placeholder="e.g. Sarah K., verified customer"
+                        style={{ ...input, fontSize: 12 }}
+                      />
+                      <div style={segWrap}>
+                        {[1, 2, 3, 4, 5].map((n, ni) => (
+                          <SegButton
+                            key={n}
+                            active={(b.testimonialStars ?? 5) === n}
+                            onClick={() => updateBlock(b.id, { testimonialStars: n })}
+                            title={`${n} star${n === 1 ? "" : "s"}`}
+                            last={ni === 4}
+                          >{n}</SegButton>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {kind === "timeline" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <RepeatableRows
+                        rows={b.timelineRows ?? []}
+                        fields={[
+                          { key: "label", placeholder: "e.g. 30 DAYS" },
+                          { key: "text", placeholder: "e.g. 85% felt more energy" },
+                        ]}
+                        onChange={(next) => updateBlock(b.id, { timelineRows: next })}
+                        addLabel="+ Row"
+                      />
+                    </div>
+                  )}
+
+                  {kind === "trustgrid" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <RepeatableRows
+                        rows={b.trustItems ?? []}
+                        fields={[
+                          { key: "imageUrl", placeholder: "Image URL (optional)" },
+                          { key: "caption", placeholder: "e.g. Tested for 500+ pesticides" },
+                        ]}
+                        onChange={(next) => updateBlock(b.id, { trustItems: next })}
+                        addLabel="+ Row"
+                      />
+                    </div>
+                  )}
+
+                  {kind === "comparison" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", gap: 10 }}>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Left</span>
+                        <input type="text" value={b.comparisonLeftLabel ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftLabel: e.target.value })} placeholder="e.g. One-time" style={{ ...input, fontSize: 12 }} />
+                        <input type="text" value={b.comparisonLeftPrice ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftPrice: e.target.value })} placeholder="e.g. $99" style={{ ...input, fontSize: 12 }} />
+                        <input type="text" value={b.comparisonLeftPerk ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftPerk: e.target.value })} placeholder="e.g. No commitment" style={{ ...input, fontSize: 12 }} />
+                      </div>
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Right (emphasized)</span>
+                        <input type="text" value={b.comparisonRightLabel ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightLabel: e.target.value })} placeholder="e.g. Subscribe & save" style={{ ...input, fontSize: 12 }} />
+                        <input type="text" value={b.comparisonRightPrice ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPrice: e.target.value })} placeholder="e.g. $69" style={{ ...input, fontSize: 12 }} />
+                        <input type="text" value={b.comparisonRightPerk ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPerk: e.target.value })} placeholder="e.g. Free shipping, cancel anytime" style={{ ...input, fontSize: 12 }} />
+                      </div>
                     </div>
                   )}
                 </div>
