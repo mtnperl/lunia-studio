@@ -11,14 +11,14 @@
 **Context:** See `ceo-plans/2026-07-21-campaign-editor-tools.md` (Scope Decision #4) for the full reasoning — the user picked in-session undo/redo instead for now.
 **Effort:** L (human: ~2-3 days / CC: ~4-6h)
 
-### Keyboard shortcuts for common editor actions
+### Split CampaignEditor.tsx into sub-components
 **Priority:** P3
-**What:** Shortcuts for new block, duplicate block, save, bold/italic while typing — Notion/Google-Docs-style speed instead of mouse-only toolbar clicks.
-**Why:** Real quality-of-life, but the lowest-leverage item surfaced in the 2026-07-21 editor review — layer on after the higher-value capability features (snippets, personalization, block types, undo/redo) have landed and settled.
-**Pros:** Cheap once the other foundations exist; power-user speed.
-**Cons:** None real; purely additive polish.
-**Context:** See `ceo-plans/2026-07-21-campaign-editor-tools.md` (Scope Decision #12).
-**Effort:** S (human: ~4-6h / CC: ~1h)
+**What:** Split the ~1800-line `CampaignEditor.tsx` into `CampaignHeaderFields.tsx`, `CampaignBlocksPanel.tsx`, `CampaignImagesPanel.tsx`, `CampaignActionsBar.tsx` per `ceo-plans/2026-07-22-editor-ai-redesign.md` (deliverable 7), with the orchestrator holding shared state (content, commit, undo/redo, autosave, insertHook, pendingSuggestion) and passing it down as props.
+**Why:** Committed to in the 2026-07-22 plan, but deferred during execution as a pragmatic scope call — the file-split is an internal-only refactor with real regression risk (autosave/undo-redo/snippets/AI-suggestion state all threading through it) and delivers no user-visible value on its own. Every user-facing deliverable from that plan (AI layout suggestion, collapsible sections, drag-and-drop reorder, completion indicator, keyboard shortcuts, loaders/staged-reveal/save-pulse) shipped without it.
+**Pros:** Smaller files, easier to review/extend block-kind-specific UI in isolation.
+**Cons:** Pure refactor risk with no functional payoff; needs careful prop-threading to avoid behavior drift in the already-shipped autosave/undo-redo/snippets code.
+**Context:** `ceo-plans/2026-07-22-editor-ai-redesign.md`, deliverable 7.
+**Effort:** M (human: ~1 day / CC: ~2-3h)
 
 ## UGC Tracker — Post-v1
 

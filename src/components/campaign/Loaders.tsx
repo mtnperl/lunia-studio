@@ -170,3 +170,26 @@ export function SkeletonTile({ aspect = "4/3" }: { aspect?: string }) {
     />
   );
 }
+
+// ─── Content-shaped block skeleton (AI layout suggestion / per-block
+// regenerate loading) ──────────────────────────────────────────────────────
+/** A handful of shimmering bars sized like a real block, instead of a bare
+ *  spinner — matches DESIGN.md's "warm shimmer, not cold grey" Loading spec. */
+export function BlockSkeleton({ lines = 2 }: { lines?: number }) {
+  const bar = (width: string, height = 10) => (
+    <div style={{
+      width, height, borderRadius: 4,
+      background: "linear-gradient(90deg, var(--surface) 25%, var(--surface-h) 50%, var(--surface) 75%)",
+      backgroundSize: "200% 100%",
+      animation: "shimmer 1.4s ease-in-out infinite",
+    }} />
+  );
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+      {bar("40%", 8)}
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i}>{bar(i === lines - 1 ? "70%" : "100%")}</div>
+      ))}
+    </div>
+  );
+}

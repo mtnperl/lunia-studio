@@ -3,9 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
-import { Spinner } from "./Loaders";
+import { Spinner, BlockSkeleton } from "./Loaders";
 import { useInsertAtCursor } from "./useInsertAtCursor";
 import { PRODUCT } from "@/lib/lunia-brand-guidelines";
+import { getSubjectLineHints } from "@/lib/subject-line-hints";
+import { CAMPAIGN_LAYOUT_PRESETS, type CampaignLayoutPreset } from "@/lib/campaign-layout-presets";
+import { layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
 
 type BlockKind = NonNullable<CampaignBlock["kind"]>;
 const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
@@ -43,6 +46,22 @@ const BRAND_FACTS: { label: string; text: string }[] = [
 ];
 
 const newId = () => crypto.randomUUID();
+
+/** One-line preview text for a block of any kind, used in the pending-
+ *  suggestion review list and the regenerate-alternates picker. */
+function blockPreviewText(b: CampaignBlock): string {
+  return (
+    b.body ||
+    b.statValue ||
+    b.discountDescription ||
+    b.testimonialQuote ||
+    b.items?.join(", ") ||
+    b.timelineRows?.map((r) => r.label).join(", ") ||
+    b.trustItems?.map((t) => t.caption).join(", ") ||
+    b.comparisonLeftLabel ||
+    "—"
+  );
+}
 
 const sectionLabel: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, color: "var(--subtle)",
@@ -106,6 +125,39 @@ function SegButton({ active, onClick, title, last, children }: {
     >
       {children}
     </button>
+  );
+}
+
+/** A named, individually-collapsible group of controls — Header / Images /
+ *  Actions. 1px-border/no-shadow card language, a chevron + label, not a
+ *  Monday-style colored header bar. Collapse state is a plain local toggle
+ *  (defaultCollapsed seeds the initial value from the gating rule) rather
+ *  than something that re-collapses out from under the user mid-edit. */
+function Section({ title, defaultCollapsed, children }: {
+  title: string; defaultCollapsed: boolean; children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, width: "100%",
+          padding: "10px 12px", border: "none", borderBottom: collapsed ? "none" : "1px solid var(--border)",
+          background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+        }}
+      >
+        <span style={{
+          display: "inline-flex", transition: "transform 130ms ease",
+          transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "var(--muted)",
+        }}>▾</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          {title}
+        </span>
+      </button>
+      {!collapsed && <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>}
+    </div>
   );
 }
 
@@ -185,6 +237,7 @@ function RepeatableRows<T extends Record<string, string>>({
   );
 }
 const IcBookmarkPlus = () => (<svg {...iconProps}><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="12" y1="5" x2="12" y2="11" /></svg>);
+const IcDragHandle = () => (<svg {...iconProps}><circle cx="9" cy="6" r="1.2" fill="currentColor" /><circle cx="15" cy="6" r="1.2" fill="currentColor" /><circle cx="9" cy="12" r="1.2" fill="currentColor" /><circle cx="15" cy="12" r="1.2" fill="currentColor" /><circle cx="9" cy="18" r="1.2" fill="currentColor" /><circle cx="15" cy="18" r="1.2" fill="currentColor" /></svg>);
 
 export default function CampaignEditor({
   topic,
@@ -214,6 +267,15 @@ export default function CampaignEditor({
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const [improveBusy, setImproveBusy] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  const [layoutBusy, setLayoutBusy] = useState(false);
+  const [layoutError, setLayoutError] = useState<string | null>(null);
+  const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(null);
+  const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>({});
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
+  const [regenError, setRegenError] = useState<string | null>(null);
+  const [regenAlternates, setRegenAlternates] = useState<{ blockId: string; alternates: CampaignBlock[] } | null>(null);
+  const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
   // Snapshot of the content taken right before an "Improve with Claude" rewrite,
   // so the user can revert to the verbatim import. Null when there's nothing to
   // revert to.
@@ -222,6 +284,13 @@ export default function CampaignEditor({
   // save is pending, "saving" mid-request, "saved" once it lands. Manual Save
   // (below) and autosave share the same /api/campaign/save call and status.
   const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
+  // Bumped each time autosaveStatus transitions to "saved", so the checkmark
+  // pulse (120-150ms hover-state timing convention, no new motion
+  // vocabulary) replays on every save, not just the first.
+  const [saveConfirmTick, setSaveConfirmTick] = useState(0);
+  useEffect(() => {
+    if (autosaveStatus === "saved") setSaveConfirmTick((t) => t + 1);
+  }, [autosaveStatus]);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const AUTOSAVE_DEBOUNCE_MS = 2500;
   // savedId is a prop; a debounced autosave callback can fire several renders
@@ -433,15 +502,31 @@ export default function CampaignEditor({
   const canUndo = historyVersion >= 0 && (undoStackRef.current.length > 0 || pendingUndoSnapshotRef.current !== null);
   const canRedo = historyVersion >= 0 && redoStackRef.current.length > 0;
 
-  // Cmd+Z / Cmd+Shift+Z (or Ctrl on non-Mac) while the editor is mounted. Not
-  // scoped to "not inside a textarea" — these are controlled React inputs, so
-  // the browser's own per-field undo history is already unreliable for them;
-  // app-level undo taking over (same as Notion/Figma) is the right default.
+  // Cmd+Z / Cmd+Shift+Z (undo/redo, pre-existing), plus Cmd+Shift+N (new
+  // block), Cmd+D (duplicate block), Cmd+S (save) — all new shortcuts added
+  // by this redesign. Not scoped to "not inside a textarea" — these are
+  // controlled React inputs, so the browser's own per-field undo history is
+  // already unreliable for them; app-level shortcuts taking over (same as
+  // Notion/Figma) is the right default. Every branch preventDefault()s so
+  // none fall through to the browser (bookmark dialog for Cmd+D, save-page
+  // dialog for Cmd+S).
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
-      e.preventDefault();
-      if (e.shiftKey) redo(); else undo();
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+      } else if (key === "n" && e.shiftKey) {
+        e.preventDefault();
+        addBlock("text");
+      } else if (key === "d") {
+        e.preventDefault();
+        duplicateFocusedBlock();
+      } else if (key === "s") {
+        e.preventDefault();
+        void save();
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -535,6 +620,33 @@ export default function CampaignEditor({
     if (kind === "trustgrid") base.trustItems = [];
     commit({ ...c, blocks: [...c.blocks, base] });
   }
+  // Duplicates the currently-focused block (Cmd+D), falling back to the last
+  // block so the shortcut still does something useful with nothing focused.
+  function duplicateFocusedBlock() {
+    const c = latestContent.current;
+    if (c.blocks.length === 0) return;
+    const id = insertHook.focusedId.current ?? c.blocks[c.blocks.length - 1]!.id;
+    const idx = c.blocks.findIndex((b) => b.id === id);
+    if (idx === -1) return;
+    const copy: CampaignBlock = { ...c.blocks[idx]!, id: newId() };
+    const next = [...c.blocks];
+    next.splice(idx + 1, 0, copy);
+    commit({ ...c, blocks: next });
+  }
+  // Native HTML5 drag-and-drop reorder. One commit() call with the
+  // reordered array produces one undo entry, same as removeBlock.
+  function reorderBlock(draggedId: string, overId: string) {
+    if (draggedId === overId) return;
+    const c = latestContent.current;
+    const from = c.blocks.findIndex((b) => b.id === draggedId);
+    const to = c.blocks.findIndex((b) => b.id === overId);
+    if (from === -1 || to === -1) return;
+    const next = [...c.blocks];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    commit({ ...c, blocks: next });
+  }
+
   function updateImage(next: CampaignImageSlot) {
     const c = latestContent.current;
     const prev = c.images.find((i) => i.id === next.id);
@@ -680,6 +792,110 @@ export default function CampaignEditor({
     }
   }
 
+  // Suggests a full block-by-block layout from the current subject line.
+  // Never writes into content.blocks directly — lands in pendingBlocks for
+  // per-block Accept/Skip review first (see the review UI in the render).
+  async function suggestLayout() {
+    if (layoutBusy) return;
+    const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+    if (!subject.trim()) {
+      setLayoutError("Type a subject line first.");
+      return;
+    }
+    setLayoutBusy(true);
+    setLayoutError(null);
+    try {
+      const res = await fetch("/api/campaign/suggest-layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, topic }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.blocks)) {
+        setLayoutError(data.error ?? "Suggestion failed");
+        return;
+      }
+      setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
+      setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
+      setTemplatePickerOpen(false);
+    } catch (err) {
+      setLayoutError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setLayoutBusy(false);
+    }
+  }
+
+  // Presets skip the LLM call but share the exact same pending-review shape
+  // and apply path as an AI suggestion.
+  function applyPreset(preset: CampaignLayoutPreset) {
+    setPendingBlocks(preset.blocks.map((b) => ({ block: layoutBlockToCampaignBlock(b), included: true })));
+    setPendingMeta({ topBanner: preset.topBanner, promoBand: preset.promoBand, ctaLabel: preset.ctaLabel });
+    setTemplatePickerOpen(false);
+    setLayoutError(null);
+  }
+
+  function togglePendingBlock(index: number) {
+    setPendingBlocks((prev) => prev && prev.map((p, i) => (i === index ? { ...p, included: !p.included } : p)));
+  }
+
+  // Applies every included pending block as ONE undo/redo snapshot (a single
+  // commit() call with the full new blocks array), same reasoning as
+  // drag-and-drop reorder — not one commit per accepted block.
+  function acceptPendingBlocks() {
+    if (!pendingBlocks) return;
+    const accepted = pendingBlocks.filter((p) => p.included).map((p) => p.block);
+    const c = latestContent.current;
+    commit({
+      ...c,
+      blocks: [...c.blocks, ...accepted],
+      topBanner: pendingMeta.topBanner ?? c.topBanner,
+      promoBand: pendingMeta.promoBand ?? c.promoBand,
+      cta: pendingMeta.ctaLabel ? { ...c.cta, label: pendingMeta.ctaLabel } : c.cta,
+    });
+    setPendingBlocks(null);
+    setPendingMeta({});
+  }
+
+  function discardPendingBlocks() {
+    setPendingBlocks(null);
+    setPendingMeta({});
+  }
+
+  // Fetches 3 alternates for one block from the AI and opens a small picker.
+  async function regenerateBlock(block: CampaignBlock) {
+    if (regenBusyId) return;
+    setRegenBusyId(block.id);
+    setRegenError(null);
+    const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+    const { id: _id, ...currentFields } = block;
+    void _id;
+    try {
+      const res = await fetch("/api/campaign/regenerate-block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: block.kind ?? "text", currentFields, subject, topic }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.alternates)) {
+        setRegenError(data.error ?? "Regeneration failed");
+        return;
+      }
+      setRegenAlternates({ blockId: block.id, alternates: data.alternates });
+    } catch (err) {
+      setRegenError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setRegenBusyId(null);
+    }
+  }
+
+  function pickRegeneratedAlternate(alternate: CampaignBlock) {
+    if (!regenAlternates) return;
+    const { id: _id, ...fields } = alternate;
+    void _id;
+    updateBlock(regenAlternates.blockId, fields);
+    setRegenAlternates(null);
+  }
+
   // Opt-in Lunia-voice rewrite of the copy only (selected subject + every text
   // block). Images, promo band, CTA, and layout are left untouched. Reversible.
   async function improveWithClaude() {
@@ -797,6 +1013,23 @@ export default function CampaignEditor({
 
   const secondaryImages = content.images.filter((i) => i.role === "secondary");
 
+  // Collapse gates (checked once on mount, then a plain manual toggle —
+  // re-collapsing live under an in-progress edit would fight the user).
+  const activeSubjectLine = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+  const heroImageFilled = content.images.some((i) => i.role === "hero" && !!i.url);
+  const headerDefaultCollapsed = !!activeSubjectLine.trim() && heroImageFilled;
+  const imagesDefaultCollapsed = heroImageFilled;
+
+  // Completion indicator — cheap, derived from existing content state, no
+  // new data model. "0 blocks" reads cleanly rather than crashing on an
+  // empty-array check.
+  const completionItems: { label: string; done: boolean }[] = [
+    { label: "Subject", done: !!activeSubjectLine.trim() },
+    { label: "Hero image", done: heroImageFilled },
+    { label: content.blocks.length === 1 ? "1 block" : `${content.blocks.length} blocks`, done: content.blocks.length > 0 },
+    { label: "CTA", done: !!content.cta.label.trim() && !!content.cta.url.trim() },
+  ];
+
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
       {/* ── Live preview ───────────────────────────────────────────────────── */}
@@ -912,6 +1145,17 @@ export default function CampaignEditor({
 
       {/* ── Controls ───────────────────────────────────────────────────────── */}
       <div style={{ flex: "1 1 340px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+        {/* Completion indicator — plain text checklist, --success/--muted
+            tokens, not colored badges. */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11 }}>
+          {completionItems.map((it) => (
+            <span key={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: it.done ? "var(--success)" : "var(--muted)" }}>
+              <span>{it.done ? "✓" : "○"}</span>{it.label}
+            </span>
+          ))}
+        </div>
+
+        <Section title="Header" defaultCollapsed={headerDefaultCollapsed}>
         {/* Top banner — thin white strip above the logo. Renders uppercase
             via CSS; wrap a fragment with **double asterisks** to highlight
             it with the brand color (navy pill). */}
@@ -964,7 +1208,7 @@ export default function CampaignEditor({
             </button>
           </div>
           {subjectsError && <div style={{ marginBottom: 6, fontSize: 11, color: "var(--error)" }}>{subjectsError}</div>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
             {content.subjectLines.map((s, i) => {
               const active = content.selectedSubject === i;
               const key = `subj:${i}`;
@@ -994,7 +1238,117 @@ export default function CampaignEditor({
               );
             })}
           </div>
+          {(() => {
+            const activeSubject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+            const hints = getSubjectLineHints(activeSubject);
+            if (hints.length === 0) return null;
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                {hints.map((h) => (
+                  <span key={h.id} style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 5,
+                    border: "1px solid var(--border)", color: "var(--muted)", background: "var(--bg)",
+                  }}>{h.text}</span>
+                ))}
+              </div>
+            );
+          })()}
+          <div style={{ display: "flex", gap: 6, position: "relative" }}>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5, flex: 1, justifyContent: "center" }}
+              onClick={suggestLayout}
+              disabled={layoutBusy}
+              title="Suggest a complete block-by-block layout from the subject line above"
+            >
+              {layoutBusy && <Spinner size={10} />}
+              {layoutBusy ? "Drafting…" : "✨ Suggest layout"}
+            </button>
+            <button
+              style={{ ...miniBtn(templatePickerOpen), flex: 1 }}
+              onClick={() => setTemplatePickerOpen((v) => !v)}
+              title="Apply a named starting-point layout"
+            >
+              Templates ▾
+            </button>
+            {templatePickerOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20,
+                background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
+                boxShadow: "none", overflow: "hidden",
+              }}>
+                {CAMPAIGN_LAYOUT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => applyPreset(preset)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
+                      border: "none", borderBottom: "1px solid var(--border)", background: "transparent",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{preset.name}</div>
+                    <div style={{ fontSize: 10, color: "var(--subtle)" }}>{preset.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {layoutError && <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{layoutError}</div>}
+          {layoutBusy && (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              <BlockSkeleton lines={1} />
+              <BlockSkeleton lines={2} />
+            </div>
+          )}
         </div>
+
+        {/* Pending layout suggestion — never written into content.blocks
+            until accepted, so a suggestion never silently overwrites the
+            existing body. */}
+        {pendingBlocks && (
+          <div style={{ border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...sectionLabel, marginBottom: 0 }}>Suggested layout — review before adding</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button style={miniBtn(false)} onClick={() => setPendingBlocks((prev) => prev && prev.map((p) => ({ ...p, included: true })))}>Accept all</button>
+                <button style={miniBtn(false)} onClick={discardPendingBlocks}>Discard all</button>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+              {/* Staged reveal: each suggested block fades in with a stagger
+                  (min(80ms, 500ms/blockCount) per block) as it lands — framed
+                  as functional progress feedback per DESIGN.md's Decisions
+                  Log, not decoration. A fade only, DESIGN.md's existing
+                  220ms ease-out timing, no bounce/spring. */}
+              {pendingBlocks.map((p, i) => (
+                <label key={p.block.id} style={{
+                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
+                  borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
+                  animation: "fadeIn 220ms ease-out both",
+                  animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
+                }}>
+                  <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
+                    style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--subtle)", marginBottom: 2 }}>
+                      {p.block.kind ?? "text"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {blockPreviewText(p.block)}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              style={{ ...miniBtn(true), width: "100%", justifyContent: "center" }}
+              onClick={acceptPendingBlocks}
+              disabled={!pendingBlocks.some((p) => p.included)}
+            >
+              Add {pendingBlocks.filter((p) => p.included).length} block{pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"} to email
+            </button>
+          </div>
+        )}
 
         {/* Preview text */}
         <div>
@@ -1031,7 +1385,9 @@ export default function CampaignEditor({
             onChange={(e) => patch({ promoBand: e.target.value || undefined })} style={input} />
           {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
         </div>
+        </Section>
 
+        <Section title="Body" defaultCollapsed={false}>
         {/* Blocks */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
@@ -1149,10 +1505,26 @@ export default function CampaignEditor({
               const copied = copiedKey === `block:${b.id}`;
               const copyErr = copiedKey === `err:block:${b.id}`;
               return (
-                <div key={b.id} style={{ border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", overflow: "hidden" }}>
+                <div
+                  key={b.id}
+                  draggable
+                  onDragStart={() => setDraggedBlockId(b.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedBlockId) reorderBlock(draggedBlockId, b.id);
+                    setDraggedBlockId(null);
+                  }}
+                  onDragEnd={() => setDraggedBlockId(null)}
+                  style={{
+                    border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", overflow: "hidden",
+                    opacity: draggedBlockId === b.id ? 0.5 : 1,
+                  }}
+                >
                   {/* Header — block identity + block-level actions */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      <span style={{ cursor: "grab", color: "var(--muted)" }} title="Drag to reorder"><IcDragHandle /></span>
                       Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
                     </span>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1165,6 +1537,9 @@ export default function CampaignEditor({
                       </IconButton>
                       <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
                         {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy />}
+                      </IconButton>
+                      <IconButton onClick={() => regenerateBlock(b)} title="Regenerate this block with AI" active={regenBusyId === b.id}>
+                        {regenBusyId === b.id ? <Spinner size={12} /> : <span style={{ fontSize: 13, lineHeight: 1 }}>↻</span>}
                       </IconButton>
                       <IconButton onClick={() => removeBlock(b.id)} title="Delete block"><IcTrash /></IconButton>
                     </div>
@@ -1354,9 +1729,35 @@ export default function CampaignEditor({
               );
             })}
           </div>
+          {regenError && <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{regenError}</div>}
+          {regenAlternates && (
+            <div style={{ marginTop: 10, border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ ...sectionLabel, marginBottom: 0 }}>Pick a version</span>
+                <button style={miniBtn(false)} onClick={() => setRegenAlternates(null)}>Cancel</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {regenAlternates.alternates.map((alt) => (
+                  <button
+                    key={alt.id}
+                    onClick={() => pickRegeneratedAlternate(alt)}
+                    style={{
+                      textAlign: "left", padding: "8px 10px", borderRadius: 6,
+                      border: "1px solid var(--border)", background: "var(--bg)",
+                      color: "var(--text)", fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}
+                  >
+                    {blockPreviewText(alt)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+        </Section>
 
-        {/* Images */}
+        <Section title="Images" defaultCollapsed={imagesDefaultCollapsed}>
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={sectionLabel}>Images</span>
@@ -1397,9 +1798,10 @@ export default function CampaignEditor({
             onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
             style={input} />
         </div>
+        </Section>
 
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", paddingTop: 4, borderTop: "1px solid var(--border)", marginTop: 2 }}>
+        <Section title="Actions" defaultCollapsed={false}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <button
             className="btn"
             onClick={save}
@@ -1407,7 +1809,9 @@ export default function CampaignEditor({
             style={{ minWidth: 120, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
           >
             {saving && <Spinner size={13} color="var(--bg)" />}
-            {saving ? "Saving…" : savedId ? "Saved ✓ Update" : "Save campaign"}
+            {saving ? "Saving…" : savedId ? (
+              <>Saved <span key={saveConfirmTick} style={{ display: "inline-block", animation: "pulse 150ms ease-out" }}>✓</span> Update</>
+            ) : "Save campaign"}
           </button>
           <span
             title={
@@ -1493,6 +1897,7 @@ export default function CampaignEditor({
           {improveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{improveError}</span>}
           {saveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{saveError}</span>}
         </div>
+        </Section>
       </div>
     </div>
   );
