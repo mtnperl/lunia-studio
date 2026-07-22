@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
 import type { DecisionModelSnapshot } from "./decision-model";
 
@@ -289,6 +289,24 @@ export async function deleteAsset(id: string): Promise<void> {
   const all = await getAssets();
   const filtered = all.filter((a) => a.id !== id);
   await writeCollection(ASSETS_KEY, filtered);
+}
+
+// ─── Campaign snippets ──────────────────────────────────────────────────────
+const CAMPAIGN_SNIPPETS_KEY = "lunia:campaign-snippets";
+
+export async function getCampaignSnippets(): Promise<CampaignSnippet[]> {
+  return readCollection<CampaignSnippet>(CAMPAIGN_SNIPPETS_KEY);
+}
+
+export async function saveCampaignSnippet(snippet: CampaignSnippet): Promise<void> {
+  const all = await getCampaignSnippets();
+  all.unshift(snippet);
+  await writeCollection(CAMPAIGN_SNIPPETS_KEY, all);
+}
+
+export async function deleteCampaignSnippet(id: string): Promise<void> {
+  const all = await getCampaignSnippets();
+  await writeCollection(CAMPAIGN_SNIPPETS_KEY, all.filter((s) => s.id !== id));
 }
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────

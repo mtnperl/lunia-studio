@@ -4,7 +4,7 @@
 // HTML text so it stays crisp at any zoom — never baked into images.
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
-import type { CampaignContent } from "./types";
+import type { CampaignBlock, CampaignContent } from "./types";
 
 const NAVY = "#01253f";
 const CREAM = "#f5f5e9";
@@ -17,6 +17,30 @@ function esc(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Render `**bold**` and `[text](url)` inline markup within a paragraph.
+ *  Same scan-escape-wrap spirit as renderTopBanner's `**...**` handling below,
+ *  extended to two match types in one left-to-right pass so a plain-text
+ *  segment is never escaped twice or a markup segment left unescaped.
+ *  `{{ merge_tag }}` personalization tokens need no special handling here —
+ *  esc() doesn't touch `{`/`}`, so they pass through as literal text. */
+function renderInline(raw: string): string {
+  const re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)/g;
+  let result = "";
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    result += esc(raw.slice(lastIndex, m.index));
+    if (m[1] !== undefined) {
+      result += `<strong>${esc(m[1])}</strong>`;
+    } else {
+      result += `<a href="${esc(m[3])}" style="color:inherit;text-decoration:underline;">${esc(m[2])}</a>`;
+    }
+    lastIndex = re.lastIndex;
+  }
+  result += esc(raw.slice(lastIndex));
+  return result;
 }
 
 /** A block body → paragraphs (split on blank lines), newlines → <br>. */
@@ -32,9 +56,47 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean, wei
     .filter(Boolean)
     .map(
       (p) =>
-        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${esc(
+        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${renderInline(
           p,
         ).replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+}
+
+/** Big hero number + caption — social-proof / stat callout, centered. */
+function statBlock(b: CampaignBlock): string {
+  const value = b.statValue?.trim();
+  if (!value) return "";
+  return `<div style="text-align:center;padding:4px 0;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:36px;font-weight:300;color:${CREAM};line-height:1.15;">${esc(value)}</div>
+    ${b.statLabel?.trim()
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:${CREAM};opacity:0.75;margin-top:6px;">${esc(b.statLabel)}</div>`
+      : ""}
+  </div>`;
+}
+
+/** Dashed-border coupon callout — code + what it does. */
+function discountBlock(b: CampaignBlock): string {
+  const code = b.discountCode?.trim();
+  if (!code) return "";
+  return `<div style="border:1.5px dashed ${CREAM};border-radius:8px;padding:16px;text-align:center;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${CREAM};">${esc(code)}</div>
+    ${b.discountDescription?.trim()
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;margin-top:4px;">${esc(b.discountDescription)}</div>`
+      : ""}
+  </div>`;
+}
+
+/** Benefit/ingredient list. One <p> per item (no flexbox/absolute
+ *  positioning — table-less bullets via a literal dash keep this safe in
+ *  Outlook, same conservative approach as the rest of this template). */
+function checklistBlock(b: CampaignBlock): string {
+  const items = (b.items ?? []).map((i) => i.trim()).filter(Boolean);
+  if (items.length === 0) return "";
+  return items
+    .map(
+      (item) =>
+        `<p style="margin:0 0 10px;color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;line-height:1.5;"><span style="color:${CREAM};">—</span>&nbsp;&nbsp;${esc(item)}</p>`,
     )
     .join("");
 }
@@ -149,11 +211,21 @@ export function renderCampaignEmail(content: CampaignContent): string {
        </td></tr>`
     : "";
 
-  // A padded text block
-  const blockRow = (b: { body: string; align: "left" | "center"; italic?: boolean; weight?: "thin" | "extralight" | "light" | "normal" }) =>
-    `<tr><td class="h-padding" style="padding:0 24px 16px;">
-       <div class="text-block" style="padding:15px;">${paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light")}</div>
+  // A padded block — kind "text" (or unset) renders the original paragraph
+  // flow; "stat"/"discount"/"checklist" render their own structured markup.
+  // An empty/unfilled structured block (e.g. a freshly-added stat with no
+  // value yet) renders nothing rather than an empty styled box.
+  const blockRow = (b: CampaignBlock) => {
+    const inner =
+      b.kind === "stat" ? statBlock(b)
+      : b.kind === "discount" ? discountBlock(b)
+      : b.kind === "checklist" ? checklistBlock(b)
+      : paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light");
+    if (!inner) return "";
+    return `<tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;">${inner}</div>
      </td></tr>`;
+  };
 
   // Secondary images — rows of 2 (stack on mobile via the secondary-cell class)
   let secondaryHtml = "";

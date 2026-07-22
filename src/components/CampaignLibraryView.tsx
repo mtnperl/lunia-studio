@@ -30,6 +30,29 @@ export default function CampaignLibraryView({
     setCampaigns((prev) => (prev ? prev.filter((c) => c.id !== id) : prev));
   }
 
+  async function duplicate(c: SavedCampaign, e: React.MouseEvent) {
+    e.stopPropagation();
+    // "upload" image slots are temp blobs that auto-expire after 7 days — a
+    // duplicate shouldn't silently inherit a URL that may 404 later. Every
+    // other source (asset/generated) is already a permanent URL, fine as-is.
+    const clonedContent = {
+      ...c.content,
+      images: c.content.images.map((img) => (img.source === "upload" ? { ...img, url: null } : img)),
+    };
+    try {
+      const res = await fetch("/api/campaign/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: c.topic, content: clonedContent }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.id) return;
+      const clone: SavedCampaign = { id: data.id, topic: c.topic, createdAt: new Date().toISOString(), content: clonedContent };
+      setCampaigns((prev) => (prev ? [clone, ...prev] : prev));
+      onOpen(clone);
+    } catch { /* best-effort */ }
+  }
+
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 24px 80px" }}>
       <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>
@@ -84,10 +107,17 @@ export default function CampaignLibraryView({
                     <span style={{ fontSize: 11, color: "var(--subtle)" }}>
                       {new Date(c.createdAt).toLocaleDateString()}
                     </span>
-                    <button
-                      onClick={(e) => remove(c.id, e)}
-                      style={{ background: "transparent", border: "none", fontSize: 12, color: "var(--subtle)", cursor: "pointer", fontFamily: "inherit" }}
-                    >Delete</button>
+                    <span style={{ display: "flex", gap: 10 }}>
+                      <button
+                        onClick={(e) => duplicate(c, e)}
+                        title="Duplicate this campaign as a new starting point"
+                        style={{ background: "transparent", border: "none", fontSize: 12, color: "var(--subtle)", cursor: "pointer", fontFamily: "inherit" }}
+                      >Duplicate</button>
+                      <button
+                        onClick={(e) => remove(c.id, e)}
+                        style={{ background: "transparent", border: "none", fontSize: 12, color: "var(--subtle)", cursor: "pointer", fontFamily: "inherit" }}
+                      >Delete</button>
+                    </span>
                   </div>
                 </div>
               </div>

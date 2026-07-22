@@ -1,9 +1,42 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CampaignContent, CampaignBlock, CampaignImageSlot } from "@/lib/types";
+import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
 import { Spinner } from "./Loaders";
+import { useInsertAtCursor } from "./useInsertAtCursor";
+import { PRODUCT } from "@/lib/lunia-brand-guidelines";
+
+type BlockKind = NonNullable<CampaignBlock["kind"]>;
+const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
+  { key: "text", label: "Text", title: "A paragraph block" },
+  { key: "stat", label: "Stat", title: "A big-number stat or testimonial callout" },
+  { key: "discount", label: "Discount", title: "A discount/coupon callout" },
+  { key: "checklist", label: "Checklist", title: "A bulleted benefit/ingredient list" },
+];
+
+// Klaviyo merge-tag presets. `|default:'...'` keeps a broken/missing profile
+// field from rendering literally blank — plain text, survives copy-paste
+// into Klaviyo untouched.
+const PERSONALIZATION_TOKENS: { label: string; token: string }[] = [
+  { label: "First name", token: "{{ first_name|default:'there' }}" },
+  { label: "Last order item", token: "{{ event.extra.line_items.0.product_name|default:'your last order' }}" },
+  { label: "Discount code", token: "{{ discount_code|default:'' }}" },
+];
+
+// A short, curated slice of PRODUCT facts worth one-click-inserting into copy
+// — the numbers/claims a human editor would otherwise have to remember or
+// retype exactly. Not the full brand handbook (that's for AI prompts).
+const BRAND_FACTS: { label: string; text: string }[] = [
+  { label: "Review count", text: `${PRODUCT.reviewCount} reviews, ${PRODUCT.reviewStars} stars average` },
+  { label: "Five-star %", text: `${PRODUCT.fiveStarPct}% five-star reviews` },
+  { label: "Customer count", text: `${PRODUCT.customerCount} customers` },
+  { label: "Single bottle price", text: `$${PRODUCT.price1Bottle.toFixed(2)}` },
+  { label: "Subscription price", text: `$${PRODUCT.priceSubscription.toFixed(2)}` },
+  { label: "Price per serving", text: PRODUCT.pricePerServing },
+  { label: "Dose", text: PRODUCT.dose },
+  ...PRODUCT.differentiators.map((d) => ({ label: d.length > 40 ? `${d.slice(0, 40)}…` : d, text: d })),
+];
 
 const newId = () => crypto.randomUUID();
 
@@ -102,6 +135,7 @@ const IcAlignCenter = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2=
 const IcCopy = () => (<svg {...iconProps}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>);
 const IcCheck = () => (<svg {...iconProps} strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
 const IcTrash = () => (<svg {...iconProps}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" /></svg>);
+const IcBookmarkPlus = () => (<svg {...iconProps}><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="12" y1="5" x2="12" y2="11" /></svg>);
 
 export default function CampaignEditor({
   topic,
@@ -135,6 +169,44 @@ export default function CampaignEditor({
   // so the user can revert to the verbatim import. Null when there's nothing to
   // revert to.
   const [preImprove, setPreImprove] = useState<CampaignContent | null>(null);
+  // Autosave — "idle" before any edit this session, "dirty" while a debounced
+  // save is pending, "saving" mid-request, "saved" once it lands. Manual Save
+  // (below) and autosave share the same /api/campaign/save call and status.
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const AUTOSAVE_DEBOUNCE_MS = 2500;
+  // savedId is a prop; a debounced autosave callback can fire several renders
+  // after the click/keystroke that scheduled it, so it needs a ref, same
+  // reasoning as latestContent below.
+  const savedIdRef = useRef(savedId);
+  useEffect(() => { savedIdRef.current = savedId; }, [savedId]);
+
+  // In-session undo/redo (no persistence — cleared on unmount/navigate-away).
+  // Snapshots are coalesced: rapid consecutive commits (e.g. typing) collapse
+  // into ONE undo step covering the whole burst, so Cmd+Z undoes an edit, not
+  // a keystroke. A commit with no follow-up within UNDO_COALESCE_MS — the
+  // common case for a discrete action like removing a block or swapping an
+  // image — becomes its own step naturally, no special-casing needed.
+  const undoStackRef = useRef<CampaignContent[]>([]);
+  const redoStackRef = useRef<CampaignContent[]>([]);
+  const pendingUndoSnapshotRef = useRef<CampaignContent | null>(null);
+  const undoCoalesceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const UNDO_COALESCE_MS = 700;
+  const UNDO_MAX_DEPTH = 50;
+  // Bumped on every history push/pop purely to re-render the undo/redo
+  // buttons' disabled state — the stacks themselves live in refs.
+  const [historyVersion, setHistoryVersion] = useState(0);
+
+  // Clear pending timers on unmount (FlowDeck remounts this component per
+  // email via `key`) so a stale autosave/undo-coalesce never fires after the
+  // instance it belongs to is gone.
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      if (undoCoalesceTimerRef.current) clearTimeout(undoCoalesceTimerRef.current);
+    };
+  }, []);
+
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Preview scaling — the email is hard-coded to 600px so we render the
   // iframe at the email's NATIVE width and CSS-scale it down to fit the
@@ -170,6 +242,62 @@ export default function CampaignEditor({
     generatedUrlLock.current.set(slotId, url);
   }
 
+  // Shared "insert at cursor" plumbing for snippets, personalization tokens,
+  // and brand facts — see useInsertAtCursor.ts.
+  const insertHook = useInsertAtCursor();
+  const [snippets, setSnippets] = useState<CampaignSnippet[]>([]);
+  const [snippetPickerOpen, setSnippetPickerOpen] = useState(false);
+  const [personalizationPickerOpen, setPersonalizationPickerOpen] = useState(false);
+  const [brandFactsPickerOpen, setBrandFactsPickerOpen] = useState(false);
+  const [savingSnippetFor, setSavingSnippetFor] = useState<string | null>(null);
+  const [addBlockMenuOpen, setAddBlockMenuOpen] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/campaign/snippets")
+      .then((r) => r.json())
+      .then((data) => { if (alive && Array.isArray(data)) setSnippets(data); })
+      .catch(() => { /* best-effort — snippet picker just shows empty */ });
+    return () => { alive = false; };
+  }, []);
+
+  /** Insert plain text (a personalization token, a brand fact) into whichever
+   *  text block is currently focused — falling back to the first "text" kind
+   *  block if none is focused, so the button still does something useful on
+   *  first click rather than silently no-op'ing. */
+  function insertIntoFocusedBlock(text: string) {
+    const c = latestContent.current;
+    const id = insertHook.focusedId.current ?? c.blocks.find((b) => !b.kind || b.kind === "text")?.id;
+    const block = id ? c.blocks.find((b) => b.id === id) : undefined;
+    if (!block) return;
+    insertHook.insertAtCursor(text, block.body, (next) => updateBlock(block.id, { body: next }), block.id);
+  }
+
+  async function saveBlockAsSnippet(block: CampaignBlock) {
+    const name = window.prompt("Name this snippet:", block.body.slice(0, 40) || "Untitled snippet");
+    if (!name || !name.trim()) return;
+    setSavingSnippetFor(block.id);
+    try {
+      const { id: _id, ...blockShape } = block;
+      void _id;
+      const res = await fetch("/api/campaign/snippets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), block: blockShape }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) setSnippets((prev) => [data, ...prev]);
+    } catch { /* best-effort */ } finally {
+      setSavingSnippetFor(null);
+    }
+  }
+
+  function insertSnippet(snippet: CampaignSnippet) {
+    const c = latestContent.current;
+    commit({ ...c, blocks: [...c.blocks, { ...snippet.block, id: newId() }] });
+    setSnippetPickerOpen(false);
+  }
+
   // Always-fresh mirror of `content`. Async handlers (image generation, banner
   // / subject suggestions) can resolve LONG after the click that started them —
   // by then the `content` captured in their closure is stale, and splatting it
@@ -179,16 +307,96 @@ export default function CampaignEditor({
   // ImageSlotControl, one level up.
   const latestContent = useRef(content);
   useEffect(() => { latestContent.current = content; }, [content]);
+  function flushUndoSnapshot() {
+    if (pendingUndoSnapshotRef.current) {
+      undoStackRef.current = [...undoStackRef.current, pendingUndoSnapshotRef.current].slice(-UNDO_MAX_DEPTH);
+      pendingUndoSnapshotRef.current = null;
+    }
+  }
+
+  function scheduleAutosave() {
+    setAutosaveStatus("dirty");
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => { void runAutosave(); }, AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  async function runAutosave() {
+    setAutosaveStatus("saving");
+    try {
+      const res = await fetch("/api/campaign/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: savedIdRef.current ?? undefined, topic, content: latestContent.current }),
+      });
+      const data = await res.json();
+      if (res.ok && data.id) {
+        onSaved(data.id);
+        setAutosaveStatus("saved");
+      } else {
+        // Silent failure — stays effectively "dirty" so the status pill keeps
+        // reflecting reality; the next edit re-schedules and tries again.
+        setAutosaveStatus("dirty");
+      }
+    } catch {
+      setAutosaveStatus("dirty");
+    }
+  }
+
   // Commit a full next-content, updating the mirror synchronously so back-to-back
   // patches compose without waiting for the effect. `patch` is the partial-update
-  // shorthand every field handler funnels through.
-  function commit(next: CampaignContent) {
+  // shorthand every field handler funnels through. `fromHistory` is set only by
+  // undo()/redo() themselves, so their own commits don't re-enter the undo stack
+  // or clear the redo stack they just built.
+  function commit(next: CampaignContent, opts?: { fromHistory?: boolean }) {
+    const prev = latestContent.current;
     latestContent.current = next;
     onChange(next);
+    if (!opts?.fromHistory) {
+      if (pendingUndoSnapshotRef.current === null) pendingUndoSnapshotRef.current = prev;
+      if (undoCoalesceTimerRef.current) clearTimeout(undoCoalesceTimerRef.current);
+      undoCoalesceTimerRef.current = setTimeout(() => {
+        flushUndoSnapshot();
+        setHistoryVersion((v) => v + 1);
+      }, UNDO_COALESCE_MS);
+      redoStackRef.current = [];
+      scheduleAutosave();
+    }
   }
   function patch(p: Partial<CampaignContent>) {
     commit({ ...latestContent.current, ...p });
   }
+
+  function undo() {
+    flushUndoSnapshot();
+    const prevState = undoStackRef.current.pop();
+    if (!prevState) return;
+    redoStackRef.current.push(latestContent.current);
+    commit(prevState, { fromHistory: true });
+    setHistoryVersion((v) => v + 1);
+  }
+  function redo() {
+    const nextState = redoStackRef.current.pop();
+    if (!nextState) return;
+    undoStackRef.current.push(latestContent.current);
+    commit(nextState, { fromHistory: true });
+    setHistoryVersion((v) => v + 1);
+  }
+  const canUndo = historyVersion >= 0 && (undoStackRef.current.length > 0 || pendingUndoSnapshotRef.current !== null);
+  const canRedo = historyVersion >= 0 && redoStackRef.current.length > 0;
+
+  // Cmd+Z / Cmd+Shift+Z (or Ctrl on non-Mac) while the editor is mounted. Not
+  // scoped to "not inside a textarea" — these are controlled React inputs, so
+  // the browser's own per-field undo history is already unreliable for them;
+  // app-level undo taking over (same as Notion/Figma) is the right default.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
 
@@ -269,9 +477,11 @@ export default function CampaignEditor({
     const c = latestContent.current;
     commit({ ...c, blocks: c.blocks.filter((b) => b.id !== id) });
   }
-  function addBlock() {
+  function addBlock(kind: BlockKind = "text") {
     const c = latestContent.current;
-    commit({ ...c, blocks: [...c.blocks, { id: newId(), body: "", align: "left" }] });
+    const base: CampaignBlock = { id: newId(), body: "", align: "left", kind };
+    if (kind === "checklist") base.items = [];
+    commit({ ...c, blocks: [...c.blocks, base] });
   }
   function updateImage(next: CampaignImageSlot) {
     const c = latestContent.current;
@@ -427,12 +637,16 @@ export default function CampaignEditor({
     setImproveBusy(true);
     setImproveError(null);
     const snapshot = c;
+    // Only "text" (or unset) blocks go through the prose rewrite — stat/
+    // discount/checklist blocks hold structured fields, not free prose, and
+    // the rewrite prompt has no concept of them.
+    const textBlocks = c.blocks.filter((b) => !b.kind || b.kind === "text");
     try {
       const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
       const res = await fetch("/api/campaign/rewrite-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, subject, blocks: c.blocks.map((b) => b.body) }),
+        body: JSON.stringify({ topic, subject, blocks: textBlocks.map((b) => b.body) }),
       });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.blocks)) {
@@ -440,15 +654,19 @@ export default function CampaignEditor({
         return;
       }
       // Apply onto the LATEST content (not the stale snapshot) so any edits made
-      // while the request was in flight survive; map rewrites by block index.
+      // while the request was in flight survive. Match rewrites back by block
+      // id (via position within the textBlocks subset we sent), not by index
+      // into the full block list — a block added/removed/reordered mid-flight,
+      // or a non-text block, is left untouched rather than silently corrupted.
       const cur = latestContent.current;
       const idx = cur.selectedSubject;
       const nextSubjects = data.subject
         ? cur.subjectLines.map((s, i) => (i === idx ? String(data.subject) : s))
         : cur.subjectLines;
-      const nextBlocks = cur.blocks.map((b, i) =>
-        typeof data.blocks[i] === "string" ? { ...b, body: data.blocks[i] } : b,
-      );
+      const nextBlocks = cur.blocks.map((b) => {
+        const pos = textBlocks.findIndex((tb) => tb.id === b.id);
+        return pos !== -1 && typeof data.blocks[pos] === "string" ? { ...b, body: data.blocks[pos] } : b;
+      });
       setPreImprove(snapshot);
       commit({ ...cur, subjectLines: nextSubjects, blocks: nextBlocks });
     } catch (err) {
@@ -504,6 +722,7 @@ export default function CampaignEditor({
   async function save() {
     setSaving(true);
     setSaveError(null);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     try {
       const res = await fetch("/api/campaign/save", {
         method: "POST",
@@ -516,6 +735,7 @@ export default function CampaignEditor({
         return;
       }
       onSaved(data.id);
+      setAutosaveStatus("saved");
     } catch {
       setSaveError("Network error — please try again");
     } finally {
@@ -762,9 +982,107 @@ export default function CampaignEditor({
 
         {/* Blocks */}
         <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
             <span style={sectionLabel}>Text blocks</span>
-            <button style={miniBtn(false)} onClick={addBlock}>+ Block</button>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", position: "relative" }}>
+              <div style={{ position: "relative" }}>
+                <button style={miniBtn(false)} onClick={() => setAddBlockMenuOpen((v) => !v)}>+ Block ▾</button>
+                {addBlockMenuOpen && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
+                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 130, overflow: "hidden",
+                  }}>
+                    {BLOCK_KINDS.map((k) => (
+                      <button
+                        key={k.key}
+                        title={k.title}
+                        onClick={() => { addBlock(k.key); setAddBlockMenuOpen(false); }}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
+                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
+                          color: "var(--text)", cursor: "pointer",
+                        }}
+                      >{k.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ position: "relative" }}>
+                <button style={miniBtn(false)} onClick={() => setSnippetPickerOpen((v) => !v)} disabled={snippets.length === 0} title={snippets.length === 0 ? "No saved snippets yet" : "Insert a saved snippet as a new block"}>
+                  Snippets ▾
+                </button>
+                {snippetPickerOpen && snippets.length > 0 && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
+                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 200, maxHeight: 240, overflowY: "auto",
+                  }}>
+                    {snippets.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => insertSnippet(s)}
+                        title={s.block.body || s.name}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
+                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
+                          color: "var(--text)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}
+                      >{s.name}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ position: "relative" }}>
+                <button style={miniBtn(false)} onClick={() => setPersonalizationPickerOpen((v) => !v)} title="Insert a Klaviyo merge tag into the focused block">
+                  Personalize ▾
+                </button>
+                {personalizationPickerOpen && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
+                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 180, overflow: "hidden",
+                  }}>
+                    {PERSONALIZATION_TOKENS.map((t) => (
+                      <button
+                        key={t.token}
+                        onClick={() => { insertIntoFocusedBlock(t.token); setPersonalizationPickerOpen(false); }}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
+                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
+                          color: "var(--text)", cursor: "pointer",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div style={{ position: "relative" }}>
+                <button style={miniBtn(false)} onClick={() => setBrandFactsPickerOpen((v) => !v)} title="Insert a canonical Lunia fact into the focused block">
+                  Brand facts ▾
+                </button>
+                {brandFactsPickerOpen && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
+                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 220, maxHeight: 260, overflowY: "auto",
+                  }}>
+                    {BRAND_FACTS.map((f) => (
+                      <button
+                        key={f.label}
+                        onClick={() => { insertIntoFocusedBlock(f.text); setBrandFactsPickerOpen(false); }}
+                        title={f.text}
+                        style={{
+                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
+                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
+                          color: "var(--text)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}
+                      >{f.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <style>{`
             .blk-seg{ transition: background 130ms ease, color 130ms ease; }
@@ -775,6 +1093,7 @@ export default function CampaignEditor({
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {content.blocks.map((b, i) => {
               const weight = b.weight ?? "light";
+              const kind: BlockKind = b.kind ?? "text";
               const copied = copiedKey === `block:${b.id}`;
               const copyErr = copiedKey === `err:block:${b.id}`;
               return (
@@ -782,47 +1101,112 @@ export default function CampaignEditor({
                   {/* Header — block identity + block-level actions */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                      Block {i + 1}
+                      Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
                     </span>
                     <div style={{ display: "flex", gap: 6 }}>
+                      <IconButton
+                        onClick={() => saveBlockAsSnippet(b)}
+                        title="Save this block as a reusable snippet"
+                        active={savingSnippetFor === b.id}
+                      >
+                        {savingSnippetFor === b.id ? <Spinner size={12} /> : <IcBookmarkPlus />}
+                      </IconButton>
                       <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
                         {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy />}
                       </IconButton>
                       <IconButton onClick={() => removeBlock(b.id)} title="Delete block"><IcTrash /></IconButton>
                     </div>
                   </div>
-                  {/* Toolbar — alignment · italic · weight, grouped */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px" }}>
-                    <div style={segWrap}>
-                      <SegButton active={b.align === "left"} onClick={() => updateBlock(b.id, { align: "left" })} title="Align left"><IcAlignLeft /></SegButton>
-                      <SegButton active={b.align === "center"} onClick={() => updateBlock(b.id, { align: "center" })} title="Align center" last><IcAlignCenter /></SegButton>
+
+                  {kind === "text" && (
+                    <>
+                      {/* Toolbar — alignment · italic · weight, grouped */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px" }}>
+                        <div style={segWrap}>
+                          <SegButton active={b.align === "left"} onClick={() => updateBlock(b.id, { align: "left" })} title="Align left"><IcAlignLeft /></SegButton>
+                          <SegButton active={b.align === "center"} onClick={() => updateBlock(b.id, { align: "center" })} title="Align center" last><IcAlignCenter /></SegButton>
+                        </div>
+                        <div style={segWrap}>
+                          <SegButton active={!!b.italic} onClick={() => updateBlock(b.id, { italic: !b.italic })} title="Italic" last>
+                            <span style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 13, fontWeight: 600 }}>I</span>
+                          </SegButton>
+                        </div>
+                        <div style={{ ...segWrap, marginLeft: "auto" }}>
+                          {BLOCK_WEIGHTS.map((w, wi) => (
+                            <SegButton
+                              key={w.key}
+                              active={weight === w.key}
+                              onClick={() => updateBlock(b.id, { weight: w.key })}
+                              title={w.title}
+                              last={wi === BLOCK_WEIGHTS.length - 1}
+                            >{w.label}</SegButton>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Body — supports **bold**, [text](url), and {{ merge_tags }} */}
+                      <div style={{ padding: "0 10px 10px" }}>
+                        <textarea
+                          ref={insertHook.registerTextarea(b.id)}
+                          onFocus={() => insertHook.onFocusBlock(b.id)}
+                          value={b.body}
+                          onChange={(e) => updateBlock(b.id, { body: e.target.value })}
+                          rows={3}
+                          placeholder="**bold**, [link text](url), {{ first_name }} all supported"
+                          style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {kind === "stat" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <input
+                        type="text"
+                        value={b.statValue ?? ""}
+                        onChange={(e) => updateBlock(b.id, { statValue: e.target.value })}
+                        placeholder="e.g. 558 reviews"
+                        style={{ ...input, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        value={b.statLabel ?? ""}
+                        onChange={(e) => updateBlock(b.id, { statLabel: e.target.value })}
+                        placeholder="e.g. 91% five-star"
+                        style={{ ...input, fontSize: 12 }}
+                      />
                     </div>
-                    <div style={segWrap}>
-                      <SegButton active={!!b.italic} onClick={() => updateBlock(b.id, { italic: !b.italic })} title="Italic" last>
-                        <span style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 13, fontWeight: 600 }}>I</span>
-                      </SegButton>
+                  )}
+
+                  {kind === "discount" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <input
+                        type="text"
+                        value={b.discountCode ?? ""}
+                        onChange={(e) => updateBlock(b.id, { discountCode: e.target.value })}
+                        placeholder="e.g. SLEEP20"
+                        style={{ ...input, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        value={b.discountDescription ?? ""}
+                        onChange={(e) => updateBlock(b.id, { discountDescription: e.target.value })}
+                        placeholder="e.g. 20% off your first order"
+                        style={{ ...input, fontSize: 12 }}
+                      />
                     </div>
-                    <div style={{ ...segWrap, marginLeft: "auto" }}>
-                      {BLOCK_WEIGHTS.map((w, wi) => (
-                        <SegButton
-                          key={w.key}
-                          active={weight === w.key}
-                          onClick={() => updateBlock(b.id, { weight: w.key })}
-                          title={w.title}
-                          last={wi === BLOCK_WEIGHTS.length - 1}
-                        >{w.label}</SegButton>
-                      ))}
+                  )}
+
+                  {kind === "checklist" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <textarea
+                        value={(b.items ?? []).join("\n")}
+                        onChange={(e) => updateBlock(b.id, { items: e.target.value.split("\n") })}
+                        rows={4}
+                        placeholder={"One benefit per line, e.g.\nMagnesium bisglycinate\nL-theanine\nApigenin"}
+                        style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                      />
                     </div>
-                  </div>
-                  {/* Body */}
-                  <div style={{ padding: "0 10px 10px" }}>
-                    <textarea
-                      value={b.body}
-                      onChange={(e) => updateBlock(b.id, { body: e.target.value })}
-                      rows={3}
-                      style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
-                    />
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -882,6 +1266,45 @@ export default function CampaignEditor({
             {saving && <Spinner size={13} color="var(--bg)" />}
             {saving ? "Saving…" : savedId ? "Saved ✓ Update" : "Save campaign"}
           </button>
+          <span
+            title={
+              autosaveStatus === "saving" ? "Autosaving…"
+              : autosaveStatus === "dirty" ? "Unsaved changes"
+              : autosaveStatus === "saved" ? "Saved automatically"
+              : ""
+            }
+            style={{ fontSize: 11, color: "var(--subtle)", display: "inline-flex", alignItems: "center", gap: 5, minWidth: 90 }}
+          >
+            {autosaveStatus === "saving" && (<><Spinner size={10} />Saving…</>)}
+            {autosaveStatus === "dirty" && "Unsaved changes"}
+            {autosaveStatus === "saved" && "Saved just now"}
+          </span>
+          <div style={{ display: "inline-flex", gap: 2, borderLeft: "1px solid var(--border)", paddingLeft: 8, marginLeft: 2 }}>
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (⌘Z)"
+              style={{
+                width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
+                color: canUndo ? "var(--text)" : "var(--subtle)", cursor: canUndo ? "pointer" : "default",
+                fontFamily: "inherit", fontSize: 13, opacity: canUndo ? 1 : 0.5,
+              }}
+            >↺</button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (⌘⇧Z)"
+              style={{
+                width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
+                color: canRedo ? "var(--text)" : "var(--subtle)", cursor: canRedo ? "pointer" : "default",
+                fontFamily: "inherit", fontSize: 13, opacity: canRedo ? 1 : 0.5,
+              }}
+            >↻</button>
+          </div>
           <button className="btn-ghost" onClick={exportHtml}>↓ Export HTML</button>
           <button className="btn-ghost" onClick={copyHtml}>📋 {copyLabel}</button>
           <button

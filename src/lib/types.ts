@@ -515,6 +515,11 @@ export type CampaignImageSlot = {
 
 export type CampaignBlock = {
   id: string;
+  /** For kind "text" (or unset): the paragraph body — may contain inline
+   *  `**bold**` / `[text](url)` markup and `{{ merge_tag }}` personalization
+   *  tokens, both preserved verbatim by the "Improve with Claude" rewrite.
+   *  For kind "stat"/"discount": unused (their content lives in the
+   *  kind-specific fields below). For kind "checklist": unused, see `items`. */
   body: string;
   align: "left" | "center";
   italic?: boolean;
@@ -523,6 +528,32 @@ export type CampaignBlock = {
    *  Inter 100. Unset is treated as "light" so campaigns saved before this
    *  control render identically. */
   weight?: "thin" | "extralight" | "light" | "normal";
+  /** Block content type. Unset/"text" = the original free-prose paragraph
+   *  (back-compat: every block saved before this field existed renders
+   *  identically). "stat"/"discount"/"checklist" are structured callouts —
+   *  see the kind-specific fields below. */
+  kind?: "text" | "stat" | "discount" | "checklist";
+  /** kind "stat": the big number/headline, e.g. "558 reviews". */
+  statValue?: string;
+  /** kind "stat": the supporting caption, e.g. "91% five-star". */
+  statLabel?: string;
+  /** kind "discount": the code itself, e.g. "SLEEP20". */
+  discountCode?: string;
+  /** kind "discount": what it does, e.g. "20% off your first order". */
+  discountDescription?: string;
+  /** kind "checklist": one line per benefit/ingredient item. */
+  items?: string[];
+};
+
+/** A reusable block, banked from any campaign so it can be dropped into any
+ *  future one — a proven trust line, a standard sign-off, a review callout
+ *  you write over and over. Captures the whole block shape (minus id), not
+ *  just bare text, so a snippet is a complete, ready-to-drop block. */
+export type CampaignSnippet = {
+  id: string;
+  name: string;
+  block: Omit<CampaignBlock, "id">;
+  createdAt: string;
 };
 
 export type CampaignContent = {

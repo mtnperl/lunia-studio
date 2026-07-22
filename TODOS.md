@@ -1,5 +1,25 @@
 # TODOS — Lunia Script Studio
 
+## Campaign Editor — Capability Expansion (deferred from 2026-07-21 CEO review)
+
+### Full version history / snapshot timeline
+**Priority:** P3
+**What:** A restorable timeline of every save (not just the in-session undo/redo shipped 2026-07-21), with named/dated snapshots and a scrub-back-and-restore UI.
+**Why:** In-session undo/redo covers "I just made a bad edit"; it doesn't cover "I want to see what this campaign looked like yesterday" or survive a closed tab. Real value, but a much bigger lift.
+**Pros:** The strongest "nothing is ever truly lost" guarantee available; natural extension of the save pipeline already in place.
+**Cons:** Needs a snapshot store (new KV collection or versioned blob), a restore UI, and a retention/pruning policy — none of which the lighter undo/redo needed.
+**Context:** See `ceo-plans/2026-07-21-campaign-editor-tools.md` (Scope Decision #4) for the full reasoning — the user picked in-session undo/redo instead for now.
+**Effort:** L (human: ~2-3 days / CC: ~4-6h)
+
+### Keyboard shortcuts for common editor actions
+**Priority:** P3
+**What:** Shortcuts for new block, duplicate block, save, bold/italic while typing — Notion/Google-Docs-style speed instead of mouse-only toolbar clicks.
+**Why:** Real quality-of-life, but the lowest-leverage item surfaced in the 2026-07-21 editor review — layer on after the higher-value capability features (snippets, personalization, block types, undo/redo) have landed and settled.
+**Pros:** Cheap once the other foundations exist; power-user speed.
+**Cons:** None real; purely additive polish.
+**Context:** See `ceo-plans/2026-07-21-campaign-editor-tools.md` (Scope Decision #12).
+**Effort:** S (human: ~4-6h / CC: ~1h)
+
 ## UGC Tracker — Post-v1
 
 ### Performance loop hook

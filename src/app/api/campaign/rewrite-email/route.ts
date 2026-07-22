@@ -41,6 +41,8 @@ HARD BRAND RULE: NEVER use em dashes (—) or en dashes (–) ANYWHERE. Use comm
 
 You are improving an existing marketing email${topic?.trim() ? ` about "${topic.trim()}"` : ""}. Rewrite the subject line and each body block in Lunia voice: sharper, more specific, more Lunia. Keep each block's core intent and roughly its length. Do NOT merge, split, reorder, add, or drop blocks — return exactly ${cleanBlocks.length} block(s) in the same order. Keep the subject under 60 characters.
 
+HARD RULE: any block may contain personalization tokens like {{ first_name }} or inline markup like **bold** and [link text](url). Preserve every {{ ... }}, **...**, and [...](...) sequence EXACTLY verbatim, character-for-character, in the same position relative to the surrounding words. Never invent, remove, rename, or "clean up" one of these sequences, even if it looks unusual mid-sentence.
+
 Subject: "${(subject ?? "").trim()}"
 
 Blocks:
