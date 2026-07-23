@@ -138,13 +138,19 @@ function Section({ title, defaultCollapsed, children }: {
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+    // No overflow:hidden here — several children (the +Block/Snippets/
+    // Personalize/Brand-facts/Templates dropdown menus) are absolutely
+    // positioned and need to render outside this box's bounds. Corner
+    // rounding is done per-element below instead of via parent clipping.
+    <div style={{ border: "1px solid var(--border)", borderRadius: 8 }}>
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
         style={{
           display: "flex", alignItems: "center", gap: 8, width: "100%",
           padding: "10px 12px", border: "none", borderBottom: collapsed ? "none" : "1px solid var(--border)",
+          borderTopLeftRadius: 8, borderTopRightRadius: 8,
+          borderBottomLeftRadius: collapsed ? 8 : 0, borderBottomRightRadius: collapsed ? 8 : 0,
           background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
         }}
       >
@@ -566,6 +572,19 @@ export default function CampaignEditor({
     // iframe height is native.
     setIframeBodyHeight(f.contentDocument.body.scrollHeight);
     setPreviewLoading(false);
+    // An iframe is its own scrolling context — a mouse wheel over it never
+    // bubbles to the parent page, so with the cursor anywhere over the
+    // preview, scrolling silently does nothing (the preview itself has no
+    // internal overflow to consume the gesture either, since it's sized to
+    // fit its content exactly). Forward the wheel delta to the outer page
+    // so scrolling over the preview scrolls the editor like everywhere
+    // else. The iframe is fully remounted (new `key`) on every content
+    // change, so this listener never needs manual cleanup.
+    f.contentDocument.addEventListener(
+      "wheel",
+      (e: WheelEvent) => window.scrollBy(e.deltaX, e.deltaY),
+      { passive: true },
+    );
   }
 
   // Whenever the rendered HTML changes (a keystroke, a regeneration), flip
@@ -1796,7 +1815,24 @@ export default function CampaignEditor({
           <label style={fieldLabel}>Button link</label>
           <input type="text" value={content.cta.url}
             onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
-            style={input} />
+            style={{ ...input, marginBottom: 8 }} />
+          <label style={fieldLabel}>Button style</label>
+          <div style={segWrap}>
+            <SegButton
+              active={(content.cta.style ?? "cream") === "cream"}
+              onClick={() => patch({ cta: { ...latestContent.current.cta, style: "cream" } })}
+              title="Cream button, navy text (default)"
+            >Cream</SegButton>
+            <SegButton
+              active={content.cta.style === "navy"}
+              onClick={() => patch({ cta: { ...latestContent.current.cta, style: "navy" } })}
+              title="Navy button, white text"
+              last
+            >Navy</SegButton>
+          </div>
+          <div style={{ marginTop: 4, fontSize: 11, color: "var(--subtle)" }}>
+            Applies to the bottom button and the hero-image CTA overlay.
+          </div>
         </div>
         </Section>
 

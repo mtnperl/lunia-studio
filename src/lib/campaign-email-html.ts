@@ -276,10 +276,13 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // is still the source of truth that makes the whole hero tappable. The
   // bottom cream CTA below the email also remains as a guaranteed-render
   // fallback. Don't try to make this pixel-perfect in Outlook.
+  const ctaIsNavy = content.cta.style === "navy";
+  const ctaBg = ctaIsNavy ? NAVY : CREAM;
+  const ctaFg = ctaIsNavy ? "#ffffff" : NAVY;
   const heroCtaLabel = content.cta.label?.trim();
   const heroOverlay = hero?.url && heroCtaLabel
     ? `<div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
+         <span style="display:block;background:${ctaBg};color:${ctaFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
        </div>`
     : "";
   const heroHtml = hero?.url
@@ -341,7 +344,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // CTA button
   const ctaHtml = `<tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
     <a class="cta-link" href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
-      <span style="display:block;background:${CREAM};color:${NAVY};font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">${esc(
+      <span style="display:block;background:${ctaBg};color:${ctaFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">${esc(
         content.cta.label,
       )}</span>
     </a>

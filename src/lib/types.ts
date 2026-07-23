@@ -600,7 +600,11 @@ export type CampaignContent = {
   showLogo?: boolean;
   promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
   blocks: CampaignBlock[];       // ordered body text blocks
-  cta: { label: string; url: string };
+  /** style: "cream" (default, unset = cream) is the cream-pill/navy-text
+   *  button used since launch. "navy" inverts it to a solid navy button
+   *  with white text — a bolder, higher-contrast alternative. Applies to
+   *  both the bottom CTA button and the hero-image CTA overlay. */
+  cta: { label: string; url: string; style?: "cream" | "navy" };
   images: CampaignImageSlot[];   // 1 hero + 2–4 secondary
 };
 
