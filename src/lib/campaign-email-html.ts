@@ -205,18 +205,21 @@ function ingredientsBlock(b: CampaignBlock): string {
   </div>`;
 }
 
-/** Benefit/ingredient list. One <p> per item (no flexbox/absolute
- *  positioning — table-less bullets via a literal dash keep this safe in
- *  Outlook, same conservative approach as the rest of this template). */
+/** Benefit/ingredient checklist. A 2-cell table row per item — a cream
+ *  checkmark that stays top-aligned next to wrapping text (cleaner than the
+ *  old em-dash bullet). Table-based, no flexbox — Outlook-safe. */
 function checklistBlock(b: CampaignBlock): string {
   const items = (b.items ?? []).map((i) => i.trim()).filter(Boolean);
   if (items.length === 0) return "";
-  return items
+  const rows = items
     .map(
-      (item) =>
-        `<p style="margin:0 0 10px;color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;line-height:1.5;"><span style="color:${CREAM};">—</span>&nbsp;&nbsp;${esc(item)}</p>`,
+      (item) => `<tr>
+        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${CREAM};line-height:1.5;">&#10003;</td>
+        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">${esc(item)}</td>
+      </tr>`,
     )
     .join("");
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="table-layout:auto;">${rows}</table>`;
 }
 
 /** Top banner above the logo. Caps Inter on white. Wrap a fragment with
