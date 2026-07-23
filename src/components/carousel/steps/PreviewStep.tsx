@@ -194,7 +194,7 @@ function OverlayRow({ label, hint, enabled, onToggle, children, compact = false 
             style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
           />
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
-          <span style={{ fontSize: 10, color: "var(--subtle)" }}>{hint}</span>
+          <span style={{ fontSize: 10, color: "var(--muted)" }}>{hint}</span>
         </label>
         <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
       </div>
@@ -219,7 +219,7 @@ function OverlayRow({ label, hint, enabled, onToggle, children, compact = false 
         />
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
       </label>
-      <span style={{ fontSize: 10, color: "var(--subtle)", letterSpacing: "0.02em" }}>{hint}</span>
+      <span style={{ fontSize: 10, color: "var(--muted)", letterSpacing: "0.02em" }}>{hint}</span>
       <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
     </div>
   );
@@ -1554,7 +1554,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         title: "Settings",
         body: (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
             {sizeRow("Logo", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], logoScale, setLogoScale)}
             {sizeRow("Arrows", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], arrowScale, setArrowScale)}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1582,7 +1582,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               }}>9:16</button>
             </div>
             {/* Decoration toggles — hide arrows, slide numbers, or citation bars on any carousel. */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Decoration</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Decoration</div>
             {([
               { label: "Arrows", value: showSlideArrows, set: setShowSlideArrows },
               { label: "Numbers", value: showSlideNumbers, set: setShowSlideNumbers },
@@ -1598,7 +1598,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 }}>{row.value ? "Show" : "Hide"}</button>
               </div>
             ))}
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Text &amp; content</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Text &amp; content</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Slides bg</span>
               {([{ label: "Dark", color: "#01253f" }, { label: "Light", color: "#F7F4EF" }] as const).map(({ label, color }) => {
@@ -1621,14 +1621,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Custom</span>
               </label>
               {slideBgColor !== undefined && (
-                <button onClick={() => setSlideBgColor(undefined)} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--subtle)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}>×</button>
+                <button onClick={() => setSlideBgColor(undefined)} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}>×</button>
               )}
             </div>
             {contentBgImages.some((u) => !!u) && (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Bg dim</span>
                 <input type="range" min={0} max={0.9} step={0.05} value={contentBgOverlayOpacity} onChange={(e) => setContentBgOverlayOpacity(parseFloat(e.target.value))} style={{ width: 110 }} />
-                <span style={{ fontSize: 10, color: "var(--subtle)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
+                <span style={{ fontSize: 10, color: "var(--muted)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
               </div>
             )}
             {sizeRow("Citation", [18, 26, 36, 48], ["S", "M", "L", "XL"], citationFontSize, setCitationFontSize)}
@@ -1712,12 +1712,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Recap points</label>
-                <span style={{ fontSize: 10, color: "var(--subtle)", fontWeight: 600 }}>{points.length}/3</span>
+                <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>{points.length}/3</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {points.map((p, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ flexShrink: 0, width: 18, fontSize: 11, fontWeight: 700, color: "var(--subtle)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+                    <span style={{ flexShrink: 0, width: 18, fontSize: 11, fontWeight: 700, color: "var(--muted)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
                     <input
                       type="text"
                       value={p}
@@ -1979,7 +1979,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: 12, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, resize: "vertical" }}
             />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--subtle)" }}>{draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}</span>
+              <span style={{ fontSize: 10, color: "var(--muted)" }}>{draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}</span>
               <button
                 onClick={() => handleRegenerateGraphic(slideIdx, draft)}
                 disabled={isBusy || atLimit}
@@ -2076,7 +2076,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}
               >
                 <span>Full prompt sent to engine{content.hookImagePromptOverride ? " (edited)" : ""}</span>
-                <span style={{ color: "var(--subtle)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
+                <span style={{ color: "var(--muted)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
               </button>
               {fullPromptOpen && (
                 <div style={{ padding: "0 10px 10px" }}>
@@ -2099,7 +2099,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     placeholder="Server-assembled prompt will appear here. Edit to override."
                     style={{ width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.5, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface)" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--subtle)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--muted)" }}>
                     <span>{content.hookImagePromptOverride ? "Override is active — sent verbatim on next regen." : "Showing server default — edit to override."}</span>
                     {content.hookImagePromptOverride && (
                       <button
@@ -2445,13 +2445,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             letterSpacing: "0.08em", cursor: "pointer", fontFamily: "inherit",
           }}
         >
-          <span>Slide controls{!controlsOpen && <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: "normal", color: "var(--subtle)", marginLeft: 8 }}>— collapsed</span>}</span>
+          <span>Slide controls{!controlsOpen && <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: "normal", color: "var(--muted)", marginLeft: 8 }}>— collapsed</span>}</span>
           <span style={{ fontSize: 15, lineHeight: 1, transform: controlsOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>›</span>
         </button>
         {controlsOpen && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
         <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Branding &amp; format</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Branding &amp; format</div>
         {/* Row 1: decorative controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {/* Logo size */}
@@ -2518,7 +2518,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
         </div>
         <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Text &amp; content</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Text &amp; content</div>
         {/* Row 2: content style controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {/* Slide background — presets + free color picker. Custom color auto-derives ink from luminance. */}
@@ -2573,7 +2573,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 style={{
                   padding: "3px 8px", fontSize: 11, fontWeight: 600,
                   background: "transparent",
-                  color: "var(--subtle)",
+                  color: "var(--muted)",
                   border: "1px solid var(--border)", borderRadius: 5,
                   cursor: "pointer", fontFamily: "inherit",
                 }}
@@ -2596,7 +2596,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 title={`Overlay opacity ${Math.round(contentBgOverlayOpacity * 100)}% (lower = image more visible)`}
                 style={{ width: 90 }}
               />
-              <span style={{ fontSize: 10, color: "var(--subtle)", fontVariantNumeric: "tabular-nums", minWidth: 28, textAlign: "right" }}>
+              <span style={{ fontSize: 10, color: "var(--muted)", fontVariantNumeric: "tabular-nums", minWidth: 28, textAlign: "right" }}>
                 {Math.round(contentBgOverlayOpacity * 100)}%
               </span>
             </div>
@@ -2793,7 +2793,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             })()}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
             {(["editor", "feed"] as const).map((mode) => {
               const active = viewMode === mode;
               return (
@@ -2935,7 +2935,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 }}>
                   {slideLabels[i]}
                 </span>
-                <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
                   {i + 1}/{slideCount}
                 </span>
               </div>
@@ -3230,7 +3230,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                               title="Remove AI background"
                               style={{
                                 background: "transparent",
-                                color: "var(--subtle)",
+                                color: "var(--muted)",
                                 border: "1px solid var(--border)",
                                 borderRadius: 6,
                                 padding: "7px 10px",
@@ -3257,7 +3257,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Icons</span>
-                    <span style={{ fontSize: 10, color: "var(--subtle)" }}>{getSelectedIcons(i - 1).length}/4</span>
+                    <span style={{ fontSize: 10, color: "var(--muted)" }}>{getSelectedIcons(i - 1).length}/4</span>
                     <button
                       onClick={() => handleSuggestIcons(i - 1, { force: true })}
                       disabled={suggestingIcons === i - 1}
@@ -3366,7 +3366,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       }}
                     />
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
-                      <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+                      <span style={{ fontSize: 10, color: "var(--muted)" }}>
                         {draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}
                       </span>
                       <button
@@ -3513,7 +3513,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <div style={{ display: "grid", gap: 10, padding: "8px 0", borderTop: "1px dashed var(--border)" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap" }}>Background wash</span>
-                    <span style={{ fontSize: 10, color: "var(--subtle)", letterSpacing: "0.02em" }}>Veil between image and text</span>
+                    <span style={{ fontSize: 10, color: "var(--muted)", letterSpacing: "0.02em" }}>Veil between image and text</span>
                     <Segmented
                       label="Mode"
                       value={wash.mode}
@@ -3614,7 +3614,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}
               >
                 <span>Full prompt sent to engine{content.hookImagePromptOverride ? " (edited)" : ""}</span>
-                <span style={{ color: "var(--subtle)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
+                <span style={{ color: "var(--muted)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
               </button>
               {fullPromptOpen && (
                 <div style={{ padding: "0 10px 10px" }}>
@@ -3636,7 +3636,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     placeholder="Server-assembled prompt will appear here. Edit to override."
                     style={{ width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.5, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface)" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--subtle)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--muted)" }}>
                     <span>{content.hookImagePromptOverride ? "Override is active — sent verbatim on next regen." : "Showing server default — edit to override."}</span>
                     {content.hookImagePromptOverride && (
                       <button
@@ -3959,7 +3959,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         <div ref={editorRef}>
           {/* View toggle */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
             {(["editor", "feed"] as const).map((mode) => {
               const active = viewMode === mode;
               return (

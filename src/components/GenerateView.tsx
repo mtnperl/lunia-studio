@@ -131,7 +131,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         {/* Topic — required */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6, letterSpacing: ".02em" }}>
-            Topic <span style={{ color: "#e53e3e", fontWeight: 700 }}>*</span>
+            Topic <span style={{ color: "var(--error)", fontWeight: 700 }}>*</span>
           </label>
           <input
             type="text"
@@ -164,7 +164,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         {/* Subject notes */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
-            Subject notes <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+            Subject notes <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
           <textarea
             value={subjectNotes}
@@ -177,7 +177,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         {/* Specific instructions */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
-            Instructions <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+            Instructions <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
           <textarea
             value={instructions}
@@ -190,7 +190,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
         {/* Additional context */}
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
-            Additional context <span style={{ fontWeight: 400, color: "var(--subtle)" }}>(optional)</span>
+            Additional context <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
           <textarea value={context} onChange={(e) => setContext(e.target.value)}
             placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30–40F..."
@@ -251,7 +251,7 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
           <button className="btn" onClick={openInEditor} disabled={selectedHook === null} style={{ width: "100%", justifyContent: "center" }}>
             Open in editor →
           </button>
-          {selectedHook === null && <p style={{ textAlign: "center", fontSize: 12, color: "var(--subtle)", marginTop: 8 }}>Select a hook first</p>}
+          {selectedHook === null && <p style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginTop: 8 }}>Select a hook first</p>}
         </div>
       )}
     </div>

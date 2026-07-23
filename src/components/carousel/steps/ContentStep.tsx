@@ -302,7 +302,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Icons
                   </span>
-                  <span style={{ fontSize: 10, color: "var(--subtle)" }}>
+                  <span style={{ fontSize: 10, color: "var(--muted)" }}>
                     {getSelectedIcons(i).length}/4 selected
                   </span>
                   {getSelectedIcons(i).length > 0 && (

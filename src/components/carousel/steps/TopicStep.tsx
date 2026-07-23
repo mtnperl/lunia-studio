@@ -284,7 +284,7 @@ export default function TopicStep({ onNext }: Props) {
             letterSpacing: "0.02em",
           }}
         >
-          🎲 Try sample subject
+          Try sample subject
         </button>
         <button
           onClick={fetchSuggestions}

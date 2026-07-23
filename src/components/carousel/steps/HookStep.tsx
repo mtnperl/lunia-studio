@@ -183,7 +183,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
         >
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             Rewrite hook copy
-            <span style={{ fontWeight: 400, color: "var(--subtle)", marginLeft: 4 }}>
+            <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 4 }}>
               — 3 fresh hooks for this same deck
             </span>
           </span>
@@ -273,7 +273,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 14 }}>🎨</span>
             Hook image prompt
-            <span style={{ fontWeight: 400, color: "var(--subtle)", marginLeft: 4 }}>
+            <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 4 }}>
               — sent to Recraft V3 when you click Preview
             </span>
           </span>
@@ -414,7 +414,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                   <>↺ Generate 3 prompt directions</>
                 )}
               </button>
-              <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
                 Prompts retune to the selected mood.
               </span>
             </div>

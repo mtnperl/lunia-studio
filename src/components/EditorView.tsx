@@ -183,7 +183,7 @@ function ShotSheet({
             {(["setting", "energy", "broll", "director"] as const).map((field) => (
               <div key={field} style={{ marginBottom: 8 }}>
                 <label style={{
-                  display: "block", fontSize: 10, fontWeight: 700, color: "var(--subtle)",
+                  display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)",
                   marginBottom: 3, textTransform: "uppercase", letterSpacing: ".07em",
                 }}>
                   {field === "broll" ? "B-Roll" : field === "director" ? "Director" : field.charAt(0).toUpperCase() + field.slice(1)}
@@ -557,7 +557,7 @@ export default function EditorView({
 
         {/* Autosave indicator */}
         {saveLabel && (
-          <span style={{ fontSize: 11, color: isDirty ? "var(--warning)" : "var(--subtle)", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
+          <span style={{ fontSize: 11, color: isDirty ? "var(--warning)" : "var(--muted)", whiteSpace: "nowrap", fontFamily: "var(--font-mono)" }}>
             {saveLabel}
           </span>
         )}
@@ -815,7 +815,7 @@ export default function EditorView({
                         style={{
                           width: 16, height: 16, borderRadius: 3, fontSize: 11, lineHeight: 1,
                           background: "var(--surface-h)", border: "1px solid var(--border-strong)",
-                          color: "var(--subtle)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                           padding: 0,
                         }}
                       >×</button>
@@ -990,7 +990,7 @@ export default function EditorView({
                 {/* Comments */}
                 <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
                   <p className="section-label" style={{ marginBottom: 10 }}>
-                    Comments {selectedComments.length > 0 && <span style={{ fontWeight: 400, color: "var(--subtle)" }}>({selectedComments.length})</span>}
+                    Comments {selectedComments.length > 0 && <span style={{ fontWeight: 400, color: "var(--muted)" }}>({selectedComments.length})</span>}
                   </p>
                   {selectedComments.length === 0 ? (
                     <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>No comments on this line yet.</p>
@@ -1041,7 +1041,7 @@ export default function EditorView({
                   <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6 }}>
                     Click any line to add comments and filming notes.
                   </p>
-                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--subtle)", flexWrap: "wrap" }}>
+                  <div style={{ marginTop: 10, display: "flex", gap: 12, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block" }} /> Comments
                     </span>

@@ -2,19 +2,18 @@
 
 ## UX overhaul — next screens (from 2026-07-23 CEO review)
 
-### Carousel builder UX overhaul
-**Priority:** P2
-**What:** Apply the same overhaul the campaign editor got to the carousel builder (`CarouselViewV2.tsx`): adopt the `src/components/ui/` primitives (Button/IconButton/Label/Section), one hero action per zone, comfortable hit targets, SVG icons (keep `✨` only on AI actions), `--muted`/`--text` contrast (no `--subtle` on interactive text).
-**Why:** User-designated next screen. The app-wide theme revert (2026-07-23) already re-themed its tokens; this is the deeper control-level pass so the whole studio reads as one system.
-**Context:** The editor overhaul (this PR) is the reference implementation — mirror its `ui/` adoption and Fork-B grouping. See `~/.gstack/projects/mtnperl-lunia-studio/ceo-plans` / the approved plan `rosy-moseying-karp`.
-**Effort:** M (CC ~40min). **Depends on:** `ui/` primitives (shipped this PR).
+### Carousel builder — deeper ui/ migration (partial done)
+**Priority:** P3
+**Done (2026-07-23):** Contrast pass — `--subtle`→`--muted` across `CarouselView` + all `carousel/steps/*`, dropped the `🎲` chrome emoji, kept `✨` on AI actions. Inherits the Apple theme app-wide. This addressed the gray/low-contrast complaint.
+**Remaining:** The deep per-control migration of the dense `PreviewStep.tsx` (~2000 lines) and other step inspectors onto the `src/components/ui/` primitives (Button/IconButton) with one-hero-per-zone hierarchy and SVG glyph buttons (↑↓× → icons). Deferred: high line-count, low marginal value once contrast + theme are fixed, and risky to do blind.
+**Context:** The campaign editor is the reference implementation.
+**Effort:** M-L (CC). **Depends on:** `ui/` primitives (shipped).
 
-### Script creator UX overhaul
-**Priority:** P2
-**What:** Same treatment for the script creator (`GenerateView.tsx` and the script `EditorView.tsx`): `ui/` primitives, hierarchy, hit targets, SVG icons, contrast fixes.
-**Why:** User-designated next screen, alongside the carousel builder.
-**Context:** Same reference implementation as above.
-**Effort:** M (CC ~40min). **Depends on:** `ui/` primitives (shipped this PR).
+### Script creator — deeper ui/ migration (mostly done)
+**Priority:** P3
+**Done (2026-07-23):** `GenerateView` + `EditorView` contrast pass (`--subtle`→`--muted` on labels/status/controls, hardcoded red → `--error`). Both already used `.btn`/`.btn-ghost`/`.card` (Apple primary/secondary), so they were mostly compliant.
+**Remaining (optional):** Adopt the `ui/` Button/IconButton primitives explicitly and convert the small gutter glyph buttons (`+`/`×`) to SVG. Low priority — the screens already read correctly on the Apple theme.
+**Effort:** S (CC).
 
 ### Split CampaignEditor.tsx into sub-components (deferred from this PR)
 **Priority:** P3

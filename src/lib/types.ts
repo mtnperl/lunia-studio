@@ -602,9 +602,11 @@ export type CampaignContent = {
   blocks: CampaignBlock[];       // ordered body text blocks
   /** style: "cream" (default, unset = cream) is the cream-pill/navy-text
    *  button used since launch. "navy" inverts it to a solid navy button
-   *  with white text — a bolder, higher-contrast alternative. Applies to
-   *  both the bottom CTA button and the hero-image CTA overlay. */
-  cta: { label: string; url: string; style?: "cream" | "navy" };
+   *  with white text. `style` controls the bottom CTA button.
+   *  `heroStyle` controls the hero-image CTA overlay independently; when
+   *  unset it falls back to `style` (back-compat with saves that predate
+   *  the split). */
+  cta: { label: string; url: string; style?: "cream" | "navy"; heroStyle?: "cream" | "navy" };
   images: CampaignImageSlot[];   // 1 hero + 2–4 secondary
 };
 

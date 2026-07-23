@@ -1755,22 +1755,43 @@ export default function CampaignEditor({
           <input type="text" value={content.cta.url}
             onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
             style={{ ...input, marginBottom: 8 }} />
-          <label style={fieldLabel}>Button style</label>
-          <div style={segWrap}>
-            <SegButton
-              active={(content.cta.style ?? "cream") === "cream"}
-              onClick={() => patch({ cta: { ...latestContent.current.cta, style: "cream" } })}
-              title="Cream button, navy text (default)"
-            >Cream</SegButton>
-            <SegButton
-              active={content.cta.style === "navy"}
-              onClick={() => patch({ cta: { ...latestContent.current.cta, style: "navy" } })}
-              title="Navy button, white text"
-              last
-            >Navy</SegButton>
+          {/* Bottom button and hero overlay styled independently. */}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <label style={fieldLabel}>Bottom button</label>
+              <div style={segWrap}>
+                <SegButton
+                  active={(content.cta.style ?? "cream") === "cream"}
+                  onClick={() => patch({ cta: { ...latestContent.current.cta, style: "cream" } })}
+                  title="Cream button, navy text (default)"
+                >Cream</SegButton>
+                <SegButton
+                  active={content.cta.style === "navy"}
+                  onClick={() => patch({ cta: { ...latestContent.current.cta, style: "navy" } })}
+                  title="Navy button, white text"
+                  last
+                >Navy</SegButton>
+              </div>
+            </div>
+            <div>
+              <label style={fieldLabel}>Hero overlay</label>
+              <div style={segWrap}>
+                <SegButton
+                  active={(content.cta.heroStyle ?? content.cta.style ?? "cream") === "cream"}
+                  onClick={() => patch({ cta: { ...latestContent.current.cta, heroStyle: "cream" } })}
+                  title="Cream overlay on the hero image, navy text"
+                >Cream</SegButton>
+                <SegButton
+                  active={(content.cta.heroStyle ?? content.cta.style) === "navy"}
+                  onClick={() => patch({ cta: { ...latestContent.current.cta, heroStyle: "navy" } })}
+                  title="Navy overlay on the hero image, white text"
+                  last
+                >Navy</SegButton>
+              </div>
+            </div>
           </div>
-          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)" }}>
-            Applies to the bottom button and the hero-image CTA overlay.
+          <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
+            The bottom CTA button and the hero-image overlay are styled independently.
           </div>
         </div>
         </Section>
