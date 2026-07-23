@@ -178,6 +178,33 @@ function comparisonBlock(b: CampaignBlock): string {
   </table>`;
 }
 
+/** Supplement-facts panel: a cream label pasted onto the navy email, with a
+ *  header rule, name + dose rows separated by thin dividers, and an optional
+ *  centered trust footnote. Table-based, right-aligned dose column, no
+ *  flexbox — Outlook-safe like the rest of the template. Renders only when at
+ *  least one item has a name. */
+function ingredientsBlock(b: CampaignBlock): string {
+  const items = (b.ingredientItems ?? []).filter((i) => i.name?.trim());
+  if (items.length === 0) return "";
+  const heading = (b.ingredientHeading?.trim() || "What's inside");
+  const footnote = b.ingredientFootnote?.trim();
+  const rows = items
+    .map((it, idx) => {
+      const pad = idx === 0 ? "0 0 10px 0" : "10px 0";
+      const border = idx === 0 ? "none" : "1px solid #dcd7c6";
+      return `<tr>
+        <td style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:${NAVY};line-height:1.3;">${esc(it.name)}</td>
+        <td align="right" style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${NAVY};white-space:nowrap;">${esc(it.dose || "")}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<div style="background:${CREAM};border-radius:8px;padding:20px 22px;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${NAVY};padding-bottom:12px;border-bottom:2px solid ${NAVY};margin-bottom:12px;">${esc(heading)}</div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:auto;">${rows}</table>
+    ${footnote ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#4d6a7d;text-align:center;margin-top:16px;letter-spacing:0.02em;">${esc(footnote)}</div>` : ""}
+  </div>`;
+}
+
 /** Benefit/ingredient list. One <p> per item (no flexbox/absolute
  *  positioning — table-less bullets via a literal dash keep this safe in
  *  Outlook, same conservative approach as the rest of this template). */
@@ -323,6 +350,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
       : b.kind === "timeline" ? timelineBlock(b)
       : b.kind === "trustgrid" ? trustgridBlock(b)
       : b.kind === "comparison" ? comparisonBlock(b)
+      : b.kind === "ingredients" ? ingredientsBlock(b)
       : paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light");
     if (!inner) return "";
     return `<tr><td class="h-padding" style="padding:0 24px 16px;">

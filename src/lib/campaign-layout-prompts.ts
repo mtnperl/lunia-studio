@@ -46,6 +46,12 @@ export const LayoutBlockSchema = z.discriminatedUnion("kind", [
     comparisonRightPrice: z.string().optional(),
     comparisonRightPerk: z.string().optional(),
   }),
+  z.object({
+    kind: z.literal("ingredients"),
+    ingredientHeading: z.string().optional(),
+    ingredientItems: z.array(z.object({ name: z.string(), dose: z.string() })).min(1).max(8),
+    ingredientFootnote: z.string().optional(),
+  }),
 ]);
 
 export const LayoutSuggestionSchema = z.object({
@@ -72,6 +78,7 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 { "kind": "timeline", "timelineRows": [{ "label": "e.g. '30 DAYS'", "text": "e.g. '85% felt more energy'" }] }
 { "kind": "trustgrid", "trustItems": [{ "caption": "one short trust point" }] }
 { "kind": "comparison", "comparisonLeftLabel": "e.g. 'One-time'", "comparisonLeftPrice": "e.g. '$34.99'", "comparisonLeftPerk": "e.g. 'Ships once'", "comparisonRightLabel": "e.g. 'Subscribe'", "comparisonRightPrice": "e.g. '$29.20'", "comparisonRightPerk": "e.g. 'Save 15%, cancel anytime'" }
+{ "kind": "ingredients", "ingredientHeading": "e.g. 'What's inside'", "ingredientItems": [{ "name": "Magnesium Glycinate", "dose": "400mg" }, { "name": "L-Theanine", "dose": "200mg" }, { "name": "Apigenin", "dose": "50mg" }], "ingredientFootnote": "e.g. 'Melatonin-free, third-party tested'" }
 
 Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
 
@@ -123,6 +130,13 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
         comparisonRightLabel: stripDashes(b.comparisonRightLabel),
         comparisonRightPrice: b.comparisonRightPrice,
         comparisonRightPerk: b.comparisonRightPerk ? stripDashes(b.comparisonRightPerk) : undefined,
+      };
+    case "ingredients":
+      return {
+        ...base,
+        ingredientHeading: b.ingredientHeading ? stripDashes(b.ingredientHeading) : "What's inside",
+        ingredientItems: b.ingredientItems.map((it) => ({ name: stripDashes(it.name), dose: it.dose })),
+        ingredientFootnote: b.ingredientFootnote ? stripDashes(b.ingredientFootnote) : undefined,
       };
   }
 }

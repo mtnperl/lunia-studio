@@ -32,6 +32,15 @@ const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
   { key: "timeline", label: "Timeline", title: "A results-over-time progression (e.g. Day 30, Day 60...)" },
   { key: "trustgrid", label: "Trust grid", title: "A 2-column grid of image + caption trust points" },
   { key: "comparison", label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
+  { key: "ingredients", label: "Ingredients", title: "A supplement-facts panel: ingredient name + dose rows" },
+];
+
+// Prefilled Lunia formula for a new ingredients block — editable, so it's one
+// tweak instead of typing the whole label from scratch.
+const LUNIA_INGREDIENTS: { name: string; dose: string }[] = [
+  { name: "Magnesium Glycinate", dose: "400mg" },
+  { name: "L-Theanine", dose: "200mg" },
+  { name: "Apigenin", dose: "50mg" },
 ];
 
 // Klaviyo merge-tag presets. `|default:'...'` keeps a broken/missing profile
@@ -70,6 +79,7 @@ function blockPreviewText(b: CampaignBlock): string {
     b.items?.join(", ") ||
     b.timelineRows?.map((r) => r.label).join(", ") ||
     b.trustItems?.map((t) => t.caption).join(", ") ||
+    b.ingredientItems?.map((it) => it.name).join(", ") ||
     b.comparisonLeftLabel ||
     "—"
   );
@@ -591,6 +601,11 @@ export default function CampaignEditor({
     if (kind === "testimonial") base.testimonialStars = 5;
     if (kind === "timeline") base.timelineRows = [];
     if (kind === "trustgrid") base.trustItems = [];
+    if (kind === "ingredients") {
+      base.ingredientHeading = "What's inside";
+      base.ingredientItems = LUNIA_INGREDIENTS.map((it) => ({ ...it }));
+      base.ingredientFootnote = "Melatonin-free · Third-party tested";
+    }
     commit({ ...c, blocks: [...c.blocks, base] });
   }
   // Duplicates the currently-focused block (Cmd+D), falling back to the last
@@ -1681,6 +1696,28 @@ export default function CampaignEditor({
                         <input type="text" value={b.comparisonRightLabel ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightLabel: e.target.value })} placeholder="e.g. Subscribe & save" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonRightPrice ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPrice: e.target.value })} placeholder="e.g. $69" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonRightPerk ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPerk: e.target.value })} placeholder="e.g. Free shipping, cancel anytime" style={{ ...input, fontSize: 12 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {kind === "ingredients" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Panel heading</span>
+                        <input type="text" value={b.ingredientHeading ?? ""} onChange={(e) => updateBlock(b.id, { ingredientHeading: e.target.value })} placeholder="e.g. What's inside" style={{ ...input, fontSize: 12 }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Ingredients (name + dose)</span>
+                        <RepeatableRows
+                          rows={b.ingredientItems ?? []}
+                          fields={[{ key: "name", placeholder: "Ingredient, e.g. Magnesium Glycinate" }, { key: "dose", placeholder: "Dose, e.g. 400mg" }]}
+                          onChange={(next) => updateBlock(b.id, { ingredientItems: next })}
+                          addLabel="+ Ingredient"
+                        />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Trust line (optional)</span>
+                        <input type="text" value={b.ingredientFootnote ?? ""} onChange={(e) => updateBlock(b.id, { ingredientFootnote: e.target.value })} placeholder="e.g. Melatonin-free · Third-party tested" style={{ ...input, fontSize: 12 }} />
                       </div>
                     </div>
                   )}

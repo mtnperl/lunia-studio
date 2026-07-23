@@ -532,7 +532,7 @@ export type CampaignBlock = {
    *  (back-compat: every block saved before this field existed renders
    *  identically). All other kinds are structured callouts — see the
    *  kind-specific fields below. */
-  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison";
+  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison" | "ingredients";
   /** kind "stat": the big number/headline, e.g. "558 reviews". */
   statValue?: string;
   /** kind "stat": the supporting caption, e.g. "91% five-star". */
@@ -572,6 +572,13 @@ export type CampaignBlock = {
   comparisonRightLabel?: string;
   comparisonRightPrice?: string;
   comparisonRightPerk?: string;
+  /** kind "ingredients": a supplement-facts panel. `ingredientHeading` is the
+   *  panel title (e.g. "What's inside"), `ingredientItems` the name+dose rows,
+   *  `ingredientFootnote` an optional trust line (e.g. "Melatonin-free ·
+   *  Third-party tested"). Renders only when at least one item has a name. */
+  ingredientHeading?: string;
+  ingredientItems?: { name: string; dose: string }[];
+  ingredientFootnote?: string;
 };
 
 /** A reusable block, banked from any campaign so it can be dropped into any
