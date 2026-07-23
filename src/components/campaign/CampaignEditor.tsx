@@ -12,6 +12,7 @@ import { layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import {
   IcAlignLeft, IcAlignCenter, IcCopy, IcCheck, IcTrash, IcBookmarkPlus, IcDragHandle,
   IcChevron, IcDownload, IcSend, IcUndo, IcRedo, IcRefresh, IcPlus,
@@ -1530,14 +1531,14 @@ export default function CampaignEditor({
                       </div>
                       {/* Body — supports **bold**, [text](url), and {{ merge_tags }} */}
                       <div style={{ padding: "0 10px 10px" }}>
-                        <textarea
-                          ref={insertHook.registerTextarea(b.id)}
+                        <AutoTextarea
+                          registerRef={insertHook.registerTextarea(b.id)}
                           onFocus={() => insertHook.onFocusBlock(b.id)}
                           value={b.body}
                           onChange={(e) => updateBlock(b.id, { body: e.target.value })}
-                          rows={3}
+                          minHeight={64}
                           placeholder="**bold**, [link text](url), {{ first_name }} all supported"
-                          style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                          style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
                         />
                       </div>
                     </>
@@ -1599,24 +1600,24 @@ export default function CampaignEditor({
 
                   {kind === "checklist" && (
                     <div style={{ padding: "8px 10px 10px" }}>
-                      <textarea
+                      <AutoTextarea
                         value={(b.items ?? []).join("\n")}
                         onChange={(e) => updateBlock(b.id, { items: e.target.value.split("\n") })}
-                        rows={4}
+                        minHeight={84}
                         placeholder={"One benefit per line, e.g.\nMagnesium bisglycinate\nL-theanine\nApigenin"}
-                        style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
                       />
                     </div>
                   )}
 
                   {kind === "testimonial" && (
                     <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                      <textarea
+                      <AutoTextarea
                         value={b.testimonialQuote ?? ""}
                         onChange={(e) => updateBlock(b.id, { testimonialQuote: e.target.value })}
-                        rows={2}
+                        minHeight={52}
                         placeholder="e.g. Falling asleep used to take an hour. Now it takes ten minutes."
-                        style={{ ...input, resize: "vertical", lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
                       />
                       <input
                         type="text"
