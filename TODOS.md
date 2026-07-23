@@ -1,5 +1,28 @@
 # TODOS — Lunia Script Studio
 
+## UX overhaul — next screens (from 2026-07-23 CEO review)
+
+### Carousel builder UX overhaul
+**Priority:** P2
+**What:** Apply the same overhaul the campaign editor got to the carousel builder (`CarouselViewV2.tsx`): adopt the `src/components/ui/` primitives (Button/IconButton/Label/Section), one hero action per zone, comfortable hit targets, SVG icons (keep `✨` only on AI actions), `--muted`/`--text` contrast (no `--subtle` on interactive text).
+**Why:** User-designated next screen. The app-wide theme revert (2026-07-23) already re-themed its tokens; this is the deeper control-level pass so the whole studio reads as one system.
+**Context:** The editor overhaul (this PR) is the reference implementation — mirror its `ui/` adoption and Fork-B grouping. See `~/.gstack/projects/mtnperl-lunia-studio/ceo-plans` / the approved plan `rosy-moseying-karp`.
+**Effort:** M (CC ~40min). **Depends on:** `ui/` primitives (shipped this PR).
+
+### Script creator UX overhaul
+**Priority:** P2
+**What:** Same treatment for the script creator (`GenerateView.tsx` and the script `EditorView.tsx`): `ui/` primitives, hierarchy, hit targets, SVG icons, contrast fixes.
+**Why:** User-designated next screen, alongside the carousel builder.
+**Context:** Same reference implementation as above.
+**Effort:** M (CC ~40min). **Depends on:** `ui/` primitives (shipped this PR).
+
+### Split CampaignEditor.tsx into sub-components (deferred from this PR)
+**Priority:** P3
+**What:** Split the ~1900-line `CampaignEditor.tsx` into an orchestrator + `CampaignLivePreview/HeaderFields/BlocksPanel/ImagesPanel/ActionsBar`, orchestrator owning shared state.
+**Why:** Approved in the 2026-07-23 plan but deferred at implementation: a blind 6-file split done in the same pass as an app-wide theme revert has un-bisectable, non-compiler-checkable prop-threading risk (undo/redo, autosave, insertHook, keyboard effect) for zero user-visible value. Safer in its own PR, verified in isolation. State transforms are already extracted + tested in `campaign-editor-state.ts`, which de-risks the split.
+**Context:** See the "Failure Modes Registry" in the `rosy-moseying-karp` plan.
+**Effort:** M (CC ~40min). **Depends on:** nothing (state module already extracted).
+
 ## Campaign Editor — Capability Expansion (deferred from 2026-07-21 CEO review)
 
 ### Full version history / snapshot timeline

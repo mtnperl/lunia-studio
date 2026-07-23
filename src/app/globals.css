@@ -1,23 +1,26 @@
-@import url("https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
 @import "tailwindcss";
 
-/* ── Monday Studio — Light (default) ──────────────────────────────────── */
+/* ── Apple-Inspired Studio — Light (default) ──────────────────────────────
+   Source of truth: DESIGN.md. White #FFFFFF, near-black #1D1D1F accent,
+   no shadows (elevation = background shift), Inter/Cormorant/Fira. */
 :root {
-  --bg:            #f6f7fb;
-  --surface:       #ffffff;
-  --surface-r:     #f5f6f8;
-  --surface-h:     #eef0f7;
-  --text:          #323338;
-  --muted:         #676879;
-  --subtle:        #9699a6;
-  --accent:        #0073ea;
-  --accent-hover:  #0060b9;
-  --accent-dim:    rgba(0, 115, 234, 0.10);
-  --accent-mid:    rgba(0, 115, 234, 0.22);
-  --border:        #d0d4e4;
-  --border-strong: #c3c6d4;
+  --bg:            #ffffff;
+  --surface:       #f5f5f7;
+  --surface-r:     #ebebed;
+  --surface-h:     #e3e3e8;
+  --text:          #1d1d1f;
+  --muted:         #6e6e73;
+  --subtle:        #98989d;
+  --accent:        #1d1d1f;
+  --accent-hover:  #3a3a3c;
+  --accent-dim:    rgba(0, 0, 0, 0.06);
+  --accent-mid:    rgba(0, 0, 0, 0.16);
+  --border:        #d2d2d7;
+  --border-strong: #bcbcc5;
 
-  /* Monday status palette — carry meaning */
+  /* Categorical status palette — chip fills only (DESIGN.md is silent on
+     chips; semantic --success/--warning/--error below use Apple values). */
   --mon-green:   #00c875;
   --mon-yellow:  #fdab3d;
   --mon-red:     #e2445c;
@@ -28,14 +31,14 @@
   --mon-teal:    #00a09d;
   --mon-grey:    #c4c4c4;
 
-  --success: var(--mon-green);
-  --warning: var(--mon-yellow);
-  --error:   var(--mon-red);
+  --success: #1c7a3a;
+  --warning: #b86040;
+  --error:   #c40000;
 
-  /* Typography */
-  --font-ui:    'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-  --font-serif: 'Figtree', -apple-system, sans-serif;
-  --font-mono:  'JetBrains Mono', 'SF Mono', Menlo, monospace;
+  /* Typography — DESIGN.md */
+  --font-ui:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-mono:  'Fira Code', 'SF Mono', Menlo, monospace;
 
   /* Radii */
   --r-sm: 4px;
@@ -43,10 +46,11 @@
   --r-lg: 12px;
   --r-xl: 16px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(29, 30, 64, 0.06), 0 1px 3px rgba(29, 30, 64, 0.04);
-  --shadow-md: 0 4px 14px rgba(29, 30, 64, 0.08), 0 1px 3px rgba(29, 30, 64, 0.04);
-  --shadow-lg: 0 12px 32px rgba(29, 30, 64, 0.14), 0 2px 6px rgba(29, 30, 64, 0.06);
+  /* Shadows — DESIGN.md forbids box-shadows (elevation = bg shift + border).
+     Kept as tokens set to none so any consumer resolves cleanly. */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
 
   /* Legacy aliases */
   --black: #000;
@@ -54,36 +58,43 @@
 }
 
 [data-theme="light"] {
-  --bg:            #f6f7fb;
-  --surface:       #ffffff;
-  --surface-r:     #f5f6f8;
-  --surface-h:     #eef0f7;
-  --text:          #323338;
-  --muted:         #676879;
-  --subtle:        #9699a6;
-  --accent:        #0073ea;
-  --accent-hover:  #0060b9;
-  --accent-dim:    rgba(0, 115, 234, 0.10);
-  --accent-mid:    rgba(0, 115, 234, 0.22);
-  --border:        #d0d4e4;
-  --border-strong: #c3c6d4;
+  --bg:            #ffffff;
+  --surface:       #f5f5f7;
+  --surface-r:     #ebebed;
+  --surface-h:     #e3e3e8;
+  --text:          #1d1d1f;
+  --muted:         #6e6e73;
+  --subtle:        #98989d;
+  --accent:        #1d1d1f;
+  --accent-hover:  #3a3a3c;
+  --accent-dim:    rgba(0, 0, 0, 0.06);
+  --accent-mid:    rgba(0, 0, 0, 0.16);
+  --border:        #d2d2d7;
+  --border-strong: #bcbcc5;
+  --success: #1c7a3a;
+  --warning: #b86040;
+  --error:   #c40000;
 }
 
-/* ── Monday Studio — Dark ─────────────────────────────────────────────── */
+/* ── Apple-Inspired Studio — Dark (warm atelier) ──────────────────────────
+   DESIGN.md dark: warm near-black #0D0C0A, gold #C8A96E accent. */
 [data-theme="dark"] {
-  --bg:            #181b34;
-  --surface:       #1f2048;
-  --surface-r:     #292b50;
-  --surface-h:     #323464;
-  --text:          #e7e8f5;
-  --muted:         #a7abc7;
-  --subtle:        #6a6e93;
-  --accent:        #579bfc;
-  --accent-hover:  #4a88e8;
-  --accent-dim:    rgba(87, 155, 252, 0.14);
-  --accent-mid:    rgba(87, 155, 252, 0.30);
-  --border:        #3f4174;
-  --border-strong: #50539a;
+  --bg:            #0d0c0a;
+  --surface:       #171512;
+  --surface-r:     #201e1b;
+  --surface-h:     #252219;
+  --text:          #ede8df;
+  --muted:         #7a7268;
+  --subtle:        #4a4640;
+  --accent:        #c8a96e;
+  --accent-hover:  #d4b87e;
+  --accent-dim:    rgba(200, 169, 110, 0.12);
+  --accent-mid:    rgba(200, 169, 110, 0.30);
+  --border:        #2a2723;
+  --border-strong: #332f2b;
+  --success: #5f9e75;
+  --warning: #c47a5a;
+  --error:   #b85c5c;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -113,16 +124,15 @@ html, body {
   background: var(--accent); color: #ffffff;
   border: 1px solid var(--accent); cursor: pointer;
   border-radius: var(--r-md);
-  transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
   font-family: var(--font-ui);
   letter-spacing: 0;
   line-height: 1.2;
   min-height: 32px;
-  box-shadow: var(--shadow-sm);
 }
 .btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn:active { transform: translateY(1px); box-shadow: none; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; background: var(--accent); transform: none; }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-mid); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; background: var(--accent); }
 
 .btn-ghost {
   display: inline-flex; align-items: center; gap: 6px;
@@ -137,6 +147,48 @@ html, body {
 }
 .btn-ghost:hover { background: var(--surface-h); border-color: var(--subtle); }
 .btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── ui/ control system (Apple, DESIGN.md) ─────────────────────────────────
+   Shared, app-adoptable button vocabulary. One accent, 1px borders, no
+   shadows. Rest state uses --text (readable) so controls never read as
+   disabled; disabled is reserved for genuinely unavailable actions. */
+.ui-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--font-ui); font-weight: 500; line-height: 1;
+  border-radius: var(--r-sm); cursor: pointer; white-space: nowrap;
+  border: 1px solid transparent;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+}
+.ui-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-mid); }
+.ui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ui-btn--sm { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.ui-btn--md { min-height: 36px; padding: 0 16px; font-size: 13px; }
+.ui-btn--primary   { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ui-btn--primary:not(:disabled):hover   { background: var(--accent-hover); border-color: var(--accent-hover); }
+.ui-btn--secondary { background: transparent; color: var(--text); border-color: var(--border-strong); }
+.ui-btn--secondary:not(:disabled):hover { background: var(--surface-h); border-color: var(--border-strong); }
+.ui-btn--ghost     { background: transparent; color: var(--text); border-color: transparent; }
+.ui-btn--ghost:not(:disabled):hover     { background: var(--surface-h); }
+.ui-btn--danger    { background: transparent; color: var(--error); border-color: var(--border-strong); }
+.ui-btn--danger:not(:disabled):hover    { background: var(--surface-h); border-color: var(--error); }
+.ui-btn--selected  { background: var(--accent-dim); color: var(--text); border-color: var(--accent); }
+
+.ui-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; flex-shrink: 0;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text); cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+}
+.ui-icon-btn:not(:disabled):hover { background: var(--surface-h); border-color: var(--border-strong); }
+.ui-icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-mid); }
+.ui-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ui-icon-btn--active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.ui-icon-btn--danger { color: var(--error); }
+.ui-icon-btn--danger:not(:disabled):hover { border-color: var(--error); background: var(--surface-h); }
+
+/* Divider between control clusters (destructive split, action groups). */
+.ui-divider-v { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
 
 /* ── Form elements ─────────────────────────────────────────────────────── */
 input, textarea, select {
@@ -161,12 +213,10 @@ select option { background: var(--surface); color: var(--text); }
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 .card:hover {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
 }
 
 /* ── Status chips (Monday pill system) ─────────────────────────────────── */
@@ -199,7 +249,7 @@ select option { background: var(--surface); color: var(--text); }
 /* ── Modal ─────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(29, 30, 64, 0.50);
+  background: rgba(0, 0, 0, 0.40);
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
 }

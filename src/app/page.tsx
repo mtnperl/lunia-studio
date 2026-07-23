@@ -34,21 +34,23 @@ const SHOW_VIDEO = false;
 type Tab = "home" | "generate" | "editor" | "library" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "assets" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business" | "assets";
 
+// Runtime theme tokens (override globals.css :root on mount). Source of
+// truth: DESIGN.md — Apple-Inspired Studio. Keep in lockstep with globals.css.
 const LIGHT_VARS: Record<string, string> = {
-  "--bg": "#f6f7fb", "--surface": "#ffffff", "--surface-r": "#f5f6f8",
-  "--surface-h": "#eef0f7", "--text": "#323338", "--muted": "#676879",
-  "--subtle": "#9699a6", "--accent": "#0073ea", "--accent-hover": "#0060b9",
-  "--accent-dim": "rgba(0, 115, 234, 0.10)", "--accent-mid": "rgba(0, 115, 234, 0.22)",
-  "--border": "#d0d4e4", "--border-strong": "#c3c6d4",
-  "--success": "#00c875", "--warning": "#fdab3d", "--error": "#e2445c",
+  "--bg": "#ffffff", "--surface": "#f5f5f7", "--surface-r": "#ebebed",
+  "--surface-h": "#e3e3e8", "--text": "#1d1d1f", "--muted": "#6e6e73",
+  "--subtle": "#98989d", "--accent": "#1d1d1f", "--accent-hover": "#3a3a3c",
+  "--accent-dim": "rgba(0, 0, 0, 0.06)", "--accent-mid": "rgba(0, 0, 0, 0.16)",
+  "--border": "#d2d2d7", "--border-strong": "#bcbcc5",
+  "--success": "#1c7a3a", "--warning": "#b86040", "--error": "#c40000",
 };
 const DARK_VARS: Record<string, string> = {
-  "--bg": "#181b34", "--surface": "#1f2048", "--surface-r": "#292b50",
-  "--surface-h": "#323464", "--text": "#e7e8f5", "--muted": "#a7abc7",
-  "--subtle": "#6a6e93", "--accent": "#579bfc", "--accent-hover": "#4a88e8",
-  "--accent-dim": "rgba(87, 155, 252, 0.14)", "--accent-mid": "rgba(87, 155, 252, 0.30)",
-  "--border": "#3f4174", "--border-strong": "#50539a",
-  "--success": "#00c875", "--warning": "#fdab3d", "--error": "#e2445c",
+  "--bg": "#0d0c0a", "--surface": "#171512", "--surface-r": "#201e1b",
+  "--surface-h": "#252219", "--text": "#ede8df", "--muted": "#7a7268",
+  "--subtle": "#4a4640", "--accent": "#c8a96e", "--accent-hover": "#d4b87e",
+  "--accent-dim": "rgba(200, 169, 110, 0.12)", "--accent-mid": "rgba(200, 169, 110, 0.30)",
+  "--border": "#2a2723", "--border-strong": "#332f2b",
+  "--success": "#5f9e75", "--warning": "#c47a5a", "--error": "#b85c5c",
 };
 function applyThemeVars(t: "dark" | "light") {
   const vars = t === "light" ? LIGHT_VARS : DARK_VARS;

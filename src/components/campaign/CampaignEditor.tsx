@@ -9,6 +9,17 @@ import { PRODUCT } from "@/lib/lunia-brand-guidelines";
 import { getSubjectLineHints } from "@/lib/subject-line-hints";
 import { CAMPAIGN_LAYOUT_PRESETS, type CampaignLayoutPreset } from "@/lib/campaign-layout-presets";
 import { layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
+import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
+import { Section } from "@/components/ui/Section";
+import {
+  IcAlignLeft, IcAlignCenter, IcCopy, IcCheck, IcTrash, IcBookmarkPlus, IcDragHandle,
+  IcChevron, IcDownload, IcSend, IcUndo, IcRedo, IcRefresh, IcPlus,
+} from "@/components/ui/icons";
+import {
+  reorderBlocks, applyUndo, applyRedo, applySuggestion,
+  completionItems as computeCompletionItems,
+} from "@/lib/campaign-editor-state";
 
 type BlockKind = NonNullable<CampaignBlock["kind"]>;
 const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
@@ -63,27 +74,33 @@ function blockPreviewText(b: CampaignBlock): string {
   );
 }
 
+// Section/field labels — --muted (not --subtle) at 11/12px so they clear
+// WCAG AA and read as structure, not disabled captions.
 const sectionLabel: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, color: "var(--subtle)",
-  textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8,
+  fontSize: 11, fontWeight: 700, color: "var(--muted)",
+  textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8,
 };
 const fieldLabel: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: "var(--muted)",
+  fontSize: 12, fontWeight: 600, color: "var(--muted)",
   textTransform: "uppercase", letterSpacing: "0.06em",
   display: "block", marginBottom: 4,
 };
 const input: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", fontSize: 13,
-  fontFamily: "inherit", color: "var(--text)", padding: "7px 10px",
-  borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)",
+  fontFamily: "inherit", color: "var(--text)", padding: "8px 12px",
+  borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)",
 };
+// Secondary text-button, sized for real clicking (min-height 32px, 12px text,
+// --text at rest so it never reads as disabled). `active` = selected state
+// (accent-dim wash + accent border), distinct from a solid primary Button.
 const miniBtn = (active = false): React.CSSProperties => ({
-  padding: "3px 9px", fontSize: 10, fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: "0.04em",
-  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+  minHeight: 32, padding: "0 12px", fontSize: 12, fontWeight: 500,
+  border: `1px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
   background: active ? "var(--accent-dim)" : "transparent",
-  color: active ? "var(--accent)" : "var(--muted)",
-  borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+  color: active ? "var(--text)" : "var(--text)",
+  borderRadius: 4, cursor: "pointer", fontFamily: "inherit", lineHeight: 1,
+  whiteSpace: "nowrap",
 });
 
 // ── Block toolbar primitives ────────────────────────────────────────────────
@@ -133,70 +150,6 @@ function SegButton({ active, onClick, title, last, children }: {
  *  Monday-style colored header bar. Collapse state is a plain local toggle
  *  (defaultCollapsed seeds the initial value from the gating rule) rather
  *  than something that re-collapses out from under the user mid-edit. */
-function Section({ title, defaultCollapsed, children }: {
-  title: string; defaultCollapsed: boolean; children: React.ReactNode;
-}) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  return (
-    // No overflow:hidden here — several children (the +Block/Snippets/
-    // Personalize/Brand-facts/Templates dropdown menus) are absolutely
-    // positioned and need to render outside this box's bounds. Corner
-    // rounding is done per-element below instead of via parent clipping.
-    <div style={{ border: "1px solid var(--border)", borderRadius: 8 }}>
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, width: "100%",
-          padding: "10px 12px", border: "none", borderBottom: collapsed ? "none" : "1px solid var(--border)",
-          borderTopLeftRadius: 8, borderTopRightRadius: 8,
-          borderBottomLeftRadius: collapsed ? 8 : 0, borderBottomRightRadius: collapsed ? 8 : 0,
-          background: "var(--surface)", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-        }}
-      >
-        <span style={{
-          display: "inline-flex", transition: "transform 130ms ease",
-          transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "var(--muted)",
-        }}>▾</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          {title}
-        </span>
-      </button>
-      {!collapsed && <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>}
-    </div>
-  );
-}
-
-function IconButton({ onClick, title, active, children }: {
-  onClick: () => void; title: string; active?: boolean; children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      className="blk-icon"
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 28, height: 28, padding: 0,
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
-        color: active ? "var(--text)" : "var(--muted)", cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-const iconProps = {
-  width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
-  stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-};
-const IcAlignLeft = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="14" y2="12" /><line x1="3" y1="18" x2="18" y2="18" /></svg>);
-const IcAlignCenter = () => (<svg {...iconProps}><line x1="3" y1="6" x2="21" y2="6" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></svg>);
-const IcCopy = () => (<svg {...iconProps}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>);
-const IcCheck = () => (<svg {...iconProps} strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
-const IcTrash = () => (<svg {...iconProps}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" /></svg>);
 
 /** Shared "add/remove row" list editor for block kinds whose content is an
  *  array of small multi-field records (timeline's {label,text}, trust
@@ -242,8 +195,6 @@ function RepeatableRows<T extends Record<string, string>>({
     </div>
   );
 }
-const IcBookmarkPlus = () => (<svg {...iconProps}><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="12" y1="5" x2="12" y2="11" /></svg>);
-const IcDragHandle = () => (<svg {...iconProps}><circle cx="9" cy="6" r="1.2" fill="currentColor" /><circle cx="15" cy="6" r="1.2" fill="currentColor" /><circle cx="9" cy="12" r="1.2" fill="currentColor" /><circle cx="15" cy="12" r="1.2" fill="currentColor" /><circle cx="9" cy="18" r="1.2" fill="currentColor" /><circle cx="15" cy="18" r="1.2" fill="currentColor" /></svg>);
 
 export default function CampaignEditor({
   topic,
@@ -492,17 +443,19 @@ export default function CampaignEditor({
 
   function undo() {
     flushUndoSnapshot();
-    const prevState = undoStackRef.current.pop();
-    if (!prevState) return;
-    redoStackRef.current.push(latestContent.current);
-    commit(prevState, { fromHistory: true });
+    const step = applyUndo(undoStackRef.current, redoStackRef.current, latestContent.current);
+    if (!step) return;
+    undoStackRef.current = step.undoStack;
+    redoStackRef.current = step.redoStack;
+    commit(step.content, { fromHistory: true });
     setHistoryVersion((v) => v + 1);
   }
   function redo() {
-    const nextState = redoStackRef.current.pop();
-    if (!nextState) return;
-    undoStackRef.current.push(latestContent.current);
-    commit(nextState, { fromHistory: true });
+    const step = applyRedo(undoStackRef.current, redoStackRef.current, latestContent.current);
+    if (!step) return;
+    undoStackRef.current = step.undoStack;
+    redoStackRef.current = step.redoStack;
+    commit(step.content, { fromHistory: true });
     setHistoryVersion((v) => v + 1);
   }
   const canUndo = historyVersion >= 0 && (undoStackRef.current.length > 0 || pendingUndoSnapshotRef.current !== null);
@@ -655,14 +608,9 @@ export default function CampaignEditor({
   // Native HTML5 drag-and-drop reorder. One commit() call with the
   // reordered array produces one undo entry, same as removeBlock.
   function reorderBlock(draggedId: string, overId: string) {
-    if (draggedId === overId) return;
     const c = latestContent.current;
-    const from = c.blocks.findIndex((b) => b.id === draggedId);
-    const to = c.blocks.findIndex((b) => b.id === overId);
-    if (from === -1 || to === -1) return;
-    const next = [...c.blocks];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved!);
+    const next = reorderBlocks(c.blocks, draggedId, overId);
+    if (next === c.blocks) return; // no-op drag
     commit({ ...c, blocks: next });
   }
 
@@ -862,15 +810,7 @@ export default function CampaignEditor({
   // drag-and-drop reorder — not one commit per accepted block.
   function acceptPendingBlocks() {
     if (!pendingBlocks) return;
-    const accepted = pendingBlocks.filter((p) => p.included).map((p) => p.block);
-    const c = latestContent.current;
-    commit({
-      ...c,
-      blocks: [...c.blocks, ...accepted],
-      topBanner: pendingMeta.topBanner ?? c.topBanner,
-      promoBand: pendingMeta.promoBand ?? c.promoBand,
-      cta: pendingMeta.ctaLabel ? { ...c.cta, label: pendingMeta.ctaLabel } : c.cta,
-    });
+    commit(applySuggestion(latestContent.current, pendingBlocks, pendingMeta));
     setPendingBlocks(null);
     setPendingMeta({});
   }
@@ -973,7 +913,7 @@ export default function CampaignEditor({
   async function copyHtml() {
     try {
       await navigator.clipboard.writeText(html);
-      setCopyLabel("Copied ✓");
+      setCopyLabel("Copied");
       setTimeout(() => setCopyLabel("Copy HTML"), 2000);
     } catch {
       setCopyLabel("Copy failed");
@@ -1039,15 +979,8 @@ export default function CampaignEditor({
   const headerDefaultCollapsed = !!activeSubjectLine.trim() && heroImageFilled;
   const imagesDefaultCollapsed = heroImageFilled;
 
-  // Completion indicator — cheap, derived from existing content state, no
-  // new data model. "0 blocks" reads cleanly rather than crashing on an
-  // empty-array check.
-  const completionItems: { label: string; done: boolean }[] = [
-    { label: "Subject", done: !!activeSubjectLine.trim() },
-    { label: "Hero image", done: heroImageFilled },
-    { label: content.blocks.length === 1 ? "1 block" : `${content.blocks.length} blocks`, done: content.blocks.length > 0 },
-    { label: "CTA", done: !!content.cta.label.trim() && !!content.cta.url.trim() },
-  ];
+  // Completion indicator — derived purely from content (see campaign-editor-state.ts).
+  const completionItems = computeCompletionItems(content);
 
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -1164,12 +1097,15 @@ export default function CampaignEditor({
 
       {/* ── Controls ───────────────────────────────────────────────────────── */}
       <div style={{ flex: "1 1 340px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
-        {/* Completion indicator — plain text checklist, --success/--muted
-            tokens, not colored badges. */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11 }}>
+        {/* Completion indicator — text checklist, --success/--muted tokens,
+            SVG check / empty ring (no emoji). */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, fontWeight: 500 }}>
           {completionItems.map((it) => (
-            <span key={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: it.done ? "var(--success)" : "var(--muted)" }}>
-              <span>{it.done ? "✓" : "○"}</span>{it.label}
+            <span key={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: it.done ? "var(--success)" : "var(--muted)" }}>
+              {it.done
+                ? <IcCheck size={14} />
+                : <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /></svg>}
+              {it.label}
             </span>
           ))}
         </div>
@@ -1195,7 +1131,7 @@ export default function CampaignEditor({
             placeholder="e.g. SAVE **26%** WITH A 3-MONTH SUBSCRIPTION"
             onChange={(e) => patch({ topBanner: e.target.value || undefined })} style={input} />
           {bannerError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{bannerError}</div>}
-          <div style={{ marginTop: 4, fontSize: 11, color: "var(--subtle)", lineHeight: 1.4 }}>
+          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
             Wrap a phrase in <code style={{ fontFamily: "monospace" }}>**double asterisks**</code> to mark it with the brand color. Renders in caps automatically.
           </div>
           {/* Logo visibility — the logo strip sits at the very top of the email,
@@ -1208,7 +1144,7 @@ export default function CampaignEditor({
               style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
             />
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show logo</span>
-            <span style={{ fontSize: 10, color: "var(--subtle)" }}>Hide the logo strip at the top of the email</span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>Hide the logo strip at the top of the email</span>
           </label>
         </div>
 
@@ -1223,7 +1159,7 @@ export default function CampaignEditor({
               title="Replace all three subject lines with fresh options"
             >
               {subjectsBusy && <Spinner size={10} />}
-              {subjectsBusy ? "Writing…" : "↻ Regenerate"}
+              {subjectsBusy ? "Writing…" : "✨ Regenerate"}
             </button>
           </div>
           {subjectsError && <div style={{ marginBottom: 6, fontSize: 11, color: "var(--error)" }}>{subjectsError}</div>}
@@ -1247,11 +1183,9 @@ export default function CampaignEditor({
                   <button
                     onClick={() => copyText(key, s)}
                     title="Copy this subject line to the clipboard"
-                    style={{
-                      ...miniBtn(copied), padding: "0 10px", flexShrink: 0,
-                    }}
+                    style={{ ...miniBtn(copied), padding: "0 10px", flexShrink: 0 }}
                   >
-                    {copied ? "✓" : errored ? "Err" : "📋"}
+                    {copied ? <IcCheck size={15} /> : errored ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy size={15} />}
                   </button>
                 </div>
               );
@@ -1273,21 +1207,22 @@ export default function CampaignEditor({
             );
           })()}
           <div style={{ display: "flex", gap: 6, position: "relative" }}>
-            <button
-              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5, flex: 1, justifyContent: "center" }}
+            <Button
+              variant="primary"
               onClick={suggestLayout}
               disabled={layoutBusy}
               title="Suggest a complete block-by-block layout from the subject line above"
+              style={{ flex: 1 }}
             >
-              {layoutBusy && <Spinner size={10} />}
+              {layoutBusy && <Spinner size={10} color="var(--bg)" />}
               {layoutBusy ? "Drafting…" : "✨ Suggest layout"}
-            </button>
+            </Button>
             <button
               style={{ ...miniBtn(templatePickerOpen), flex: 1 }}
               onClick={() => setTemplatePickerOpen((v) => !v)}
               title="Apply a named starting-point layout"
             >
-              Templates ▾
+              Templates <IcChevron size={14} style={{ transform: templatePickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
             </button>
             {templatePickerOpen && (
               <div style={{
@@ -1306,7 +1241,7 @@ export default function CampaignEditor({
                     }}
                   >
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{preset.name}</div>
-                    <div style={{ fontSize: 10, color: "var(--subtle)" }}>{preset.description}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{preset.description}</div>
                   </button>
                 ))}
               </div>
@@ -1349,7 +1284,7 @@ export default function CampaignEditor({
                   <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
                     style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--subtle)", marginBottom: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 2 }}>
                       {p.block.kind ?? "text"}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1378,7 +1313,7 @@ export default function CampaignEditor({
               title="Copy the preview text to the clipboard"
               style={miniBtn(copiedKey === "preview")}
             >
-              {copiedKey === "preview" ? "✓" : copiedKey === "err:preview" ? "Err" : "📋 Copy"}
+              {copiedKey === "preview" ? <IcCheck size={15} /> : copiedKey === "err:preview" ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <><IcCopy size={15} /> Copy</>}
             </button>
           </div>
           <input type="text" value={content.previewText}
@@ -1413,12 +1348,12 @@ export default function CampaignEditor({
             <span style={sectionLabel}>Text blocks</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", position: "relative" }}>
               <div style={{ position: "relative" }}>
-                <button style={miniBtn(false)} onClick={() => setAddBlockMenuOpen((v) => !v)}>+ Block ▾</button>
+                <button style={miniBtn(addBlockMenuOpen)} onClick={() => setAddBlockMenuOpen((v) => !v)}><IcPlus size={14} /> Block <IcChevron size={14} style={{ transform: addBlockMenuOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} /></button>
                 {addBlockMenuOpen && (
                   <div style={{
                     position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
                     background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 130, overflow: "hidden",
+                    boxShadow: "none", minWidth: 130, overflow: "hidden",
                   }}>
                     {BLOCK_KINDS.map((k) => (
                       <button
@@ -1437,13 +1372,13 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setSnippetPickerOpen((v) => !v)} disabled={snippets.length === 0} title={snippets.length === 0 ? "No saved snippets yet" : "Insert a saved snippet as a new block"}>
-                  Snippets ▾
+                  Snippets <IcChevron size={14} style={{ transform: snippetPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
                 </button>
                 {snippetPickerOpen && snippets.length > 0 && (
                   <div style={{
                     position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
                     background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 200, maxHeight: 240, overflowY: "auto",
+                    boxShadow: "none", minWidth: 200, maxHeight: 240, overflowY: "auto",
                   }}>
                     {snippets.map((s) => (
                       <button
@@ -1462,13 +1397,13 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setPersonalizationPickerOpen((v) => !v)} title="Insert a Klaviyo merge tag into the focused block">
-                  Personalize ▾
+                  Personalize <IcChevron size={14} style={{ transform: personalizationPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
                 </button>
                 {personalizationPickerOpen && (
                   <div style={{
                     position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
                     background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 180, overflow: "hidden",
+                    boxShadow: "none", minWidth: 180, overflow: "hidden",
                   }}>
                     {PERSONALIZATION_TOKENS.map((t) => (
                       <button
@@ -1486,13 +1421,13 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setBrandFactsPickerOpen((v) => !v)} title="Insert a canonical Lunia fact into the focused block">
-                  Brand facts ▾
+                  Brand facts <IcChevron size={14} style={{ transform: brandFactsPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
                 </button>
                 {brandFactsPickerOpen && (
                   <div style={{
                     position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
                     background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)", minWidth: 220, maxHeight: 260, overflowY: "auto",
+                    boxShadow: "none", minWidth: 220, maxHeight: 260, overflowY: "auto",
                   }}>
                     {BRAND_FACTS.map((f) => (
                       <button
@@ -1540,27 +1475,31 @@ export default function CampaignEditor({
                     opacity: draggedBlockId === b.id ? 0.5 : 1,
                   }}
                 >
-                  {/* Header — block identity + block-level actions */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                      <span style={{ cursor: "grab", color: "var(--muted)" }} title="Drag to reorder"><IcDragHandle /></span>
+                  {/* Header — block identity + block-level actions. Destructive
+                      Delete is split to the right of a divider and rendered
+                      `danger` so it reads destructive, distinct from the
+                      benign snippet/copy/regenerate cluster. */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0", gap: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      <span style={{ cursor: "grab", color: "var(--muted)", display: "inline-flex" }} title="Drag to reorder"><IcDragHandle size={16} /></span>
                       Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
                     </span>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <IconButton
                         onClick={() => saveBlockAsSnippet(b)}
                         title="Save this block as a reusable snippet"
                         active={savingSnippetFor === b.id}
                       >
-                        {savingSnippetFor === b.id ? <Spinner size={12} /> : <IcBookmarkPlus />}
+                        {savingSnippetFor === b.id ? <Spinner size={14} /> : <IcBookmarkPlus />}
                       </IconButton>
                       <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
-                        {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy />}
+                        {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 13, fontWeight: 700 }}>!</span> : <IcCopy />}
                       </IconButton>
                       <IconButton onClick={() => regenerateBlock(b)} title="Regenerate this block with AI" active={regenBusyId === b.id}>
-                        {regenBusyId === b.id ? <Spinner size={12} /> : <span style={{ fontSize: 13, lineHeight: 1 }}>↻</span>}
+                        {regenBusyId === b.id ? <Spinner size={14} /> : <IcRefresh />}
                       </IconButton>
-                      <IconButton onClick={() => removeBlock(b.id)} title="Delete block"><IcTrash /></IconButton>
+                      <span className="ui-divider-v" style={{ height: 24 }} />
+                      <IconButton onClick={() => removeBlock(b.id)} title="Delete block" danger><IcTrash /></IconButton>
                     </div>
                   </div>
 
@@ -1731,13 +1670,13 @@ export default function CampaignEditor({
                   {kind === "comparison" && (
                     <div style={{ padding: "8px 10px 10px", display: "flex", gap: 10 }}>
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Left</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Left</span>
                         <input type="text" value={b.comparisonLeftLabel ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftLabel: e.target.value })} placeholder="e.g. One-time" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonLeftPrice ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftPrice: e.target.value })} placeholder="e.g. $99" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonLeftPerk ?? ""} onChange={(e) => updateBlock(b.id, { comparisonLeftPerk: e.target.value })} placeholder="e.g. No commitment" style={{ ...input, fontSize: 12 }} />
                       </div>
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Right (emphasized)</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Right (emphasized)</span>
                         <input type="text" value={b.comparisonRightLabel ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightLabel: e.target.value })} placeholder="e.g. Subscribe & save" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonRightPrice ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPrice: e.target.value })} placeholder="e.g. $69" style={{ ...input, fontSize: 12 }} />
                         <input type="text" value={b.comparisonRightPerk ?? ""} onChange={(e) => updateBlock(b.id, { comparisonRightPerk: e.target.value })} placeholder="e.g. Free shipping, cancel anytime" style={{ ...input, fontSize: 12 }} />
@@ -1830,7 +1769,7 @@ export default function CampaignEditor({
               last
             >Navy</SegButton>
           </div>
-          <div style={{ marginTop: 4, fontSize: 11, color: "var(--subtle)" }}>
+          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)" }}>
             Applies to the bottom button and the hero-image CTA overlay.
           </div>
         </div>
@@ -1846,7 +1785,7 @@ export default function CampaignEditor({
           >
             {saving && <Spinner size={13} color="var(--bg)" />}
             {saving ? "Saving…" : savedId ? (
-              <>Saved <span key={saveConfirmTick} style={{ display: "inline-block", animation: "pulse 150ms ease-out" }}>✓</span> Update</>
+              <>Saved <span key={saveConfirmTick} style={{ display: "inline-flex", animation: "pulse 150ms ease-out" }}><IcCheck size={14} /></span> Update</>
             ) : "Save campaign"}
           </button>
           <span
@@ -1856,40 +1795,19 @@ export default function CampaignEditor({
               : autosaveStatus === "saved" ? "Saved automatically"
               : ""
             }
-            style={{ fontSize: 11, color: "var(--subtle)", display: "inline-flex", alignItems: "center", gap: 5, minWidth: 90 }}
+            style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 5, minWidth: 90 }}
           >
             {autosaveStatus === "saving" && (<><Spinner size={10} />Saving…</>)}
             {autosaveStatus === "dirty" && "Unsaved changes"}
             {autosaveStatus === "saved" && "Saved just now"}
           </span>
-          <div style={{ display: "inline-flex", gap: 2, borderLeft: "1px solid var(--border)", paddingLeft: 8, marginLeft: 2 }}>
-            <button
-              type="button"
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo (⌘Z)"
-              style={{
-                width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
-                color: canUndo ? "var(--text)" : "var(--subtle)", cursor: canUndo ? "pointer" : "default",
-                fontFamily: "inherit", fontSize: 13, opacity: canUndo ? 1 : 0.5,
-              }}
-            >↺</button>
-            <button
-              type="button"
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo (⌘⇧Z)"
-              style={{
-                width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)",
-                color: canRedo ? "var(--text)" : "var(--subtle)", cursor: canRedo ? "pointer" : "default",
-                fontFamily: "inherit", fontSize: 13, opacity: canRedo ? 1 : 0.5,
-              }}
-            >↻</button>
+          <span className="ui-divider-v" style={{ height: 28 }} />
+          <div style={{ display: "inline-flex", gap: 4 }}>
+            <IconButton onClick={undo} disabled={!canUndo} title="Undo (⌘Z)"><IcUndo /></IconButton>
+            <IconButton onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)"><IcRedo /></IconButton>
           </div>
-          <button className="btn-ghost" onClick={exportHtml}>↓ Export HTML</button>
-          <button className="btn-ghost" onClick={copyHtml}>📋 {copyLabel}</button>
+          <button className="btn-ghost" onClick={exportHtml} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><IcDownload size={15} /> Export HTML</button>
+          <button className="btn-ghost" onClick={copyHtml} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><IcCopy size={15} /> {copyLabel}</button>
           <button
             className="btn-ghost"
             onClick={improveWithClaude}
@@ -1905,8 +1823,9 @@ export default function CampaignEditor({
               className="btn-ghost"
               onClick={revertImprove}
               title="Restore the original imported copy"
+              style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
             >
-              ↩ Revert
+              <IcUndo size={15} /> Revert
             </button>
           )}
           <button
@@ -1916,7 +1835,7 @@ export default function CampaignEditor({
             style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
           >
             {klaviyoBusy && <Spinner size={13} />}
-            {klaviyoBusy ? "Pushing…" : "🚀 Push to Klaviyo"}
+            {klaviyoBusy ? "Pushing…" : (<><IcSend size={15} /> Push to Klaviyo</>)}
           </button>
           {klaviyoResult && (
             <a
