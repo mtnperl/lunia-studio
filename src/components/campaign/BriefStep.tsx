@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { Subject } from "@/lib/types";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
 export type CampaignBrief = {
   topic: string;
@@ -130,12 +131,12 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
             )}
           </div>
         ) : (
-          <textarea
+          <AutoTextarea
             value={customTopic}
             onChange={(e) => setCustomTopic(e.target.value)}
-            rows={3}
+            minHeight={84}
             placeholder="e.g. Transparent dosing — every milligram printed on the label"
-            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }}
+            style={{ ...inputStyle, lineHeight: 1.5 }}
           />
         )}
       </div>

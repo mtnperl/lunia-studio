@@ -5,6 +5,7 @@ import { BrandStyle, CarouselContent } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -212,14 +213,14 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
               }}>
                 Guidelines (optional)
               </label>
-              <textarea
+              <AutoTextarea
                 value={hooksGuidelines}
                 onChange={(e) => setHooksGuidelines(e.target.value)}
-                rows={2}
+                minHeight={40}
                 placeholder="e.g. punchier, lead with a number, more myth-busting, less clickbait..."
                 style={{
                   width: "100%", fontSize: 12, lineHeight: 1.5,
-                  resize: "vertical", fontFamily: "inherit",
+                  fontFamily: "inherit",
                   color: "var(--text)", background: "transparent",
                   border: "none", outline: "none", padding: 0,
                 }}
@@ -342,14 +343,14 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
             <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
               Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.
             </p>
-            <textarea
+            <AutoTextarea
               value={imagePrompt}
               onChange={(e) => onImagePromptChange?.(e.target.value)}
-              rows={4}
+              minHeight={84}
               placeholder="No image prompt generated yet."
               style={{
                 width: "100%", fontSize: 13, lineHeight: 1.6,
-                resize: "vertical", fontFamily: "inherit",
+                fontFamily: "inherit",
                 color: imagePrompt ? "var(--text)" : "var(--subtle)",
                 marginBottom: 12,
               }}
@@ -370,14 +371,14 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
               }}>
                 Guidelines (optional)
               </label>
-              <textarea
+              <AutoTextarea
                 value={guidelines}
                 onChange={(e) => setGuidelines(e.target.value)}
-                rows={2}
+                minHeight={40}
                 placeholder="e.g. warmer tones, focus on water droplets, more abstract, moonlight scene..."
                 style={{
                   width: "100%", fontSize: 12, lineHeight: 1.5,
-                  resize: "vertical", fontFamily: "inherit",
+                  fontFamily: "inherit",
                   color: "var(--text)", background: "transparent",
                   border: "none", outline: "none", padding: 0,
                 }}

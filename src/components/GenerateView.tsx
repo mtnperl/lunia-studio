@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Script, FilmingNotes } from "@/lib/types";
 import { generateId } from "@/lib/storage";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
 const PERSONAS = ["Wellness Creator", "Mom", "Biohacker", "Gen Z", "Professional", "Athlete", "Skeptic"];
 const FORMATS = ["Voiceover", "Talking Head", "POV", "Day-in-Life", "Testimonial", "Comparison", "Educational"];
@@ -166,11 +167,11 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
             Subject notes <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
-          <textarea
+          <AutoTextarea
             value={subjectNotes}
             onChange={(e) => setSubjectNotes(e.target.value)}
             placeholder="Key facts, studies, product differentiators, claims to include…"
-            rows={3} style={{ resize: "vertical" }}
+            minHeight={84}
           />
         </div>
 
@@ -179,11 +180,11 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
             Instructions <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
-          <textarea
+          <AutoTextarea
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             placeholder="e.g. Must mention the 4.9-star rating. Avoid mentioning price. Target 45s. End with a question."
-            rows={3} style={{ resize: "vertical" }}
+            minHeight={84}
           />
         </div>
 
@@ -192,9 +193,9 @@ export default function GenerateView({ onOpenEditor }: { onOpenEditor: (s: Scrip
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>
             Additional context <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span>
           </label>
-          <textarea value={context} onChange={(e) => setContext(e.target.value)}
+          <AutoTextarea value={context} onChange={(e) => setContext(e.target.value)}
             placeholder="e.g. creator mentions they have a 6-month-old, audience skews 30–40F..."
-            rows={2} style={{ resize: "vertical" }} />
+            minHeight={60} />
         </div>
         <button className="btn" onClick={generate} disabled={loading || !canGenerate} style={{ width: "100%", justifyContent: "center" }}>
           {loading ? "Generating..." : "Generate →"}

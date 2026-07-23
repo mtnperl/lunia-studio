@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CarouselContent, CarouselFormat, HookTone } from "@/lib/types";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
 type Props = {
   content: CarouselContent;
@@ -414,7 +415,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
           <label style={labelStyle}>Headline</label>
           <input style={{ ...inputStyle, marginBottom: 8 }} value={slide.headline} onChange={(e) => updateSlide(i, "headline", e.target.value)} />
           <label style={labelStyle}>Body</label>
-          <textarea style={{ ...inputStyle, marginBottom: 8, minHeight: 90, resize: "vertical" }} value={slide.body} onChange={(e) => updateSlide(i, "body", e.target.value)} />
+          <AutoTextarea style={{ ...inputStyle, marginBottom: 8 }} minHeight={90} value={slide.body} onChange={(e) => updateSlide(i, "body", e.target.value)} />
           <label style={labelStyle}>Citation</label>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             <input
