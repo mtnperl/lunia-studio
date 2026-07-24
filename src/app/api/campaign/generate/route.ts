@@ -81,6 +81,7 @@ export async function POST(req: Request) {
         selectedSubject: 0,
         previewText: "Test preview text. Layout dry run, no LLM calls.",
         logoUrl: logoAsset?.url ?? null,
+        showLogo: false,
         promoBand: undefined,
         blocks: [
           {
@@ -275,6 +276,7 @@ Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero
       selectedSubject: 0,
       previewText: stripDashes(parsed.previewText ?? ""),
       logoUrl: logoAsset?.url ?? null,
+      showLogo: false,
       promoBand: parsed.promoBand?.trim() ? stripDashes(parsed.promoBand) : undefined,
       blocks: parsed.blocks.map((b) => ({
         id: randomUUID(),

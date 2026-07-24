@@ -208,7 +208,7 @@ async function convertEmail(
     previewText: email.previewText ?? "",
     topBanner: structure.topBanner?.trim() || undefined,
     logoUrl,
-    showLogo: true,
+    showLogo: false,
     promoBand: structure.promoBand?.trim() || undefined,
     blocks,
     cta: { label: ctaLabel, url: ctaUrl },

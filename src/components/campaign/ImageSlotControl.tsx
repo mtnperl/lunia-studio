@@ -4,6 +4,7 @@ import type { CampaignImageSlot } from "@/lib/types";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import AssetPicker from "./AssetPicker";
 import { ImageGenStatus, Spinner } from "./Loaders";
+import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
 const DEFAULT_MOOD = "lifestyle-health";
 
@@ -299,16 +300,15 @@ export default function ImageSlotControl({
           <div style={{ flex: 1, minWidth: 0 }}>
             {slot.source === "generated" ? (
               <>
-                <textarea
+                <AutoTextarea
                   value={effectivePrompt}
                   onChange={(e) => onChange({ ...slot, prompt: e.target.value })}
-                  rows={3}
+                  minHeight={60}
                   placeholder="Lifestyle scene — no text, no bottle, no logo"
                   style={{
                     width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.45,
                     fontFamily: "inherit", color: "var(--text)", padding: "6px 8px",
                     borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)",
-                    resize: "vertical",
                   }}
                 />
                 {/* Rewrite the prompt with AI, based on the email topic */}

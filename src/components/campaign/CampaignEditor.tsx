@@ -1813,7 +1813,7 @@ export default function CampaignEditor({
             </div>
             <div>
               <label style={fieldLabel}>Hero overlay</label>
-              <div style={segWrap}>
+              <div style={{ ...segWrap, opacity: content.cta.showOnHero === false ? 0.4 : 1 }}>
                 <SegButton
                   active={(content.cta.heroStyle ?? content.cta.style ?? "cream") === "cream"}
                   onClick={() => patch({ cta: { ...latestContent.current.cta, heroStyle: "cream" } })}
@@ -1828,6 +1828,19 @@ export default function CampaignEditor({
               </div>
             </div>
           </div>
+          {/* Hero overlay visibility — the pill on top of the hero image, not
+              the bottom button below it. Off removes the overlay entirely;
+              the hero stays tappable via its wrapping link either way. */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={content.cta.showOnHero !== false}
+              onChange={(e) => patch({ cta: { ...latestContent.current.cta, showOnHero: e.target.checked } })}
+              style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show CTA on hero image</span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>Remove the button overlay from the hero photo</span>
+          </label>
           <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
             The bottom CTA button and the hero-image overlay are styled independently.
           </div>

@@ -612,8 +612,10 @@ export type CampaignContent = {
    *  with white text. `style` controls the bottom CTA button.
    *  `heroStyle` controls the hero-image CTA overlay independently; when
    *  unset it falls back to `style` (back-compat with saves that predate
-   *  the split). */
-  cta: { label: string; url: string; style?: "cream" | "navy"; heroStyle?: "cream" | "navy" };
+   *  the split). `showOnHero: false` removes the overlay pill from the hero
+   *  image entirely (the hero stays tappable via its wrapping link; the
+   *  bottom CTA button is unaffected). Unset/true = shown. */
+  cta: { label: string; url: string; style?: "cream" | "navy"; heroStyle?: "cream" | "navy"; showOnHero?: boolean };
   images: CampaignImageSlot[];   // 1 hero + 2–4 secondary
 };
 

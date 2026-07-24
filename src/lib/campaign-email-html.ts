@@ -315,7 +315,8 @@ export function renderCampaignEmail(content: CampaignContent): string {
   const heroBg = heroIsNavy ? NAVY : CREAM;
   const heroFg = heroIsNavy ? "#ffffff" : NAVY;
   const heroCtaLabel = content.cta.label?.trim();
-  const heroOverlay = hero?.url && heroCtaLabel
+  const showOnHero = content.cta.showOnHero !== false;
+  const heroOverlay = hero?.url && heroCtaLabel && showOnHero
     ? `<div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
          <span style="display:block;background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
        </div>`
