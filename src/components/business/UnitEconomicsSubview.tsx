@@ -198,6 +198,22 @@ export default function UnitEconomicsSubview() {
             Cohort fetch: {cohortError}
           </span>
         )}
+        {pnl?.sourceErrors?.meta && (
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 12px",
+            borderRadius: 999,
+            background: "var(--surface-r)",
+            border: "1px solid var(--border)",
+            fontFamily: "var(--font-ui)",
+            fontSize: 11,
+            color: "var(--error)",
+          }}>
+            Meta ad spend unavailable: {pnl.sourceErrors.meta}
+          </span>
+        )}
       </div>
 
       <style>{`
@@ -224,9 +240,12 @@ export default function UnitEconomicsSubview() {
           prefix="$"
           decimals={2}
           loading={loading}
-          tooltip={isReal
-            ? "Meta ad spend ÷ new qualified customers in this period"
-            : "Connect Shopify cohort for real CAC"}
+          unavailable={!!pnl?.sourceErrors?.meta}
+          tooltip={pnl?.sourceErrors?.meta
+            ? `Meta ad spend unavailable: ${pnl.sourceErrors.meta}`
+            : isReal
+              ? "Meta ad spend ÷ new qualified customers in this period"
+              : "Connect Shopify cohort for real CAC"}
         />
         <KPICard
           label="LTV"
@@ -242,7 +261,10 @@ export default function UnitEconomicsSubview() {
           suffix="x"
           decimals={2}
           loading={loading}
-          tooltip="Period-blended Return on Ad Spend = total Shopify revenue ÷ Meta ad spend (this period)"
+          unavailable={!!pnl?.sourceErrors?.meta}
+          tooltip={pnl?.sourceErrors?.meta
+            ? `Meta ad spend unavailable: ${pnl.sourceErrors.meta}`
+            : "Period-blended Return on Ad Spend = total Shopify revenue ÷ Meta ad spend (this period)"}
         />
       </div>
 

@@ -39,6 +39,8 @@ export function composePnL(input: {
   recurringMonthlyRunRate?: number;
   /** When provided, unit economics are derived from real customer behaviour over the past 365d. */
   cohort?: CustomerCohort | null;
+  /** Specific reason the Meta fetch failed (e.g. expired token), when known. Surfaced in the UI instead of a silent $0 ad spend. */
+  metaError?: string;
   assumptions: BusinessAssumptions;
   prior?: {
     meta?: MetaData | null;
@@ -49,7 +51,7 @@ export function composePnL(input: {
 }): PnL {
   const {
     range, priorRange, meta, shopify, simplefin, categorizations, recurringTxnIds,
-    recurringMonthlyRunRate = 0, cohort, assumptions, prior,
+    recurringMonthlyRunRate = 0, cohort, metaError, assumptions, prior,
   } = input;
 
   const missing: string[] = [];
@@ -138,6 +140,7 @@ export function composePnL(input: {
       };
     })(),
     missing,
+    sourceErrors: metaError ? { meta: metaError } : undefined,
   };
 }
 

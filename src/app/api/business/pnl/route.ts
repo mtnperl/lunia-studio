@@ -72,6 +72,7 @@ export async function GET(req: Request) {
     recurringTxnIds,
     recurringMonthlyRunRate,
     cohort,
+    metaError: current.metaError,
     assumptions,
     prior: prior
       ? {
@@ -109,6 +110,7 @@ async function loadAssumptions(): Promise<BusinessAssumptions> {
 
 type Bundle = {
   meta: MetaData | null;
+  metaError?: string;
   shopify: ShopifyData | null;
   simplefin: { transactions: SimpleFinTxn[] } | null;
 };
@@ -123,13 +125,13 @@ async function loadAll(opts: {
   const { origin, since, until, bust, cookie } = opts;
   const qs = `since=${since}&until=${until}${bust ? "&bust=1" : ""}`;
 
-  const [meta, shopify, simplefin] = await Promise.all([
-    fetchJson<MetaData>(`${origin}/api/meta?${qs}`, cookie),
+  const [metaResult, shopify, simplefin] = await Promise.all([
+    fetchJsonWithError<MetaData>(`${origin}/api/meta?${qs}`, cookie),
     fetchJson<ShopifyData>(`${origin}/api/shopify?${qs}`, cookie),
     loadSimpleFin(since, until),
   ]);
 
-  return { meta, shopify, simplefin };
+  return { meta: metaResult.data, metaError: metaResult.error, shopify, simplefin };
 }
 
 async function fetchJson<T>(url: string, cookie = ""): Promise<T | null> {
@@ -141,6 +143,24 @@ async function fetchJson<T>(url: string, cookie = ""): Promise<T | null> {
     return body as T;
   } catch {
     return null;
+  }
+}
+
+/** Same as fetchJson, but keeps the upstream `error` message instead of discarding it — used where the UI should explain *why* a source is missing rather than just showing it as absent. */
+async function fetchJsonWithError<T>(url: string, cookie = ""): Promise<{ data: T | null; error?: string }> {
+  try {
+    const res = await fetch(url, cookie ? { headers: { cookie } } : undefined);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message = body && typeof body === "object" && "error" in body ? String((body as { error: unknown }).error) : `HTTP ${res.status}`;
+      return { data: null, error: message };
+    }
+    if (body && typeof body === "object" && "error" in body) {
+      return { data: null, error: String((body as { error: unknown }).error) };
+    }
+    return { data: body as T };
+  } catch (err) {
+    return { data: null, error: err instanceof Error ? err.message : "Network error" };
   }
 }
 

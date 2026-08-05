@@ -267,4 +267,6 @@ export type PnL = {
   };
   /** Sources that failed or are unconnected — UI surfaces a warning per item. */
   missing: string[];
+  /** Specific failure reason per source, when known (e.g. Meta token expired). UI shows this instead of a generic "missing" note when present. */
+  sourceErrors?: { meta?: string };
 };

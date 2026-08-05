@@ -124,8 +124,19 @@ export async function GET(req: Request) {
       pages++;
 
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
+        const errBody = await res.json().catch(() => ({})) as { error?: { code?: number; error_subcode?: number; message?: string } };
         const status = res.status;
+        // Meta returns code 190 (OAuthException) for expired/invalid tokens — often as
+        // HTTP 400, not 401/403, so the status-only check above misses it. Subcode 463
+        // specifically means the session/token expired (as opposed to being malformed).
+        if (errBody.error?.code === 190) {
+          const expired = errBody.error.error_subcode === 463;
+          return Response.json({
+            error: expired
+              ? 'Meta access token expired — regenerate it in Meta Business Manager and update META_ACCESS_TOKEN'
+              : 'Meta access denied — check your token',
+          }, { status: 502 });
+        }
         if (status === 401 || status === 403) {
           return Response.json({ error: 'Meta access denied — check your token' }, { status: 502 });
         }
