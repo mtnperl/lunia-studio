@@ -426,6 +426,8 @@ export type SavedCarousel = {
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
+  /** Hook slide headline boldness — "default" preserves today's weight (400 / 300 editorial). */
+  hookHeadlineWeight?: "default" | "bold" | "black";
   savedAt: string;
 };
 

@@ -36,10 +36,20 @@ type Props = {
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
+  /** Headline boldness — "default" is today's weight (400, or 300 under Editorial Scientific). */
+  headlineWeight?: "default" | "bold" | "black";
 };
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true }: Props) {
+// Headline font-weight per boldness level, keyed by style preset (each preset has its own baseline).
+const HEADLINE_WEIGHTS = {
+  default: { default: 400, editorial: 300 },
+  bold: { default: 700, editorial: 700 },
+  black: { default: 900, editorial: 900 },
+} as const;
+
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
+  const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
@@ -124,7 +134,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         {/* Headline zone */}
         <div style={isEditorial ? {
           fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-          fontWeight: 300,
+          fontWeight: headlineFontWeight,
           fontSize: 72,
           color: headlineColor,
           textTransform: 'none',
@@ -132,7 +142,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           lineHeight: 1.1,
         } : {
           fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 400,
+          fontWeight: headlineFontWeight,
           fontSize: 64,
           color: headlineColor,
           textTransform: 'uppercase',

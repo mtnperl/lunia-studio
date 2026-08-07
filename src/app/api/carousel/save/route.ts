@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
       format, engagementSubType, didYouKnowContent,
+      hookHeadlineWeight,
     } = body;
 
     if (!topic) {
@@ -103,6 +104,7 @@ export async function POST(req: Request) {
       headlineScale: headlineScale ?? undefined,
       bodyScale: bodyScale ?? undefined,
       iconScale: iconScale ?? undefined,
+      hookHeadlineWeight: hookHeadlineWeight ?? undefined,
       savedAt: new Date().toISOString(),
     };
 

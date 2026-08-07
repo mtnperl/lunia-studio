@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       format, engagementSubType, didYouKnowContent,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
+      hookHeadlineWeight,
     } = body;
 
     if (!topic) {
@@ -122,6 +123,7 @@ export async function POST(req: Request) {
       showSlideArrows: typeof showSlideArrows === "boolean" ? showSlideArrows : undefined,
       showSlideNumbers: typeof showSlideNumbers === "boolean" ? showSlideNumbers : undefined,
       showCitationBars: typeof showCitationBars === "boolean" ? showCitationBars : undefined,
+      hookHeadlineWeight: hookHeadlineWeight ?? undefined,
       savedAt: new Date().toISOString(),
     };
 
