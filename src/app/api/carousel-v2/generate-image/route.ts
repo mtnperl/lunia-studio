@@ -67,6 +67,14 @@ export async function POST(req: Request) {
     const paperTone: PaperTone = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
       ? (body.paperTone as PaperTone)
       : 'white';
+    // Headline boldness — same 3 levels as the HTML-overlay hook (HookSlide),
+    // baked into the prompt so Editorial Scientific images (text-in-pixels)
+    // stay in sync with the non-editorial HTML rendering.
+    const VALID_HEADLINE_WEIGHTS = ['default', 'bold', 'black'] as const;
+    type HeadlineWeight = typeof VALID_HEADLINE_WEIGHTS[number];
+    const headlineWeight: HeadlineWeight = (VALID_HEADLINE_WEIGHTS as readonly string[]).includes(body.headlineWeight)
+      ? (body.headlineWeight as HeadlineWeight)
+      : 'default';
 
     // Subject lock — orthogonal to Direction. "auto" preserves prior behavior
     // (engine chooses). "person" hard-requires a partial-frame human element;
@@ -188,6 +196,7 @@ export async function POST(req: Request) {
           direction: imageDirection,
           paperTone,
           imageSubject,
+          headlineWeight,
         })
       : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
 
@@ -324,8 +333,15 @@ function buildEditorialHookPrompt(args: {
   direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
   paperTone: 'white' | 'warm';
   imageSubject: 'auto' | 'person' | 'still-life' | 'environment';
+  headlineWeight: 'default' | 'bold' | 'black';
 }): string {
-  const { spec, headline, subline, topic, userPrompt, direction, paperTone, imageSubject } = args;
+  const { spec, headline, subline, topic, userPrompt, direction, paperTone, imageSubject, headlineWeight } = args;
+  // Mirrors HookSlide's HTML-overlay weights (400/700/900) so the baked-in
+  // Editorial Scientific image matches what the non-editorial HTML render
+  // would show at the same boldness level.
+  const headlineWeightLabel = headlineWeight === 'black' ? 'Inter Black 900, extra bold'
+    : headlineWeight === 'bold' ? 'Inter Bold 700'
+    : 'Inter Light 300';
 
   // Concept resolution, in priority order:
   //   1. The live "CURRENT PROMPT" the user sees and edits — authoritative.
@@ -376,7 +392,7 @@ function buildEditorialHookPrompt(args: {
     "",
     // ── Mandatory baked text (the only prescriptive part) ──
     "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",
-    `  • Headline (Inter Light 300): "${headline}"`,
+    `  • Headline (${headlineWeightLabel}): "${headline}"`,
     `  • Body (Inter ExtraLight 200, lighter weight): "${subline}"`,
     spec.overlay ? `  • Overlay accent (Inter Light 300, uppercase, wide tracking, small): "${spec.overlay}"` : "",
     "Text colour: rich navy (#01253f). The navy text is the only chromatic anchor in the image. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines.",

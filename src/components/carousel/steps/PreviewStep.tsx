@@ -574,7 +574,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
         ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-        ...(isEditorial ? { imageDirection, paperTone, imageSubject } : {}),
+        ...(isEditorial ? { imageDirection, paperTone, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
       }),
     })
       .then(async (r) => {
@@ -593,7 +593,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       .finally(() => { if (!aborted) setFullPromptLoading(false); });
     return () => { aborted = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone, imageSubject]);
+  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone, imageSubject, hookHeadlineWeight]);
 
   // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
@@ -1320,7 +1320,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
           ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-          ...(isEditorial ? { imageDirection, paperTone, imageSubject } : {}),
+          ...(isEditorial ? { imageDirection, paperTone, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
           // If the user edited the full prompt in the "Edit hook-image prompt"
           // panel, send that verbatim — bypasses server-side assembly.
           ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
