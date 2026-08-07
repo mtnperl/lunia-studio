@@ -83,12 +83,12 @@ export default function TopicStep({ onNext }: Props) {
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
-  const [concise, setConcise] = useState(false);
+  const [concise, setConcise] = useState(true);
   // Default ON — every Lunia post should carry the brand SEO footer so AI
   // crawlers / answer engines build the brand entity graph from social.
   const [includeSeoFooter, setIncludeSeoFooter] = useState(true);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
-  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("default");
+  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("editorial-scientific");
 
   // "Suggest topics" — history-aware ideas that avoid the last 7 saved carousels.
   const [suggestions, setSuggestions] = useState<{ title: string; description: string; pillar: string }[]>([]);
