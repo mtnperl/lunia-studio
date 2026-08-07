@@ -37,12 +37,13 @@ type Props = {
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
   /** Headline boldness — "default" is today's weight (400, or 300 under Editorial Scientific). */
-  headlineWeight?: "default" | "bold" | "black";
+  headlineWeight?: "default" | "medium" | "bold" | "black";
 };
 
 // Headline font-weight per boldness level, keyed by style preset (each preset has its own baseline).
 const HEADLINE_WEIGHTS = {
   default: { default: 400, editorial: 300 },
+  medium: { default: 500, editorial: 500 },
   bold: { default: 700, editorial: 700 },
   black: { default: 900, editorial: 900 },
 } as const;

@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     // Headline boldness — same 3 levels as the HTML-overlay hook (HookSlide),
     // baked into the prompt so Editorial Scientific images (text-in-pixels)
     // stay in sync with the non-editorial HTML rendering.
-    const VALID_HEADLINE_WEIGHTS = ['default', 'bold', 'black'] as const;
+    const VALID_HEADLINE_WEIGHTS = ['default', 'medium', 'bold', 'black'] as const;
     type HeadlineWeight = typeof VALID_HEADLINE_WEIGHTS[number];
     const headlineWeight: HeadlineWeight = (VALID_HEADLINE_WEIGHTS as readonly string[]).includes(body.headlineWeight)
       ? (body.headlineWeight as HeadlineWeight)
@@ -333,14 +333,15 @@ function buildEditorialHookPrompt(args: {
   direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
   paperTone: 'white' | 'warm';
   imageSubject: 'auto' | 'person' | 'still-life' | 'environment';
-  headlineWeight: 'default' | 'bold' | 'black';
+  headlineWeight: 'default' | 'medium' | 'bold' | 'black';
 }): string {
   const { spec, headline, subline, topic, userPrompt, direction, paperTone, imageSubject, headlineWeight } = args;
-  // Mirrors HookSlide's HTML-overlay weights (400/700/900) so the baked-in
+  // Mirrors HookSlide's HTML-overlay weights (400/500/700/900) so the baked-in
   // Editorial Scientific image matches what the non-editorial HTML render
   // would show at the same boldness level.
   const headlineWeightLabel = headlineWeight === 'black' ? 'Inter Black 900, extra bold'
     : headlineWeight === 'bold' ? 'Inter Bold 700'
+    : headlineWeight === 'medium' ? 'Inter Medium 500'
     : 'Inter Light 300';
 
   // Concept resolution, in priority order:

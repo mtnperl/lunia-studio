@@ -32,6 +32,8 @@ type InspectorMode =
   | "image"
   | "graphicComment";
 
+type HookHeadlineWeight = "default" | "medium" | "bold" | "black";
+
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
   { value: "cartoon", label: "Illustration" },
@@ -61,7 +63,7 @@ type Props = {
   initialShowSlideArrows?: boolean;
   initialShowSlideNumbers?: boolean;
   initialShowCitationBars?: boolean;
-  initialHookHeadlineWeight?: "default" | "bold" | "black";
+  initialHookHeadlineWeight?: HookHeadlineWeight;
   stylePreset?: import("@/lib/types").CarouselStylePreset;
   carouselFormat?: CarouselFormat;
   /** When the editor was opened from the library, the saved-carousel id flows
@@ -92,19 +94,28 @@ function toolbarBtnStyle(active: boolean): React.CSSProperties {
 }
 
 // ─── v2 editor action-bar button ──────────────────────────────────────────────
-function ToolbarButton({ label, onClick, active = false, disabled = false }: {
+function ToolbarButton({ label, onClick, active = false, disabled = false, badge = false }: {
   label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
+  /** Small dot in the corner — flags "this panel has something worth checking". */
+  badge?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ ...toolbarBtnStyle(active), opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
+      style={{ ...toolbarBtnStyle(active), opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer", position: "relative" }}
     >
       {label}
+      {badge && (
+        <span style={{
+          position: "absolute", top: -3, right: -3,
+          width: 8, height: 8, borderRadius: "50%",
+          background: "var(--warning, #b45309)", border: "1.5px solid var(--bg)",
+        }} />
+      )}
     </button>
   );
 }
@@ -365,7 +376,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [showSlideArrows, setShowSlideArrows] = useState(initialShowSlideArrows ?? true);
   const [showSlideNumbers, setShowSlideNumbers] = useState(initialShowSlideNumbers ?? true);
   const [showCitationBars, setShowCitationBars] = useState(initialShowCitationBars ?? true);
-  const [hookHeadlineWeight, setHookHeadlineWeight] = useState<"default" | "bold" | "black">(initialHookHeadlineWeight ?? "default");
+  const [hookHeadlineWeight, setHookHeadlineWeight] = useState<HookHeadlineWeight>(initialHookHeadlineWeight ?? "default");
+  // Tracks the weight actually baked into the current hook image (Editorial Scientific
+  // only) so we can flag when the setting has drifted from what's on-screen and a
+  // regenerate is needed. Best-effort: assumes the loaded/initial image matches the
+  // saved setting (or "default" for a freshly generated carousel, which always bakes
+  // at default weight since the control isn't reachable until this step).
+  const [lastBakedHeadlineWeight, setLastBakedHeadlineWeight] = useState<HookHeadlineWeight>(initialHookHeadlineWeight ?? "default");
   // AI-generated bg images for content slides 1-3 (indexed 0..2). null = none, undefined = pristine, string = url, "shimmer" = generating.
   const [contentBgImages, setContentBgImages] = useState<(string | null)[]>(
     config.contentBgImages ?? [null, null, null]
@@ -1350,6 +1367,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       const newSlideImages = [...prevImages];
       newSlideImages[0] = imgData.url;
       setHookImageAspect(targetAspect);
+      setLastBakedHeadlineWeight(hookHeadlineWeight);
       onContentChange({ ...config, slideImages: newSlideImages as (string | null)[], content: { ...config.content, imagePrompt: finalPrompt } });
 
       if (displaced && displaced !== imgData.url) {
@@ -1641,6 +1659,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Hook weight</span>
               {([
                 { value: "default", label: "Default" },
+                { value: "medium", label: "Medium" },
                 { value: "bold", label: "Bold" },
                 { value: "black", label: "Black" },
               ] as const).map(({ value, label }) => (
@@ -1652,6 +1671,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 }}>{label}</button>
               ))}
             </div>
+            {/* Editorial Scientific bakes the headline into the image itself — changing
+                the weight here doesn't touch an already-generated image. Flag it so the
+                user knows to hit "New image" in the Refine image panel. */}
+            {isEditorial && imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight && (
+              <div style={{ fontSize: 11, color: "var(--warning, #b45309)", display: "flex", alignItems: "center", gap: 5 }}>
+                ⚠ Regenerate the hook image to apply this weight
+              </div>
+            )}
             {sizeRow("Body", [0.85, 1, 1.2, 1.5, 1.85, 2.25], ["S", "M", "L", "XL", "2XL", "3XL"], bodyScale, setBodyScale)}
             {/* Icon size — only bites on slides whose graphic is an icon layout. */}
             {sizeRow("Icons", [0.75, 1, 1.3, 1.6], ["S", "M", "L", "XL"], iconScale, setIconScale)}
@@ -4062,7 +4089,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
                       {isContent && <ToolbarButton label={hdLoading === focusedSlide ? "Rendering…" : "✨ Preview HD"} active={!!hdPreviewUrl} onClick={() => previewHD(focusedSlide)} disabled={hdLoading !== null} />}
                       <ToolbarButton label="Settings" active={inspectorMode === "settings"} onClick={() => openInspector("settings")} />
-                      {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
+                      {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} badge={isEditorial && !!imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
                       {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
                       {isTakeaway && <ToolbarButton label="Edit text" active={inspectorMode === "takeaway"} onClick={() => openInspector("takeaway")} />}
