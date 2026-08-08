@@ -7,7 +7,7 @@ import EditorialContentSlide from "@/components/carousel/slides/EditorialContent
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
-import { BrandStyle, CarouselConfig, CarouselFormat, HookTone } from "@/lib/types";
+import { BrandStyle, CarouselConfig, CarouselFormat, HookHeadlineWeight, HookTone } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -31,8 +31,6 @@ type InspectorMode =
   | "overlays"
   | "image"
   | "graphicComment";
-
-type HookHeadlineWeight = "default" | "medium" | "bold" | "black";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -64,6 +62,10 @@ type Props = {
   initialShowSlideNumbers?: boolean;
   initialShowCitationBars?: boolean;
   initialHookHeadlineWeight?: HookHeadlineWeight;
+  /** Editorial Scientific only — hook image URLs pregenerated per boldness level, keyed
+   *  by weight. Lets "Hook weight" swap the displayed image instantly instead of
+   *  regenerating (see "Generate other weights" in the Refine image panel). */
+  initialHookImagesByWeight?: Partial<Record<HookHeadlineWeight, string>>;
   stylePreset?: import("@/lib/types").CarouselStylePreset;
   carouselFormat?: CarouselFormat;
   /** When the editor was opened from the library, the saved-carousel id flows
@@ -303,7 +305,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -383,6 +385,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // saved setting (or "default" for a freshly generated carousel, which always bakes
   // at default weight since the control isn't reachable until this step).
   const [lastBakedHeadlineWeight, setLastBakedHeadlineWeight] = useState<HookHeadlineWeight>(initialHookHeadlineWeight ?? "default");
+  // Editorial Scientific only — pregenerated hook image per boldness level, populated by
+  // "Generate other weights". Selecting a weight that has an entry here swaps the
+  // displayed image instantly instead of showing the "regenerate to apply" warning.
+  const [hookImagesByWeight, setHookImagesByWeight] = useState<Partial<Record<HookHeadlineWeight, string>>>(initialHookImagesByWeight ?? {});
+  const [generatingWeightVariants, setGeneratingWeightVariants] = useState(false);
+  const [weightVariantsError, setWeightVariantsError] = useState<string | null>(null);
   // AI-generated bg images for content slides 1-3 (indexed 0..2). null = none, undefined = pristine, string = url, "shimmer" = generating.
   const [contentBgImages, setContentBgImages] = useState<(string | null)[]>(
     config.contentBgImages ?? [null, null, null]
@@ -980,6 +988,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           showSlideNumbers,
           showCitationBars,
           hookHeadlineWeight,
+          hookImagesByWeight,
         }),
       });
       if (!res.ok) return;
@@ -1368,6 +1377,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       newSlideImages[0] = imgData.url;
       setHookImageAspect(targetAspect);
       setLastBakedHeadlineWeight(hookHeadlineWeight);
+      // A fresh generation is a brand-new composition — any previously pregenerated
+      // weight variants were edits of the old photo and no longer apply.
+      setHookImagesByWeight({ [hookHeadlineWeight]: imgData.url });
+      setWeightVariantsError(null);
       onContentChange({ ...config, slideImages: newSlideImages as (string | null)[], content: { ...config.content, imagePrompt: finalPrompt } });
 
       if (displaced && displaced !== imgData.url) {
@@ -1380,6 +1393,59 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setImageRegenError(err instanceof Error ? err.message : "Failed to regenerate image");
     } finally {
       setRegeneratingImage(false);
+    }
+  }
+
+  // "Generate other weights" — takes the current hook image as-is and asks
+  // gpt-image-2's /edit endpoint to re-render it at each of the other
+  // boldness levels, keeping composition/lighting/background fixed. Fires
+  // the missing weights in parallel; a partial failure still keeps whichever
+  // variants succeeded (Promise.allSettled, not all-or-nothing).
+  async function handleGenerateOtherWeights() {
+    if (!isEditorial || !imgs[0] || generatingWeightVariants) return;
+    setGeneratingWeightVariants(true);
+    setWeightVariantsError(null);
+    try {
+      const sourceUrl = imgs[0];
+      const sourceWeight = lastBakedHeadlineWeight;
+      const allWeights: HookHeadlineWeight[] = ["default", "medium", "bold", "black"];
+      const targets = allWeights.filter((w) => w !== sourceWeight && !hookImagesByWeight[w]);
+      if (targets.length === 0) return;
+
+      const settled = await Promise.allSettled(targets.map(async (weight) => {
+        const res = await fetch(`${apiBase}/generate-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slideIndex: 0,
+            topic: topic ?? "",
+            hook,
+            imageStyle,
+            imageAspect: reelsMode ? "9:16" : "4:5",
+            stylePreset: "editorial-scientific",
+            ...(content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+            editSourceImageUrl: sourceUrl,
+            headlineWeight: weight,
+          }),
+        });
+        const text = await res.text();
+        let data: { url?: string; error?: string };
+        try { data = JSON.parse(text); }
+        catch { throw new Error(`Non-JSON response (HTTP ${res.status})`); }
+        if (!res.ok || data.error || !data.url) throw new Error(data.error ?? `Failed (HTTP ${res.status})`);
+        return { weight, url: data.url };
+      }));
+
+      const next = { ...hookImagesByWeight, [sourceWeight]: sourceUrl };
+      const failures: string[] = [];
+      for (const r of settled) {
+        if (r.status === "fulfilled") next[r.value.weight] = r.value.url;
+        else failures.push(r.reason instanceof Error ? r.reason.message : String(r.reason));
+      }
+      setHookImagesByWeight(next);
+      if (failures.length > 0) setWeightVariantsError(`${failures.length} of ${targets.length} variant(s) failed: ${failures[0]}`);
+    } finally {
+      setGeneratingWeightVariants(false);
     }
   }
 
@@ -1662,18 +1728,33 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 { value: "medium", label: "Medium" },
                 { value: "bold", label: "Bold" },
                 { value: "black", label: "Black" },
-              ] as const).map(({ value, label }) => (
-                <button key={value} onClick={() => setHookHeadlineWeight(value)} style={{
-                  padding: "3px 8px", fontSize: 11, fontWeight: 700,
-                  background: hookHeadlineWeight === value ? "var(--text)" : "var(--surface)",
-                  color: hookHeadlineWeight === value ? "var(--bg)" : "var(--muted)",
-                  border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
-                }}>{label}</button>
-              ))}
+              ] as const).map(({ value, label }) => {
+                const pregenUrl = hookImagesByWeight[value];
+                return (
+                  <button key={value} onClick={() => {
+                    setHookHeadlineWeight(value);
+                    // Already generated for this weight — swap the displayed image
+                    // instantly instead of leaving the "regenerate" warning up.
+                    if (pregenUrl) {
+                      const prevImages = config.slideImages ?? [null, null, null, null, null];
+                      const newImages = [...prevImages];
+                      newImages[0] = pregenUrl;
+                      onContentChange({ ...config, slideImages: newImages as (string | null)[] });
+                      setLastBakedHeadlineWeight(value);
+                    }
+                  }} title={pregenUrl ? "Pregenerated — switches instantly" : undefined} style={{
+                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    background: hookHeadlineWeight === value ? "var(--text)" : "var(--surface)",
+                    color: hookHeadlineWeight === value ? "var(--bg)" : "var(--muted)",
+                    border: `1px solid ${pregenUrl ? "var(--accent)" : "var(--border)"}`, borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+                  }}>{label}{pregenUrl ? " ✓" : ""}</button>
+                );
+              })}
             </div>
             {/* Editorial Scientific bakes the headline into the image itself — changing
-                the weight here doesn't touch an already-generated image. Flag it so the
-                user knows to hit "New image" in the Refine image panel. */}
+                the weight here doesn't touch an already-generated image unless that
+                weight was already pregenerated (✓ above). Flag it so the user knows
+                to hit "New image" or "Generate other weights" in the Refine image panel. */}
             {isEditorial && imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight && (
               <div style={{ fontSize: 11, color: "var(--warning, #b45309)", display: "flex", alignItems: "center", gap: 5 }}>
                 ⚠ Regenerate the hook image to apply this weight
@@ -2320,6 +2401,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 {regeneratingImage ? "Generating…" : "↺ New image"}
               </button>
             </div>
+            {/* "Generate other weights" — edits the current image into the other 3 boldness
+                levels (same composition, different headline weight) so "Hook weight" can
+                swap between them instantly instead of regenerating each time. */}
+            {isEditorial && imgs[0] && (() => {
+              const allWeights: HookHeadlineWeight[] = ["default", "medium", "bold", "black"];
+              const missing = allWeights.filter((w) => w !== lastBakedHeadlineWeight && !hookImagesByWeight[w]);
+              return (
+                <div style={{ marginTop: 10 }}>
+                  {weightVariantsError && <p style={{ fontSize: 12, color: "var(--error)", margin: "0 0 8px" }}>{weightVariantsError}</p>}
+                  <button
+                    onClick={handleGenerateOtherWeights}
+                    disabled={generatingWeightVariants || regeneratingImage || regeneratingPrompt || missing.length === 0}
+                    style={{
+                      width: "100%", background: "transparent",
+                      color: (generatingWeightVariants || missing.length === 0) ? "var(--subtle)" : "var(--accent)",
+                      border: "1px dashed var(--accent)", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                      cursor: (generatingWeightVariants || missing.length === 0) ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {generatingWeightVariants
+                      ? "Generating other weights…"
+                      : missing.length === 0
+                      ? "✓ All weights generated"
+                      : `✨ Generate other weights (${missing.length} more image${missing.length === 1 ? "" : "s"})`}
+                  </button>
+                  <p style={{ fontSize: 10, color: "var(--muted)", margin: "6px 0 0" }}>
+                    Edits this image at each other boldness level — same composition, different headline weight. Takes a few minutes.
+                  </p>
+                </div>
+              );
+            })()}
             {promptAlternatives.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>More directions — click to use</div>

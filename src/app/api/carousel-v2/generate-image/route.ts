@@ -1,6 +1,6 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
-import type { Hook } from '@/lib/types';
+import type { Hook, HookHeadlineWeight } from '@/lib/types';
 import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
@@ -67,14 +67,22 @@ export async function POST(req: Request) {
     const paperTone: PaperTone = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
       ? (body.paperTone as PaperTone)
       : 'white';
-    // Headline boldness — same 3 levels as the HTML-overlay hook (HookSlide),
+    // Headline boldness — same levels as the HTML-overlay hook (HookSlide),
     // baked into the prompt so Editorial Scientific images (text-in-pixels)
     // stay in sync with the non-editorial HTML rendering.
-    const VALID_HEADLINE_WEIGHTS = ['default', 'medium', 'bold', 'black'] as const;
-    type HeadlineWeight = typeof VALID_HEADLINE_WEIGHTS[number];
-    const headlineWeight: HeadlineWeight = (VALID_HEADLINE_WEIGHTS as readonly string[]).includes(body.headlineWeight)
-      ? (body.headlineWeight as HeadlineWeight)
+    const VALID_HEADLINE_WEIGHTS: readonly HookHeadlineWeight[] = ['default', 'medium', 'bold', 'black'];
+    const headlineWeight: HookHeadlineWeight = (VALID_HEADLINE_WEIGHTS as readonly string[]).includes(body.headlineWeight)
+      ? (body.headlineWeight as HookHeadlineWeight)
       : 'default';
+    // "Generate other weights" — edit-based regeneration. When present, we skip
+    // the concept/composition prompt entirely and ask gpt-image-2 to edit the
+    // supplied image in place (same composition, only the headline weight
+    // changes), via the /edit endpoint. Hook-only; requires Editorial Scientific.
+    const editSourceImageUrl: string | undefined =
+      typeof body.editSourceImageUrl === 'string' && body.editSourceImageUrl.trim()
+        ? body.editSourceImageUrl.trim()
+        : undefined;
+    const isHeadlineWeightEdit = slideIndex === 0 && isEditorial && Boolean(editSourceImageUrl);
 
     // Subject lock — orthogonal to Direction. "auto" preserves prior behavior
     // (engine chooses). "person" hard-requires a partial-frame human element;
@@ -120,11 +128,15 @@ export async function POST(req: Request) {
       mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific' ? 'gpt-image-2' : undefined;
     const override = explicitEngine ?? moodDefaultEngine;
     const textInImage: boolean = Boolean(body.textInImage);
-    const engine = chooseImageEngine({ slideIndex, imageStyle, textInImage, override, stylePreset });
+    // Headline-weight edits always go through gpt-image-2's /edit endpoint —
+    // that's the only engine capable of editing a supplied image in place.
+    const engine = isHeadlineWeightEdit ? 'gpt-image-2' : chooseImageEngine({ slideIndex, imageStyle, textInImage, override, stylePreset });
 
     const basePrompt = imagePrompt?.trim() ? imagePrompt : buildPrompt(slideIndex, topic, hook);
 
     // Reference attachment policy:
+    //  • Headline-weight edit → the source image is the only reference; skip
+    //    the asset lookup below entirely.
     //  • Lifestyle Health + gpt-image-2  → always attach bottle + logo (this
     //    mood is a product-photography lane).
     //  • Editorial Scientific + gpt-image-2 → attach only what Claude's spec
@@ -133,7 +145,9 @@ export async function POST(req: Request) {
     //    skip refs so the hook image doesn't shoehorn the product in.
     //  • Other moods + engines → no refs.
     let referenceImageUrls: string[] = [];
-    if (engine === 'gpt-image-2') {
+    if (isHeadlineWeightEdit) {
+      referenceImageUrls = [editSourceImageUrl!];
+    } else if (engine === 'gpt-image-2') {
       // Lifestyle Health = product-photography lane: bottle + logo.
       // Editorial Scientific hook = product reference ONLY when the spec
       // actually calls for it. Never the logo (user direction).
@@ -185,7 +199,14 @@ export async function POST(req: Request) {
         ? body.customPrompt
         : undefined;
 
-    const assembledPrompt = useEditorialHookFramework
+    const assembledPrompt = isHeadlineWeightEdit
+      ? buildHeadlineWeightEditPrompt({
+          headline: hookHeadline,
+          subline:  hookSubline,
+          overlay:  hookImageSpec?.overlay,
+          headlineWeight,
+        })
+      : useEditorialHookFramework
       ? buildEditorialHookPrompt({
           spec: hookImageSpec!,
           headline: hookHeadline,
@@ -208,7 +229,7 @@ export async function POST(req: Request) {
     if (body.previewOnly === true) {
       return Response.json({
         prompt,
-        source: customPrompt ? 'custom' : (useEditorialHookFramework ? 'editorial-framework' : 'mood-assembled'),
+        source: customPrompt ? 'custom' : isHeadlineWeightEdit ? 'headline-weight-edit' : (useEditorialHookFramework ? 'editorial-framework' : 'mood-assembled'),
         engine,
         mood: { id: mood.id, label: mood.label },
         refs: referenceImageUrls.length,
@@ -316,6 +337,39 @@ const SUBJECT_BLOCKS: Record<'person' | 'still-life' | 'environment', string> = 
     "SUBJECT (HARD REQUIREMENT): a wide architectural interior or landscape scene at scale — a bedroom at dawn, a kitchen by a window, a quiet corridor with daylight, an open landscape. A person is permitted but optional, and never the focal subject. If included, they appear as a small partial silhouette, back-of-frame detail, or distant figure. Privilege architecture, daylight direction, ambient depth, and negative space.",
 };
 
+// Mirrors HookSlide's HTML-overlay weights (400/500/700/900) so the baked-in
+// Editorial Scientific image matches what the non-editorial HTML render
+// would show at the same boldness level.
+function headlineWeightLabel(headlineWeight: HookHeadlineWeight): string {
+  return headlineWeight === 'black' ? 'Inter Black 900, extra bold'
+    : headlineWeight === 'bold' ? 'Inter Bold 700'
+    : headlineWeight === 'medium' ? 'Inter Medium 500'
+    : 'Inter Light 300';
+}
+
+// "Generate other weights" — asks gpt-image-2's /edit endpoint to re-render
+// ONLY the headline's font weight on a supplied source image, preserving
+// composition/lighting/background as closely as the edit model allows. Far
+// cheaper in intent (and closer to "one hook, N strengths") than a fresh
+// from-scratch generation, which rolls a brand-new random photo every call.
+function buildHeadlineWeightEditPrompt(args: {
+  headline: string;
+  subline: string;
+  overlay?: string;
+  headlineWeight: HookHeadlineWeight;
+}): string {
+  const { headline, subline, overlay, headlineWeight } = args;
+  return [
+    "Edit this image. Keep everything about it identical — the exact same composition, subject, camera angle, lighting, colors, background, and palette. Do not regenerate or reinterpret the scene.",
+    "",
+    "The ONLY permitted change: re-render the headline text at a different font weight, same position, same size, same line breaks as it appears now.",
+    `  • Headline (change to ${headlineWeightLabel(headlineWeight)}): "${headline}"`,
+    `  • Body (leave exactly as-is, Inter ExtraLight 200): "${subline}"`,
+    overlay ? `  • Overlay accent (leave exactly as-is, Inter Light 300, uppercase, wide tracking): "${overlay}"` : "",
+    "Text colour stays rich navy (#01253f). Only the stroke weight of the headline letterforms changes — no drop shadows, no glow, no outlines, no repositioning.",
+  ].filter(Boolean).join("\n");
+}
+
 function buildEditorialHookPrompt(args: {
   spec: {
     concept?: string;
@@ -333,16 +387,9 @@ function buildEditorialHookPrompt(args: {
   direction: 'auto' | 'macro' | 'environmental' | 'abstract' | 'symbolic' | 'natural';
   paperTone: 'white' | 'warm';
   imageSubject: 'auto' | 'person' | 'still-life' | 'environment';
-  headlineWeight: 'default' | 'medium' | 'bold' | 'black';
+  headlineWeight: HookHeadlineWeight;
 }): string {
   const { spec, headline, subline, topic, userPrompt, direction, paperTone, imageSubject, headlineWeight } = args;
-  // Mirrors HookSlide's HTML-overlay weights (400/500/700/900) so the baked-in
-  // Editorial Scientific image matches what the non-editorial HTML render
-  // would show at the same boldness level.
-  const headlineWeightLabel = headlineWeight === 'black' ? 'Inter Black 900, extra bold'
-    : headlineWeight === 'bold' ? 'Inter Bold 700'
-    : headlineWeight === 'medium' ? 'Inter Medium 500'
-    : 'Inter Light 300';
 
   // Concept resolution, in priority order:
   //   1. The live "CURRENT PROMPT" the user sees and edits — authoritative.
@@ -393,7 +440,7 @@ function buildEditorialHookPrompt(args: {
     "",
     // ── Mandatory baked text (the only prescriptive part) ──
     "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",
-    `  • Headline (${headlineWeightLabel}): "${headline}"`,
+    `  • Headline (${headlineWeightLabel(headlineWeight)}): "${headline}"`,
     `  • Body (Inter ExtraLight 200, lighter weight): "${subline}"`,
     spec.overlay ? `  • Overlay accent (Inter Light 300, uppercase, wide tracking, small): "${spec.overlay}"` : "",
     "Text colour: rich navy (#01253f). The navy text is the only chromatic anchor in the image. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines.",

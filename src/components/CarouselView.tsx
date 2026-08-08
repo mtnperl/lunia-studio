@@ -555,6 +555,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialShowSlideNumbers={initialCarousel?.showSlideNumbers}
               initialShowCitationBars={initialCarousel?.showCitationBars}
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight}
+              initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={initialCarousel?.id ?? null}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}

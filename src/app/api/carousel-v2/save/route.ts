@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       format, engagementSubType, didYouKnowContent,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
-      hookHeadlineWeight,
+      hookHeadlineWeight, hookImagesByWeight,
     } = body;
 
     if (!topic) {
@@ -82,13 +82,23 @@ export async function POST(req: Request) {
     // Run in parallel — any individual failure falls back to the original URL.
     const rawSlides: (string | null)[] = slideImages ?? [];
     const rawContentBgs: (string | null)[] = Array.isArray(contentBgImages) ? contentBgImages : [];
+    // hookImagesByWeight — pregenerated "other weights" hook variants, keyed by weight.
+    const rawWeightEntries: [string, string][] =
+      hookImagesByWeight && typeof hookImagesByWeight === 'object'
+        ? (Object.entries(hookImagesByWeight) as [string, string][]).filter(([, u]) => typeof u === 'string' && u)
+        : [];
     const [mirroredHook, ...mirroredRest] = await Promise.all([
       mirrorImage(hookImageUrl, `${id}-hook`),
       ...rawSlides.map((u, i) => mirrorImage(u, `${id}-slide-${i}`)),
       ...rawContentBgs.map((u, i) => mirrorImage(u, `${id}-bg-${i}`)),
+      ...rawWeightEntries.map(([weight, u]) => mirrorImage(u, `${id}-hook-${weight}`)),
     ]);
     const mirroredSlides = mirroredRest.slice(0, rawSlides.length) as (string | null)[];
-    const mirroredContentBgs = mirroredRest.slice(rawSlides.length) as (string | null)[];
+    const mirroredContentBgs = mirroredRest.slice(rawSlides.length, rawSlides.length + rawContentBgs.length) as (string | null)[];
+    const mirroredWeightUrls = mirroredRest.slice(rawSlides.length + rawContentBgs.length) as (string | null)[];
+    const mirroredHookImagesByWeight = rawWeightEntries.length > 0
+      ? Object.fromEntries(rawWeightEntries.map(([weight, orig], i) => [weight, mirroredWeightUrls[i] ?? orig]))
+      : (hookImagesByWeight ?? undefined);
 
     const carousel: SavedCarousel = {
       id,
@@ -124,6 +134,7 @@ export async function POST(req: Request) {
       showSlideNumbers: typeof showSlideNumbers === "boolean" ? showSlideNumbers : undefined,
       showCitationBars: typeof showCitationBars === "boolean" ? showCitationBars : undefined,
       hookHeadlineWeight: hookHeadlineWeight ?? undefined,
+      hookImagesByWeight: mirroredHookImagesByWeight,
       savedAt: new Date().toISOString(),
     };
 

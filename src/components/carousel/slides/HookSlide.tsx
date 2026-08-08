@@ -3,7 +3,7 @@
 import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
-import { BrandStyle } from '@/lib/types';
+import { BrandStyle, HookHeadlineWeight } from '@/lib/types';
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ type Props = {
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
   /** Headline boldness — "default" is today's weight (400, or 300 under Editorial Scientific). */
-  headlineWeight?: "default" | "medium" | "bold" | "black";
+  headlineWeight?: HookHeadlineWeight;
 };
 
 // Headline font-weight per boldness level, keyed by style preset (each preset has its own baseline).

@@ -364,6 +364,9 @@ export type BrandStyle = {
  *  gpt-image-2 with the matching visual mood. */
 export type CarouselStylePreset = "default" | "editorial-scientific";
 
+/** Hook slide headline boldness. "default" preserves the original weight (400 / 300 editorial). */
+export type HookHeadlineWeight = "default" | "medium" | "bold" | "black";
+
 export type CarouselConfig = {
   topic: string;
   content: CarouselContent;
@@ -427,7 +430,11 @@ export type SavedCarousel = {
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
   /** Hook slide headline boldness — "default" preserves today's weight (400 / 300 editorial). */
-  hookHeadlineWeight?: "default" | "medium" | "bold" | "black";
+  hookHeadlineWeight?: HookHeadlineWeight;
+  /** Editorial Scientific only — hook image URLs pregenerated per boldness level via
+   *  "Generate other weights" (edit-based, same composition as the source image), so
+   *  switching Hook weight in the editor can swap instantly instead of regenerating. */
+  hookImagesByWeight?: Partial<Record<HookHeadlineWeight, string>>;
   savedAt: string;
 };
 

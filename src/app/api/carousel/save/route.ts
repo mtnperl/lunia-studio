@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
       format, engagementSubType, didYouKnowContent,
-      hookHeadlineWeight,
+      hookHeadlineWeight, hookImagesByWeight,
     } = body;
 
     if (!topic) {
@@ -74,10 +74,21 @@ export async function POST(req: Request) {
     // Persist fal.ai images to Vercel Blob before their CDN URLs expire.
     // Run in parallel — any individual failure falls back to the original URL.
     const rawSlides: (string | null)[] = slideImages ?? [];
-    const [mirroredHook, ...mirroredSlides] = await Promise.all([
+    // hookImagesByWeight — pregenerated "other weights" hook variants, keyed by weight.
+    const rawWeightEntries: [string, string][] =
+      hookImagesByWeight && typeof hookImagesByWeight === 'object'
+        ? (Object.entries(hookImagesByWeight) as [string, string][]).filter(([, u]) => typeof u === 'string' && u)
+        : [];
+    const [mirroredHook, ...mirroredRest] = await Promise.all([
       mirrorImage(hookImageUrl, `${id}-hook`),
       ...rawSlides.map((u, i) => mirrorImage(u, `${id}-slide-${i}`)),
+      ...rawWeightEntries.map(([weight, u]) => mirrorImage(u, `${id}-hook-${weight}`)),
     ]);
+    const mirroredSlides = mirroredRest.slice(0, rawSlides.length);
+    const mirroredWeightUrls = mirroredRest.slice(rawSlides.length);
+    const mirroredHookImagesByWeight = rawWeightEntries.length > 0
+      ? Object.fromEntries(rawWeightEntries.map(([weight, orig], i) => [weight, mirroredWeightUrls[i] ?? orig]))
+      : (hookImagesByWeight ?? undefined);
 
     const carousel: SavedCarousel = {
       id,
@@ -105,6 +116,7 @@ export async function POST(req: Request) {
       bodyScale: bodyScale ?? undefined,
       iconScale: iconScale ?? undefined,
       hookHeadlineWeight: hookHeadlineWeight ?? undefined,
+      hookImagesByWeight: mirroredHookImagesByWeight,
       savedAt: new Date().toISOString(),
     };
 
