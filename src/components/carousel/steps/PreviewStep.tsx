@@ -72,6 +72,9 @@ type Props = {
    *  in so the "Save" button updates that record in place instead of minting
    *  a brand-new carousel on every save. */
   initialSavedId?: string | null;
+  /** Fires after a successful save with the resulting carousel id. Lets a parent
+   *  (e.g. BatchView's queue cards) surface a "Saved ✓" state of its own. */
+  onSaved?: (id: string) => void;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
@@ -305,7 +308,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -994,6 +997,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       if (!res.ok) return;
       const { id } = await res.json();
       setSavedId(id);
+      onSaved?.(id);
       // Brief "Saved!" flash on the button so the user knows the update landed.
       setSaveLabel("Saved!");
       setTimeout(() => setSaveLabel(null), 1600);

@@ -4,14 +4,14 @@ import { CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subje
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
 
-const IMAGE_STYLE_OPTIONS: { value: CarouselImageStyle; label: string; description: string }[] = [
+export const IMAGE_STYLE_OPTIONS: { value: CarouselImageStyle; label: string; description: string }[] = [
   { value: "realistic", label: "Realistic Photo", description: "Editorial photography — Lunia's default cinematic look" },
   { value: "cartoon", label: "Digital Illustration", description: "Bold colorful illustration, expressive and modern" },
   { value: "anime", label: "Anime / Cel-Shaded", description: "Dreamlike anime scenes — great for sleep & night themes" },
   { value: "vector", label: "Vector / Flat", description: "Clean flat graphic for a modern minimal look" },
 ];
 
-const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
+export const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }[] = [
   { value: "educational", label: "Educational", description: "Clear, factual, teaches something new" },
   { value: "science-backed", label: "Science-backed", description: "Lead with research findings and data" },
   { value: "myth-bust", label: "Myth-bust", description: "Challenge a common misconception" },
@@ -24,18 +24,18 @@ const HOOK_TONE_OPTIONS: { value: HookTone; label: string; description: string }
 ];
 
 // value → label lookup for rendering hook-tone recommendations.
-const TONE_LABEL = Object.fromEntries(
+export const TONE_LABEL = Object.fromEntries(
   HOOK_TONE_OPTIONS.map((o) => [o.value, o.label]),
 ) as Record<HookTone, string>;
 
-type HookRecommendation = { tone: HookTone; reason: string };
+export type HookRecommendation = { tone: HookTone; reason: string };
 
-const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: string; description: string }[] = [
+export const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: string; description: string }[] = [
   { value: "reveal", label: "Reveal", description: "Unveil items one by one — builds anticipation" },
   { value: "diagnostic", label: "Diagnostic", description: "Symptom/habit check — reader self-identifies" },
 ];
 
-const CATEGORIES = [
+export const CATEGORIES = [
   "All",
   "Sleep Science",
   "Circadian Rhythm",
@@ -61,7 +61,7 @@ type Mode = "list" | "custom";
 /** Demo topics for one-click testing — exercise a range of visual metaphors so
  *  it's a fair stress-test of the editorial preset (portrait, still life,
  *  bedroom scene, etc.) without picking from the real subject library. */
-const SAMPLE_SUBJECTS = [
+export const SAMPLE_SUBJECTS = [
   "Skin repairs at night — the overnight repair window",
   "Magnesium glycinate beats melatonin for real sleep",
   "Why core body temperature drops at night and triggers sleep",
