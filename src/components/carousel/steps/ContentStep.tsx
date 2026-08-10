@@ -142,8 +142,9 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     letterSpacing: "0.06em",
   };
 
-  // A takeaway is only renderable (and shifts the CTA to slide 6) when it's
-  // well-formed — guards a partial model response from crashing the render.
+  // A takeaway is only renderable when it's well-formed — guards a partial
+  // model response from crashing the render. When present it absorbs the CTA
+  // (follow line merges onto the takeaway slide, no separate CTA slide).
   const hasTakeaway =
     carouselFormat !== "engagement" &&
     !!content.takeaway &&
@@ -465,7 +466,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
         };
         return (
           <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 5 — Takeaway (the payoff)</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 5 — Takeaway (the payoff + closing follow prompt)</div>
             <label style={labelStyle}>Headline</label>
             <input style={{ ...inputStyle, marginBottom: 12 }} value={tk.headline} onChange={(e) => setTk({ headline: e.target.value })} />
             <label style={labelStyle}>Recap points</label>
@@ -494,11 +495,19 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
         );
       })()}
 
-      {/* CTA */}
+      {/* CTA — when a takeaway is present it absorbs the follow line onto its
+          own slide (see above) and there's no separate CTA slide, so only the
+          follow-line field is shown; the headline field would render nowhere. */}
       <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide {hasTakeaway ? 6 : 5} — CTA</div>
-        <label style={labelStyle}>Headline</label>
-        <input style={{ ...inputStyle, marginBottom: 8 }} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>
+          {hasTakeaway ? "Follow prompt (shown on the Takeaway slide)" : "Slide 5 — CTA"}
+        </div>
+        {!hasTakeaway && (
+          <>
+            <label style={labelStyle}>Headline</label>
+            <input style={{ ...inputStyle, marginBottom: 8 }} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
+          </>
+        )}
         <label style={labelStyle}>Follow line</label>
         <input style={inputStyle} value={content.cta.followLine} onChange={(e) => onChange({ ...content, cta: { ...content.cta, followLine: e.target.value } })} />
       </div>

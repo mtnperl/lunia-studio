@@ -25,6 +25,9 @@ type Props = {
   reels?: boolean;                  // 9:16 Reels format (1920px height)
   stylePreset?: "default" | "editorial-scientific";
   showSlideArrows?: boolean;
+  /** Follow prompt merged in from the (now-dropped) CTA slide — this is the
+   *  true last slide of the deck, so it carries the growth ask too. */
+  followLine?: string;
 };
 
 // Stroke-only glyphs for the interaction ask. 24x24 viewBox, inherits stroke.
@@ -44,7 +47,7 @@ export default function TakeawaySlide({
   headline, points, interaction, scale = 1, id, brandStyle, backgroundImage, shimmer = false,
   logoScale = 1, arrowScale = 1, darkBackground = false, slideBgColor,
   showLuniaLifeWatermark = false, prominentWatermark = false, reels = false,
-  stylePreset = "default", showSlideArrows = true,
+  stylePreset = "default", showSlideArrows = true, followLine,
 }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
   const slideH = reels ? 1920 : 1350;
@@ -220,15 +223,26 @@ export default function TakeawaySlide({
           </div>
         </div>
 
-        {/* faint forward cue toward the closing CTA */}
-        <div style={{
-          marginTop: 52,
-          fontFamily: "Jost, Montserrat, sans-serif",
-          fontWeight: 500, fontSize: 23, letterSpacing: "0.22em",
-          textTransform: "uppercase", color: mutedColor,
-        }}>
-          Keep swiping →
-        </div>
+        {/* Follow prompt — this is the true last slide of the deck, so it
+            carries the growth ask that used to live on its own CTA slide. */}
+        {followLine && followLine.trim() && (() => {
+          const parts = followLine.split("@lunia_life");
+          return (
+            <div style={{
+              marginTop: 52,
+              fontFamily: isEditorial ? "Inter, system-ui, -apple-system, sans-serif" : "Cormorant Garamond, Lora, serif",
+              fontWeight: isEditorial ? 300 : 400,
+              fontStyle: isEditorial ? "normal" : "italic",
+              fontSize: 30,
+              lineHeight: 1.4,
+              color: mutedColor,
+            }}>
+              {parts[0]}
+              {parts.length > 1 && <span style={{ fontWeight: isEditorial ? 500 : 700, color: bodyColor }}>@lunia_life</span>}
+              {parts[1]}
+            </div>
+          );
+        })()}
       </div>
     </SlideWrapper>
   );
