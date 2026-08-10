@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import { getGraphicTypeMeta } from "@/lib/graphic-types";
+import { GraphicSpecSchema } from "@/lib/types";
 
 type Props = {
   /** Compact JSON string from slide.graphic */
@@ -39,6 +40,17 @@ export default function GraphicDataEditor({ graphicJson, onSave, onClose }: Prop
   const componentLabel = meta?.label ?? draft?.component ?? "graphic";
   const componentDesc = meta?.description ?? "Tweak the values shown in the graphic";
 
+  // Validate the live draft against the same schema the API enforces at
+  // generation time, so a hand-edit can't silently produce a shape that
+  // fails only later, at render.
+  const validation = useMemo(() => GraphicSpecSchema.safeParse(draft), [draft]);
+  const errors = validation.success
+    ? []
+    : validation.error.issues.map((i) => {
+        const path = i.path.filter((p) => p !== "data").join(".");
+        return path ? `${path}: ${i.message}` : i.message;
+      });
+
   return (
     <div style={{
       marginTop: 8,
@@ -69,14 +81,40 @@ export default function GraphicDataEditor({ graphicJson, onSave, onClose }: Prop
             Revert
           </button>
           <button
-            onClick={() => { onSave(JSON.stringify(draft)); onClose(); }}
-            style={{ background: "var(--accent)", border: "none", borderRadius: 5, fontSize: 10, color: "#fff", cursor: "pointer", fontFamily: "inherit", padding: "4px 12px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 700 }}
+            onClick={() => { if (errors.length === 0) { onSave(JSON.stringify(draft)); onClose(); } }}
+            disabled={errors.length > 0}
+            title={errors.length > 0 ? "Fix the errors below before saving" : undefined}
+            style={{
+              background: errors.length > 0 ? "var(--border)" : "var(--accent)",
+              border: "none", borderRadius: 5, fontSize: 10,
+              color: errors.length > 0 ? "var(--muted)" : "#fff",
+              cursor: errors.length > 0 ? "not-allowed" : "pointer",
+              fontFamily: "inherit", padding: "4px 12px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 700,
+            }}
           >
             Save
           </button>
           <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 14, color: "var(--muted)", cursor: "pointer", lineHeight: 1, padding: "4px 6px" }}>✕</button>
         </div>
       </div>
+
+      {/* Validation errors */}
+      {errors.length > 0 && (
+        <div style={{
+          margin: "10px 14px 0", padding: "8px 10px",
+          background: "var(--error-dim, rgba(220,38,38,0.08))",
+          border: "1px solid var(--error)", borderRadius: 6,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--error)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            Won&apos;t save — invalid for &ldquo;{componentLabel}&rdquo;
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 16 }}>
+            {errors.map((e, i) => (
+              <li key={i} style={{ fontSize: 11, color: "var(--error)", lineHeight: 1.5 }}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Fields */}
       <div style={{ padding: "12px 14px", maxHeight: 400, overflowY: "auto" }}>
