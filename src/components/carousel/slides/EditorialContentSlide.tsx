@@ -239,10 +239,13 @@ export default function EditorialContentSlide({
         {hasOtherGraphic && otherGraphicSpec && (
           <div style={{
             marginTop: 12,
-            // Hug the body and stay compact: capped height + FitBox so the
-            // graphic scales down instead of running into the citation. The
-            // spacer below pushes any slack to the bottom of the column.
-            flex: "0 1 auto",
+            // Capped height + FitBox so the graphic scales down instead of
+            // running into the citation. flex-grow:1 lets this zone claim its
+            // share of any leftover column space (up to the cap) instead of
+            // always sitting at its own natural size with all the slack
+            // collecting below — a sparse graphic otherwise reads as small and
+            // orphaned above a big gap before the citation band.
+            flex: "1 1 auto",
             minHeight: 0,
             maxHeight: graphicMaxH,
             overflow: "hidden",
@@ -260,7 +263,7 @@ export default function EditorialContentSlide({
               maxWidth: hasPhoto ? "100%" : 760,
               height: "100%",
             }}>
-              <FitBox align="top">
+              <FitBox align="center">
                 {renderGraphicSpec(otherGraphicSpec, brandStyle)}
               </FitBox>
             </div>

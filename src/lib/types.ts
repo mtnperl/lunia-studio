@@ -131,7 +131,9 @@ export const GraphicSpecSchema = z.discriminatedUnion('component', [
   }),
   z.object({
     component: z.literal('wave'),
-    data: z.object({}),
+    // Optional — defaults to the classic sleep-stage labels for backward compat
+    // with saved graphics generated before `labels` existed.
+    data: z.object({ labels: z.array(z.string()).min(2).max(3).optional() }),
   }),
   z.object({
     component: z.literal('iconGrid'),

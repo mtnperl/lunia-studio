@@ -415,17 +415,21 @@ export default function ContentSlide({
           {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
         </div>
 
-        {/* Graphic zone — sits just below the body (hugs the copy, not floating
-            in the middle) and is capped to graphicMaxH so it stays compact. The
-            inner FitBox scales any graphic (old or new) DOWN — to the cap, or
-            smaller when a long headline/body leaves less room — so the text is
-            never resized and the graphic can never overlap the citation;
-            overflow:hidden is the hard backstop. The spacer below pushes the
-            citation to the bottom. */}
+        {/* Graphic zone — sits just below the body and is capped to graphicMaxH
+            so it stays compact. flex-grow:1 (shared with the spacer below) lets
+            it claim its share of any leftover vertical space up to that cap
+            instead of always sitting exactly its own natural size with 100% of
+            the slack dumped into one block below — a sparse graphic reads as
+            "small and orphaned above a big gap" otherwise. FitBox centers
+            within that zone and scales DOWN — to the cap, or smaller when a
+            long headline/body leaves less room — so the text is never resized
+            and the graphic can never overlap the citation; overflow:hidden is
+            the hard backstop. The spacer below still absorbs whatever the
+            graphic zone's cap couldn't. */}
         {hasInlineGraphic ? (
           <>
-          <div style={{ flex: '0 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex' }}>
-           <FitBox align="top">
+          <div style={{ flex: '1 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex' }}>
+           <FitBox align="center">
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (

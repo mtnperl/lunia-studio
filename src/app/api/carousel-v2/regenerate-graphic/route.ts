@@ -1,6 +1,7 @@
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { REGENERATE_GRAPHIC_PROMPT, REGENERATE_VECTOR_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
+import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
 
 export const maxDuration = 300;
 
@@ -42,14 +43,6 @@ export async function POST(req: Request) {
       ? body.forceComponent.trim()
       : undefined;
 
-    // Known valid component keys — any Claude response with a key outside this set is invalid
-    const VALID_COMPONENTS = new Set([
-      "stat","bars","steps","dotchain","wave","iconGrid","donut","versus","timeline","split",
-      "checklist","callout","table","pyramid","radial","circleStats","spectrum","funnel",
-      "scorecard","bubbles","iconStat","matrix2x2","stackedBar","processFlow","heatGrid",
-      "vector","hubSpoke","iceberg","bridge","circularCycle","bento","conceptFlow","iconLayout",
-    ]);
-
     const prompt = forceVector
       ? REGENERATE_VECTOR_PROMPT(topic, headline, slideBody, attempt)
       : REGENERATE_GRAPHIC_PROMPT(topic, headline, slideBody, avoidComponents, userComment, forceComponent);
@@ -67,15 +60,14 @@ export async function POST(req: Request) {
     // Strip accidental code fences if model adds them
     const graphic = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
 
-    // Validate: if Claude returned a component key not in our registry, substitute callout
-    let finalGraphic = graphic;
-    try {
-      const parsed = JSON.parse(graphic);
-      if (parsed?.component && !VALID_COMPONENTS.has(parsed.component)) {
-        // Unknown component — fall back to callout so slide always renders something
-        finalGraphic = JSON.stringify({ component: "callout", data: { text: headline } });
-      }
-    } catch { /* non-JSON response — pass through, ContentSlide will handle */ }
+    // Validate the full data shape against GraphicSpecSchema — not just the
+    // component key — so a shape mismatch never ships as-is only to blank
+    // out later at render time. Falls back to a callout built from the
+    // slide's own text if the shape is wrong (or empty/undefined if the
+    // model returned nothing usable at all).
+    // `headline` is required (checked above), so fallbackText is always
+    // non-empty here — the `?? ""` only satisfies the return type.
+    const finalGraphic = validateOrFallbackGraphic(graphic, headline || slideBody) ?? "";
 
     return Response.json({ graphic: finalGraphic });
   } catch (err) {

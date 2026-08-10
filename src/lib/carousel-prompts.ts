@@ -351,7 +351,7 @@ Brand rules (follow exactly):
   {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT_OR_EMPTY_STRING","label":"WHAT IT MEANS"}}  — one big standout number
   {"component":"radial","data":{"value":"87%","label":"ADULTS DEFICIENT","sublabel":"optional"}}  — single % on a speedometer arc
   {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}  — 2-4 side-by-side comparison bars
-  {"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER},{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}  — 2-5 part breakdown
+  {"component":"donut","data":{"value":"85%","label":"WHAT IT MEANS","sublabel":"optional context"}}  — single % filled on a ring, value is the % filled (numeric string, e.g. "85%")
   {"component":"split","data":{"parts":[{"label":"NAME","percent":70,"value":"optional"},{"label":"NAME","percent":30}]}}  — percentage split 2-4 parts
   {"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"OPTIMAL SLEEP"},{"value":"23%","label":"MORE REM"}]}}  — 2-4 ringed stat circles
   {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP RANGE","unit":"hrs"}}  — range on a min-max scale
@@ -360,7 +360,7 @@ Brand rules (follow exactly):
   {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — large grade/score
   {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES","sublabel":"optional"}}  — hero emoji + big number
   {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1}],"title":"optional"}}  — grid coloured by intensity 1-3
-  {"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER},{"label":"LABEL","value":NUMBER}],"unit":"optional"}}  — trend line 2-6 points
+  {"component":"wave","data":{"labels":["ZONE 1","ZONE 2","ZONE 3"]}}  — decorative flowing wave with 2-3 labeled zones; best for a continuous multi-phase process (e.g. sleep stages, energy phases, hormone cycles), not precise trend data
   {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
   {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}  — 2x2 quadrant
   {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}  — bold pull-quote (last resort if only 1 number)
@@ -372,13 +372,13 @@ Brand rules (follow exactly):
   {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}  — problem → result arc; use when slide shows a causal link or mechanism between two states
   {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}  — 2-4 independent insight tiles; use for lists of distinct benefits or mechanisms
   {"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}  — 3-5 cause-effect nodes each with a sublabel; use when slide traces a chain of events or mechanisms
-  {"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 3-5 simple connected steps (simpler than conceptFlow, no sublabels)
+  {"component":"dotchain","data":{"labels":["BEFORE STATE","AFTER STATE"]}}  — before/after 2-state comparison, each state drawn as its own row of 5 connected dots; the second row's chain breaks (✕) at the end to signal disruption/change. Exactly 1-2 labels, not a multi-step sequence — use "steps" or "processFlow" for that.
   {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 numbered sequential steps
   {"component":"processFlow","data":{"steps":["Step 1","Step 2","Step 3","Step 4"]}}  — 2-5 horizontal process boxes with arrows (technical/biochemical sequence)
   {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions as a list
-  {"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}  — 2-9 icon+label grid
+  {"component":"iconGrid","data":{"items":[{"label":"SHORT LABEL"},{"label":"SHORT LABEL"}]}}  — 2-4 items in a single icon+label row (icons are decorative, auto-assigned — do not send an "icon" or "columns" field, they're ignored)
   {"component":"pyramid","data":{"levels":["Top (most specific)","Middle","Base (widest)"]}}  — 2-5 level priority hierarchy
-  {"component":"versus","data":{"left":{"label":"OPTION A","items":["fact","fact"]},"right":{"label":"OPTION B","items":["fact","fact"]}}}  — A vs B comparison
+  {"component":"versus","data":{"left":{"label":"OPTION A","value":"4%","note":"optional short note"},"right":{"label":"OPTION B","value":"85%","note":"optional short note"}}}  — A vs B comparison, each side is ONE headline value (a stat, grade, or short outcome), not a list of facts
   {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
   {"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}  — 2-5 bubbles sized by importance
   {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — grade or score
@@ -461,7 +461,7 @@ TIER A — DATA (use REAL numbers/facts only):
 {"component":"stat","data":{"stat":"NUMBER","unit":"UNIT","label":"WHAT IT MEANS"}}
 {"component":"radial","data":{"value":"87%","label":"ADULTS DEFICIENT","sublabel":"optional"}}
 {"component":"bars","data":{"items":[{"label":"NAME","value":"VALUE"},{"label":"NAME","value":"VALUE"}]}}
-{"component":"donut","data":{"segments":[{"label":"NAME","value":NUMBER},{"label":"NAME","value":NUMBER}],"centerLabel":"optional"}}
+{"component":"donut","data":{"value":"85%","label":"WHAT IT MEANS","sublabel":"optional"}}
 {"component":"split","data":{"parts":[{"label":"NAME","percent":70},{"label":"NAME","percent":30}]}}
 {"component":"circleStats","data":{"items":[{"value":"7-9","sublabel":"hrs","label":"SLEEP"},{"value":"23%","label":"MORE REM"}]}}
 {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"SLEEP RANGE","unit":"hrs"}}
@@ -470,7 +470,7 @@ TIER A — DATA (use REAL numbers/facts only):
 {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}
 {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES"}}
 {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional"}}
-{"component":"wave","data":{"points":[{"label":"LABEL","value":NUMBER},{"label":"LABEL","value":NUMBER}],"unit":"optional"}}
+{"component":"wave","data":{"labels":["ZONE 1","ZONE 2","ZONE 3"]}}  — decorative wave, 2-3 labeled zones, not precise trend data
 {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
 {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}
 {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional citation"}}
@@ -482,13 +482,13 @@ LABEL RULES FOR ALL TIER B: every label/step/spoke must be ≤4 words. sublabels
 {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}
 {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}
 {"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}
-{"component":"dotchain","data":{"steps":["Step 1","Step 2","Step 3"]}}
+{"component":"dotchain","data":{"labels":["BEFORE STATE","AFTER STATE"]}}  — before/after 2-state comparison only, 1-2 labels, not a multi-step sequence
 {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
 {"component":"processFlow","data":{"steps":["Tryptophan","5-HTP","Serotonin","Melatonin"]}}
 {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
-{"component":"iconGrid","data":{"items":[{"icon":"EMOJI","label":"SHORT LABEL"}],"columns":3}}
+{"component":"iconGrid","data":{"items":[{"label":"SHORT LABEL"},{"label":"SHORT LABEL"}]}}  — 2-4 items, single row (no "icon"/"columns" fields, they're ignored)
 {"component":"pyramid","data":{"levels":["Top","Middle","Base"]}}
-{"component":"versus","data":{"left":{"label":"OPTION A","items":["fact"]},"right":{"label":"OPTION B","items":["fact"]}}}
+{"component":"versus","data":{"left":{"label":"OPTION A","value":"4%","note":"optional"},"right":{"label":"OPTION B","value":"85%","note":"optional"}}}
 {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
 {"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}
 

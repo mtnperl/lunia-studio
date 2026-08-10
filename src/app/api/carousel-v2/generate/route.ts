@@ -2,6 +2,7 @@ import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CON
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
+import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
 import { CarouselContent, CarouselFormat, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
@@ -143,6 +144,21 @@ export async function POST(req: Request) {
             } else {
               tk.points = points;
             }
+          }
+          // Validate every graphic shape now, not just at render time — a
+          // mismatch between what Claude sent and the component's real data
+          // contract otherwise ships silently and only blanks out later.
+          if (Array.isArray(parsed.slides)) {
+            for (const slide of parsed.slides) {
+              if (slide.graphic) {
+                slide.graphic = validateOrFallbackGraphic(slide.graphic, slide.body ?? slide.headline);
+              }
+            }
+          }
+          if (parsed.cta?.graphic) {
+            // CTA graphic is decorative icon-row only — drop rather than
+            // force an unsupported fallback component onto that slide.
+            parsed.cta.graphic = validateOrFallbackGraphic(parsed.cta.graphic);
           }
           return parsed;
         } catch (err) {

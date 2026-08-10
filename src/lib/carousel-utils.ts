@@ -26,6 +26,38 @@ export function parseGraphicSpec(raw: string | undefined): GraphicSpec | null {
   return null;
 }
 
+/**
+ * Validate a `graphic` field at GENERATION time — not just render time — so a
+ * shape mismatch (wrong field names, wrong component) never ships as-is only
+ * to silently blank out later in `parseGraphicSpec`. Falls back to a
+ * "callout" pull-quote built from the slide's own text when `fallbackText` is
+ * given, so a slide that had a graphic intent still shows *something* instead
+ * of empty space. Without `fallbackText` (e.g. the CTA's optional icon row),
+ * an invalid shape is simply dropped.
+ *
+ * Leaves raw SVG strings (Path 2, not JSON) and empty/undefined values
+ * untouched — this only guards the curated GraphicSpec JSON path.
+ */
+export function validateOrFallbackGraphic(raw: string | undefined, fallbackText?: string): string | undefined {
+  if (!raw || raw.trim() === '') return raw;
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return raw; // raw SVG string — not GraphicSpec JSON, leave untouched
+  }
+  const result = GraphicSpecSchema.safeParse(obj);
+  if (result.success) return raw;
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[GraphicSpec] generation-time validation failed, falling back:',
+      result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+  }
+  const text = (fallbackText ?? '').trim();
+  if (!text) return undefined;
+  const excerpt = text.length > 90 ? text.slice(0, 87).trimEnd() + '…' : text;
+  return JSON.stringify({ component: 'callout', data: { text: excerpt } });
+}
+
 // ─── Graphic data shapes ──────────────────────────────────────────────────────
 
 export type StatData   = { stat: string; label: string };
