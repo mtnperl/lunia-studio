@@ -1,3 +1,5 @@
+import { scanBannedTerms } from "./banned-terms";
+
 export type ComplianceLevel = "green" | "amber" | "red";
 
 export type ComplianceViolation = {
@@ -11,16 +13,10 @@ export type ComplianceResult = {
   violations: ComplianceViolation[];
 };
 
-const RED_PATTERNS: { rule: string; pattern: RegExp }[] = [
-  { rule: "drug claim: cure", pattern: /\bcures?\b/i },
-  { rule: "drug claim: cured", pattern: /\bcured\b/i },
-  { rule: "drug claim: treat", pattern: /\btreats?\b/i },
-  { rule: "drug claim: treated", pattern: /\btreated\b/i },
-  { rule: "drug claim: prevent", pattern: /\bprevents?\b/i },
-  { rule: "drug claim: prevented", pattern: /\bprevented\b/i },
-  { rule: "drug claim: diagnose", pattern: /\bdiagnoses?\b/i },
-  { rule: "drug claim: diagnosed", pattern: /\bdiagnosed\b/i },
-];
+// Drug claims and banned badges are RED; they now come from banned-terms.ts
+// rather than a local list, so this file can no longer disagree with
+// did-you-know-lint.ts about what a drug claim is. Absolutes ("guaranteed",
+// "miracle") arrive with them — new here, and intentional.
 
 const AMBER_PATTERNS: { rule: string; pattern: RegExp }[] = [
   { rule: "em dash", pattern: /—/ },
@@ -34,12 +30,26 @@ const AMBER_PATTERNS: { rule: string; pattern: RegExp }[] = [
   { rule: "influencer framing: 'not X, it's Y'", pattern: /\bis not [^.!?,]+,?\s*(it('| i)?s|but)\s+\w+/i },
 ];
 
+const RED_RULE_LABEL: Record<string, string> = {
+  drug_claim: "drug claim",
+  absolute: "absolute claim",
+  badge: "banned trust badge",
+};
+
 export function scanCompliance(text: string): ComplianceResult {
   const violations: ComplianceViolation[] = [];
 
-  for (const { rule, pattern } of RED_PATTERNS) {
-    const m = text.match(pattern);
-    if (m) violations.push({ severity: "red", rule, match: m[0] });
+  // One violation per distinct term, matching the previous behaviour of
+  // reporting each RED_PATTERNS rule at most once regardless of repeats.
+  const seenTerms = new Set<string>();
+  for (const hit of scanBannedTerms(text)) {
+    if (seenTerms.has(hit.term)) continue;
+    seenTerms.add(hit.term);
+    violations.push({
+      severity: "red",
+      rule: `${RED_RULE_LABEL[hit.category] ?? hit.category}: ${hit.term}`,
+      match: hit.matched,
+    });
   }
 
   for (const { rule, pattern } of AMBER_PATTERNS) {

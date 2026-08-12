@@ -14,6 +14,10 @@
 // Banned phrase detection is also intentionally narrow to avoid bombing on
 // accidental matches in long bodies.
 
+// Badge list lives in banned-terms.ts, shared with compliance.ts and
+// did-you-know-lint.ts so the three can no longer disagree.
+import { BANNED_BADGES } from "./banned-terms";
+
 export type LintFindingType =
   | "em_dash"
   | "exclamation_excess"
@@ -31,15 +35,6 @@ export type LintResult = {
 };
 
 const MAX_INPUT_CHARS = 50_000;
-
-const BANNED_BADGES = [
-  "FDA Approved",
-  "FDA-Approved",
-  "Doctor Recommended",
-  "Doctor-Recommended",
-  "Clinically Proven",
-  "Clinically-Proven",
-];
 
 // Matches "X is not Y, it is Z" / "isn't Y, it's Z" / contracted variants.
 // Conservative: requires the connecting comma + "it is/it's" pattern within a
