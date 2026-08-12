@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet } from "./types";
+import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
 import type { DecisionModelSnapshot } from "./decision-model";
 
@@ -145,6 +145,7 @@ const RATE_LIMITS: Record<string, number> = {
   "email-review": 30, // analyze + regen-suggestions (Sonnet, expensive)
   "klaviyo-write": 12, // template writebacks (deliberately tight — every write is a real change)
   login: 10,      // login attempts per IP
+  verify: 40,     // fact verification — each run is a burst of grounded Opus calls
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -201,6 +202,63 @@ export async function deleteCarouselKv(id: string): Promise<void> {
   const all = await getCarousels();
   const filtered = all.filter((c) => c.id !== id);
   await writeCollection(CAROUSELS_KEY, filtered);
+}
+
+/**
+ * Attach a verification record to one carousel without touching anything else.
+ *
+ * saveCarousel() is a read-modify-write over the WHOLE collection: it reads every
+ * carousel, replaces one, and writes them all back. Verification runs for up to
+ * five minutes in the background, so a save from the editor during that window
+ * would clobber whichever write landed first — silently, with no error and no
+ * way to tell which one won.
+ *
+ * This re-reads immediately before writing and merges only the `verification`
+ * field, so an editor save that lands mid-verification keeps its content changes
+ * and still receives the verdict. It narrows the window rather than closing it
+ * (there is still a read-then-write gap); closing it entirely would mean moving
+ * verification into its own per-id keys, which was considered and rejected in
+ * favour of keeping records inside the durable Blob mirror.
+ */
+export async function attachCarouselVerification(
+  id: string,
+  verification: SavedCarousel["verification"],
+): Promise<boolean> {
+  const all = await getCarousels();
+  const idx = all.findIndex((c) => c.id === id);
+  if (idx < 0) return false;
+  all[idx] = { ...all[idx], verification };
+  await writeCollection(CAROUSELS_KEY, all);
+  return true;
+}
+
+// ─── Gating configuration ─────────────────────────────────────────────────────
+// What each verification status does at a download / export / push control.
+// Stored rather than hardcoded so the rules can change without a redeploy: the
+// initial "amber warns, red blocks" call was made before any real amber-rate
+// data existed, and the first production run came back with 2 of 3 hooks
+// unsourced.
+
+const GATING_KEY = "lunia:verification:gating";
+
+export async function getGatingConfig(): Promise<GatingConfig> {
+  try {
+    const stored = await redis.get<Partial<GatingConfig>>(GATING_KEY);
+    if (!stored) return DEFAULT_GATING;
+    // Merge per surface so a config written before a new surface existed still
+    // yields a complete object.
+    return {
+      carousel: { ...DEFAULT_GATING.carousel, ...(stored.carousel ?? {}) },
+      email: { ...DEFAULT_GATING.email, ...(stored.email ?? {}) },
+      script: { ...DEFAULT_GATING.script, ...(stored.script ?? {}) },
+    };
+  } catch {
+    return DEFAULT_GATING; // fail closed to the shipped defaults
+  }
+}
+
+export async function saveGatingConfig(config: GatingConfig): Promise<void> {
+  await redis.set(GATING_KEY, config, { ex: TTL_SECONDS });
 }
 
 // ─── Decision Model snapshot persistence ─────────────────────────────────────

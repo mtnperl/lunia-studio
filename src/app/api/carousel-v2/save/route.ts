@@ -1,4 +1,4 @@
-import { saveAssetIfNew, saveCarousel } from "@/lib/kv";
+import { saveAssetIfNew, saveCarousel, getCarouselById } from "@/lib/kv";
 import { AssetMetadata, DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { put } from "@vercel/blob";
@@ -135,6 +135,16 @@ export async function POST(req: Request) {
       showCitationBars: typeof showCitationBars === "boolean" ? showCitationBars : undefined,
       hookHeadlineWeight: hookHeadlineWeight ?? undefined,
       hookImagesByWeight: mirroredHookImagesByWeight,
+      // Carry any existing fact-verification record forward. This object is
+      // rebuilt from the request body on every save, so a field the client
+      // doesn't send is silently dropped — and the client has no reason to send
+      // the verification record back. Without this, saving after verifying
+      // wipes the verdicts.
+      //
+      // Staleness is handled separately and correctly: each unit carries a
+      // content hash, so any unit whose text actually changed in this save is
+      // shown as stale rather than falsely inheriting its old verdict.
+      verification: (await getCarouselById(id).catch(() => null))?.verification,
       savedAt: new Date().toISOString(),
     };
 

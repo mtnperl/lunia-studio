@@ -557,6 +557,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={initialCarousel?.id ?? null}
+              initialVerification={initialCarousel?.verification}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}
               onContentChange={(c) => {

@@ -7,7 +7,9 @@ import EditorialContentSlide from "@/components/carousel/slides/EditorialContent
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
-import { BrandStyle, CarouselConfig, CarouselFormat, HookHeadlineWeight, HookTone } from "@/lib/types";
+import { BrandStyle, CarouselConfig, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
+import VerificationPanel from "@/components/carousel/VerificationPanel";
+import { extractCarouselUnits, findStaleUnits, deriveRecordStatus } from "@/lib/verification-status";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -75,6 +77,8 @@ type Props = {
   /** Fires after a successful save with the resulting carousel id. Lets a parent
    *  (e.g. BatchView's queue cards) surface a "Saved ✓" state of its own. */
   onSaved?: (id: string) => void;
+  /** Fact-verification record loaded alongside a saved carousel, if it has one. */
+  initialVerification?: import("@/lib/types").VerificationRecord;
 };
 
 const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
@@ -308,10 +312,12 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [verification, setVerification] = useState<VerificationRecord | undefined>(initialVerification);
+  const [staleUnitIds, setStaleUnitIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
   const [saveLabel, setSaveLabel] = useState<string | null>(null); // transient "Saved!" flash after a successful update
@@ -887,7 +893,39 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  // Recompute which units drifted from their verdict whenever the copy changes.
+  // Per-unit, so editing one slide doesn't discard the whole deck's verification.
+  useEffect(() => {
+    let cancelled = false;
+    if (!verification) {
+      setStaleUnitIds([]);
+      return;
+    }
+    const units = extractCarouselUnits(config.content, config.selectedHook ?? 0);
+    findStaleUnits(verification, units).then((ids) => {
+      if (!cancelled) setStaleUnitIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [verification, config.content, config.selectedHook]);
+
+  // What the gate currently says about exporting. Red blocks by default; amber
+  // warns. Both are configurable server-side, so this reads the record rather
+  // than hardcoding the policy.
+  const verificationStatus = verification ? deriveRecordStatus(verification) : null;
+  const exportBlocked = verificationStatus === "red";
+  const exportWarned = verificationStatus === "amber" || staleUnitIds.length > 0;
+  const exportBlockReason = exportBlocked
+    ? "A claim in this carousel is contradicted by its sources. Fix it, or override the verdict in the Fact check panel."
+    : staleUnitIds.length > 0
+      ? `${staleUnitIds.length} unit${staleUnitIds.length > 1 ? "s" : ""} edited since the last check.`
+      : verificationStatus === "amber"
+        ? "Some claims could not be verified."
+        : undefined;
+
   async function downloadAll() {
+    if (exportBlocked) return;
     setDownloadingAll(true);
     setExportError(null);
     try {
@@ -2555,16 +2593,28 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           <button
             className="btn"
             onClick={downloadAll}
-            disabled={downloadingAll}
-            style={{ minWidth: 160 }}
+            disabled={downloadingAll || exportBlocked}
+            title={exportBlockReason}
+            style={{
+              minWidth: 160,
+              // The button carries the verification state so a warned export
+              // never looks identical to a clean one.
+              ...(exportBlocked
+                ? { borderColor: "var(--error)", opacity: 0.6, cursor: "not-allowed" }
+                : exportWarned
+                  ? { borderColor: "var(--warning)" }
+                  : {}),
+            }}
           >
             {downloadingAll ? (
               <>
                 <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 4 }}>⟳</span>
                 Exporting…
               </>
+            ) : exportBlocked ? (
+              "Download blocked"
             ) : (
-              `↓ Download all (${slideCount} PNGs)`
+              `↓ Download all (${slideCount} PNGs)${exportWarned ? " — unverified" : ""}`
             )}
           </button>
           {carouselFormat === "engagement" && (
@@ -2585,6 +2635,26 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             </button>
           )}
         </div>
+      </div>
+
+      {/* Fact check. Only available once saved — verification reads the carousel
+          from storage by id, so there is nothing to check before a first save. */}
+      <div style={{ marginBottom: 20 }}>
+        {savedId ? (
+          <VerificationPanel
+            carouselId={savedId}
+            record={verification}
+            staleUnitIds={staleUnitIds}
+            onRecordChange={setVerification}
+          />
+        ) : (
+          <div style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Fact check</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
+              Save this carousel first, then every hook and slide can be checked against real sources.
+            </div>
+          </div>
+        )}
       </div>
 
       {exportError && (

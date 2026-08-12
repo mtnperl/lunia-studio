@@ -437,7 +437,135 @@ export type SavedCarousel = {
    *  "Generate other weights" (edit-based, same composition as the source image), so
    *  switching Hook weight in the editor can swap instantly instead of regenerating. */
   hookImagesByWeight?: Partial<Record<HookHeadlineWeight, string>>;
+  /** Fact-verification result. Absent on carousels saved before verification
+   *  existed and on any that have never been verified — treat absent as
+   *  "unverified", never as "passed". */
+  verification?: VerificationRecord;
   savedAt: string;
+};
+
+// ─── Content verification ─────────────────────────────────────────────────────
+//
+// Every hook, slide, email section and script line is a "unit". Each unit is
+// hashed independently so editing slide 3 doesn't invalidate slides 1, 2, 4 and
+// 5 and force a full re-verify.
+//
+// Verdicts are deliberately three-valued. A binary true/false would force every
+// piece of framing ("YOUR 3AM WAKE-UP ISN'T RANDOM") into one bucket or the
+// other, and either choice is wrong: calling it false is absurd, calling it true
+// is a lie about what was checked.
+
+/** What kind of claim this is, which decides whether it can be checked at all. */
+export type ClaimCategory =
+  /** A factual assertion that can be confirmed against a source. */
+  | "checkable_factual"
+  /** Framing, hooks, second-person address. Not checkable, not a defect. */
+  | "subjective_framing"
+  /** A drug/absolute/badge claim. Checked against banned-terms, not the web. */
+  | "product_compliance";
+
+export type ClaimVerdict =
+  /** A real source supports it. */
+  | "pass"
+  /** Sources contradict it, or it is a compliance violation. */
+  | "fail"
+  /** No source found, or the claim is not the checkable kind. */
+  | "unverifiable";
+
+/** Traffic-light status for a unit or a whole piece of content. */
+export type VerificationStatus = "green" | "amber" | "red";
+
+export type VerifiedClaim = {
+  id: string;
+  /** The atomic claim as extracted from the unit's text. */
+  text: string;
+  category: ClaimCategory;
+  /** What the checker decided. Never overwritten by a human override. */
+  verdict: ClaimVerdict;
+  /** One-line justification for the verdict. */
+  reasoning?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  /** The sentence from the source that actually supports the claim. */
+  supportingQuote?: string;
+  /** Set when a human overrules the checker. `verdict` is preserved alongside
+   *  so you can always see what the machine originally said. */
+  overriddenTo?: ClaimVerdict;
+  overriddenAt?: string;
+  overrideReason?: string;
+};
+
+/** The verdict in force: a human override when present, else the machine's. */
+export function effectiveVerdict(claim: VerifiedClaim): ClaimVerdict {
+  return claim.overriddenTo ?? claim.verdict;
+}
+
+export type VerifiedUnitKind = "hook" | "slide" | "takeaway" | "cta" | "caption" | "section" | "line";
+
+export type VerifiedUnit = {
+  /** Stable within a piece of content, e.g. "hook-0", "slide-2". */
+  id: string;
+  /** Human label for the UI, e.g. "Hook 1", "Slide 2". */
+  label: string;
+  kind: VerifiedUnitKind;
+  /** SHA-256 of the unit's text at verification time. A mismatch against the
+   *  live text means this unit was edited and its verdict is stale. */
+  contentHash: string;
+  claims: VerifiedClaim[];
+  /** Set when this unit's verification failed outright (timeout, API error).
+   *  A unit with an error is amber, never green. */
+  error?: string;
+};
+
+/** Two units asserting different numbers for the same thing. */
+export type VerificationConflict = {
+  unitIds: string[];
+  description: string;
+};
+
+export type VerificationRecord = {
+  contentKind: "carousel" | "email" | "script";
+  contentId: string;
+  verifiedAt: string;
+  units: VerifiedUnit[];
+  conflicts: VerificationConflict[];
+  /** True when the run ended early. `units` holds whatever completed. */
+  partial?: boolean;
+  /** How many units the run intended to check, for "N of M checked". */
+  unitsPlanned?: number;
+};
+
+// ─── Gating configuration ─────────────────────────────────────────────────────
+//
+// What each status does at a download / export / push button. Configurable
+// rather than hardcoded so the rules can change without a redeploy — the
+// initial amber-warns call was made with no data on real amber rates, and the
+// first production run came back with 2 of 3 hooks unsourced.
+
+export type GatingAction =
+  /** Refuse the action outright. */
+  | "block"
+  /** Allow, but show the state on the control itself. */
+  | "warn"
+  /** Allow only after every flagged unit is explicitly acknowledged. */
+  | "require_ack";
+
+export type SurfaceGating = {
+  amber: GatingAction;
+  red: GatingAction;
+};
+
+export type GatingConfig = {
+  carousel: SurfaceGating;
+  email: SurfaceGating;
+  script: SurfaceGating;
+};
+
+/** Ships with amber warning and red blocking. */
+export const DEFAULT_GATING: GatingConfig = {
+  carousel: { amber: "warn", red: "block" },
+  email: { amber: "warn", red: "block" },
+  script: { amber: "warn", red: "block" },
 };
 
 export type CarouselTemplateImage = {
