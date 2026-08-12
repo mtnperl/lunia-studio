@@ -114,13 +114,26 @@ export async function POST(req: Request) {
           const raw = extractText(msg);
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           const parsed = JSON.parse(text) as CarouselContent;
-          // Ensure every hook has a sourceNote (trust liner) — LLM sometimes omits it
+          // An empty sourceNote is a CORRECT result, not a defect to patch over.
+          //
+          // This used to backfill "Based on peer-reviewed sleep research" onto any
+          // hook the model left unsourced. That manufactured a trust signal for a
+          // claim nothing had verified — in the one case where the model behaved
+          // correctly and declined to cite, the server overrode it and invented a
+          // source. It is how wrong information shipped in Aug 2026.
+          //
+          // The prompts now bless "" explicitly (see carousel-prompts.ts hook rules),
+          // so an empty sourceNote means "no real source found" and must survive to
+          // the UI, where the hook renders without a trust liner and the verification
+          // layer flags it. Never re-add a fallback here.
           if (parsed.hooks) {
-            for (const hook of parsed.hooks) {
-              if (!hook.sourceNote || hook.sourceNote.trim().length === 0) {
-                console.warn("[generate] hook missing sourceNote, adding fallback");
-                hook.sourceNote = "Based on peer-reviewed sleep research";
-              }
+            const unsourced = parsed.hooks.filter(
+              (h) => !h.sourceNote || h.sourceNote.trim().length === 0
+            ).length;
+            if (unsourced > 0) {
+              console.info(
+                `[generate] ${unsourced}/${parsed.hooks.length} hooks returned without a source — preserved as unsourced`
+              );
             }
           }
           // Normalize the optional Takeaway slide. The model occasionally returns

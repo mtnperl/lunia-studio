@@ -186,16 +186,17 @@ ${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}
 Output STRICT JSON, no markdown, no commentary, exactly this shape:
 {
   "hooks": [
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year]" }
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" }
   ]
 }
 
 Hook format rules (hard):
 - headline: UPPERCASE, punchy, max 8 words
 - subline: italic-style sentence fragment, max 10 words, creates mild tension or curiosity. No period at the end.
-- sourceNote: MANDATORY — every hook MUST have a non-empty sourceNote. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on". Reference the most relevant REAL research supporting the hook's claim. NEVER fabricate a source. NEVER omit or leave empty.`;
+- sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
+  If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook simply renders without a trust liner. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty. Never pad this field to satisfy the format.`;
 };
 
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;
@@ -248,9 +249,9 @@ ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
-    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" }
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" }
   ],
   "slides": [
     { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
@@ -310,9 +311,11 @@ Brand rules (follow exactly):
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
 - Hook headlines: uppercase, punchy, max 8 words
 - Hook sublines: italic-style sentence fragments, max 10 words, create mild tension or curiosity. No period at end.
-- Hook sourceNote: MANDATORY — every hook MUST have a non-empty sourceNote. This is the trust liner shown at the bottom of the hook slide. Format: "Based on [real journal/institution] research, [year]". Must reference the most relevant real published research supporting the hook's claim. Max 8 words after "Based on". Never fabricate — only cite real sources. NEVER omit this field or leave it empty.
+- Hook sourceNote: the trust liner shown at the bottom of the hook slide. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real journal/institution] research, [year]". Max 8 words after "Based on".
+  If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook renders without a trust liner. Inventing, guessing, or approximating a source is a serious error and is worse than leaving it empty.
 - Body copy: 2-3 sentences MAX. First sentence is a bold punchy statement (the core insight). Remaining 1-2 sentences add specific factual support. Total under 60 words. References the cited research.
 - Citations: ONLY real peer-reviewed papers with correct authors, journal names and years. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Hallucinated citations are unacceptable.
+  If you cannot cite a real paper for a slide's claim, return an empty string "" for that slide's citation and write the body so it does not imply a specific study. An empty citation is a CORRECT answer. A plausible-looking but invented citation is the worst possible output — it is the one failure this system cannot detect on its own.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. Write in ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
@@ -524,9 +527,9 @@ ${subTypeInstructions[subType]}
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
-    { "headline": "string — UPPERCASE, max 8 words, must create intense curiosity or challenge the reader", "subline": "string — max 10 words, deepen the intrigue", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" },
-    { "headline": "string", "subline": "string", "sourceNote": "MANDATORY — Based on [Journal Name] research, [Year]" }
+    { "headline": "string — UPPERCASE, max 8 words, must create intense curiosity or challenge the reader", "subline": "string — max 10 words, deepen the intrigue", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" }
   ],
   "slides": [
     { "headline": "string", "body": "string", "citation": "string", "graphic": "string" },
@@ -548,7 +551,7 @@ Brand rules (follow exactly):
 - Tone: dry, science-forward, minimal, confident. But with an edge of intrigue that drives engagement.
 - Hook headlines: uppercase, punchy, max 8 words. For engagement, make them challenge the reader or promise a reveal.
 - Hook sublines: sentence fragments, max 10 words, create tension. No period at end.
-- Hook sourceNote: MANDATORY. Format: "Based on [real journal/institution] research, [year]". NEVER omit.
+- Hook sourceNote: include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real journal/institution] research, [year]". If you cannot, return an empty string "" — that is a CORRECT answer and the hook renders without a trust liner. Never invent or approximate a source to fill the field.
 - Body copy: 1-2 sentences MAX. Punchy and direct. Under 40 words per slide.
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - CTA headline: uppercase, max 6 words, creates urgency to comment.

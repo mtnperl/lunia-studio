@@ -109,15 +109,12 @@ export async function POST(req: Request) {
           const raw = extractText(msg);
           const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
           const parsed = JSON.parse(text) as CarouselContent;
-          // Ensure every hook has a sourceNote (trust liner) — LLM sometimes omits it
-          if (parsed.hooks) {
-            for (const hook of parsed.hooks) {
-              if (!hook.sourceNote || hook.sourceNote.trim().length === 0) {
-                console.warn("[generate] hook missing sourceNote, adding fallback");
-                hook.sourceNote = "Based on peer-reviewed sleep research";
-              }
-            }
-          }
+          // An empty sourceNote is a CORRECT result, not a defect to patch over.
+          // This route is the legacy v1 generator (no UI path reaches it, but
+          // vercel.json still deploys it). It carried the same backfill as the v2
+          // route, manufacturing "Based on peer-reviewed sleep research" for hooks
+          // nothing had verified. Removed for the same reason — see the longer note
+          // in api/carousel-v2/generate/route.ts. Never re-add a fallback here.
           return parsed;
         } catch (err) {
           if (firstError === null) firstError = err;
