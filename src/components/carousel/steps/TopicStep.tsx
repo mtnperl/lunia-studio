@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject } from "@/lib/types";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
@@ -90,8 +90,8 @@ export default function TopicStep({ onNext }: Props) {
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("editorial-scientific");
 
-  // "Suggest topics" — history-aware ideas that avoid the last 7 saved carousels.
-  const [suggestions, setSuggestions] = useState<{ title: string; description: string; pillar: string }[]>([]);
+  // "Suggest topics" — diverse, unused picks pulled straight from the subject library.
+  const [suggestions, setSuggestions] = useState<{ id: string; title: string; category: string }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   async function fetchSuggestions() {
@@ -177,9 +177,37 @@ export default function TopicStep({ onNext }: Props) {
     return () => { clearTimeout(t); controller.abort(); };
   }, [topic, carouselFormat, recCategory]);
 
+  // Interleave subjects round-robin across categories so browsing "All" surfaces
+  // variety immediately instead of running through one category at a time.
+  // Memoized on `subjects` so it doesn't reshuffle order while the user types.
+  const interleavedSubjects = useMemo(() => {
+    const byCategory = new Map<string, Subject[]>();
+    for (const s of subjects) {
+      const list = byCategory.get(s.category) ?? [];
+      list.push(s);
+      byCategory.set(s.category, list);
+    }
+    const cats = [...byCategory.keys()];
+    const result: Subject[] = [];
+    let round = 0;
+    while (result.length < subjects.length) {
+      let added = false;
+      for (const cat of cats) {
+        const list = byCategory.get(cat)!;
+        if (list[round]) {
+          result.push(list[round]);
+          added = true;
+        }
+      }
+      if (!added) break;
+      round++;
+    }
+    return result;
+  }, [subjects]);
+
   // In the carousel builder, only show unused subjects — used ones are hidden to avoid repetition.
   // The full list (including used) is visible in the Subjects tab.
-  const filteredSubjects = subjects.filter((s) => {
+  const filteredSubjects = interleavedSubjects.filter((s) => {
     if (s.usedAt) return false; // hide used subjects in the builder
     const matchCat = category === "All" || s.category === category;
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
@@ -289,7 +317,7 @@ export default function TopicStep({ onNext }: Props) {
         <button
           onClick={fetchSuggestions}
           disabled={loadingSuggestions}
-          title="Suggest fresh topics that don't repeat your last 7 carousels"
+          title="Surface diverse, unused topics pulled from your subject library"
           style={{
             padding: "7px 14px",
             fontSize: 12,
@@ -307,12 +335,12 @@ export default function TopicStep({ onNext }: Props) {
         </button>
       </div>
 
-      {/* Suggestions panel — history-aware ideas based on the last 7 saved carousels */}
+      {/* Suggestions panel — diverse, unused picks from the real subject library */}
       {(suggestions.length > 0 || suggestError) && (
         <div style={{ marginBottom: 24, padding: 16, border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: suggestions.length ? 12 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Suggested for you · avoids your recent topics
+              Suggested for you · spread across your library, unused only
             </div>
             <button
               onClick={() => { setSuggestions([]); setSuggestError(null); }}
@@ -323,10 +351,25 @@ export default function TopicStep({ onNext }: Props) {
           </div>
           {suggestError && <div style={{ fontSize: 13, color: "var(--error)" }}>{suggestError}</div>}
           <div style={{ display: "grid", gap: 8 }}>
-            {suggestions.map((s, i) => (
+            {suggestions.map((s) => (
               <button
-                key={i}
-                onClick={() => { setMode("custom"); setCustom(s.title); setSelectedSubject(null); setSuggestions([]); }}
+                key={s.id}
+                onClick={() => {
+                  const match = subjects.find((su) => su.id === s.id) ?? { id: s.id, text: s.title, category: s.category };
+                  setMode("list");
+                  setSelectedSubject(match);
+                  setSuggestions([]);
+                  // Mark used the moment a suggestion is picked (not just on
+                  // generate) so an abandoned suggestion never resurfaces.
+                  fetch(`/api/subjects/${match.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "markUsed" }),
+                  }).catch(() => {});
+                  setSubjects((prev) =>
+                    prev.map((su) => (su.id === match.id ? { ...su, usedAt: new Date().toISOString() } : su))
+                  );
+                }}
                 style={{
                   textAlign: "left", padding: "10px 12px", borderRadius: 8,
                   border: "1px solid var(--border)", background: "var(--bg)",
@@ -335,9 +378,8 @@ export default function TopicStep({ onNext }: Props) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>{s.title}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", flexShrink: 0 }}>{s.pillar}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", flexShrink: 0 }}>{s.category}</span>
                 </div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{s.description}</div>
               </button>
             ))}
           </div>

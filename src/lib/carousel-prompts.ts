@@ -34,30 +34,6 @@ Rules:
 - No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
 
 /**
- * History-aware variant of SUGGESTIONS_PROMPT. Given the topics of the user's
- * most recent carousels, propose FRESH ideas that don't repeat them or their
- * core theme — so the feed reads as a coherent, non-repetitive series.
- */
-export const SUGGESTIONS_FROM_RECENT_PROMPT = (recentTopics: string[]): string => `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 5 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
-
-The user has recently published these carousels — do NOT repeat them, their core mechanism, or their angle. Propose fresh, non-overlapping topics that complement and extend this series (a natural next step, an adjacent mechanism, a different pillar), never a reword of what is already covered:
-${recentTopics.map((t, i) => `${i + 1}. ${t}`).join("\n")}
-
-Return ONLY valid JSON in this exact format, no other text:
-[
-  { "title": "string", "description": "string", "pillar": "string" }
-]
-(exactly 5 objects)
-
-Rules:
-- Title: 4-7 words, punchy, uppercase
-- Description: one sentence explaining the angle AND why it is distinct from the recent topics (max 18 words)
-- Pillar: one of: Sleep Science, Ingredient Education, Cortisol & Stress, Longevity, Wind-Down Routines
-- Spread the 5 across at least 3 different pillars
-- No em dashes
-- No medical claims. Use: "may support", "helps promote", "shown in studies", "associated with"`;
-
-/**
  * Recommend the best hook tone(s) for a given topic. Given the topic (and
  * optionally its library category), Claude ranks the 3 strongest of the 8
  * builder-visible tones for storytelling fit AND swipe/save/comment potential,
