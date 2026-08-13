@@ -319,7 +319,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. Write in ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
-- graphic: compact single-line JSON. ${v2Mode ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline is about a hidden truth, prefer iceberg over generic bento. If it's a transformation, prefer bridge. If it's a paradox, prefer matrix2x2. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
+- graphic: compact single-line JSON. ${v2Mode ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
     A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A
@@ -337,29 +337,15 @@ Brand rules (follow exactly):
   {"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22,"value":"1.8 hrs"},{"label":"REM","percent":23,"value":"1.8 hrs"}],"title":"optional"}}  — stacked bar 2-5 segments
   {"component":"funnel","data":{"stages":[{"label":"STAGE","percent":100},{"label":"STAGE","percent":60}]}}  — 2-5 stage funnel with drop-off
   {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — large grade/score
-  {"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES","sublabel":"optional"}}  — hero emoji + big number
-  {"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1}],"title":"optional"}}  — grid coloured by intensity 1-3
   {"component":"wave","data":{"labels":["ZONE 1","ZONE 2","ZONE 3"]}}  — decorative flowing wave with 2-3 labeled zones; best for a continuous multi-phase process (e.g. sleep stages, energy phases, hormone cycles), not precise trend data
   {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}  — 2-6 chronological events
-  {"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}  — 2x2 quadrant
   {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional brief citation"}}  — bold pull-quote (last resort if only 1 number)
 
   TIER B — LAYOUT components (match the structural shape of the content):
-  LABEL RULES FOR ALL TIER B: every label/spoke/step must be ≤4 words. sublabels ≤5 words. surface/hidden items ≤4 words. Never write full sentences inside layout components — short nouns and verbs only. Violating this causes text clipping.
-  {"component":"hubSpoke","data":{"center":"1-3 WORD CONCEPT","spokes":[{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"}]}}  — one central mechanism with 3-5 radiating effects; use when slide has one cause with multiple downstream outcomes
-  {"component":"iceberg","data":{"surface":["2-4 word item"],"hidden":["2-4 word truth","2-4 word truth","2-4 word truth"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}  — use when slide reveals a hidden reality beneath surface-level perception
-  {"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}  — problem → result arc; use when slide shows a causal link or mechanism between two states
-  {"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}  — 2-4 independent insight tiles; use for lists of distinct benefits or mechanisms
-  {"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}  — 3-5 cause-effect nodes each with a sublabel; use when slide traces a chain of events or mechanisms
-  {"component":"dotchain","data":{"labels":["BEFORE STATE","AFTER STATE"]}}  — before/after 2-state comparison, each state drawn as its own row of 5 connected dots; the second row's chain breaks (✕) at the end to signal disruption/change. Exactly 1-2 labels, not a multi-step sequence — use "steps" or "processFlow" for that.
+  LABEL RULES FOR ALL TIER B: every label/step/item must be ≤4 words. Never write full sentences inside layout components — short nouns and verbs only. Avoid single words longer than 12 characters ("downregulation", "neurotransmitter"): they cannot be hyphenated to fit and get broken mid-word. Prefer a shorter synonym or split the idea across two labels. Violating this causes text clipping.
   {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}  — 2-4 numbered sequential steps
-  {"component":"processFlow","data":{"steps":["Step 1","Step 2","Step 3","Step 4"]}}  — 2-5 horizontal process boxes with arrows (technical/biochemical sequence)
   {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}  — 2-5 key facts or actions as a list
   {"component":"iconGrid","data":{"items":[{"label":"SHORT LABEL"},{"label":"SHORT LABEL"}]}}  — 2-4 items in a single icon+label row (icons are decorative, auto-assigned — do not send an "icon" or "columns" field, they're ignored)
-  {"component":"pyramid","data":{"levels":["Top (most specific)","Middle","Base (widest)"]}}  — 2-5 level priority hierarchy
-  {"component":"versus","data":{"left":{"label":"OPTION A","value":"4%","note":"optional short note"},"right":{"label":"OPTION B","value":"85%","note":"optional short note"}}}  — A vs B comparison, each side is ONE headline value (a stat, grade, or short outcome), not a list of facts
-  {"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}  — 2-4 columns, 1-5 rows
-  {"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}  — 2-5 bubbles sized by importance
   {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}  — grade or score
 
   TIER C — VECTOR illustration:
@@ -389,13 +375,13 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
 
   HARD RULE: do not include subject, composition, sceneElements, brandMood, or any scene-prescription field. The image engine is intentionally left to interpret the concept on its own. Do not include the headline / body / palette / font / aesthetic instructions either — those are fixed chrome the image route adds.
 ` : ""}- graphicImagePrompt: For TIER B and TIER C slides ONLY — write a Recraft V3 vector_illustration prompt (max 40 words) describing the visual concept as a clean minimal infographic. The image replaces the SVG component and must be beautiful and representative of the slide content.
-  Format: [core visual concept — e.g. "hub-and-spoke diagram", "iceberg cross-section", "bridge arc"] + [style: "clean minimal vector illustration, no text, no labels"] + [color: "white background, [accent_color] highlights, soft shadows"] + [mood].
+  Format: [core visual concept — e.g. "ascending arc", "cross-section", "single repeated form"] + [style: "clean minimal vector illustration, no text, no labels"] + [color: "white background, [accent_color] highlights, soft shadows"] + [mood].
   The accent color is: ${brandStyle?.accent ?? '#1e7a8a'}.
-  For TIER A slides (stat, bars, donut, radial, circleStats, spectrum, stackedBar, funnel, scorecard, iconStat, heatGrid, wave, timeline, matrix2x2, callout), set graphicImagePrompt to null — SVG components handle data-precise slides.
-  For TIER B (hubSpoke, iceberg, bridge, bento, conceptFlow, dotchain, steps, processFlow, checklist, iconGrid, pyramid, versus, table, bubbles) and TIER C (vector) slides — write a compelling prompt. The visual should communicate the slide's concept without text. Think like an editorial illustrator.
+  For TIER A slides (stat, bars, donut, radial, circleStats, spectrum, stackedBar, funnel, scorecard, wave, timeline, callout), set graphicImagePrompt to null — SVG components handle data-precise slides.
+  For TIER B (steps, checklist, iconGrid) and TIER C (vector) slides — write a compelling prompt. The visual should communicate the slide's concept without text. Think like an editorial illustrator.
   Examples:
-  • hubSpoke slide about magnesium benefits → "Central glowing circle with 4 radiating arcs connecting to smaller nodes, clean minimal vector, white background, teal highlights, geometric precision, no text"
-  • iceberg slide about hidden sleep debt → "Iceberg cross-section, small peak above waterline, large mass below, dark ocean blues fading to black, white ice, crisp edges, scientific illustration style, no labels"
+  • steps slide about a wind-down routine → "Three ascending geometric forms in a single line, clean minimal vector, white background, teal highlights, geometric precision, no text"
+  • checklist slide about hidden sleep debt → "Cross-section of dark water, a small form above the waterline and a far larger mass below, deep blues fading to black, crisp edges, scientific illustration style, no labels"
   • vector slide about circadian rhythm → "Sine wave arc representing day-night cycle, sun and moon at opposite peaks, gradient from warm amber to deep midnight blue, minimal geometric, no text"
 
 === TONE LOCK (read last, obey first) ===
@@ -419,7 +405,7 @@ Brand rules (follow exactly):
 - Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
 - Headline: uppercase, max 8 words
-- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (hubSpoke/iceberg/bridge/bento/conceptFlow/dotchain/steps/etc.) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels ≤4 words, sublabels ≤5 words. Always output a valid component JSON.`;
+- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (steps/checklist/iconGrid) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels ≤4 words, sublabels ≤5 words. Always output a valid component JSON.`;
 
 export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = [], userComment: string = "", forceComponent?: string) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.
@@ -447,29 +433,15 @@ TIER A — DATA (use REAL numbers/facts only):
 {"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55,"value":"4.4 hrs"},{"label":"DEEP","percent":22},{"label":"REM","percent":23}],"title":"optional"}}
 {"component":"funnel","data":{"stages":[{"label":"STAGE","percent":100},{"label":"STAGE","percent":60},{"label":"STAGE","percent":28}]}}
 {"component":"scorecard","data":{"score":"A+","label":"SLEEP QUALITY","sublabel":"optional"}}
-{"component":"iconStat","data":{"icon":"🧠","value":"23%","unit":"increase","label":"ALPHA WAVES"}}
-{"component":"heatGrid","data":{"cells":[{"label":"Mon","value":3},{"label":"Tue","value":1},{"label":"Wed","value":2}],"title":"optional"}}
 {"component":"wave","data":{"labels":["ZONE 1","ZONE 2","ZONE 3"]}}  — decorative wave, 2-3 labeled zones, not precise trend data
 {"component":"timeline","data":{"events":[{"time":"LABEL","label":"DESCRIPTION"}]}}
-{"component":"matrix2x2","data":{"topLeft":"Fast+Effective","topRight":"Fast+Less","bottomLeft":"Slow+Effective","bottomRight":"Avoid","xLabel":"SPEED","yLabel":"EFFECTIVENESS"}}
 {"component":"callout","data":{"text":"KEY STAT OR QUOTE","source":"optional citation"}}
 
 TIER B — LAYOUT:
 LABEL RULES FOR ALL TIER B: every label/step/spoke must be ≤4 words. sublabels ≤5 words. surface/hidden items ≤4 words. Never write full sentences inside layout components — short nouns and verbs only.
-{"component":"hubSpoke","data":{"center":"1-3 WORD CONCEPT","spokes":[{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"},{"label":"2-4 WORD EFFECT"}]}}
-{"component":"iceberg","data":{"surface":["2-4 word item"],"hidden":["2-4 word truth","2-4 word truth","2-4 word truth"],"surfaceLabel":"WHAT YOU SEE","hiddenLabel":"THE REAL CAUSE"}}
-{"component":"bridge","data":{"from":"THE PROBLEM","to":"THE RESULT","label":"how it works"}}
-{"component":"bento","data":{"tiles":[{"icon":"🧠","label":"2-3 WORD LABEL","body":"optional short note"},{"icon":"💤","label":"2-3 WORD LABEL"}]}}
-{"component":"conceptFlow","data":{"nodes":[{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD CONCEPT","sublabel":"2-4 word note"},{"label":"1-3 WORD OUTCOME","sublabel":"2-4 word note"}]}}
-{"component":"dotchain","data":{"labels":["BEFORE STATE","AFTER STATE"]}}  — before/after 2-state comparison only, 1-2 labels, not a multi-step sequence
 {"component":"steps","data":{"steps":["Step 1","Step 2","Step 3"]}}
-{"component":"processFlow","data":{"steps":["Tryptophan","5-HTP","Serotonin","Melatonin"]}}
 {"component":"checklist","data":{"items":["Item one","Item two","Item three"]}}
 {"component":"iconGrid","data":{"items":[{"label":"SHORT LABEL"},{"label":"SHORT LABEL"}]}}  — 2-4 items, single row (no "icon"/"columns" fields, they're ignored)
-{"component":"pyramid","data":{"levels":["Top","Middle","Base"]}}
-{"component":"versus","data":{"left":{"label":"OPTION A","value":"4%","note":"optional"},"right":{"label":"OPTION B","value":"85%","note":"optional"}}}
-{"component":"table","data":{"headers":["Col 1","Col 2"],"rows":[["a","b"]]}}
-{"component":"bubbles","data":{"items":[{"label":"1-3 word","size":3},{"label":"1-3 word","size":2}]}}
 
 TIER C — VECTOR:
 {"component":"vector","data":{"keywords":"EVOCATIVE TOPIC KEYWORDS (3-5 words)","label":"SHORT LABEL","mood":"calm|energetic|scientific|playful"}}

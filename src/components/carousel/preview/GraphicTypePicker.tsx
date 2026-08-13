@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
 import type { BrandStyle } from "@/lib/types";
-import { GRAPHIC_TYPES, getGraphicsByTier, TIER_LABELS, TIER_HINTS, type GraphicTypeMeta } from "@/lib/graphic-types";
+// getGraphicsByTier returns ACTIVE types only, so retired components are never
+// offered in the picker.
+import { getGraphicsByTier, TIER_LABELS, TIER_HINTS, type GraphicTypeMeta } from "@/lib/graphic-types";
 
 // Reuse the same graphic components ContentSlide uses
 import { StatCallout } from "@/components/carousel/graphics/StatCallout";

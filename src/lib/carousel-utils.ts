@@ -1,4 +1,5 @@
 import { GraphicStyle, GraphicSpec, GraphicSpecSchema } from "./types";
+import { isRetiredGraphic } from "./graphic-types";
 
 // ─── GraphicSpec parser (Path 1 — curated component selection) ────────────────
 
@@ -10,13 +11,16 @@ import { GraphicStyle, GraphicSpec, GraphicSpecSchema } from "./types";
  *   - raw is empty/undefined → caller falls through to Path 4 (text-only)
  *   - JSON.parse throws (raw SVG string) → caller falls through to Path 2 (raw SVG)
  *   - Zod validation fails → console.error with field detail, returns null → Path 4
+ *   - the component has been retired from the roster → returns null → Path 4
  */
 export function parseGraphicSpec(raw: string | undefined): GraphicSpec | null {
   if (!raw || raw.trim() === '') return null;
   try {
     const obj = JSON.parse(raw);
     const result = GraphicSpecSchema.safeParse(obj);
-    if (result.success) return result.data;
+    // A retired component parses fine but is treated as "no graphic", so the
+    // slide collapses the zone instead of reserving space for nothing.
+    if (result.success) return isRetiredGraphic(result.data.component) ? null : result.data;
     if (process.env.NODE_ENV !== 'production') {
       console.error('[GraphicSpec] Zod validation failed:', result.error.issues);
     }
@@ -47,10 +51,17 @@ export function validateOrFallbackGraphic(raw: string | undefined, fallbackText?
     return raw; // raw SVG string — not GraphicSpec JSON, leave untouched
   }
   const result = GraphicSpecSchema.safeParse(obj);
-  if (result.success) return raw;
+  // Retired components are treated exactly like an invalid shape: fall back to
+  // a callout pull-quote so the slide still carries its graphic intent in a
+  // component that survived the roster cut.
+  if (result.success && !isRetiredGraphic(result.data.component)) return raw;
   if (process.env.NODE_ENV !== 'production') {
-    console.warn('[GraphicSpec] generation-time validation failed, falling back:',
-      result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+    if (result.success) {
+      console.warn(`[GraphicSpec] retired component "${result.data.component}", falling back`);
+    } else {
+      console.warn('[GraphicSpec] generation-time validation failed, falling back:',
+        result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
+    }
   }
   const text = (fallbackText ?? '').trim();
   if (!text) return undefined;

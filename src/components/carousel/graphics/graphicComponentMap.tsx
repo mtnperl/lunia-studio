@@ -35,6 +35,7 @@ import { BentoTiles } from "@/components/carousel/graphics/BentoTiles";
 import { ConceptFlowGraphic } from "@/components/carousel/graphics/ConceptFlowGraphic";
 import { IconGraphic } from "@/components/carousel/graphics/IconGraphic";
 import { IconLayout } from "@/components/carousel/graphics/IconLayout";
+import { isRetiredGraphic } from "@/lib/graphic-types";
 import type { BrandStyle, GraphicSpec } from "@/lib/types";
 
 // Single source of truth for GraphicSpec.component → React component mapping.
@@ -88,6 +89,9 @@ export const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec["component"], Rea
 };
 
 export function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle): React.ReactNode {
+  // Retired components are never painted, including on carousels saved before
+  // the roster cut — an empty band beats shipping the clip-art vocabulary.
+  if (isRetiredGraphic(spec.component)) return null;
   const GraphicComponent = GRAPHIC_COMPONENT_MAP[spec.component];
   if (!GraphicComponent) {
     if (process.env.NODE_ENV !== "production") {

@@ -89,8 +89,44 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
     },
   },
   {
+    // LEGIBILITY FLOOR — a long headline at 1.3× squeezes the graphic zone to
+    // ~40px. FitBox used to scale the callout to ~0.10 (text at ~1.4px), which
+    // this suite passed because nothing painted out of bounds. The graphic must
+    // now be DROPPED, leaving clean space above the citation.
+    name: "editorial-squeezed-graphic-dropped",
+    props: {
+      stylePreset: "editorial-scientific",
+      headline: "Each stage repairs something different",
+      body: "N3 deep sleep triggers growth hormone release and glymphatic waste clearance. REM consolidates emotional memory and rewires neural circuits. Fragmenting either stage strips the body of a specific repair job.",
+      citation: "Xie L, et al. Sleep drives metabolite clearance from the adult brain. Science. 2013;342(6156):373-377.",
+      headlineScale: 1.3,
+      graphic: g({ component: "callout", data: {
+        text: "N3 deep sleep triggers growth hormone release and glymphatic waste clearance.",
+        source: "Xie et al., Science 2013",
+      } }),
+    },
+  },
+  {
+    // ROSTER CUT — a retired component on a previously-saved carousel renders
+    // as nothing and the zone collapses, rather than painting the clip-art
+    // vocabulary. Retired specs must keep PARSING (no crash), just not render.
+    name: "editorial-retired-component-empty",
+    props: {
+      stylePreset: "editorial-scientific",
+      headline: "Melatonin is a timing signal, not a sedative",
+      body: "It tells the body when night has begun. Dosing it like a sleeping pill overshoots the signal your own pineal gland is already sending.",
+      citation: "Zhdanova IV, et al. J Clin Endocrinol Metab. 2001;86(10):4727-4730.",
+      graphic: g({ component: "processFlow", data: {
+        steps: ["Darkness", "Pineal release", "Timing signal", "Sleep onset"],
+      } }),
+    },
+  },
+  {
     // Locks in the editorial restyle of conceptFlow (hairline cards, uppercase
     // Inter labels, chevron connectors, featured first node).
+    // NOTE: conceptFlow was RETIRED in the roster cut, so this now renders as
+    // no graphic. Kept as the regression guard that retired specs degrade to
+    // empty instead of crashing or falling back to clip art.
     name: "editorial-conceptflow-restyled",
     props: {
       stylePreset: "editorial-scientific",

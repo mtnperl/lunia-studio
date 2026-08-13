@@ -27,9 +27,12 @@ describe("validateOrFallbackGraphic", () => {
     expect(JSON.parse(result!).component).toBe("callout");
   });
 
-  it("accepts the new dotchain shape (labels, max 2)", () => {
+  it("falls back for a RETIRED component even when the shape is valid", () => {
+    // dotchain parses cleanly against the schema but was retired in the roster
+    // cut, so it must degrade to a callout rather than ship as-is.
     const raw = JSON.stringify({ component: "dotchain", data: { labels: ["Before", "After"] } });
-    expect(validateOrFallbackGraphic(raw, "fallback")).toBe(raw);
+    const result = validateOrFallbackGraphic(raw, "fallback");
+    expect(JSON.parse(result!).component).toBe("callout");
   });
 
   it("accepts wave with labels and preserves them", () => {
