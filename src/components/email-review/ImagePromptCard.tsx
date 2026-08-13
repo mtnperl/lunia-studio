@@ -28,9 +28,10 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Logo + product (the Lunia bottle) are ALWAYS auto-attached server-side,
-  // exactly like each other. Both render locked.
-  const autoAssets = assets.filter((a) => a.assetType === "logo" || a.assetType === "product-image");
+  // Product (the Lunia bottle) is ALWAYS auto-attached server-side and renders
+  // locked. The logo is never attached — it must not be baked into email
+  // artwork — so it is neither auto nor selectable here.
+  const autoAssets = assets.filter((a) => a.assetType === "product-image");
   // Selectable = lifestyle / other — opt-in per image.
   const selectableAssets = assets.filter((a) => a.assetType !== "logo" && a.assetType !== "product-image");
   const selectedIds = new Set(prompt.referenceAssetIds ?? []);
@@ -103,14 +104,9 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {/* Logo + bottle — always attached, locked */}
+        {/* Bottle — always attached, locked */}
         {autoAssets.map((a) => (
-          <Thumb
-            key={a.id}
-            url={a.url}
-            label={`${a.assetType === "logo" ? "logo" : "bottle"} · auto`}
-            locked
-          />
+          <Thumb key={a.id} url={a.url} label="bottle · auto" locked />
         ))}
 
         {/* Lifestyle / other — opt-in per image */}

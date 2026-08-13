@@ -2,7 +2,7 @@ import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKE
 import { checkRateLimit, getAssets } from "@/lib/kv";
 import { generateCampaignSlotImage } from "@/lib/campaign-image";
 import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
-import type { CampaignContent, CampaignImageSlot, AssetType } from "@/lib/types";
+import type { CampaignContent, CampaignImageSlot } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 // Long enough for the LLM pass + three parallel gpt-image-2 generations.
@@ -18,7 +18,6 @@ type RawImage = {
   prompt?: string;
   /** 0-based index of the text block this image illustrates. */
   blockIndex?: number;
-  assetTypeHint?: string;
 };
 
 type RawCampaign = {
@@ -130,7 +129,7 @@ Image rules — CRITICAL:
 - Provide EXACTLY three "source": "generated" images: one hero + two secondary. Each one must be tied to a specific text block of the email: set "blockIndex" to the index (0-based) of the block it illustrates, and write a detailed photorealistic "prompt" that visually expresses THAT block's specific message (not a generic wellness scene). The prompt MUST NOT contain any text, words, signage, logos, bottles, or product packaging — only an editorial wellness lifestyle scene. Describe scene, light, mood, palette.
 - The hero is always the first generated image and illustrates the campaign's core angle (blockIndex 0).
 - The three generated prompts must describe three clearly DIFFERENT scenes (different setting, subject, and time of day) — they will also be rendered in three different photographic styles downstream.
-- Optionally add ONE extra "source": "asset" secondary showing the Lunia product. Assets are NOT generated — they come from an uploaded library. Give "assetTypeHint": "product-image" (bottle/product shots) or "logo". Include it only when a bottle shot genuinely strengthens this campaign.
+- Optionally add ONE extra "source": "asset" secondary showing the Lunia product. Assets are NOT generated — they come from an uploaded library. Always give "assetTypeHint": "product-image" (bottle/product shots). Include it only when a bottle shot genuinely strengthens this campaign. NEVER request the Lunia logo as an image — the logo is chrome, not content, and must never appear as a body image.
 
 Return ONLY valid JSON, no markdown, matching this exact schema:
 
@@ -182,16 +181,16 @@ Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero
     // we only repeat when the pool runs out. Previously this just grabbed
     // the first matching asset every time → hero + secondaries collapsed to
     // the same bottle shot.
+    // The logo is email chrome (the header strip), never body content. Only
+    // product-image assets are eligible for an image slot, and there is no
+    // fallback to the logo pool — an empty product library yields no asset
+    // slot at all rather than quietly dropping the wordmark into the body.
     const assets = await getAssets();
     const logoAsset = assets.find((a) => a.assetType === "logo");
     const productPool = assets.filter((a) => a.assetType === "product-image");
-    const logoPool = assets.filter((a) => a.assetType === "logo");
-    const fallbackPool = productPool.length > 0 ? productPool : logoPool;
     const usedAssetIds = new Set<string>();
-    function suggestAsset(hint?: string): { assetId?: string; url?: string } {
-      const wanted: AssetType = hint === "logo" ? "logo" : "product-image";
-      const primary = wanted === "logo" ? logoPool : productPool;
-      const pool = primary.length > 0 ? primary : fallbackPool;
+    function suggestAsset(): { assetId?: string; url?: string } {
+      const pool = productPool;
       if (pool.length === 0) return {};
       const unused = pool.find((a) => !usedAssetIds.has(a.id));
       const pick = unused ?? pool[usedAssetIds.size % pool.length];
@@ -231,10 +230,15 @@ Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero
       };
     });
 
-    const assetSlots: CampaignImageSlot[] = rawAsset.map((img) => {
-      const { assetId, url } = suggestAsset(img.assetTypeHint);
-      return { id: randomUUID(), role: "secondary", source: "asset", aspect: "1:1", assetId, url: url ?? null };
-    });
+    // Unresolvable asset slots are dropped rather than kept as empty
+    // placeholders — an asset image only exists when a real product shot
+    // backs it.
+    const assetSlots: CampaignImageSlot[] = rawAsset
+      .map(() => suggestAsset())
+      .filter((a): a is { assetId: string; url: string } => !!a.assetId && !!a.url)
+      .map(({ assetId, url }) => ({
+        id: randomUUID(), role: "secondary" as const, source: "asset" as const, aspect: "1:1" as const, assetId, url,
+      }));
 
     // Auto-generate the three images in parallel at creation time. A failed
     // slot keeps url: null — the editor's per-slot Generate button remains the

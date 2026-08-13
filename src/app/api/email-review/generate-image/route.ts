@@ -10,12 +10,15 @@ export const maxDuration = 180;
  * IDs are silently dropped (the asset may have been deleted between analyze
  * and generate).
  *
- * Two asset types are ALWAYS auto-attached for every email image, with no
+ * One asset type is ALWAYS auto-attached for every email image, with no
  * dependence on Claude's picks or the UI:
- *   - logo            → brand identity on every image
  *   - product-image   → the Lunia Restore bottle (the editorial template
- *                        always shows it; treat it exactly like the logo)
+ *                        always shows it)
  * Everything else (lifestyle / other) is opt-in via referenceAssetIds.
+ *
+ * The LOGO is deliberately never attached. Passing it as a reference is what
+ * made gpt-image-2 bake a wordmark into every email image; emails carry the
+ * brand in their own chrome, not inside the artwork.
  */
 async function resolveReferenceUrls(opts: {
   assetIds?: string[];
@@ -26,14 +29,14 @@ async function resolveReferenceUrls(opts: {
   const allAssets = await getAssets();
   const idSet = new Set(ids);
 
-  // 1. Always include the logo(s) AND the product/bottle image(s).
-  // Both are default-on references for every email image.
+  // 1. Always include the product/bottle image(s). Never the logo.
   const autoUrls = allAssets
-    .filter((a) => a.assetType === "logo" || a.assetType === "product-image")
+    .filter((a) => a.assetType === "product-image")
     .map((a) => a.url);
 
   // 2. Include any explicitly-selected non-auto assets (lifestyle / other).
-  // Logo + product are already covered above; this is just extra opt-ins.
+  // Product is already covered above; the logo is excluded outright, so a
+  // stale referenceAssetIds entry pointing at it can't reintroduce it.
   const selectedUrls = allAssets
     .filter((a) => idSet.has(a.id) && a.assetType !== "logo" && a.assetType !== "product-image")
     .map((a) => a.url);

@@ -5,7 +5,8 @@
 //   1. Best photorealism for product/lifestyle hero shots
 //   2. Pixel-perfect text rendering (matters when an image carries a tagline)
 //   3. Accepts multiple reference images on the /edit endpoint, so Lunia's
-//      logo + chosen product shot can be passed in for brand consistency
+//      product shot can be passed in for brand consistency (the logo is
+//      deliberately never passed — see api/email-review/generate-image)
 //
 // SIZE HANDLING (the root cause of the old "ragged email layout" bug):
 // GPT Image models only output three native sizes — 1024×1024, 1024×1536,
@@ -52,7 +53,7 @@ type GenerateOpts = {
   /**
    * Reference image URLs. When provided (>0), routes to the /edit endpoint
    * which conditions output on the references — used to lock in Lunia's
-   * logo + product silhouette. Empty → pure text-to-image.
+   * product silhouette. Empty → pure text-to-image.
    */
   referenceImageUrls?: string[];
   quality?: EmailImageQuality;
