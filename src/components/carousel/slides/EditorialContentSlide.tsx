@@ -1,4 +1,5 @@
 "use client";
+import { useCallback, useState } from "react";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
@@ -99,7 +100,9 @@ export default function EditorialContentSlide({
     : 48;
   // Cap the in-column graphic so it stays compact and hugs the body; FitBox
   // scales it down further when a long headline/body leaves less room.
-  const graphicMaxH = reels ? 420 : 320;
+  // Sourced from the shared token (ContentSlide already uses it) — this had
+  // drifted to hardcoded 420/320, giving the two presets different caps.
+  const graphicMaxH = reels ? SLIDE.graphicMaxHeight.reels : SLIDE.graphicMaxHeight.carousel;
 
   // Lunia palette defaults — preset already passes EDITORIAL_BRAND_STYLE in.
   const bg          = brandStyle?.background     ?? "#EFEFF4";
@@ -124,7 +127,13 @@ export default function EditorialContentSlide({
   // default carousel slide uses, so any infographic the editor offers works in
   // the editorial preset too.
   const otherGraphicSpec = !iconLayout ? parseGraphicSpec(graphic) : null;
-  const hasOtherGraphic = !!otherGraphicSpec;
+  // FitBox drops a graphic rather than shrinking it past the point of
+  // legibility. When that happens the zone must collapse too — otherwise the
+  // column keeps reserving up to graphicMaxH of empty space for something
+  // that is no longer painted.
+  const [graphicDropped, setGraphicDropped] = useState(false);
+  const onGraphicDrop = useCallback(() => setGraphicDropped(true), []);
+  const hasOtherGraphic = !!otherGraphicSpec && !graphicDropped;
   const hasPhoto = !!bgImageUrl;
 
   // Headline + body sizes — scale-aware so the existing PreviewStep size sliders still bite.
@@ -263,7 +272,7 @@ export default function EditorialContentSlide({
               maxWidth: hasPhoto ? "100%" : 760,
               height: "100%",
             }}>
-              <FitBox align="center">
+              <FitBox align="center" onDrop={onGraphicDrop}>
                 {renderGraphicSpec(otherGraphicSpec, brandStyle)}
               </FitBox>
             </div>

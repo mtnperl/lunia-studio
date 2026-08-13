@@ -56,7 +56,7 @@ export function CalloutQuote({
         fontWeight: 500,
         color: bodyColor,
         lineHeight: 1.55,
-        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
         flex: 1,
       }}>
         {text}

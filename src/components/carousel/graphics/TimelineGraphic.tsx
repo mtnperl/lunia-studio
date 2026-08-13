@@ -101,7 +101,7 @@ export function TimelineGraphic({ events = DEFAULTS, brandStyle }: Props) {
                 color: bodyColor,
                 marginTop: 3,
                 lineHeight: 1.35,
-                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
               }}>
                 {ev.label}
               </div>

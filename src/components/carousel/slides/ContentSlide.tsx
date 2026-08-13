@@ -40,6 +40,7 @@ import { BentoTiles } from '@/components/carousel/graphics/BentoTiles';
 import { ConceptFlowGraphic } from '@/components/carousel/graphics/ConceptFlowGraphic';
 import { IconGraphic } from '@/components/carousel/graphics/IconGraphic';
 import { IconLayout } from '@/components/carousel/graphics/IconLayout';
+import { isRetiredGraphic } from '@/lib/graphic-types';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
@@ -122,7 +123,12 @@ const GRAPHIC_COMPONENT_MAP: Partial<Record<GraphicSpec['component'], React.FC<a
   iconLayout: IconLayout as React.FC<any>,
 };
 
+// NOTE: this map + renderer duplicate graphics/graphicComponentMap.tsx, which
+// documents itself as the single source of truth for both slides. They have
+// already drifted; keep the retired-graphic guard in sync until they're merged.
 function renderGraphicSpec(spec: GraphicSpec, brandStyle?: BrandStyle, iconScale?: number): React.ReactNode {
+  // Retired components are never painted — see lib/graphic-types.ts.
+  if (isRetiredGraphic(spec.component)) return null;
   const GraphicComponent = GRAPHIC_COMPONENT_MAP[spec.component];
   if (!GraphicComponent) {
     if (process.env.NODE_ENV !== 'production') {
@@ -249,7 +255,12 @@ export default function ContentSlide({
   const isJsonLike = !!graphic && (graphic.trimStart().startsWith('{') || graphic.trimStart().startsWith('['));
   const hasSvg = !hasAiGraphicImage && !hasGraphicSpec && !isJsonLike && !!graphic && graphic.trim().length > 10; // Path 2
   const hasLegacyGraphic = !hasAiGraphicImage && !hasGraphicSpec && !hasSvg && graphicStyle !== 'textOnly'; // Path 3
-  const hasInlineGraphic = hasAiGraphicImage || hasGraphicSpec || hasSvg;   // shown inside flex column
+  // FitBox drops a graphic rather than shrinking it past legibility; when it
+  // does, fall back to the no-graphic layout so the column doesn't reserve a
+  // band of empty space for something that is no longer painted.
+  const [graphicDropped, setGraphicDropped] = React.useState(false);
+  const onGraphicDrop = React.useCallback(() => setGraphicDropped(true), []);
+  const hasInlineGraphic = (hasAiGraphicImage || hasGraphicSpec || hasSvg) && !graphicDropped; // shown inside flex column
   // Tighten gap when a graphic is present so it hugs the body copy.
   const sectionGap = (hasInlineGraphic || hasLegacyGraphic) ? Math.round(sectionGapBase * 0.5) : sectionGapBase;
 
@@ -429,7 +440,7 @@ export default function ContentSlide({
         {hasInlineGraphic ? (
           <>
           <div style={{ flex: '1 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex' }}>
-           <FitBox align="center">
+           <FitBox align="center" onDrop={onGraphicDrop}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
               graphicImageUrl ? (
