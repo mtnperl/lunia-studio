@@ -25,6 +25,7 @@ import {
   summarize,
 } from "@/lib/verification-status";
 import { effectiveVerdict } from "@/lib/types";
+import type { UnitFields } from "@/lib/verification-status";
 import type {
   ClaimVerdict,
   SurfaceGating,
@@ -43,7 +44,13 @@ type Props = {
   /** Labels of the units about to be checked, so the loader can name them. */
   pendingUnitLabels?: string[];
   onRecordChange: (record: VerificationRecord) => void;
+  /** Writes an accepted fix back into the carousel content. */
+  onApplyFix?: (unitId: string, fields: UnitFields) => void;
+  /** Concise mode changes the body word budget the rewrite must respect. */
+  concise?: boolean;
 };
+
+type Suggestion = { rationale: string; fields: UnitFields };
 
 /**
  * Elapsed-time readout for the running check.
@@ -140,11 +147,49 @@ export default function VerificationPanel({
   staleUnitIds = [],
   pendingUnitLabels = [],
   onRecordChange,
+  onApplyFix,
+  concise = true,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [fixingUnit, setFixingUnit] = useState<string | null>(null);
+  const [fixes, setFixes] = useState<Record<string, { current: UnitFields; suggestions: Suggestion[] }>>({});
+
+  async function suggestFix(unitId: string) {
+    setFixingUnit(unitId);
+    setError(null);
+    try {
+      const res = await fetch("/api/verify/suggest-fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: carouselId, unitId, concise }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? `Could not draft a fix (${res.status})`);
+        return;
+      }
+      setFixes((f) => ({ ...f, [unitId]: { current: data.current, suggestions: data.suggestions } }));
+    } catch {
+      setError("Could not reach the fix drafter.");
+    } finally {
+      setFixingUnit(null);
+    }
+  }
+
+  function applyFix(unitId: string, fields: UnitFields) {
+    onApplyFix?.(unitId, fields);
+    // Clear the drafts for this unit — they describe text that no longer
+    // exists. The unit will show as stale until it is re-checked, which is
+    // correct: a fix is an edit, and an edit invalidates the verdict.
+    setFixes((f) => {
+      const next = { ...f };
+      delete next[unitId];
+      return next;
+    });
+  }
 
   async function runVerify() {
     setBusy(true);
@@ -352,6 +397,63 @@ export default function VerificationPanel({
                       </div>
                     )
                   )}
+                  {/* Fix flow. Offered whenever something in the unit is not a
+                      clean pass, since an unsourced claim is just as worth
+                      rewriting as a contradicted one. */}
+                  {!unit.error && unit.claims.some((c) => effectiveVerdict(c) !== "pass") && onApplyFix && (
+                    <div style={fixBoxStyle}>
+                      {!fixes[unit.id] ? (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                          <span style={subtleStyle}>
+                            Rewrite this {unit.kind} against what the sources actually say.
+                          </span>
+                          <Button onClick={() => suggestFix(unit.id)} disabled={fixingUnit === unit.id}>
+                            {fixingUnit === unit.id ? "Drafting…" : "Suggest a fix"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          {fixes[unit.id].suggestions.map((s, si) => (
+                            <div key={si} style={{ borderTop: si > 0 ? "1px solid var(--border)" : "none", paddingTop: si > 0 ? 12 : 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                                {si === 0 ? "Minimal change" : "Stronger rewrite"}
+                              </div>
+                              <div style={{ ...subtleStyle, marginBottom: 8 }}>{s.rationale}</div>
+
+                              {/* Field-level before/after, so you can see exactly
+                                  what changes rather than trusting a summary. */}
+                              {Object.entries(s.fields).map(([key, val]) => {
+                                const before = fixes[unit.id].current[key];
+                                const fmt = (v: string | string[] | undefined) =>
+                                  Array.isArray(v) ? v.join(" · ") : (v ?? "");
+                                if (fmt(before) === fmt(val)) return null;
+                                return (
+                                  <div key={key} style={{ marginBottom: 8 }}>
+                                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--subtle, var(--muted))", marginBottom: 3 }}>
+                                      {key}
+                                    </div>
+                                    <div style={beforeStyle}>{fmt(before) || <em>(empty)</em>}</div>
+                                    <div style={afterStyle}>{fmt(val) || <em>(empty)</em>}</div>
+                                  </div>
+                                );
+                              })}
+
+                              <Button variant="primary" onClick={() => applyFix(unit.id, s.fields)} disabled={busy}>
+                                Apply this fix
+                              </Button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => setFixes((f) => { const n = { ...f }; delete n[unit.id]; return n; })}
+                            style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0, fontFamily: "inherit" }}
+                          >
+                            Discard these drafts
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {unit.claims.map((claim) => (
                     <div key={claim.id} style={claimStyle}>
                       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -506,6 +608,31 @@ const linkStyle: React.CSSProperties = {
   display: "inline-block",
   marginTop: 4,
   wordBreak: "break-all",
+};
+
+const fixBoxStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 4,
+  background: "var(--bg)",
+};
+
+/** Struck-through original. Colour carries no meaning beyond "this is the old one". */
+const beforeStyle: React.CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.5,
+  color: "var(--muted)",
+  textDecoration: "line-through",
+  marginBottom: 2,
+};
+
+const afterStyle: React.CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.5,
+  color: "var(--text)",
+  borderLeft: "2px solid var(--success)",
+  paddingLeft: 8,
 };
 
 const noticeStyle: React.CSSProperties = {

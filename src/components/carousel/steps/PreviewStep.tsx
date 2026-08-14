@@ -9,7 +9,7 @@ import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import { BrandStyle, CarouselConfig, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
-import { extractCarouselUnits, findStaleUnits, deriveRecordStatus } from "@/lib/verification-status";
+import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -2647,6 +2647,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             staleUnitIds={staleUnitIds}
             pendingUnitLabels={extractCarouselUnits(config.content, config.selectedHook ?? 0).map((u) => u.label)}
             onRecordChange={setVerification}
+            onApplyFix={(unitId, fields: UnitFields) => {
+              // Writes into the live content. The unit's hash now differs from
+              // the one on its verdict, so the staleness effect marks it edited
+              // and the panel stops presenting the old verdict as current.
+              onContentChange({ ...config, content: applyUnitFields(config.content, unitId, fields) });
+            }}
           />
         ) : (
           <div style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 10, padding: 14 }}>

@@ -19,6 +19,8 @@ vi.mock("./anthropic", async (importOriginal) => {
 
 import {
   extractJsonFromToolResponse,
+  getUnitFields,
+  applyUnitFields,
   hashUnitText,
   extractCarouselUnits,
   extractEmailUnits,
@@ -191,6 +193,78 @@ describe("extractScriptUnits", () => {
   it("returns nothing for missing input", () => {
     expect(extractScriptUnits(null)).toEqual([]);
     expect(extractScriptUnits({ hook: "", lines: [] })).toEqual([]);
+  });
+});
+
+// ─── unit ↔ field mapping ─────────────────────────────────────────────────────
+// A bug here silently corrupts slide content, so both directions are pinned.
+
+describe("getUnitFields / applyUnitFields", () => {
+  const base = {
+    hooks: [{ headline: "H", subline: "S", sourceNote: "Based on X, 2019" }],
+    slides: [{ headline: "SH", body: "B", citation: "C" }],
+    takeaway: { headline: "TK", points: ["a", "b"], interaction: { type: "save" as const, label: "Save" } },
+    caption: "CAP",
+  } as unknown as CarouselContent;
+
+  it("round-trips each unit kind", () => {
+    expect(getUnitFields(base, "hook-0")).toEqual({ headline: "H", subline: "S", sourceNote: "Based on X, 2019" });
+    expect(getUnitFields(base, "slide-0")).toEqual({ headline: "SH", body: "B", citation: "C" });
+    expect(getUnitFields(base, "takeaway")).toEqual({ headline: "TK", points: ["a", "b"] });
+    expect(getUnitFields(base, "caption")).toEqual({ caption: "CAP" });
+  });
+
+  it("returns null for unknown or missing units", () => {
+    expect(getUnitFields(base, "slide-9")).toBeNull();
+    expect(getUnitFields(base, "nonsense")).toBeNull();
+    expect(getUnitFields(null, "slide-0")).toBeNull();
+  });
+
+  it("applies a slide fix without touching other slides or fields", () => {
+    const two = { ...base, slides: [base.slides[0], { headline: "SH2", body: "B2", citation: "C2" }] };
+    const out = applyUnitFields(two, "slide-1", { body: "fixed body" });
+    expect(out.slides[1]).toEqual({ headline: "SH2", body: "fixed body", citation: "C2" });
+    expect(out.slides[0]).toEqual(two.slides[0]);
+  });
+
+  it("never mutates the input, so editor undo history stays intact", () => {
+    const snapshot = JSON.parse(JSON.stringify(base));
+    applyUnitFields(base, "slide-0", { body: "changed" });
+    expect(base).toEqual(snapshot);
+  });
+
+  it("accepts an empty citation as a real value rather than ignoring it", () => {
+    // Critical: clearing a fabricated citation is the whole point. If "" were
+    // treated as "leave alone", the invented source would survive the fix.
+    const out = applyUnitFields(base, "slide-0", { citation: "" });
+    expect(out.slides[0].citation).toBe("");
+  });
+
+  it("accepts an empty sourceNote on a hook", () => {
+    const out = applyUnitFields(base, "hook-0", { sourceNote: "" });
+    expect(out.hooks[0].sourceNote).toBe("");
+  });
+
+  it("ignores unknown keys so a stray model field cannot be injected", () => {
+    const out = applyUnitFields(base, "slide-0", { evil: "x", body: "ok" } as never);
+    expect(out.slides[0]).toEqual({ headline: "SH", body: "ok", citation: "C" });
+    expect("evil" in out.slides[0]).toBe(false);
+  });
+
+  it("filters blank takeaway points", () => {
+    const out = applyUnitFields(base, "takeaway", { points: ["one", "  ", "two"] });
+    expect(out.takeaway?.points).toEqual(["one", "two"]);
+  });
+
+  it("returns content unchanged for an unknown unit", () => {
+    expect(applyUnitFields(base, "slide-9", { body: "x" })).toBe(base);
+  });
+
+  it("changes the unit hash, so an applied fix marks the unit stale", async () => {
+    const before = extractCarouselUnits(base, 0).find((u) => u.id === "slide-0")!;
+    const after = extractCarouselUnits(applyUnitFields(base, "slide-0", { body: "new body" }), 0)
+      .find((u) => u.id === "slide-0")!;
+    expect(await hashUnitText(before.text)).not.toBe(await hashUnitText(after.text));
   });
 });
 

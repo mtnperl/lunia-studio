@@ -168,6 +168,109 @@ export function extractScriptUnits(script: Pick<Script, "hook" | "lines"> | unde
   return units;
 }
 
+// ─── Unit ↔ content field mapping (pure) ──────────────────────────────────────
+//
+// A unit id is a flattened view of the carousel; applying a fix means writing
+// back into the real fields it came from. Both directions live here so the
+// suggest route and the apply button cannot drift out of sync.
+
+/** The editable fields behind a unit. Arrays are used for takeaway points. */
+export type UnitFields = Record<string, string | string[]>;
+
+export function getUnitFields(
+  content: CarouselContent | undefined | null,
+  unitId: string,
+): UnitFields | null {
+  if (!content) return null;
+
+  const hookMatch = /^hook-(\d+)$/.exec(unitId);
+  if (hookMatch) {
+    const h = content.hooks?.[Number(hookMatch[1])];
+    if (!h) return null;
+    return { headline: h.headline ?? "", subline: h.subline ?? "", sourceNote: h.sourceNote ?? "" };
+  }
+
+  const slideMatch = /^slide-(\d+)$/.exec(unitId);
+  if (slideMatch) {
+    const s = content.slides?.[Number(slideMatch[1])];
+    if (!s) return null;
+    return { headline: s.headline ?? "", body: s.body ?? "", citation: s.citation ?? "" };
+  }
+
+  if (unitId === "takeaway" && content.takeaway) {
+    return { headline: content.takeaway.headline ?? "", points: content.takeaway.points ?? [] };
+  }
+
+  if (unitId === "caption") return { caption: content.caption ?? "" };
+
+  return null;
+}
+
+/**
+ * Return a new CarouselContent with `fields` written into `unitId`.
+ *
+ * Never mutates the input: the editor holds the previous content for undo, and
+ * mutating in place would corrupt that history. Unknown keys are ignored so a
+ * model returning an extra field cannot inject anything into the content.
+ */
+export function applyUnitFields(
+  content: CarouselContent,
+  unitId: string,
+  fields: UnitFields,
+): CarouselContent {
+  const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+
+  const hookMatch = /^hook-(\d+)$/.exec(unitId);
+  if (hookMatch) {
+    const i = Number(hookMatch[1]);
+    const hooks = [...(content.hooks ?? [])];
+    if (!hooks[i]) return content;
+    hooks[i] = {
+      ...hooks[i],
+      headline: str(fields.headline) ?? hooks[i].headline,
+      subline: str(fields.subline) ?? hooks[i].subline,
+      // An empty sourceNote is a legitimate value, so only `undefined` means
+      // "leave it alone". Never re-fabricate a source here.
+      sourceNote: str(fields.sourceNote) ?? hooks[i].sourceNote,
+    };
+    return { ...content, hooks };
+  }
+
+  const slideMatch = /^slide-(\d+)$/.exec(unitId);
+  if (slideMatch) {
+    const i = Number(slideMatch[1]);
+    const slides = [...(content.slides ?? [])];
+    if (!slides[i]) return content;
+    slides[i] = {
+      ...slides[i],
+      headline: str(fields.headline) ?? slides[i].headline,
+      body: str(fields.body) ?? slides[i].body,
+      citation: str(fields.citation) ?? slides[i].citation,
+    };
+    return { ...content, slides };
+  }
+
+  if (unitId === "takeaway" && content.takeaway) {
+    const points = Array.isArray(fields.points)
+      ? fields.points.filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+      : content.takeaway.points;
+    return {
+      ...content,
+      takeaway: {
+        ...content.takeaway,
+        headline: str(fields.headline) ?? content.takeaway.headline,
+        points,
+      },
+    };
+  }
+
+  if (unitId === "caption") {
+    return { ...content, caption: str(fields.caption) ?? content.caption };
+  }
+
+  return content;
+}
+
 // ─── Compliance pre-pass (pure) ───────────────────────────────────────────────
 
 /**
