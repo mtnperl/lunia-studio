@@ -94,8 +94,9 @@ Approved calibration examples (do not reuse verbatim every time):
   "MELATONIN DOESN'T ACTUALLY MAKE YOU SLEEP"
   "EIGHT HOURS ISN'T THE NUMBER THAT MATTERS"
   "YOU CAN'T REPAY SLEEP DEBT ON WEEKENDS"`,
-  "science-backed": `Science-backed tone: lead with the research and the data. Reference studies and findings confidently, with a real number where possible.
-HOOK FORMULA: open with the evidence itself — "studies show…", "trials link…", "research ties…" — and pair it with a concrete figure or named mechanism. Authoritative, never breathless. The sourceNote carries the citation.
+  "science-backed": `Science-backed tone: lead with the research and the data. Confidence here means precision, not certainty about things you have not checked.
+NUMBERS: use a specific figure only when you are confident it is real and correctly attributed. If you are not, name the MECHANISM instead. A correct mechanism always beats an invented statistic, and an invented statistic is the single worst thing this tone can produce.
+HOOK FORMULA: open with the evidence itself — "studies show…", "trials link…", "research ties…" — and pair it with a concrete figure OR a named mechanism. Authoritative, never breathless. The sourceNote carries the citation.
 Approved calibration examples (do not reuse verbatim every time):
   "STUDIES LINK MAGNESIUM TO 20% DEEPER SLEEP"
   "TRIALS SHOW L-THEANINE CALMS WITHOUT SEDATION"
@@ -245,7 +246,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. No caveats. One punch per slide. This OVERRIDES the default 3-5 sentence rule.' : ''}
+${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
   "hooks": [
@@ -306,6 +307,8 @@ TAKEAWAY SLIDE (mandatory for v2 — populate the "takeaway" object): a penultim
     label: a short, specific, second-person instruction that names WHY (max 12 words). Examples: "Save this for your next 3am wake-up", "Send this to someone who's always tired", "Comment your bedtime and I'll tell you what to fix". Match the verb to the chosen type. Do not default to a generic "save this post".
 ` : ""}
 Brand rules (follow exactly):
+- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. This content is fact-checked against real sources before it ships, and invented specifics get caught and sent back.
+- Do not assert a mechanism, timing, dose or percentage you are not confident is correct. Describe the direction of the effect instead. "Magnesium is associated with faster sleep onset" is publishable; "magnesium cuts sleep onset by 17 minutes" is not, unless that figure is real.
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
@@ -518,6 +521,8 @@ Return ONLY valid JSON in this exact format, no other text:
 }
 
 Brand rules (follow exactly):
+- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. This content is fact-checked against real sources before it ships, and invented specifics get caught and sent back.
+- Do not assert a mechanism, timing, dose or percentage you are not confident is correct. Describe the direction of the effect instead. "Magnesium is associated with faster sleep onset" is publishable; "magnesium cuts sleep onset by 17 minutes" is not, unless that figure is real.
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Tone: dry, science-forward, minimal, confident. But with an edge of intrigue that drives engagement.

@@ -77,6 +77,13 @@ const VERIFY_SYSTEM = `You are a fact-checker for a sleep-supplement brand's pub
 You will receive the text of ONE unit of content (a hook, a slide, an email section, or a few script lines). Your job:
 
 1. Break it into ATOMIC claims. One assertion per claim. A single sentence often holds two.
+
+PRESERVE MEANING WHEN YOU SPLIT. This is the step most likely to go wrong, and getting it wrong is worse than any other error here, because you will then verify a claim the content never made and return a green verdict for it.
+   - Keep negations. "Skip alcohol before bed" is a claim about AVOIDING alcohol. It must never become "alcohol before bed is associated with fewer awakenings".
+   - Keep the subject of an effect. If two behaviours share one outcome ("Skip alcohol and keep the room cool. Both are associated with fewer awakenings"), the outcome attaches to SKIPPING alcohol and to a cool room, not to alcohol.
+   - Keep hedges. "may support" is a weaker claim than "supports", and you must check the weaker one that was actually written.
+   - Keep the scope. "after 3am" and "in the second half of the night" are different claims; check the one on the slide.
+   If a sentence cannot be split without changing what it asserts, DO NOT split it. Check it whole.
 2. Classify each claim:
    - "checkable_factual": asserts something about the world that a source could confirm. Numbers, mechanisms, study findings, dosages, timings.
    - "subjective_framing": hooks, second-person address, rhetorical questions, value judgements, calls to action. NOT checkable and NOT a defect. This is normal marketing copy doing its job.
