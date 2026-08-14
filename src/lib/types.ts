@@ -475,11 +475,29 @@ export type ClaimVerdict =
 /** Traffic-light status for a unit or a whole piece of content. */
 export type VerificationStatus = "green" | "amber" | "red";
 
+/**
+ * How much it costs to be wrong about this claim.
+ *
+ * Sorting by verifiability produced a wall of equal-weight dots: a call to
+ * action and an invented dosage looked identical. This sorts by consequence
+ * instead, which is the only question the user actually has.
+ *
+ * "high" — a specific number, dose, timing or percentage; a named study or
+ *          institution; a health mechanism or causal claim; a compliance term.
+ *          Always surfaced.
+ * "low"  — directional or common-knowledge statements with no specifics.
+ *          Checked and recorded, collapsed to a count in the UI.
+ */
+export type ClaimRisk = "high" | "low";
+
 export type VerifiedClaim = {
   id: string;
   /** The atomic claim as extracted from the unit's text. */
   text: string;
   category: ClaimCategory;
+  /** Absent on records written before risk scoring — treat as "high" so an
+   *  older verdict is never silently downgraded into invisibility. */
+  risk?: ClaimRisk;
   /** What the checker decided. Never overwritten by a human override. */
   verdict: ClaimVerdict;
   /** One-line justification for the verdict. */

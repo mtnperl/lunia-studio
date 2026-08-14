@@ -11,6 +11,8 @@
 import { scanBannedTerms } from "./banned-terms";
 import type {
   CarouselContent,
+  ClaimCategory,
+  ClaimRisk,
   ClaimVerdict,
   Script,
   VerificationRecord,
@@ -168,6 +170,65 @@ export function extractScriptUnits(script: Pick<Script, "hook" | "lines"> | unde
   return units;
 }
 
+// ─── Risk scoring (pure) ──────────────────────────────────────────────────────
+
+/**
+ * Code-side backstop on the model's risk score.
+ *
+ * Same philosophy as the evidence rule in verifyUnit: the prompt is a request,
+ * this is a guarantee. A claim carrying a specific figure or a named source is
+ * high-risk whatever the model called it, because those are precisely the
+ * claims that caused the incident. Mis-scoring in the safe direction (low → high)
+ * costs one extra row; mis-scoring the other way hides an invented dosage.
+ */
+const SPECIFIC_PATTERNS: RegExp[] = [
+  /\d/,                                                   // any figure at all
+  /\b(?:study|studies|trial|trials|research|journal|meta-analysis|review)\b/i,
+  /\b(?:mg|mcg|gram|grams|ml|dose|dosage)\b/i,
+  /\b(?:percent|percentage)\b/i,
+  /%/,
+];
+
+export function scoreClaimRisk(text: string, category: ClaimCategory, modelRisk?: ClaimRisk): ClaimRisk {
+  // Compliance findings are never negotiable.
+  if (category === "product_compliance") return "high";
+  if (SPECIFIC_PATTERNS.some((re) => re.test(text))) return "high";
+  return modelRisk ?? "high"; // absent score defaults to high, never to hidden
+}
+
+/**
+ * Whether a claim should ever appear as a finding.
+ *
+ * Framing is not a claim. "YOUR 3AM WAKE-UP ISN'T RANDOM" and "follow
+ * @lunia_life" cannot be true or false, so reporting them as unverified was
+ * noise dressed as diligence. They are still classified (that is how the
+ * checker knows to skip them) and still stored, they just never surface.
+ */
+export function isReportable(claim: VerifiedClaim): boolean {
+  return claim.category !== "subjective_framing";
+}
+
+/** Reportable claims that are not resolved, split by consequence. */
+export function partitionFindings(unit: VerifiedUnit): {
+  high: VerifiedClaim[];
+  low: VerifiedClaim[];
+  resolved: VerifiedClaim[];
+  framing: VerifiedClaim[];
+} {
+  const high: VerifiedClaim[] = [];
+  const low: VerifiedClaim[] = [];
+  const resolved: VerifiedClaim[] = [];
+  const framing: VerifiedClaim[] = [];
+
+  for (const c of unit.claims) {
+    if (!isReportable(c)) { framing.push(c); continue; }
+    if (effectiveVerdict(c) === "pass") { resolved.push(c); continue; }
+    const risk = scoreClaimRisk(c.text, c.category, c.risk);
+    (risk === "high" ? high : low).push(c);
+  }
+  return { high, low, resolved, framing };
+}
+
 // ─── Unit ↔ content field mapping (pure) ──────────────────────────────────────
 //
 // A unit id is a flattened view of the carousel; applying a fix means writing
@@ -316,10 +377,16 @@ export function complianceClaims(unit: ExtractedUnit): VerifiedClaim[] {
  * silently comes to mean two different things.
  */
 export function deriveUnitStatus(unit: VerifiedUnit): VerificationStatus {
-  const verdicts = unit.claims.map(effectiveVerdict);
-  if (verdicts.includes("fail")) return "red";
+  // A contradiction is high-consequence by definition, whatever its risk score.
+  if (unit.claims.some((c) => effectiveVerdict(c) === "fail")) return "red";
   if (unit.error) return "amber";
-  if (verdicts.includes("unverifiable")) return "amber";
+
+  // Only HIGH-risk unresolved claims move the dot. Previously any unresolved
+  // claim did, so a slide whose sole gap was "keep the room cool and dark"
+  // read the same as one citing a journal that may not exist. That made amber
+  // meaningless and the whole panel ignorable.
+  const { high } = partitionFindings(unit);
+  if (high.length > 0) return "amber";
   return "green";
 }
 
@@ -347,19 +414,31 @@ export function summarize(record: VerificationRecord): {
   red: number;
   total: number;
   overridden: number;
+  /** Unresolved claims worth acting on: contradictions plus high-risk gaps. */
+  findings: number;
+  /** Checked and recorded but not surfaced: low-risk gaps. */
+  quiet: number;
 } {
   let green = 0;
   let amber = 0;
   let red = 0;
   let overridden = 0;
+  let findings = 0;
+  let quiet = 0;
   for (const u of record.units) {
     const s = deriveUnitStatus(u);
     if (s === "green") green += 1;
     else if (s === "amber") amber += 1;
     else red += 1;
     overridden += u.claims.filter((c) => c.overriddenTo).length;
+
+    const p = partitionFindings(u);
+    // Findings = things worth acting on: contradictions at any risk level,
+    // plus high-risk unresolved claims. Everything else is recorded, not raised.
+    findings += p.high.length + u.claims.filter((c) => effectiveVerdict(c) === "fail").length;
+    quiet += p.low.length;
   }
-  return { green, amber, red, total: record.units.length, overridden };
+  return { green, amber, red, total: record.units.length, overridden, findings, quiet };
 }
 
 // ─── Staleness ────────────────────────────────────────────────────────────────

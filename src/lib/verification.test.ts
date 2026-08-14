@@ -18,6 +18,9 @@ vi.mock("./anthropic", async (importOriginal) => {
 });
 
 import {
+  scoreClaimRisk,
+  isReportable,
+  partitionFindings,
   extractJsonFromToolResponse,
   getUnitFields,
   applyUnitFields,
@@ -336,6 +339,120 @@ describe("deriveUnitStatus", () => {
   });
 });
 
+// ─── risk scoring ─────────────────────────────────────────────────────────────
+// This logic decides what a human never sees, so mis-scoring low is the only
+// direction that can hide something real.
+
+describe("scoreClaimRisk", () => {
+  it.each([
+    "magnesium cuts onset by 17 minutes",
+    "200mg before bed",
+    "a 2019 trial found the effect",
+    "studies show deeper sleep",
+    "research ties low magnesium to poor sleep",
+    "improves sleep by 20 percent",
+    "reduces waking 30%",
+  ])("scores %s as high because it carries a specific or a source", (text) => {
+    expect(scoreClaimRisk(text, "checkable_factual", "low")).toBe("high");
+  });
+
+  it("keeps genuinely low-stakes advice low", () => {
+    expect(scoreClaimRisk("keep the room cool and dark", "checkable_factual", "low")).toBe("low");
+    expect(scoreClaimRisk("wind down before bed", "checkable_factual", "low")).toBe("low");
+  });
+
+  it("always treats compliance findings as high", () => {
+    expect(scoreClaimRisk("uses banned term cures", "product_compliance", "low")).toBe("high");
+  });
+
+  it("defaults to high when the model gave no score", () => {
+    // Records written before risk scoring must not become invisible.
+    expect(scoreClaimRisk("some directional claim", "checkable_factual", undefined)).toBe("high");
+  });
+
+  it("overrides a model 'low' on anything numeric — the backstop that matters", () => {
+    expect(scoreClaimRisk("cortisol peaks at 3am", "checkable_factual", "low")).toBe("high");
+  });
+});
+
+describe("isReportable / partitionFindings", () => {
+  it("never reports framing as a finding", () => {
+    expect(isReportable(claim({ category: "subjective_framing" }))).toBe(false);
+    expect(isReportable(claim({ category: "checkable_factual" }))).toBe(true);
+  });
+
+  it("splits a unit into high, low, resolved and framing", () => {
+    const u = unit({
+      claims: [
+        claim({ id: "a", category: "subjective_framing", verdict: "unverifiable" }),
+        claim({ id: "b", verdict: "unverifiable", text: "cuts onset by 17 minutes", risk: "low" }),
+        claim({ id: "c", verdict: "unverifiable", text: "keep the room cool", risk: "low" }),
+        claim({ id: "d", verdict: "pass" }),
+      ],
+    });
+    const p = partitionFindings(u);
+    expect(p.framing.map((c) => c.id)).toEqual(["a"]);
+    expect(p.high.map((c) => c.id)).toEqual(["b"]); // numeric beats the "low" score
+    expect(p.low.map((c) => c.id)).toEqual(["c"]);
+    expect(p.resolved.map((c) => c.id)).toEqual(["d"]);
+  });
+});
+
+describe("deriveUnitStatus with risk", () => {
+  it("stays green when the only gap is low-risk", () => {
+    // The whole point: one trivial unsourced claim must not drag a slide amber.
+    const u = unit({
+      claims: [claim({ verdict: "unverifiable", text: "keep the room cool", risk: "low" })],
+    });
+    expect(deriveUnitStatus(u)).toBe("green");
+  });
+
+  it("goes amber on a high-risk gap", () => {
+    const u = unit({
+      claims: [claim({ verdict: "unverifiable", text: "cuts onset by 17 minutes", risk: "high" })],
+    });
+    expect(deriveUnitStatus(u)).toBe("amber");
+  });
+
+  it("stays green when every claim is framing", () => {
+    const u = unit({
+      claims: [claim({ category: "subjective_framing", verdict: "unverifiable" })],
+    });
+    expect(deriveUnitStatus(u)).toBe("green");
+  });
+
+  it("still goes red on a contradiction even when scored low-risk", () => {
+    // A contradiction is high-consequence by definition. Risk must never
+    // downgrade a fail into silence.
+    const u = unit({
+      claims: [claim({ verdict: "fail", text: "wind down before bed", risk: "low" })],
+    });
+    expect(deriveUnitStatus(u)).toBe("red");
+  });
+});
+
+describe("summarize reports findings, not raw counts", () => {
+  it("counts only actionable items as findings", () => {
+    const r = record({
+      units: [
+        unit({ id: "a", claims: [
+          claim({ id: "a1", category: "subjective_framing", verdict: "unverifiable" }),
+          claim({ id: "a2", verdict: "unverifiable", text: "keep the room cool", risk: "low" }),
+          claim({ id: "a3", verdict: "pass" }),
+        ]}),
+        unit({ id: "b", claims: [
+          claim({ id: "b1", verdict: "unverifiable", text: "cuts onset by 17 minutes", risk: "high" }),
+        ]}),
+      ],
+    });
+    const s = summarize(r);
+    expect(s.findings).toBe(1); // only the numeric gap
+    expect(s.quiet).toBe(1);    // the cool-room claim
+    expect(s.green).toBe(1);
+    expect(s.amber).toBe(1);
+  });
+});
+
 describe("isVacuouslyGreen", () => {
   it("flags a unit that passed only because it was all framing", () => {
     expect(isVacuouslyGreen(unit({ claims: [claim({ category: "subjective_framing", verdict: "unverifiable" })] }))).toBe(true);
@@ -383,7 +500,9 @@ describe("summarize", () => {
         unit({ id: "c", claims: [claim({ verdict: "fail", overriddenTo: "pass" })] }),
       ],
     });
-    expect(summarize(r)).toEqual({ green: 2, amber: 1, red: 0, total: 3, overridden: 1 });
+    expect(summarize(r)).toEqual({
+      green: 2, amber: 1, red: 0, total: 3, overridden: 1, findings: 1, quiet: 0,
+    });
   });
 });
 

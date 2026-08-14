@@ -23,6 +23,7 @@ import {
   deriveRecordStatus,
   isVacuouslyGreen,
   summarize,
+  partitionFindings,
 } from "@/lib/verification-status";
 import { effectiveVerdict } from "@/lib/types";
 import type { UnitFields } from "@/lib/verification-status";
@@ -156,6 +157,57 @@ export default function VerificationPanel({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [fixingUnit, setFixingUnit] = useState<string | null>(null);
   const [fixes, setFixes] = useState<Record<string, { current: UnitFields; suggestions: Suggestion[] }>>({});
+  const [quietOpen, setQuietOpen] = useState<string | null>(null);
+
+  /** One claim row: verdict, evidence, and the override controls. */
+  function renderClaim(unitId: string, claim: VerifiedClaim) {
+    return (
+      <div key={claim.id} style={claimStyle}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <Dot status={verdictStatus(claim)} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, lineHeight: 1.45 }}>{claim.text}</div>
+            <div style={{ ...subtleStyle, marginTop: 3 }}>
+              {verdictLabel(claim)}
+              {claim.overriddenTo && ` (checker said: ${claim.verdict})`}
+              {claim.reasoning ? `, ${claim.reasoning}` : ""}
+            </div>
+
+            {claim.supportingQuote && (
+              <div style={quoteStyle}>&ldquo;{claim.supportingQuote}&rdquo;</div>
+            )}
+
+            {claim.sourceUrl && (
+              <a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+                {claim.sourceTitle || claim.sourceUrl}
+              </a>
+            )}
+
+            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+              {claim.overriddenTo ? (
+                <Button onClick={() => override(unitId, claim.id, null)} disabled={busy}>
+                  Undo override
+                </Button>
+              ) : (
+                <>
+                  {effectiveVerdict(claim) !== "pass" && (
+                    <Button onClick={() => override(unitId, claim.id, "pass")} disabled={busy}>
+                      I verified this myself
+                    </Button>
+                  )}
+                  {effectiveVerdict(claim) !== "fail" && (
+                    <Button variant="danger" onClick={() => override(unitId, claim.id, "fail")} disabled={busy}>
+                      Mark wrong
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   async function suggestFix(unitId: string) {
     setFixingUnit(unitId);
@@ -300,8 +352,13 @@ export default function VerificationPanel({
           <Dot status={status} size={10} />
           <div style={{ minWidth: 0 }}>
             <div style={titleStyle}>{STATUS_LABEL[status]}</div>
+            {/* Lead with what needs acting on, not with everything examined.
+                The old line read "0 verified · 17 unresolved" on content that
+                was largely fine, which is why the panel felt like noise. */}
             <div style={{ ...subtleStyle, marginTop: 2, fontFamily: "var(--font-mono, 'Fira Code', monospace)" }}>
-              {counts.green} verified · {counts.amber} unresolved · {counts.red} failed
+              {counts.findings === 0
+                ? `Nothing to act on · ${counts.total} units checked`
+                : `${counts.findings} to review · ${counts.total} units checked`}
               {counts.overridden > 0 && ` · ${counts.overridden} overridden`}
             </div>
           </div>
@@ -454,61 +511,38 @@ export default function VerificationPanel({
                     </div>
                   )}
 
-                  {unit.claims.map((claim) => (
-                    <div key={claim.id} style={claimStyle}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                        <Dot status={verdictStatus(claim)} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, lineHeight: 1.45 }}>{claim.text}</div>
-                          <div style={{ ...subtleStyle, marginTop: 3 }}>
-                            {verdictLabel(claim)}
-                            {claim.overriddenTo && ` (checker said: ${claim.verdict})`}
-                            {claim.reasoning ? ` — ${claim.reasoning}` : ""}
-                          </div>
-
-                          {claim.supportingQuote && (
-                            <div style={quoteStyle}>&ldquo;{claim.supportingQuote}&rdquo;</div>
-                          )}
-
-                          {claim.sourceUrl && (
-                            <a
-                              href={claim.sourceUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={linkStyle}
+                  {(() => {
+                    const p = partitionFindings(unit);
+                    const failures = unit.claims.filter((c) => effectiveVerdict(c) === "fail");
+                    // Surface: contradictions and high-risk gaps. Collapse the
+                    // rest. Framing never appears — it is not a claim.
+                    const shown = [...failures, ...p.high.filter((c) => effectiveVerdict(c) !== "fail")];
+                    const hidden = [...p.low, ...p.resolved.filter((c) => effectiveVerdict(c) === "pass")];
+                    const showQuiet = quietOpen === unit.id;
+                    return (
+                      <>
+                        {shown.map((claim) => renderClaim(unit.id, claim))}
+                        {hidden.length > 0 && (
+                          <div>
+                            <button
+                              onClick={() => setQuietOpen(showQuiet ? null : unit.id)}
+                              style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", fontFamily: "inherit" }}
                             >
-                              {claim.sourceTitle || claim.sourceUrl}
-                            </a>
-                          )}
-
-                          <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                            {claim.overriddenTo ? (
-                              <Button onClick={() => override(unit.id, claim.id, null)} disabled={busy}>
-                                Undo override
-                              </Button>
-                            ) : (
-                              <>
-                                {effectiveVerdict(claim) !== "pass" && (
-                                  <Button onClick={() => override(unit.id, claim.id, "pass")} disabled={busy}>
-                                    I verified this myself
-                                  </Button>
-                                )}
-                                {effectiveVerdict(claim) !== "fail" && (
-                                  <Button
-                                    variant="danger"
-                                    onClick={() => override(unit.id, claim.id, "fail")}
-                                    disabled={busy}
-                                  >
-                                    Mark wrong
-                                  </Button>
-                                )}
-                              </>
+                              {showQuiet ? "Hide" : "Show"} {hidden.length} low-risk claim
+                              {hidden.length > 1 ? "s" : ""} checked
+                              {p.framing.length > 0 && ` (${p.framing.length} framing line${p.framing.length > 1 ? "s" : ""} not checked)`}
+                            </button>
+                            {showQuiet && (
+                              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+                                {hidden.map((claim) => renderClaim(unit.id, claim))}
+                              </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                        )}
+                      </>
+                    );
+                  })()}
+
                 </div>
               )}
             </div>
@@ -532,15 +566,29 @@ export default function VerificationPanel({
   );
 }
 
+/**
+ * One line describing what a unit needs, not what was examined.
+ *
+ * The previous version reported raw totals ("2/9 sourced, 7 without a source"),
+ * which counted framing lines and common-knowledge advice as deficiencies and
+ * made every unit look broken.
+ */
 function summarizeUnit(unit: VerifiedUnit): string {
-  const total = unit.claims.length;
-  if (total === 0) return "Nothing checkable";
-  const pass = unit.claims.filter((c) => effectiveVerdict(c) === "pass").length;
   const fail = unit.claims.filter((c) => effectiveVerdict(c) === "fail").length;
   if (fail > 0) return `${fail} claim${fail > 1 ? "s" : ""} contradicted by sources`;
-  const unres = total - pass;
-  if (unres > 0) return `${pass}/${total} sourced, ${unres} without a source`;
-  return `${pass}/${total} claims sourced`;
+
+  const { high, low, resolved, framing } = partitionFindings(unit);
+  if (high.length > 0) {
+    return `${high.length} claim${high.length > 1 ? "s" : ""} needs a source`;
+  }
+  if (resolved.length > 0) {
+    return low.length > 0
+      ? `${resolved.length} sourced, ${low.length} minor unsourced`
+      : `${resolved.length} claim${resolved.length > 1 ? "s" : ""} sourced`;
+  }
+  if (low.length > 0) return `${low.length} minor claim${low.length > 1 ? "s" : ""}, nothing notable`;
+  if (framing.length > 0) return "Framing only, nothing to check";
+  return "Nothing to check";
 }
 
 // ─── styles ───────────────────────────────────────────────────────────────────
