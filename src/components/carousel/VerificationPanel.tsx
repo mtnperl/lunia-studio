@@ -14,7 +14,7 @@
 //   3. Expand a row for the actual claims, sources and quotes — and the
 //      override control, because the checker is wrong sometimes.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 // verification-status, NOT verification: the latter imports the Anthropic SDK
 // and the Redis-backed cache, which must never reach the client bundle.
@@ -40,8 +40,56 @@ type Props = {
   gating?: SurfaceGating;
   /** Unit ids whose text changed since verification. Rendered as stale. */
   staleUnitIds?: string[];
+  /** Labels of the units about to be checked, so the loader can name them. */
+  pendingUnitLabels?: string[];
   onRecordChange: (record: VerificationRecord) => void;
 };
+
+/**
+ * Elapsed-time readout for the running check.
+ *
+ * Deliberately NOT a progress bar. The route returns every unit at once, so any
+ * percentage would be invented — and a bar that crawls to 90% and sits there is
+ * worse than no bar. Elapsed seconds are true, and the unit list tells you what
+ * the wait is actually for.
+ */
+function Elapsed() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return (
+    <span style={{ fontFamily: "var(--font-mono, 'Fira Code', monospace)", fontVariantNumeric: "tabular-nums" }}>
+      {mins}:{String(secs).padStart(2, "0")}
+    </span>
+  );
+}
+
+/** Shimmer row shown per unit while the check runs. */
+function PendingRow({ label }: { label: string }) {
+  return (
+    <div style={{ ...rowStyle, cursor: "default" }}>
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "var(--muted)",
+          flexShrink: 0,
+          animation: "shimmer 1s ease-in-out infinite",
+        }}
+      />
+      <span style={{ fontWeight: 500, minWidth: 74, textAlign: "left" }}>{label}</span>
+      <span style={{ ...subtleStyle, flex: 1, textAlign: "left" }}>
+        Reading claims, searching for sources…
+      </span>
+    </div>
+  );
+}
 
 const STATUS_COLOR: Record<VerificationStatus, string> = {
   green: "var(--success)",
@@ -90,14 +138,17 @@ export default function VerificationPanel({
   record,
   gating,
   staleUnitIds = [],
+  pendingUnitLabels = [],
   onRecordChange,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   async function runVerify() {
     setBusy(true);
+    setVerifying(true);
     setError(null);
     try {
       const res = await fetch("/api/verify", {
@@ -116,6 +167,7 @@ export default function VerificationPanel({
       setError("Could not reach the verifier. Check your connection and retry.");
     } finally {
       setBusy(false);
+      setVerifying(false);
     }
   }
 
@@ -141,6 +193,35 @@ export default function VerificationPanel({
     }
   }
 
+  // ─── Running ────────────────────────────────────────────────────────────────
+  // Shown whether or not a previous record exists, so a re-check never leaves
+  // stale verdicts on screen looking like live ones.
+  if (verifying) {
+    const labels = pendingUnitLabels.length > 0 ? pendingUnitLabels : ["Content"];
+    return (
+      <div style={panelStyle}>
+        <div style={headerRow}>
+          <div>
+            <div style={titleStyle}>Checking {labels.length} units</div>
+            <div style={{ ...subtleStyle, marginTop: 2 }}>
+              Each unit is read for factual claims, then searched against real sources.
+              Elapsed <Elapsed />
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 2 }}>
+          {labels.map((label) => (
+            <PendingRow key={label} label={label} />
+          ))}
+        </div>
+        <div style={{ ...subtleStyle, marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+          Units run in parallel, so this takes about as long as the slowest one — usually
+          under a minute. Leaving this screen cancels the run.
+        </div>
+      </div>
+    );
+  }
+
   // ─── Never verified ─────────────────────────────────────────────────────────
   if (!record) {
     return (
@@ -153,7 +234,7 @@ export default function VerificationPanel({
             </div>
           </div>
           <Button variant="primary" onClick={runVerify} disabled={busy}>
-            {busy ? "Checking…" : "Verify"}
+            Verify
           </Button>
         </div>
         {error && <div style={errorStyle}>{error}</div>}
@@ -161,6 +242,7 @@ export default function VerificationPanel({
     );
   }
 
+  const erroredUnits = record.units.filter((u) => !!u.error);
   const status = deriveRecordStatus(record);
   const counts = summarize(record);
   const amberAction = gating?.amber ?? "warn";
@@ -184,11 +266,23 @@ export default function VerificationPanel({
         </Button>
       </div>
 
+      {/* `partial` covers two very different situations and the old copy
+          conflated them into "6 of 6 units finished", which read as nonsense.
+          Say which one actually happened. */}
       {record.partial && (
-        <div style={noticeStyle}>
-          Incomplete run — {record.units.length} of {record.unitsPlanned ?? record.units.length} units
-          finished. Re-check to fill the gaps.
-        </div>
+        erroredUnits.length > 0 ? (
+          <div style={{ ...noticeStyle, borderColor: "var(--warning)" }}>
+            {erroredUnits.length} of {record.units.length} unit
+            {record.units.length > 1 ? "s" : ""} could not be checked:{" "}
+            {erroredUnits[0].error}
+            {erroredUnits.length > 1 && ` (and ${erroredUnits.length - 1} more with the same fault)`}
+          </div>
+        ) : (
+          <div style={noticeStyle}>
+            Run ended early — {record.units.length} of {record.unitsPlanned ?? record.units.length}{" "}
+            units finished. Re-check to fill the gaps.
+          </div>
+        )
       )}
 
       {staleUnitIds.length > 0 && (
@@ -235,10 +329,28 @@ export default function VerificationPanel({
 
               {open && (
                 <div style={detailWrap}>
-                  {unit.claims.length === 0 && (
-                    <div style={subtleStyle}>
-                      Nothing checkable in this unit. That is a normal result for a hook.
+                  {/* An errored unit has no claims because the check never
+                      completed — saying "nothing checkable" there is actively
+                      misleading, and the old copy said "normal for a hook" even
+                      on slides. Distinguish the two cases. */}
+                  {unit.error ? (
+                    <div style={{ ...subtleStyle, color: "var(--warning)" }}>
+                      <div style={{ fontWeight: 600, marginBottom: 3 }}>Check did not complete</div>
+                      <div style={{ fontFamily: "var(--font-mono, 'Fira Code', monospace)", fontSize: 11, lineHeight: 1.5 }}>
+                        {unit.error}
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        This unit&rsquo;s text was never assessed. It is not a verdict on the
+                        content, and re-checking is the fix.
+                      </div>
                     </div>
+                  ) : (
+                    unit.claims.length === 0 && (
+                      <div style={subtleStyle}>
+                        No factual claims found in this {unit.kind === "hook" ? "hook" : "unit"}.
+                        That is a normal result for copy that is framing rather than fact.
+                      </div>
+                    )
                   )}
                   {unit.claims.map((claim) => (
                     <div key={claim.id} style={claimStyle}>

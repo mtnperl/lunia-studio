@@ -37,7 +37,7 @@
 // and is safe on both sides.
 import "server-only";
 import { z } from "zod";
-import { anthropic, CONTENT_MODEL, extractText } from "./anthropic";
+import { anthropic, CONTENT_MODEL } from "./anthropic";
 import { getCachedUnit, setCachedUnit } from "./verification-cache";
 import {
   hashUnitText,
@@ -103,6 +103,90 @@ const PER_UNIT_MAX_TOKENS = 4_000;
 const MAX_SEARCHES_PER_UNIT = 5;
 
 /**
+ * Pull the JSON answer out of a tool-using response.
+ *
+ * anthropic.ts's extractText() returns the FIRST text block, which is correct
+ * for plain completions but wrong here. A web_search response interleaves
+ * blocks:
+ *
+ *   text                    "I'll look this claim up."   <- extractText finds this
+ *   server_tool_use         { query: ... }
+ *   web_search_tool_result  [ ... ]
+ *   text                    '{"claims":[...]}'           <- the actual answer
+ *
+ * Taking the first block meant every single unit tried to JSON.parse the
+ * model's narration and reported "malformed JSON". Six of six units failing
+ * identically was the tell: a flaky model gives you a mix, a broken parser
+ * gives you a clean sweep.
+ *
+ * Strategy: concatenate every text block in order, then scan for balanced
+ * top-level {...} candidates and return the last one that parses. Scanning
+ * rather than regex because the payload contains quoted braces inside
+ * supportingQuote, which a lazy regex truncates.
+ */
+export function extractJsonFromToolResponse(message: {
+  content: Array<{ type: string; text?: string }>;
+}): unknown {
+  const joined = (message.content ?? [])
+    .filter((b) => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text as string)
+    .join("\n")
+    .trim();
+
+  if (!joined) throw new Error("Checker returned no text at all");
+
+  const stripped = joined.replace(/```(?:json)?/gi, "").trim();
+
+  // Fast path: the whole thing is the object.
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    /* fall through to scanning */
+  }
+
+  const candidates: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "{") {
+      if (depth === 0) start = i;
+      depth += 1;
+    } else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(stripped.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(candidates[i]);
+    } catch {
+      /* try the next candidate outward */
+    }
+  }
+
+  // Include a short excerpt so the failure is diagnosable from the UI rather
+  // than only from a server log the user cannot see.
+  throw new Error(
+    `Checker returned no parseable JSON. Response began: ${stripped.slice(0, 120)}`,
+  );
+}
+
+/**
  * Verify one unit. Resolves to claims; never throws — a failed unit comes back
  * carrying an `error` so one bad lookup can't take down the whole run.
  */
@@ -137,18 +221,21 @@ export async function verifyUnit(unit: ExtractedUnit, useCache = true): Promise<
       ],
     });
 
-    const raw = extractText(msg);
-    const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    const parsed = UnitResponseSchema.safeParse(JSON.parse(text));
+    const parsed = UnitResponseSchema.safeParse(extractJsonFromToolResponse(msg));
 
     if (!parsed.success) {
+      const detail = parsed.error.issues
+        .slice(0, 2)
+        .map((i) => `${i.path.join(".") || "root"}: ${i.message}`)
+        .join("; ");
+      console.warn(`[verify] ${unit.id} schema mismatch: ${detail}`);
       return {
         id: unit.id,
         label: unit.label,
         kind: unit.kind,
         contentHash,
         claims: compliance,
-        error: "Checker returned an unreadable response",
+        error: `Checker's answer didn't match the expected shape (${detail})`,
       };
     }
 
@@ -204,8 +291,12 @@ export function describeVerifyError(err: unknown): string {
   if (status === 429) return "Rate limited while verifying — try again shortly";
   if (status === 404) return "Verification model unavailable";
   if (status && status >= 500) return `Anthropic service error (${status})`;
-  if (message.includes("JSON")) return "Checker returned malformed JSON";
   if (/abort|timeout/i.test(message)) return "Verification timed out for this unit";
+  // Parse failures carry their own diagnostic (including a response excerpt),
+  // so pass them through. Collapsing every JSON fault to a generic "malformed
+  // JSON" is what made the first real run impossible to debug from the UI —
+  // six identical messages that said nothing about what actually came back.
+  if (message.startsWith("Checker returned")) return message.slice(0, 200);
   return `Verification failed: ${message.slice(0, 120)}`;
 }
 
@@ -253,8 +344,7 @@ An empty array is the expected answer for most content.`,
         },
       ],
     });
-    const raw = extractText(msg).replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-    const parsed = ConflictSchema.safeParse(JSON.parse(raw));
+    const parsed = ConflictSchema.safeParse(extractJsonFromToolResponse(msg));
     return parsed.success ? parsed.data.conflicts : [];
   } catch {
     // Consistency is a bonus check. Losing it must not fail the run.

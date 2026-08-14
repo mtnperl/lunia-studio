@@ -18,6 +18,7 @@ vi.mock("./anthropic", async (importOriginal) => {
 });
 
 import {
+  extractJsonFromToolResponse,
   hashUnitText,
   extractCarouselUnits,
   extractEmailUnits,
@@ -468,6 +469,72 @@ describe("verifyUnit", () => {
   });
 });
 
+// ─── REGRESSION: the tool-response parser ─────────────────────────────────────
+// The first real production run failed 6/6 units with "malformed JSON" because
+// extractText() returns the FIRST text block, and a web_search response puts
+// narration there and the answer in a later block. These lock that shut.
+
+describe("REGRESSION: extractJsonFromToolResponse", () => {
+  it("takes the JSON from a LATER block, not the leading narration", () => {
+    const msg = {
+      content: [
+        { type: "text", text: "I'll search for this claim." },
+        { type: "server_tool_use", id: "x", name: "web_search" },
+        { type: "web_search_tool_result", content: [] },
+        { type: "text", text: '{"claims":[{"text":"a","category":"checkable_factual","verdict":"pass"}]}' },
+      ],
+    } as never;
+    expect(extractJsonFromToolResponse(msg)).toEqual({
+      claims: [{ text: "a", category: "checkable_factual", verdict: "pass" }],
+    });
+  });
+
+  it("handles the plain single-block case", () => {
+    expect(extractJsonFromToolResponse({ content: [{ type: "text", text: '{"claims":[]}' }] } as never))
+      .toEqual({ claims: [] });
+  });
+
+  it("strips code fences", () => {
+    const msg = { content: [{ type: "text", text: '```json\n{"claims":[]}\n```' }] } as never;
+    expect(extractJsonFromToolResponse(msg)).toEqual({ claims: [] });
+  });
+
+  it("survives narration wrapped around the object in ONE block", () => {
+    const msg = {
+      content: [{ type: "text", text: 'Here is my answer:\n{"claims":[]}\nHope that helps.' }],
+    } as never;
+    expect(extractJsonFromToolResponse(msg)).toEqual({ claims: [] });
+  });
+
+  it("does not truncate on braces inside a quoted supporting quote", () => {
+    // A lazy regex like /\{.*\}/ mangles this; the brace scanner must respect strings.
+    const quote = "the study {n=40} reported a 17 minute drop";
+    const msg = {
+      content: [{ type: "text", text: JSON.stringify({ claims: [{ text: "a", supportingQuote: quote }] }) }],
+    } as never;
+    const out = extractJsonFromToolResponse(msg) as { claims: { supportingQuote: string }[] };
+    expect(out.claims[0].supportingQuote).toBe(quote);
+  });
+
+  it("handles escaped quotes inside strings", () => {
+    const msg = {
+      content: [{ type: "text", text: '{"claims":[{"text":"he said \\"yes\\" loudly"}]}' }],
+    } as never;
+    const out = extractJsonFromToolResponse(msg) as { claims: { text: string }[] };
+    expect(out.claims[0].text).toBe('he said "yes" loudly');
+  });
+
+  it("throws with an excerpt when nothing parses, so the UI can show why", () => {
+    const msg = { content: [{ type: "text", text: "I could not complete this search." }] } as never;
+    expect(() => extractJsonFromToolResponse(msg)).toThrow(/could not complete this search/i);
+  });
+
+  it("throws a clear error when there is no text at all", () => {
+    expect(() => extractJsonFromToolResponse({ content: [{ type: "web_search_tool_result" }] } as never))
+      .toThrow(/no text/i);
+  });
+});
+
 describe("describeVerifyError", () => {
   it.each([
     [{ status: 401 }, /invalid or revoked/i],
@@ -478,9 +545,18 @@ describe("describeVerifyError", () => {
     expect(describeVerifyError(Object.assign(new Error("e"), err))).toMatch(pattern);
   });
 
-  it("recognises timeouts and JSON faults", () => {
+  it("recognises timeouts", () => {
     expect(describeVerifyError(new Error("request timeout"))).toMatch(/timed out/i);
-    expect(describeVerifyError(new Error("bad JSON here"))).toMatch(/malformed/i);
+  });
+
+  it("passes parser diagnostics through instead of collapsing them", () => {
+    // Previously every JSON fault became the string "Checker returned malformed
+    // JSON". Six units failed with that identical message and it said nothing
+    // about what actually came back. The excerpt must survive.
+    const detailed = new Error(
+      "Checker returned no parseable JSON. Response began: I'll search for this claim.",
+    );
+    expect(describeVerifyError(detailed)).toMatch(/I'll search for this claim/);
   });
 
   it("falls back without leaking a huge message", () => {

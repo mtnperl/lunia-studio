@@ -2645,6 +2645,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             carouselId={savedId}
             record={verification}
             staleUnitIds={staleUnitIds}
+            pendingUnitLabels={extractCarouselUnits(config.content, config.selectedHook ?? 0).map((u) => u.label)}
             onRecordChange={setVerification}
           />
         ) : (
