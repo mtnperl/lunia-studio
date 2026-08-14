@@ -10,6 +10,7 @@ import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import { BrandStyle, CarouselConfig, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
+import { DEFAULT_GATING } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -910,19 +911,24 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     };
   }, [verification, config.content, config.selectedHook]);
 
-  // What the gate currently says about exporting. Red blocks by default; amber
-  // warns. Both are configurable server-side, so this reads the record rather
-  // than hardcoding the policy.
+  // Export state, driven by the gating policy rather than a hardcoded rule.
+  // DEFAULT_GATING ships fully advisory, so nothing blocks: the export always
+  // works and the button simply tells you what it knows. Flip a surface to
+  // "block" in the gating config to restore a hard gate.
   const verificationStatus = verification ? deriveRecordStatus(verification) : null;
-  const exportBlocked = verificationStatus === "red";
-  const exportWarned = verificationStatus === "amber" || staleUnitIds.length > 0;
-  const exportBlockReason = exportBlocked
-    ? "A claim in this carousel is contradicted by its sources. Fix it, or override the verdict in the Fact check panel."
-    : staleUnitIds.length > 0
-      ? `${staleUnitIds.length} unit${staleUnitIds.length > 1 ? "s" : ""} edited since the last check.`
-      : verificationStatus === "amber"
-        ? "Some claims could not be verified."
-        : undefined;
+  const gating = DEFAULT_GATING.carousel;
+  const action = verificationStatus === "red" ? gating.red : verificationStatus === "amber" ? gating.amber : "warn";
+  const exportBlocked = action === "block" && verificationStatus !== null && verificationStatus !== "green";
+  const exportWarned =
+    verificationStatus === "red" || verificationStatus === "amber" || staleUnitIds.length > 0;
+  const exportNote =
+    verificationStatus === "red"
+      ? "Contains a claim contradicted by its sources. Review the Fact check panel before posting."
+      : staleUnitIds.length > 0
+        ? `${staleUnitIds.length} unit${staleUnitIds.length > 1 ? "s" : ""} edited since the last check.`
+        : verificationStatus === "amber"
+          ? "Some claims could not be verified."
+          : undefined;
 
   async function downloadAll() {
     if (exportBlocked) return;
@@ -2594,16 +2600,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             className="btn"
             onClick={downloadAll}
             disabled={downloadingAll || exportBlocked}
-            title={exportBlockReason}
+            title={exportNote}
             style={{
               minWidth: 160,
-              // The button carries the verification state so a warned export
-              // never looks identical to a clean one.
-              ...(exportBlocked
-                ? { borderColor: "var(--error)", opacity: 0.6, cursor: "not-allowed" }
+              // The button carries the verification state so a flagged export
+              // never looks identical to a clean one. It stays clickable: the
+              // signal is the product, the lock is not.
+              ...(verificationStatus === "red"
+                ? { borderColor: "var(--error)" }
                 : exportWarned
                   ? { borderColor: "var(--warning)" }
                   : {}),
+              ...(exportBlocked ? { opacity: 0.6, cursor: "not-allowed" } : {}),
             }}
           >
             {downloadingAll ? (
@@ -2614,7 +2622,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             ) : exportBlocked ? (
               "Download blocked"
             ) : (
-              `↓ Download all (${slideCount} PNGs)${exportWarned ? " — unverified" : ""}`
+              `↓ Download all (${slideCount} PNGs)`
             )}
           </button>
           {carouselFormat === "engagement" && (

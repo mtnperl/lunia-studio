@@ -38,7 +38,7 @@ import {
   describeVerifyError,
   type ExtractedUnit,
 } from "./verification";
-import { effectiveVerdict } from "./types";
+import { effectiveVerdict, DEFAULT_GATING } from "./types";
 import type { CarouselContent, VerifiedClaim, VerifiedUnit, VerificationRecord } from "./types";
 
 function claim(over: Partial<VerifiedClaim> = {}): VerifiedClaim {
@@ -450,6 +450,25 @@ describe("summarize reports findings, not raw counts", () => {
     expect(s.quiet).toBe(1);    // the cool-room claim
     expect(s.green).toBe(1);
     expect(s.amber).toBe(1);
+  });
+});
+
+describe("DEFAULT_GATING is advisory", () => {
+  // The user asked explicitly for downloads not to be blocked. Pinned so a
+  // future edit cannot quietly reintroduce a hard gate.
+  it("never blocks on any surface", () => {
+    for (const surface of ["carousel", "email", "script"] as const) {
+      expect(DEFAULT_GATING[surface].red).not.toBe("block");
+      expect(DEFAULT_GATING[surface].amber).not.toBe("block");
+    }
+  });
+
+  it("still distinguishes red from green so the signal survives", () => {
+    // Advisory must not mean silent: statuses still differ, only the lock is gone.
+    const red = record({ units: [unit({ claims: [claim({ verdict: "fail" })] })] });
+    const green = record({ units: [unit({ claims: [claim({ verdict: "pass" })] })] });
+    expect(deriveRecordStatus(red)).toBe("red");
+    expect(deriveRecordStatus(green)).toBe("green");
   });
 });
 

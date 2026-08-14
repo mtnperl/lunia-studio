@@ -579,11 +579,22 @@ export type GatingConfig = {
   script: SurfaceGating;
 };
 
-/** Ships with amber warning and red blocking. */
+/**
+ * Ships fully advisory: nothing blocks, everything is visible.
+ *
+ * Red blocked downloads until 2026-08-14. The user asked for that to stop, and
+ * the reasoning holds: this is a single-operator tool where the operator is the
+ * one reading the findings. A gate that refuses to hand you your own file is
+ * paternalistic when the person it is protecting you from is you. The signal is
+ * the product; the lock was never the point.
+ *
+ * The controls still carry their state (a red export is visibly a red export),
+ * and blocking remains one config change away per surface if that ever changes.
+ */
 export const DEFAULT_GATING: GatingConfig = {
-  carousel: { amber: "warn", red: "block" },
-  email: { amber: "warn", red: "block" },
-  script: { amber: "warn", red: "block" },
+  carousel: { amber: "warn", red: "warn" },
+  email: { amber: "warn", red: "warn" },
+  script: { amber: "warn", red: "warn" },
 };
 
 export type CarouselTemplateImage = {

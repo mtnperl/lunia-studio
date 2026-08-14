@@ -551,14 +551,11 @@ export default function VerificationPanel({
       </div>
 
       <div style={{ ...subtleStyle, marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-        {redAction === "block"
-          ? "Failed claims block download."
-          : "Failed claims are shown but do not block download."}{" "}
-        {amberAction === "block"
-          ? "Unresolved claims also block."
-          : amberAction === "require_ack"
-            ? "Unresolved claims need acknowledging first."
-            : "Unresolved claims warn only."}
+        {redAction === "block" || amberAction === "block"
+          ? `${redAction === "block" ? "Contradicted" : "Unresolved"} claims block download.`
+          : "Advisory only. Nothing here blocks your download, the call is yours."}
+        {record.units.some((u) => deriveUnitStatus(u) === "red") &&
+          " Contradicted claims are worth a look before this goes out."}
       </div>
 
       {error && <div style={errorStyle}>{error}</div>}
