@@ -1,14 +1,13 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { nanoid } from "nanoid";
-import HookSlide from "@/components/carousel/slides/HookSlide";
-import ContentSlide from "@/components/carousel/slides/ContentSlide";
-import CTASlide from "@/components/carousel/slides/CTASlide";
+import ContentStep from "@/components/carousel/steps/ContentStep";
+import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
-import { MiniRetroLoader } from "@/components/carousel/shared/RetroLoader";
+import { MiniRetroLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import {
-  BrandStyle, CarouselContent, CarouselFormat, CarouselStylePreset,
+  BrandStyle, CarouselConfig, CarouselContent, CarouselFormat, CarouselStylePreset,
   DidYouKnowContent, EngagementSubType, HookTone, Subject,
 } from "@/lib/types";
 import type { CarouselImageStyle, HookRecommendation } from "@/components/carousel/steps/TopicStep";
@@ -18,10 +17,16 @@ import {
 } from "@/components/carousel/steps/TopicStep";
 import { CarouselApiProvider, useCarouselApi } from "@/components/carousel/api-context";
 
-const HOOK_SCALE = 0.22;
-const SLIDE_SCALE = 0.22;
 const DRAFT_KEY = "lunia:batch:active";
 const MAX_TOPICS = 10;
+const MAX_TOPIC_LENGTH = 500;
+
+/** Per-card review stages — the builder's step 2 (Content) and step 3 (Hook). */
+type ReviewStage = "content" | "hook";
+const REVIEW_STAGES: { key: ReviewStage; label: string }[] = [
+  { key: "content", label: "Content" },
+  { key: "hook", label: "Hook" },
+];
 
 type QueueItem = {
   id: string;
@@ -38,12 +43,20 @@ type QueueItem = {
   didYouKnowVariants?: DidYouKnowContent[];
   selectedDidYouKnow?: number;
   selectedHook: number;
+  /** fal-generated hook background (slide 0). */
   imageUrl?: string;
+  /** Pregenerated hook image returned alongside the content, if the API sent one. */
+  hookImageUrl?: string;
   error?: string;
+  /** Image-stage failure — advisory only, the carousel stays editable. */
+  imageError?: string;
+  /** Style-reference / generation notes from the content API. */
+  warning?: string;
   savedId?: string;
-  imagePromptDraft?: string;
-  imagePromptOpen?: boolean;
   brandStyle?: BrandStyle;
+  /** null = "Auto" → the server picks a mood per call, same as the builder. */
+  moodId?: string | null;
+  reviewStage?: ReviewStage;
 };
 
 /** A topic queued for generation but not yet sent — configurable before "Generate". */
@@ -56,11 +69,10 @@ type DraftTopic = {
 };
 
 function statusColor(status: QueueItem["status"]): string {
-  if (status === "generating") return "#1e7a8a";
-  if (status === "reviewing") return "#7c3aed";
-  if (status === "imaging") return "#d97706";
-  if (status === "done") return "#15803d";
-  if (status === "error") return "#dc2626";
+  if (status === "generating" || status === "imaging") return "var(--accent)";
+  if (status === "reviewing") return "var(--warning)";
+  if (status === "done") return "var(--success)";
+  if (status === "error") return "var(--error)";
   return "var(--muted)";
 }
 
@@ -72,6 +84,18 @@ function statusLabel(item: QueueItem): string {
   if (item.status === "done") return "Done";
   if (item.status === "error") return `Failed: ${item.error ?? "Unknown error"}`;
   return "";
+}
+
+/** Drafts saved before the image prompt moved onto the content itself kept it in
+ *  a separate `imagePromptDraft` field. Fold it back in so a restored batch
+ *  edits the same prompt the builder does. */
+function migrateQueueItem(item: QueueItem & { imagePromptDraft?: string; imagePromptOpen?: boolean }): QueueItem {
+  const { imagePromptDraft, imagePromptOpen: _open, ...rest } = item;
+  void _open;
+  if (imagePromptDraft && rest.content) {
+    return { ...rest, content: { ...rest.content, imagePrompt: imagePromptDraft } };
+  }
+  return rest;
 }
 
 async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
@@ -131,10 +155,12 @@ function DraftTopicRow({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.text, showToneControl]);
 
+  const tooLong = row.text.trim().length > MAX_TOPIC_LENGTH;
+
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 8,
-      padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 7,
+      padding: "8px 10px", border: `1px solid ${tooLong ? "var(--error)" : "var(--border)"}`, borderRadius: 7,
       marginBottom: 6, background: "var(--bg)",
     }}>
       <input
@@ -143,6 +169,11 @@ function DraftTopicRow({
         onChange={(e) => onChangeText(row.id, e.target.value)}
         style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", fontSize: 13, color: "var(--text)", outline: "none", fontFamily: "inherit" }}
       />
+      {tooLong && (
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--error)", flexShrink: 0, whiteSpace: "nowrap" }}>
+          Over {MAX_TOPIC_LENGTH} chars
+        </span>
+      )}
       {showToneControl && (
         <>
           {loadingRec && <span style={{ fontSize: 10, color: "var(--muted)", flexShrink: 0 }}>thinking…</span>}
@@ -177,13 +208,22 @@ function DraftTopicRow({
 }
 
 // ─── ReviewCard ───────────────────────────────────────────────────────────────
+// One queued carousel. Every review stage renders the *same* components the
+// single-carousel builder uses — ContentStep, HookStep, PreviewStep — so the
+// two flows can't drift: a capability added to the builder (slide rewrites,
+// hook regeneration, prompt directions, mood/style chips) lands here for free.
 function ReviewCard({
   item,
   onSelectHook,
   onGenerateImage,
   onRetry,
+  onRetryImage,
+  onContentEdit,
+  onHooksChange,
   onImagePromptChange,
-  onToggleImagePrompt,
+  onImageStyleChange,
+  onMoodChange,
+  onStageChange,
   onContentUpdate,
   onGoBackToReview,
   onSelectDidYouKnow,
@@ -193,9 +233,14 @@ function ReviewCard({
   onSelectHook: (id: string, hookIndex: number) => void;
   onGenerateImage: (item: QueueItem) => void;
   onRetry: (item: QueueItem) => void;
+  onRetryImage: (item: QueueItem) => void;
+  onContentEdit: (id: string, content: CarouselContent) => void;
+  onHooksChange: (id: string, hooks: CarouselContent["hooks"]) => void;
   onImagePromptChange: (id: string, prompt: string) => void;
-  onToggleImagePrompt: (id: string) => void;
-  onContentUpdate: (id: string, content: CarouselContent, imageUrl?: string) => void;
+  onImageStyleChange: (id: string, style: CarouselImageStyle) => void;
+  onMoodChange: (id: string, moodId: string | null) => void;
+  onStageChange: (id: string, stage: ReviewStage) => void;
+  onContentUpdate: (id: string, config: CarouselConfig) => void;
   onGoBackToReview: (id: string) => void;
   onSelectDidYouKnow: (id: string, index: number) => void;
   onSaved: (id: string, savedId: string) => void;
@@ -203,8 +248,7 @@ function ReviewCard({
   const isDidYouKnow = item.carouselFormat === "did_you_know";
   const [expanded, setExpanded] = useState(item.status === "reviewing");
   const content = item.content;
-  const hook = content?.hooks[item.selectedHook];
-  const imagePrompt = item.imagePromptDraft ?? content?.imagePrompt ?? "";
+  const stage: ReviewStage = item.reviewStage ?? "content";
   const hasReviewable = isDidYouKnow ? !!item.didYouKnowVariants : !!content;
 
   // Auto-expand once review becomes available. Scoped so the did_you_know
@@ -242,7 +286,7 @@ function ReviewCard({
               : item.status === "done"
               ? "✓ Ready · click to edit, download & save"
               : item.status === "reviewing"
-              ? "✎ Review hooks & slides"
+              ? "✎ Edit content, hooks & image prompt"
               : item.status === "error"
               ? `✗ ${item.error ?? "Failed"}`
               : statusLabel(item)}
@@ -258,18 +302,18 @@ function ReviewCard({
           )}
           {item.status === "done" && item.savedId && (
             <span style={{
-              fontSize: 12, fontWeight: 700, color: "#15803d",
-              padding: "5px 12px", border: "1px solid rgba(21,128,61,0.3)",
-              borderRadius: 6, background: "rgba(21,128,61,0.06)",
+              fontSize: 12, fontWeight: 700, color: "var(--success)",
+              padding: "5px 12px", border: "1px solid var(--border)",
+              borderRadius: 6, background: "var(--surface-h)",
             }}>Saved ✓</span>
           )}
           {item.status === "error" && (
             <button
               onClick={(e) => { e.stopPropagation(); onRetry(item); }}
               style={{
-                fontSize: 12, fontWeight: 700, color: "#dc2626",
-                padding: "5px 12px", border: "1px solid rgba(220,38,38,0.3)",
-                borderRadius: 6, background: "rgba(220,38,38,0.06)",
+                fontSize: 12, fontWeight: 700, color: "var(--error)",
+                padding: "5px 12px", border: "1px solid var(--border)",
+                borderRadius: 6, background: "var(--surface-h)",
                 cursor: "pointer", fontFamily: "inherit",
               }}
             >
@@ -297,163 +341,86 @@ function ReviewCard({
         </div>
       )}
 
-      {/* Standard / Engagement — review panel */}
-      {expanded && !isDidYouKnow && content && (
+      {/* Standard / Engagement — the builder's own Content → Hook → Preview steps */}
+      {expanded && !isDidYouKnow && content && (item.status === "reviewing" || item.status === "imaging" || !!item.warning || !!item.imageError) && (
         <div style={{ padding: "20px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
 
-          {/* Hook selector */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-              Choose hook
+          {item.warning && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
+              ⚠ {item.warning}
             </div>
-            <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 4 }}>
-              {content.hooks.map((h, i) => {
-                const isSelected = item.selectedHook === i;
-                const slideW = Math.round(1080 * HOOK_SCALE);
-                return (
-                  <div key={i} style={{ flexShrink: 0 }}>
-                    <div
-                      onClick={() => onSelectHook(item.id, i)}
-                      style={{
-                        cursor: "pointer",
-                        borderRadius: 8, overflow: "hidden",
-                        outline: isSelected ? "2.5px solid #1e7a8a" : "2.5px solid transparent",
-                        outlineOffset: 2,
-                        boxShadow: isSelected ? "0 0 0 4px rgba(30,122,138,0.15)" : "0 1px 6px rgba(0,0,0,0.1)",
-                        transition: "outline-color 0.15s",
-                        position: "relative",
-                      }}
-                    >
-                      <HookSlide headline={h.headline} subline={h.subline} topic={item.topic} scale={HOOK_SCALE} />
-                      {isSelected && (
-                        <div style={{
-                          position: "absolute", top: 6, right: 6,
-                          width: 20, height: 20, borderRadius: "50%",
-                          background: "#1e7a8a", display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                            <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{
-                      marginTop: 5, fontSize: 11, fontWeight: isSelected ? 700 : 500,
-                      color: isSelected ? "#1e7a8a" : "var(--muted)",
-                      textAlign: "center", width: slideW,
-                    }}>
-                      {isSelected ? `✓ Hook ${i + 1}` : `Hook ${i + 1}`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
-          {/* Slides review */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-              Content slides
-            </div>
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-              {content.slides.map((slide, i) => (
-                <div key={i} style={{ flexShrink: 0 }}>
-                  <div style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
-                    <ContentSlide
-                      headline={slide.headline}
-                      body={slide.body}
-                      citation={slide.citation}
-                      graphic={slide.graphic}
-                      scale={SLIDE_SCALE}
-                    />
-                  </div>
-                  <div style={{ marginTop: 5, fontSize: 10, color: "var(--muted)", textAlign: "center", width: Math.round(1080 * SLIDE_SCALE) }}>
-                    Slide {i + 2}
-                  </div>
-                </div>
-              ))}
-              <div style={{ flexShrink: 0 }}>
-                <div style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.1)" }}>
-                  <CTASlide headline={content.cta.headline} followLine={content.cta.followLine} scale={SLIDE_SCALE} />
-                </div>
-                <div style={{ marginTop: 5, fontSize: 10, color: "var(--muted)", textAlign: "center", width: Math.round(1080 * SLIDE_SCALE) }}>
-                  CTA
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Image prompt (collapsible) */}
-          <div style={{ marginBottom: 20, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-            <button
-              onClick={() => onToggleImagePrompt(item.id)}
-              style={{
-                width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: "var(--surface)", border: "none", padding: "9px 12px",
-                fontSize: 12, fontWeight: 600, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              <span>🎨 Hook image prompt</span>
-              <span style={{ fontSize: 14, transform: item.imagePromptOpen ? "rotate(180deg)" : "none", display: "inline-block", transition: "transform 0.2s" }}>›</span>
-            </button>
-            {item.imagePromptOpen && (
-              <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)" }}>
-                <textarea
-                  value={imagePrompt}
-                  onChange={(e) => onImagePromptChange(item.id, e.target.value)}
-                  rows={3}
-                  placeholder="No prompt yet — will be auto-generated from the hook."
-                  style={{
-                    width: "100%", fontSize: 12, lineHeight: 1.6,
-                    resize: "vertical", fontFamily: "inherit",
-                    color: imagePrompt ? "var(--text)" : "var(--subtle)",
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Hook image preview (when done) */}
-          {item.status === "done" && item.imageUrl && (
+          {item.imageError && item.status !== "imaging" && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                Hook image
-              </div>
-              <div style={{ borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", display: "inline-block" }}>
-                <HookSlide
-                  headline={hook?.headline ?? ""}
-                  subline={hook?.subline ?? ""}
-                  topic={item.topic}
-                  scale={HOOK_SCALE}
-                  backgroundImageUrl={item.imageUrl}
-                  isFalImage
-                  stylePreset={item.stylePreset}
-                />
+              <RetroImageError
+                items={[{ label: "HOOK SLIDE", done: !!item.imageUrl, error: item.imageError }]}
+                onRetry={() => onRetryImage(item)}
+                modelLabel="fal-ai/recraft/v4/pro"
+              />
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+                The carousel itself is unaffected — you can keep editing and export without the hook image.
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {item.status === "reviewing" && (
-              <button
-                onClick={() => onGenerateImage(item)}
-                style={{
-                  background: "#1e7a8a", color: "#fff",
-                  border: "none", borderRadius: 8,
-                  padding: "11px 24px", fontSize: 13, fontWeight: 700,
-                  fontFamily: "inherit", cursor: "pointer",
-                }}
-              >
-                Generate image →
-              </button>
-            )}
-            {item.status === "imaging" && (
-              <div style={{ width: "100%" }}>
-                <MiniRetroLoader label={item.content?.hooks[item.selectedHook]?.headline ?? "HOOK SLIDE"} />
+          {item.status === "imaging" && (
+            <MiniRetroLoader label={content.hooks[item.selectedHook]?.headline ?? "HOOK SLIDE"} />
+          )}
+
+          {item.status === "reviewing" && (
+            <>
+              {/* Stage indicator — mirrors the builder's step rail */}
+              <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
+                {REVIEW_STAGES.map((s, i) => (
+                  <button
+                    key={s.key}
+                    onClick={() => onStageChange(item.id, s.key)}
+                    style={{
+                      padding: "8px 18px", fontSize: 13,
+                      fontWeight: stage === s.key ? 700 : 500,
+                      color: stage === s.key ? "var(--accent)" : "var(--subtle)",
+                      borderBottom: stage === s.key ? "2px solid var(--accent)" : "2px solid transparent",
+                      background: "transparent", border: "none", borderRadius: 0,
+                      marginBottom: -1, cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {i + 1}. {s.label}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+
+              {stage === "content" && (
+                <ContentStep
+                  content={content}
+                  topic={item.topic}
+                  hookTone={item.hookTone}
+                  carouselFormat={item.carouselFormat}
+                  onChange={(c) => onContentEdit(item.id, c)}
+                  onNext={() => onStageChange(item.id, "hook")}
+                />
+              )}
+
+              {stage === "hook" && (
+                <HookStep
+                  content={content}
+                  selectedHook={item.selectedHook}
+                  onSelectHook={(i) => onSelectHook(item.id, i)}
+                  onNext={() => onGenerateImage(item)}
+                  onImagePromptChange={(prompt) => onImagePromptChange(item.id, prompt)}
+                  onHooksChange={(hooks) => onHooksChange(item.id, hooks)}
+                  hookTone={item.hookTone}
+                  brandStyle={item.brandStyle}
+                  backgroundImageUrl={item.hookImageUrl}
+                  topic={item.topic}
+                  imageStyle={item.imageStyle}
+                  onImageStyleChange={(style) => onImageStyleChange(item.id, style)}
+                  moodId={item.moodId ?? null}
+                  onMoodChange={(id) => onMoodChange(item.id, id)}
+                />
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -466,14 +433,16 @@ function ReviewCard({
               content: item.content,
               selectedHook: item.selectedHook,
               brandStyle: item.brandStyle,
-              hookImageUrl: undefined,
+              hookImageUrl: item.hookImageUrl,
               slideImages: [item.imageUrl ?? null, null, null, null, null],
             }}
             hookTone={item.hookTone}
             onRestart={() => setExpanded(false)}
             onChangeHook={() => onGoBackToReview(item.id)}
-            onContentChange={(cfg) => onContentUpdate(item.id, cfg.content, cfg.slideImages?.[0] ?? undefined)}
+            onContentChange={(cfg) => onContentUpdate(item.id, cfg)}
             initialImageStyle={item.imageStyle}
+            initialMoodId={item.moodId ?? null}
+            initialSavedId={item.savedId ?? null}
             stylePreset={item.stylePreset}
             carouselFormat={item.carouselFormat}
             onSaved={(id) => onSaved(item.id, id)}
@@ -548,7 +517,7 @@ function BatchViewInner() {
       if (d.imageStyle) setImageStyle(d.imageStyle);
       if (d.stylePreset) setStylePreset(d.stylePreset);
       if (Array.isArray(d.draftTopics)) setDraftTopics(d.draftTopics);
-      if (Array.isArray(d.queue)) setQueue(d.queue);
+      if (Array.isArray(d.queue)) setQueue((d.queue as (QueueItem & { imagePromptDraft?: string; imagePromptOpen?: boolean })[]).map(migrateQueueItem));
       setRestoredDraft(true);
     } catch { /* ignore corrupt draft */ }
   }, []);
@@ -581,6 +550,14 @@ function BatchViewInner() {
 
   function updateItem(id: string, patch: Partial<QueueItem>) {
     setQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  /** Edit one item's carousel content off the latest queue state — the step
+   *  components fire these on every keystroke, so a stale closure would drop edits. */
+  function updateItemContent(id: string, edit: (content: CarouselContent) => CarouselContent, patch?: Partial<QueueItem>) {
+    setQueue((prev) => prev.map((item) => (
+      item.id === id && item.content ? { ...item, content: edit(item.content), ...patch } : item
+    )));
   }
 
   // ── Topic queue helpers ───────────────────────────────────────────────────
@@ -741,17 +718,32 @@ function BatchViewInner() {
         return;
       }
       const brandStyle = data?.brandStyle as BrandStyle | undefined;
-      updateItem(item.id, { content, brandStyle, status: "reviewing" });
+      // Same advisory notes the single builder surfaces above the steps.
+      const styleRefsUsed = data?.styleRefsUsed as number | undefined;
+      const warning = [
+        styleRefsUsed ? `${styleRefsUsed} style reference${styleRefsUsed > 1 ? "s" : ""} applied.` : null,
+        (data?.warning as string | undefined) ?? null,
+      ].filter(Boolean).join(" ");
+      updateItem(item.id, {
+        content,
+        brandStyle,
+        hookImageUrl: (data?.hookImageUrl as string | undefined) ?? undefined,
+        warning: warning || undefined,
+        reviewStage: "content",
+        status: "reviewing",
+      });
     } catch (e) {
       updateItem(item.id, { status: "error", error: String(e) });
     }
   }
 
+  // Mirrors CarouselView.generateSlideImages — same payload, same slide-0-only
+  // scope, so a batch hook image is generated exactly like a single one.
   async function generateImage(item: QueueItem) {
     if (!item.content) return;
-    const hook = item.content.hooks[item.selectedHook];
-    const imagePrompt = item.imagePromptDraft ?? item.content.imagePrompt;
-    updateItem(item.id, { status: "imaging" });
+    const content = item.content;
+    const hook = content.hooks[item.selectedHook];
+    updateItem(item.id, { status: "imaging", imageError: undefined });
     try {
       const imgRes = await fetchWithRetry(`${apiBase}/generate-image`, {
         method: "POST",
@@ -760,20 +752,34 @@ function BatchViewInner() {
           slideIndex: 0,
           topic: item.topic,
           hook,
-          imagePrompt,
+          imagePrompt: content.imagePrompt,
           imageStyle: item.imageStyle,
+          ...(item.moodId ? { moodId: item.moodId } : {}),
           ...(item.stylePreset && item.stylePreset !== "default" ? { stylePreset: item.stylePreset } : {}),
-          ...(item.content.hookImageSpec ? { hookImageSpec: item.content.hookImageSpec } : {}),
+          ...(content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
+          // Honour any user-edited full prompt from PreviewStep's prompt editor.
+          ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
+              ? { customPrompt: content.hookImagePromptOverride }
+              : {}),
         }),
       });
-      if (imgRes.ok) {
-        const imgData = await imgRes.json();
-        updateItem(item.id, { imageUrl: imgData?.url, status: "done" });
-      } else {
-        updateItem(item.id, { status: "done", error: "Image generation failed — carousel still available" });
+      // Read as text first so a Vercel timeout page / HTML 5xx surfaces as a
+      // readable message instead of a JSON parse error.
+      const raw = await imgRes.text();
+      let parsed: { url?: string; error?: string } = {};
+      try {
+        parsed = raw ? JSON.parse(raw) : {};
+      } catch {
+        const snippet = raw.slice(0, 160).replace(/\s+/g, " ").trim();
+        parsed = { error: `HTTP ${imgRes.status}: ${snippet || "non-JSON response"}` };
       }
-    } catch {
-      updateItem(item.id, { status: "done", error: "Image generation failed — carousel still available" });
+      if (parsed.url) {
+        updateItem(item.id, { imageUrl: parsed.url, imageError: undefined, status: "done" });
+      } else {
+        updateItem(item.id, { status: "done", imageError: parsed.error ?? `HTTP ${imgRes.status}` });
+      }
+    } catch (e) {
+      updateItem(item.id, { status: "done", imageError: e instanceof Error ? e.message : "Network error" });
     }
   }
 
@@ -795,6 +801,8 @@ function BatchViewInner() {
         includeSeoFooter,
         status: "pending",
         selectedHook: 0,
+        moodId: null,
+        reviewStage: "content",
       };
     });
 
@@ -823,11 +831,19 @@ function BatchViewInner() {
   }
 
   async function handleRetry(item: QueueItem) {
-    updateItem(item.id, { status: "pending", error: undefined, content: undefined, imageUrl: undefined, savedId: undefined, didYouKnowVariants: undefined });
-    await generateContent({ ...item, status: "pending", error: undefined, content: undefined, imageUrl: undefined });
+    const reset: Partial<QueueItem> = {
+      status: "pending", error: undefined, imageError: undefined, warning: undefined,
+      content: undefined, imageUrl: undefined, hookImageUrl: undefined,
+      savedId: undefined, didYouKnowVariants: undefined, selectedHook: 0,
+      reviewStage: "content",
+    };
+    updateItem(item.id, reset);
+    await generateContent({ ...item, ...reset });
   }
 
-  const canGenerate = draftTopics.length > 0 && !generating;
+  // Same 500-char ceiling the single builder enforces on a topic.
+  const tooLongCount = draftTopics.filter((r) => r.text.trim().length > MAX_TOPIC_LENGTH).length;
+  const canGenerate = draftTopics.length > 0 && !generating && tooLongCount === 0;
   const doneCount = queue.filter((i) => i.status === "done").length;
   const reviewingCount = queue.filter((i) => i.status === "reviewing").length;
 
@@ -849,7 +865,7 @@ function BatchViewInner() {
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Batch Generate</h2>
           <p style={{ color: "var(--muted)", marginBottom: 0, fontSize: 14 }}>
-            Generate multiple carousels at once, with the same options as the single-carousel builder. Review hooks and slides before generating images.
+            Generate multiple carousels at once, with the same options as the single-carousel builder. Each card then runs the builder&apos;s own Content → Hook → Preview steps.
           </p>
         </div>
         {(draftTopics.length > 0 || queue.length > 0) && (
@@ -1203,13 +1219,18 @@ function BatchViewInner() {
           border: "none", borderRadius: 8, padding: "14px 36px",
           fontSize: 15, fontWeight: 700, fontFamily: "inherit",
           cursor: canGenerate ? "pointer" : "not-allowed",
-          letterSpacing: "-0.01em", marginBottom: 40,
+          letterSpacing: "-0.01em", marginBottom: tooLongCount > 0 ? 8 : 40,
         }}
       >
         {generating
           ? `Generating content…`
           : `Generate ${draftTopics.length} carousel${draftTopics.length !== 1 ? "s" : ""} →`}
       </button>
+      {tooLongCount > 0 && (
+        <div style={{ fontSize: 12, color: "var(--error)", marginBottom: 40 }}>
+          {tooLongCount} topic{tooLongCount !== 1 ? "s are" : " is"} over {MAX_TOPIC_LENGTH} characters — shorten {tooLongCount !== 1 ? "them" : "it"} to generate.
+        </div>
+      )}
 
       {/* Queue */}
       {queue.length > 0 && (
@@ -1228,17 +1249,27 @@ function BatchViewInner() {
                 onSelectHook={(id, hookIndex) => updateItem(id, { selectedHook: hookIndex })}
                 onGenerateImage={generateImage}
                 onRetry={handleRetry}
-                onImagePromptChange={(id, prompt) => updateItem(id, { imagePromptDraft: prompt })}
-                onToggleImagePrompt={(id) => updateItem(id, { imagePromptOpen: !queue.find((i) => i.id === id)?.imagePromptOpen })}
-                onContentUpdate={(id, content, imageUrl) => updateItem(id, { content, ...(imageUrl ? { imageUrl } : {}) })}
-                onGoBackToReview={(id) => updateItem(id, { status: "reviewing" })}
+                onRetryImage={generateImage}
+                onContentEdit={(id, content) => updateItem(id, { content })}
+                // Fresh hooks replace the old set — reselect the first, as the builder does.
+                onHooksChange={(id, hooks) => updateItemContent(id, (c) => ({ ...c, hooks }), { selectedHook: 0 })}
+                onImagePromptChange={(id, prompt) => updateItemContent(id, (c) => ({ ...c, imagePrompt: prompt }))}
+                onImageStyleChange={(id, style) => updateItem(id, { imageStyle: style })}
+                onMoodChange={(id, moodId) => updateItem(id, { moodId })}
+                onStageChange={(id, stage) => updateItem(id, { reviewStage: stage })}
+                onContentUpdate={(id, cfg) => updateItem(id, {
+                  content: cfg.content,
+                  ...(cfg.slideImages ? { imageUrl: cfg.slideImages[0] ?? undefined } : {}),
+                  ...(cfg.hookImageUrl !== undefined ? { hookImageUrl: cfg.hookImageUrl ?? undefined } : {}),
+                })}
+                onGoBackToReview={(id) => updateItem(id, { status: "reviewing", reviewStage: "hook" })}
                 onSelectDidYouKnow={(id, index) => updateItem(id, { selectedDidYouKnow: index })}
                 onSaved={(id, savedId) => updateItem(id, { savedId })}
               />
             ))}
           </div>
           <div style={{ marginTop: 16, fontSize: 12, color: "var(--muted)" }}>
-            Tip: Click any card to expand and review. Pick your hook, check the slides, then hit &quot;Generate image →&quot;.
+            Tip: Click any card to expand. Edit the slides under Content, pick and refine the hook under Hook, then hit &quot;Preview carousel →&quot; to generate the hook image.
           </div>
         </div>
       )}
