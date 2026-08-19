@@ -364,6 +364,11 @@ export type BrandStyle = {
 /** Carousel-wide style preset. "editorial-scientific" applies the Lunia brand
  *  palette, Inter normal/light typography, and routes image generation through
  *  gpt-image-2 with the matching visual mood. */
+/** Hook-image value structure. "high" swaps the Editorial Scientific palette
+ *  for a two-zone frame: a paper type band over a near-black subject ground
+ *  with one luminous focal element. Only meaningful on that preset. */
+export type CarouselContrastMode = "standard" | "high";
+
 export type CarouselStylePreset = "default" | "editorial-scientific";
 
 /** Hook slide headline boldness. "default" preserves the original weight (400 / 300 editorial). */

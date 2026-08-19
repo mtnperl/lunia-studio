@@ -7,7 +7,7 @@ import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import { MiniRetroLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import {
-  BrandStyle, CarouselConfig, CarouselContent, CarouselFormat, CarouselStylePreset,
+  BrandStyle, CarouselConfig, CarouselContent, CarouselContrastMode, CarouselFormat, CarouselStylePreset,
   DidYouKnowContent, EngagementSubType, HookTone, Subject,
 } from "@/lib/types";
 import type { CarouselImageStyle, HookRecommendation } from "@/components/carousel/steps/TopicStep";
@@ -56,6 +56,7 @@ type QueueItem = {
   brandStyle?: BrandStyle;
   /** null = "Auto" → the server picks a mood per call, same as the builder. */
   moodId?: string | null;
+  contrastMode?: CarouselContrastMode;
   reviewStage?: ReviewStage;
 };
 
@@ -441,6 +442,7 @@ function ReviewCard({
             onChangeHook={() => onGoBackToReview(item.id)}
             onContentChange={(cfg) => onContentUpdate(item.id, cfg)}
             initialImageStyle={item.imageStyle}
+            initialContrastMode={item.contrastMode ?? "standard"}
             initialMoodId={item.moodId ?? null}
             initialSavedId={item.savedId ?? null}
             stylePreset={item.stylePreset}
@@ -472,6 +474,7 @@ function BatchViewInner() {
   const [includeSeoFooter, setIncludeSeoFooter] = useState(true);
   const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
   const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("editorial-scientific");
+  const [contrastMode, setContrastMode] = useState<CarouselContrastMode>("standard");
 
   // ── Topic queue (pre-generation) ──────────────────────────────────────────
   const [draftTopics, setDraftTopics] = useState<DraftTopic[]>([]);
@@ -516,6 +519,7 @@ function BatchViewInner() {
       if (typeof d.includeSeoFooter === "boolean") setIncludeSeoFooter(d.includeSeoFooter);
       if (d.imageStyle) setImageStyle(d.imageStyle);
       if (d.stylePreset) setStylePreset(d.stylePreset);
+      if (d.contrastMode) setContrastMode(d.contrastMode);
       if (Array.isArray(d.draftTopics)) setDraftTopics(d.draftTopics);
       if (Array.isArray(d.queue)) setQueue((d.queue as (QueueItem & { imagePromptDraft?: string; imagePromptOpen?: boolean })[]).map(migrateQueueItem));
       setRestoredDraft(true);
@@ -526,7 +530,7 @@ function BatchViewInner() {
     if (draftTopics.length === 0 && queue.length === 0) return;
     const draft = {
       v: 1, carouselFormat, engagementSubType, concise, includeSeoFooter,
-      imageStyle, stylePreset, draftTopics, queue,
+      imageStyle, stylePreset, contrastMode, draftTopics, queue,
     };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -539,7 +543,7 @@ function BatchViewInner() {
         }));
       } catch { /* give up silently — draft persistence is best-effort */ }
     }
-  }, [carouselFormat, engagementSubType, concise, includeSeoFooter, imageStyle, stylePreset, draftTopics, queue]);
+  }, [carouselFormat, engagementSubType, concise, includeSeoFooter, imageStyle, stylePreset, contrastMode, draftTopics, queue]);
 
   function clearDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
@@ -756,6 +760,7 @@ function BatchViewInner() {
           imageStyle: item.imageStyle,
           ...(item.moodId ? { moodId: item.moodId } : {}),
           ...(item.stylePreset && item.stylePreset !== "default" ? { stylePreset: item.stylePreset } : {}),
+          ...(item.contrastMode === "high" ? { contrastMode: item.contrastMode } : {}),
           ...(content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
           // Honour any user-edited full prompt from PreviewStep's prompt editor.
           ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
@@ -802,6 +807,7 @@ function BatchViewInner() {
         status: "pending",
         selectedHook: 0,
         moodId: null,
+        contrastMode: stylePreset === "editorial-scientific" ? contrastMode : "standard",
         reviewStage: "content",
       };
     });
@@ -967,6 +973,36 @@ function BatchViewInner() {
                     border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "10px 12px", cursor: "pointer",
                     background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)", transition: "all 0.12s",
                     boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Contrast — Editorial Scientific only, same gate as the single builder:
+          the setting works by swapping that preset's palette block, so anywhere
+          else it would be a control that silently does nothing. */}
+      {showStyleControls && stylePreset === "editorial-scientific" && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Contrast</label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+            {([
+              { val: "standard" as CarouselContrastMode, label: "Standard", desc: "Ivory frame, edge to edge" },
+              { val: "high" as CarouselContrastMode, label: "High contrast", desc: "Ivory type band over a near-black subject" },
+            ]).map((opt) => {
+              const sel = contrastMode === opt.val;
+              return (
+                <div
+                  key={opt.val}
+                  onClick={() => setContrastMode(opt.val)}
+                  style={{
+                    border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                    background: sel ? "var(--accent-dim)" : "var(--bg)", transition: "all 0.12s",
                   }}
                 >
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
