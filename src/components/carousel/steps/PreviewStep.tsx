@@ -480,6 +480,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Only affects AI-generated images (hook + content slide bgs). The rendered
   // slide backgrounds stay on slideBgColor — intentionally untouched.
   const [paperTone, setPaperTone] = useState<"white" | "warm">("white");
+  // "standard" = the flat edge-to-edge ivory hook (unchanged default).
+  // "high" = paper type band over a near-black ground with one luminous focal
+  // element. Composes with paperTone, which still picks the paper hue.
+  // Hook image only — content slide backgrounds are unaffected.
+  const [contrastMode, setContrastMode] = useState<"standard" | "high">("standard");
 
   // Hook image history — newest first. Populated whenever a regenerate
   // displaces the current image, so the user can revert to any prior take.
@@ -611,7 +616,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
         ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
         ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-        ...(isEditorial ? { imageDirection, paperTone, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
+        ...(isEditorial ? { imageDirection, paperTone, contrastMode, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
       }),
     })
       .then(async (r) => {
@@ -630,7 +635,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       .finally(() => { if (!aborted) setFullPromptLoading(false); });
     return () => { aborted = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone, imageSubject, hookHeadlineWeight]);
+  }, [selectedHook, currentImagePrompt, imageStyle, regenEngine, moodId, isEditorial, content.hookImageSpec, targetAspectForPreview, imageDirection, paperTone, contrastMode, imageSubject, hookHeadlineWeight]);
 
   // Pre-fetch every content-slide bg whenever any of them change.
   const contentBgKey = contentBgImages.map(u => u ?? "").join("|");
@@ -1396,7 +1401,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
           ...(isEditorial ? { stylePreset: "editorial-scientific" } : {}),
           ...(isEditorial && content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
-          ...(isEditorial ? { imageDirection, paperTone, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
+          ...(isEditorial ? { imageDirection, paperTone, contrastMode, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
           // If the user edited the full prompt in the "Edit hook-image prompt"
           // panel, send that verbatim — bypasses server-side assembly.
           ...(content.hookImagePromptOverride && content.hookImagePromptOverride.trim()
@@ -2419,6 +2424,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     );
                   })}
                 </div>
+                {/* Contrast — Standard is the flat ivory frame. High splits the
+                    frame into a paper type zone over a near-black subject zone
+                    with one luminous focal element. Composes with Paper tone,
+                    which still picks the paper hue. */}
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Contrast</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                  {([
+                    { value: "standard", label: "Standard",      swatch: paperTone === "warm" ? "#EFE1C8" : "#EFEFF4" },
+                    { value: "high",     label: "High contrast", swatch: `linear-gradient(180deg, ${paperTone === "warm" ? "#EFE1C8" : "#EFEFF4"} 50%, #0B0A09 50%)` },
+                  ] as const).map((opt) => {
+                    const active = contrastMode === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setContrastMode(opt.value)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>
+                        <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {contrastMode === "high" && (
+                  <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5, margin: "-4px 0 12px" }}>
+                    Applies on the next image — hit &quot;New image&quot; to regenerate.
+                  </p>
+                )}
               </>
             )}
             {/* Previous hook images — click any thumb to revert. Session-only. */}
@@ -4076,6 +4112,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     );
                   })}
                 </div>
+                {/* Contrast — Standard is the flat ivory frame. High splits the
+                    frame into a paper type zone over a near-black subject zone
+                    with one luminous focal element. Composes with Paper tone,
+                    which still picks the paper hue. */}
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Contrast</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                  {([
+                    { value: "standard", label: "Standard",      swatch: paperTone === "warm" ? "#EFE1C8" : "#EFEFF4" },
+                    { value: "high",     label: "High contrast", swatch: `linear-gradient(180deg, ${paperTone === "warm" ? "#EFE1C8" : "#EFEFF4"} 50%, #0B0A09 50%)` },
+                  ] as const).map((opt) => {
+                    const active = contrastMode === opt.value;
+                    return (
+                      <button key={opt.value} onClick={() => setContrastMode(opt.value)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                      }}>
+                        <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {contrastMode === "high" && (
+                  <p style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5, margin: "-4px 0 12px" }}>
+                    Applies on the next image — hit &quot;New image&quot; to regenerate.
+                  </p>
+                )}
               </>
             )}
             {/* Previous hook images — click any thumb to revert. Session-only. */}
