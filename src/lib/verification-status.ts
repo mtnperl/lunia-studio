@@ -17,6 +17,7 @@ import type {
   Script,
   VerificationRecord,
   VerificationStatus,
+  VerificationSummary,
   VerifiedClaim,
   VerifiedUnit,
   VerifiedUnitKind,
@@ -408,17 +409,7 @@ export function deriveRecordStatus(record: VerificationRecord): VerificationStat
 }
 
 /** Counts for the summary line. */
-export function summarize(record: VerificationRecord): {
-  green: number;
-  amber: number;
-  red: number;
-  total: number;
-  overridden: number;
-  /** Unresolved claims worth acting on: contradictions plus high-risk gaps. */
-  findings: number;
-  /** Checked and recorded but not surfaced: low-risk gaps. */
-  quiet: number;
-} {
+export function summarize(record: VerificationRecord): VerificationSummary {
   let green = 0;
   let amber = 0;
   let red = 0;
@@ -471,3 +462,47 @@ export async function findStaleUnits(
   return stale;
 }
 
+
+// ─── Triage grouping (pure) ───────────────────────────────────────────────────
+//
+// The panel used to list units and hide the findings one accordion at a time,
+// which put the work you actually have to do behind six clicks. Grouping by
+// consequence instead lets the panel open on the contradictions and fold the
+// clean units away. Derivation lives here with the rest of the status logic so
+// the panel stays a renderer.
+
+export type UnitTriage = "decide" | "look" | "clean";
+
+/**
+ * What a unit demands of the reader.
+ *   • decide — a claim the sources contradict. Someone has to change it or own it.
+ *   • look   — a high-risk claim with no source behind it, or a unit that errored.
+ *   • clean  — sourced, or nothing checkable in it.
+ *
+ * A stale unit keeps its verdict's triage: the text moved on, but the last thing
+ * we knew about it is still the most useful thing to show.
+ */
+export function triageUnit(unit: VerifiedUnit): UnitTriage {
+  const status = deriveUnitStatus(unit);
+  if (status === "red") return "decide";
+  return status === "amber" ? "look" : "clean";
+}
+
+/** The units of a record bucketed by what they demand, order preserved. */
+export function groupUnitsByTriage(record: VerificationRecord): Record<UnitTriage, VerifiedUnit[]> {
+  const groups: Record<UnitTriage, VerifiedUnit[]> = { decide: [], look: [], clean: [] };
+  for (const unit of record.units) groups[triageUnit(unit)].push(unit);
+  return groups;
+}
+
+/** Claims the reader must act on: contradictions first, then high-risk gaps. */
+export function actionableClaims(unit: VerifiedUnit): VerifiedClaim[] {
+  const fails = unit.claims.filter((c) => effectiveVerdict(c) === "fail");
+  const gaps = partitionFindings(unit).high.filter((c) => effectiveVerdict(c) !== "fail");
+  return [...fails, ...gaps];
+}
+
+/** True when the sources actively contradict something in this unit. */
+export function hasContradiction(unit: VerifiedUnit): boolean {
+  return unit.claims.some((c) => effectiveVerdict(c) === "fail");
+}

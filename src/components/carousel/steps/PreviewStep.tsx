@@ -2688,6 +2688,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           <VerificationPanel
             carouselId={savedId}
             record={verification}
+            // Pass the policy explicitly. Without it the panel fell back to a
+            // hardcoded "contradicted claims block download", which stopped
+            // being true when verification went advisory — so the footer
+            // claimed a block that no longer existed.
+            gating={gating}
             staleUnitIds={staleUnitIds}
             pendingUnitLabels={extractCarouselUnits(config.content, config.selectedHook ?? 0).map((u) => u.label)}
             onRecordChange={setVerification}

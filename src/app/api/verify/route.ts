@@ -27,7 +27,8 @@ import {
   summarize,
   describeVerifyError,
 } from "@/lib/verification";
-import type { ClaimVerdict, VerificationRecord } from "@/lib/types";
+import type { ClaimVerdict, VerificationRecord, VerifyFrame } from "@/lib/types";
+import { encodeFrame } from "@/lib/verification-stream";
 
 export const maxDuration = 300;
 
@@ -36,6 +37,11 @@ type VerifyBody = {
   id?: string;
   /** Library re-verify has no selection context, so it checks every hook. */
   allHooks?: boolean;
+  /**
+   * Opt in to the NDJSON progress stream. Off by default so the JSON contract
+   * every other caller relies on is untouched.
+   */
+  stream?: boolean;
 };
 
 function clientIp(req: NextRequest): string {
@@ -91,6 +97,76 @@ export async function POST(req: NextRequest): Promise<Response> {
       );
     }
 
+    // ── Streaming path ──────────────────────────────────────────────────────
+    // Same run, reported as it goes. Units are already checked in parallel and
+    // each VerifiedUnit is self-describing, so emitting them on settle costs
+    // nothing and replaces an invented progress bar with a real count.
+    if (body.stream === true) {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const send = (frame: VerifyFrame) => {
+            try {
+              controller.enqueue(encoder.encode(encodeFrame(frame)));
+            } catch {
+              // Client hung up mid-run. The work continues to completion and is
+              // still persisted below; per-unit caching makes their re-check cheap.
+            }
+          };
+
+          send({ t: "start", units: units.map((u) => ({ id: u.id, label: u.label })) });
+
+          // A single grounded unit runs 30-90s, so without this the wire is
+          // silent long enough for an idle proxy to drop the connection. A bare
+          // newline is a no-op line the decoder already skips, so the heartbeat
+          // needs no place in the frame schema.
+          const heartbeat = setInterval(() => {
+            try {
+              controller.enqueue(encoder.encode("\n"));
+            } catch {
+              /* closed */
+            }
+          }, 15_000);
+
+          try {
+            const record = await verifyUnits(
+              units,
+              "carousel",
+              id,
+              (unit) => send({ t: "unit", unit }),
+              () => send({ t: "phase", phase: "conflicts" }),
+            );
+            const persisted = await attachCarouselVerification(id, record);
+            const gating = await getGatingConfig();
+            send({
+              t: "done",
+              record,
+              status: deriveRecordStatus(record),
+              summary: summarize(record),
+              gating: gating.carousel,
+              ...(persisted ? {} : { warning: "Verified, but the result could not be saved." }),
+            });
+          } catch (err) {
+            console.error("[api/verify stream]", err);
+            send({ t: "error", message: describeVerifyError(err) });
+          } finally {
+            clearInterval(heartbeat);
+          }
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          // Defeats proxy buffering, which would hold every frame back to the
+          // end and silently turn this into the non-streaming path.
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+
     const record = await verifyUnits(units, "carousel", id);
     const persisted = await attachCarouselVerification(id, record);
 
@@ -132,7 +208,7 @@ type OverrideBody = {
 const VALID_VERDICTS: ClaimVerdict[] = ["pass", "fail", "unverifiable"];
 
 export async function PATCH(req: NextRequest): Promise<Response> {
-  if (!(await checkRateLimit(clientIp(req), "verify"))) {
+  if (!(await checkRateLimit(clientIp(req), "verify-override"))) {
     return Response.json({ error: "Too many requests." }, { status: 429 });
   }
 

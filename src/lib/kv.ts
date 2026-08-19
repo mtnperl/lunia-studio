@@ -146,6 +146,8 @@ const RATE_LIMITS: Record<string, number> = {
   "klaviyo-write": 12, // template writebacks (deliberately tight — every write is a real change)
   login: 10,      // login attempts per IP
   verify: 40,     // fact verification — each run is a burst of grounded Opus calls
+  "verify-fix": 60,      // one Opus call per drafted rewrite, no web searches
+  "verify-override": 200, // a human overruling the checker: a Redis write, zero model spend
 };
 
 export async function clearRateLimits(): Promise<number> {

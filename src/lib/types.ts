@@ -553,6 +553,43 @@ export type VerificationRecord = {
   unitsPlanned?: number;
 };
 
+/**
+ * One line of the NDJSON stream a verification run emits when the caller asks
+ * for `stream: true`.
+ *
+ * The run already checks every unit in parallel and each `VerifiedUnit` is
+ * self-describing, so reporting them as they settle costs nothing and lets the
+ * UI show real progress instead of an invented percentage. `done` carries the
+ * same payload the non-streaming response returns, so a client can ignore
+ * every `unit` frame and still be correct.
+ */
+export type VerifyFrame =
+  | { t: "start"; units: { id: string; label: string }[] }
+  | { t: "unit"; unit: VerifiedUnit }
+  /** Every unit is in; the cross-unit consistency pass is running. Without this
+   *  the panel sits at "6 of 6" for the 5-20s that pass takes and looks hung. */
+  | { t: "phase"; phase: "conflicts" }
+  | {
+      t: "done";
+      record: VerificationRecord;
+      status: VerificationStatus;
+      summary: VerificationSummary;
+      gating: SurfaceGating;
+      warning?: string;
+    }
+  | { t: "error"; message: string };
+
+/** Counts behind the panel header. Returned by `summarize`. */
+export type VerificationSummary = {
+  green: number;
+  amber: number;
+  red: number;
+  total: number;
+  overridden: number;
+  findings: number;
+  quiet: number;
+};
+
 // ─── Gating configuration ─────────────────────────────────────────────────────
 //
 // What each status does at a download / export / push button. Configurable

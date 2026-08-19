@@ -34,6 +34,10 @@ import {
   isVacuouslyGreen,
   findStaleUnits,
   summarize,
+  groupUnitsByTriage,
+  triageUnit,
+  actionableClaims,
+  hasContradiction,
   verifyUnit,
   describeVerifyError,
   type ExtractedUnit,
@@ -773,5 +777,82 @@ describe("describeVerifyError", () => {
 
   it("falls back without leaking a huge message", () => {
     expect(describeVerifyError(new Error("x".repeat(500))).length).toBeLessThan(200);
+  });
+});
+
+// ─── triage grouping ──────────────────────────────────────────────────────────
+//
+// The panel leads with what needs a decision, so the grouping is the thing that
+// decides what a user sees first. Getting it wrong hides a contradiction.
+
+describe("triage grouping", () => {
+  const contradicted = unit({
+    id: "caption",
+    label: "Caption",
+    kind: "caption",
+    claims: [claim({ id: "x", verdict: "fail", text: "cuts sleep latency by 40%" })],
+  });
+  const unsourced = unit({
+    id: "slide-2",
+    label: "Slide 3",
+    claims: [claim({ id: "y", verdict: "unverifiable", text: "melatonin peaks at 2am" })],
+  });
+  const sourced = unit({
+    id: "slide-0",
+    label: "Slide 1",
+    claims: [claim({ id: "z", verdict: "pass" })],
+  });
+
+  it("sorts a unit by what it demands of the reader", () => {
+    expect(triageUnit(contradicted)).toBe("decide");
+    expect(triageUnit(unsourced)).toBe("look");
+    expect(triageUnit(sourced)).toBe("clean");
+  });
+
+  it("groups a mixed record and preserves order within a group", () => {
+    const groups = groupUnitsByTriage(record({ units: [sourced, contradicted, unsourced] }));
+    expect(groups.decide.map((u) => u.id)).toEqual(["caption"]);
+    expect(groups.look.map((u) => u.id)).toEqual(["slide-2"]);
+    expect(groups.clean.map((u) => u.id)).toEqual(["slide-0"]);
+  });
+
+  it("leaves the decide group empty when nothing is contradicted", () => {
+    const groups = groupUnitsByTriage(record({ units: [sourced, unsourced] }));
+    expect(groups.decide).toEqual([]);
+  });
+
+  it("treats a unit that failed to check as worth a look, never as clean", () => {
+    const errored = unit({ id: "slide-9", claims: [], error: "timeout" });
+    expect(triageUnit(errored)).toBe("look");
+  });
+
+  it("counts an overridden-to-pass claim as resolved, not as a decision", () => {
+    const overridden = unit({
+      id: "slide-4",
+      claims: [claim({ id: "o", verdict: "fail", overriddenTo: "pass" })],
+    });
+    expect(hasContradiction(overridden)).toBe(false);
+    expect(triageUnit(overridden)).toBe("clean");
+  });
+
+  it("puts contradictions before unsourced gaps in the actionable list", () => {
+    const mixed = unit({
+      claims: [
+        claim({ id: "gap", verdict: "unverifiable", text: "a specific 40% figure" }),
+        claim({ id: "bad", verdict: "fail", text: "contradicted" }),
+        claim({ id: "ok", verdict: "pass" }),
+      ],
+    });
+    expect(actionableClaims(mixed).map((c) => c.id)).toEqual(["bad", "gap"]);
+  });
+
+  it("omits framing lines from the actionable list", () => {
+    const framed = unit({
+      claims: [
+        claim({ id: "f", category: "subjective_framing", verdict: "unverifiable" }),
+        claim({ id: "bad", verdict: "fail" }),
+      ],
+    });
+    expect(actionableClaims(framed).map((c) => c.id)).toEqual(["bad"]);
   });
 });

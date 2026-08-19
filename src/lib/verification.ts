@@ -200,12 +200,67 @@ export function extractJsonFromToolResponse(message: {
 }
 
 /**
+ * Canned verdicts for local development. Spreads one contradiction, one gap and
+ * one error across the deck so every state the panel can render is reachable
+ * without a single model call. See the guard in verifyUnit.
+ */
+async function fakeVerifyUnit(
+  unit: ExtractedUnit,
+  contentHash: string,
+  compliance: VerifiedClaim[],
+): Promise<VerifiedUnit> {
+  const seed = [...unit.id].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+  await new Promise((r) => setTimeout(r, 1500 + (seed % 5) * 1200));
+  const base = { id: unit.id, label: unit.label, kind: unit.kind, contentHash };
+
+  if (seed % 7 === 0) return { ...base, claims: compliance, error: "Fixture: simulated failure" };
+
+  const flavour = seed % 3;
+  const claims: VerifiedClaim[] = [
+    {
+      id: `${unit.id}-a`,
+      text: unit.text.slice(0, 70),
+      category: "checkable_factual",
+      risk: "high",
+      verdict: flavour === 0 ? "fail" : "pass",
+      reasoning:
+        flavour === 0 ? "the source reports a smaller effect than the copy claims" : "supported",
+      sourceUrl: "https://example.org/fixture-study",
+      sourceTitle: "Fixture et al. A canned study. J Fixtures. 2024;1(1):1-9",
+      supportingQuote: "a modest reduction in time to fall asleep was observed",
+    },
+    ...(flavour === 1
+      ? [
+          {
+            id: `${unit.id}-b`,
+            text: "a specific 40% figure with no source",
+            category: "checkable_factual" as const,
+            risk: "high" as const,
+            verdict: "unverifiable" as const,
+            reasoning: "no source found",
+          },
+        ]
+      : []),
+    ...compliance,
+  ];
+  return { ...base, claims };
+}
+
+/**
  * Verify one unit. Resolves to claims; never throws — a failed unit comes back
  * carrying an `error` so one bad lookup can't take down the whole run.
  */
 export async function verifyUnit(unit: ExtractedUnit, useCache = true): Promise<VerifiedUnit> {
   const contentHash = await hashUnitText(unit.text);
   const compliance = complianceClaims(unit);
+
+  // Local fixture path. A real run is one grounded Opus call per unit with up
+  // to five web searches, which is far too expensive to spend on testing the
+  // progress stream. Double-guarded: never in a production build, and off
+  // unless VERIFY_FAKE is set. Staggered so rows visibly settle one by one.
+  if (process.env.NODE_ENV !== "production" && process.env.VERIFY_FAKE === "1") {
+    return fakeVerifyUnit(unit, contentHash, compliance);
+  }
 
   if (useCache) {
     const cached = await getCachedUnit(contentHash);
@@ -378,13 +433,31 @@ export async function verifyUnits(
   units: ExtractedUnit[],
   contentKind: VerificationRecord["contentKind"],
   contentId: string,
+  /**
+   * Called with each unit the moment it settles, before the run finishes.
+   * Lets the route stream real progress; the orchestration is otherwise
+   * untouched, so the non-streaming caller sees identical behavior.
+   */
+  onUnit?: (unit: VerifiedUnit) => void,
+  /** Called once when the units are all in and the conflict pass begins. */
+  onConflictPass?: () => void,
 ): Promise<VerificationRecord> {
   const startedAt = Date.now();
 
   // Per-unit parallel: latency is the slowest unit, not the sum.
-  const settled = await Promise.all(units.map((u) => verifyUnit(u)));
+  // verifyUnit never rejects (a failure comes back as a unit with `error` set),
+  // so reporting on `.then` reports failures too and needs no catch.
+  const settled = await Promise.all(
+    units.map((u) =>
+      verifyUnit(u).then((res) => {
+        onUnit?.(res);
+        return res;
+      }),
+    ),
+  );
 
   const timedOut = Date.now() - startedAt > RUN_BUDGET_MS;
+  if (!timedOut) onConflictPass?.();
   const conflicts = timedOut ? [] : await findConflicts(settled);
 
   return {
