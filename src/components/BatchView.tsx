@@ -224,6 +224,7 @@ function ReviewCard({
   onImagePromptChange,
   onImageStyleChange,
   onMoodChange,
+  onContrastChange,
   onStageChange,
   onContentUpdate,
   onGoBackToReview,
@@ -240,6 +241,7 @@ function ReviewCard({
   onImagePromptChange: (id: string, prompt: string) => void;
   onImageStyleChange: (id: string, style: CarouselImageStyle) => void;
   onMoodChange: (id: string, moodId: string | null) => void;
+  onContrastChange: (id: string, mode: CarouselContrastMode) => void;
   onStageChange: (id: string, stage: ReviewStage) => void;
   onContentUpdate: (id: string, config: CarouselConfig) => void;
   onGoBackToReview: (id: string) => void;
@@ -418,6 +420,9 @@ function ReviewCard({
                   onImageStyleChange={(style) => onImageStyleChange(item.id, style)}
                   moodId={item.moodId ?? null}
                   onMoodChange={(id) => onMoodChange(item.id, id)}
+                  stylePreset={item.stylePreset}
+                  contrastMode={item.contrastMode ?? "standard"}
+                  onContrastChange={(mode) => onContrastChange(item.id, mode)}
                 />
               )}
             </>
@@ -1292,6 +1297,7 @@ function BatchViewInner() {
                 onImagePromptChange={(id, prompt) => updateItemContent(id, (c) => ({ ...c, imagePrompt: prompt }))}
                 onImageStyleChange={(id, style) => updateItem(id, { imageStyle: style })}
                 onMoodChange={(id, moodId) => updateItem(id, { moodId })}
+                onContrastChange={(id, mode) => updateItem(id, { contrastMode: mode })}
                 onStageChange={(id, stage) => updateItem(id, { reviewStage: stage })}
                 onContentUpdate={(id, cfg) => updateItem(id, {
                   content: cfg.content,

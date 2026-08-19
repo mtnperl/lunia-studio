@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
-import { BrandStyle, CarouselContent } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselContrastMode, CarouselStylePreset } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
@@ -35,9 +35,13 @@ type Props = {
   hookTone?: string;
   moodId?: string | null;
   onMoodChange?: (id: string | null) => void;
+  /** Editorial Scientific only — contrast has no effect on other presets. */
+  stylePreset?: CarouselStylePreset;
+  contrastMode?: CarouselContrastMode;
+  onContrastChange?: (mode: CarouselContrastMode) => void;
 };
 
-export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange, onHooksChange, hookTone = "educational", moodId = null, onMoodChange }: Props) {
+export default function HookStep({ content, selectedHook, onSelectHook, onNext, onImagePromptChange, brandStyle, backgroundImageUrl, topic, imageStyle = "realistic", onImageStyleChange, onHooksChange, hookTone = "educational", moodId = null, onMoodChange, stylePreset = "default", contrastMode = "standard", onContrastChange }: Props) {
   const apiBase = useCarouselApi();
   const [promptOpen, setPromptOpen] = useState(false);
   const [guidelines, setGuidelines] = useState("");
@@ -340,6 +344,46 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 );
               })}
             </div>
+            {/* Contrast — this panel is the last stop before the FIRST hook image
+                is generated, so the setting has to be reachable here and not only
+                on the topic screen. Editorial Scientific only: elsewhere the
+                image route never reads it. */}
+            {stylePreset === "editorial-scientific" && (
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Contrast:</span>
+                {([
+                  { value: "standard" as CarouselContrastMode, label: "Standard" },
+                  { value: "high" as CarouselContrastMode, label: "High contrast" },
+                ]).map((chip) => {
+                  const active = contrastMode === chip.value;
+                  return (
+                    <button
+                      key={chip.value}
+                      onClick={() => onContrastChange?.(chip.value)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11,
+                        fontWeight: active ? 700 : 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        transition: "all 0.1s",
+                      }}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
+                {contrastMode === "high" && (
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                    Ivory type band over a near-black subject.
+                  </span>
+                )}
+              </div>
+            )}
             <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
               Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.
             </p>

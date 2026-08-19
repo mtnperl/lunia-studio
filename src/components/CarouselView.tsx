@@ -515,6 +515,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               onImageStyleChange={setImageStyle}
               moodId={moodId}
               onMoodChange={setMoodId}
+              stylePreset={stylePreset}
+              contrastMode={contrastMode}
+              onContrastChange={setContrastMode}
             />
           )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
