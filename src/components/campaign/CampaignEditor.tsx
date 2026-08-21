@@ -33,6 +33,16 @@ const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
   { key: "trustgrid", label: "Trust grid", title: "A 2-column grid of image + caption trust points" },
   { key: "comparison", label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
   { key: "ingredients", label: "Ingredients", title: "A supplement-facts panel: ingredient name + dose rows" },
+  { key: "image", label: "Image", title: "An image placed here in the flow — full width, edge-to-edge, or beside copy" },
+];
+
+/** Layout options for a kind:"image" block. "column" is the default because
+ *  it is the one people reach for: the full content width, not the half-width
+ *  square the fixed 2-up grid produces. */
+const IMAGE_LAYOUTS: { key: NonNullable<CampaignBlock["imageLayout"]>; label: string; title: string }[] = [
+  { key: "column", label: "Full width", title: "Spans the 552px content column" },
+  { key: "bleed", label: "Full bleed", title: "Edge-to-edge across the whole 600px shell, no side padding" },
+  { key: "split", label: "Split", title: "Half image, half copy — stacks on mobile" },
 ];
 
 // Prefilled Lunia formula for a new ingredients block — editable, so it's one
@@ -81,6 +91,9 @@ function blockPreviewText(b: CampaignBlock): string {
     b.trustItems?.map((t) => t.caption).join(", ") ||
     b.ingredientItems?.map((it) => it.name).join(", ") ||
     b.comparisonLeftLabel ||
+    (b.kind === "image"
+      ? [b.imageOverlayHeadline, b.imageSplitText].find((t) => t?.trim()) ?? "Image"
+      : "") ||
     "—"
   );
 }
@@ -592,11 +605,32 @@ export default function CampaignEditor({
   }
   function removeBlock(id: string) {
     const c = latestContent.current;
-    commit({ ...c, blocks: c.blocks.filter((b) => b.id !== id) });
+    // An image block owns its slot exclusively — drop both together so a
+    // deleted block can't strand an orphan slot that would silently reappear
+    // in the fixed 2-up grid.
+    const gone = c.blocks.find((b) => b.id === id);
+    const orphanSlotId = gone?.kind === "image" ? gone.imageSlotId : undefined;
+    commit({
+      ...c,
+      blocks: c.blocks.filter((b) => b.id !== id),
+      images: orphanSlotId ? c.images.filter((i) => i.id !== orphanSlotId) : c.images,
+    });
   }
   function addBlock(kind: BlockKind = "text") {
     const c = latestContent.current;
     const base: CampaignBlock = { id: newId(), body: "", align: "left", kind };
+    // An image block places a slot rather than owning an image itself, so it
+    // is created together with the slot it points at — one commit, one undo
+    // step, and the slot keeps working with the existing ImageSlotControl.
+    if (kind === "image") {
+      const slot: CampaignImageSlot = {
+        id: newId(), role: "secondary", source: "generated", aspect: "16:9", prompt: "", url: null,
+      };
+      base.imageLayout = "column";
+      base.imageSlotId = slot.id;
+      commit({ ...c, blocks: [...c.blocks, base], images: [...c.images, slot] });
+      return;
+    }
     if (kind === "checklist") base.items = [];
     if (kind === "testimonial") base.testimonialStars = 5;
     if (kind === "timeline") base.timelineRows = [];
@@ -617,9 +651,20 @@ export default function CampaignEditor({
     const idx = c.blocks.findIndex((b) => b.id === id);
     if (idx === -1) return;
     const copy: CampaignBlock = { ...c.blocks[idx]!, id: newId() };
+    // Two blocks pointing at one slot would share a url and delete each
+    // other's image — give the copy its own slot.
+    let images = c.images;
+    if (copy.kind === "image" && copy.imageSlotId) {
+      const src = c.images.find((i) => i.id === copy.imageSlotId);
+      if (src) {
+        const clone: CampaignImageSlot = { ...src, id: newId() };
+        copy.imageSlotId = clone.id;
+        images = [...c.images, clone];
+      }
+    }
     const next = [...c.blocks];
     next.splice(idx + 1, 0, copy);
-    commit({ ...c, blocks: next });
+    commit({ ...c, blocks: next, images });
   }
   // Native HTML5 drag-and-drop reorder. One commit() call with the
   // reordered array produces one undo entry, same as removeBlock.
@@ -670,7 +715,10 @@ export default function CampaignEditor({
   }
   function addImage() {
     const c = latestContent.current;
-    if (c.images.length >= 5) return;
+    const placed = new Set(
+      c.blocks.filter((b) => b.kind === "image" && b.imageSlotId).map((b) => b.imageSlotId!),
+    );
+    if (c.images.filter((i) => !placed.has(i.id)).length >= 5) return;
     commit({
       ...c,
       images: [...c.images, { id: newId(), role: "secondary", source: "generated", aspect: "1:1", prompt: "", url: null }],
@@ -986,7 +1034,15 @@ export default function CampaignEditor({
     }
   }
 
-  const secondaryImages = content.images.filter((i) => i.role === "secondary");
+  // Slots placed by a kind:"image" block are edited inside that block's card,
+  // so the Images section lists only the hero and the unplaced secondaries
+  // that still render in the fixed 2-up grid. Listing both would give one
+  // image two independent-looking controls.
+  const placedSlotIds = new Set(
+    content.blocks.filter((b) => b.kind === "image" && b.imageSlotId).map((b) => b.imageSlotId!),
+  );
+  const unplacedImages = content.images.filter((i) => !placedSlotIds.has(i.id));
+  const secondaryImages = unplacedImages.filter((i) => i.role === "secondary");
 
   // Collapse gates (checked once on mount, then a plain manual toggle —
   // re-collapsing live under an in-progress edit would fight the user).
@@ -1501,19 +1557,23 @@ export default function CampaignEditor({
                       Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
                     </span>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <IconButton
-                        onClick={() => saveBlockAsSnippet(b)}
-                        title="Save this block as a reusable snippet"
-                        active={savingSnippetFor === b.id}
-                      >
-                        {savingSnippetFor === b.id ? <Spinner size={14} /> : <IcBookmarkPlus />}
-                      </IconButton>
-                      <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
-                        {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 13, fontWeight: 700 }}>!</span> : <IcCopy />}
-                      </IconButton>
-                      <IconButton onClick={() => regenerateBlock(b)} title="Regenerate this block with AI" active={regenBusyId === b.id}>
-                        {regenBusyId === b.id ? <Spinner size={14} /> : <IcRefresh />}
-                      </IconButton>
+                      {kind !== "image" && (
+                        <>
+                          <IconButton
+                            onClick={() => saveBlockAsSnippet(b)}
+                            title="Save this block as a reusable snippet"
+                            active={savingSnippetFor === b.id}
+                          >
+                            {savingSnippetFor === b.id ? <Spinner size={14} /> : <IcBookmarkPlus />}
+                          </IconButton>
+                          <IconButton onClick={() => copyText(`block:${b.id}`, b.body)} title="Copy block text" active={copied}>
+                            {copied ? <IcCheck /> : copyErr ? <span style={{ fontSize: 13, fontWeight: 700 }}>!</span> : <IcCopy />}
+                          </IconButton>
+                          <IconButton onClick={() => regenerateBlock(b)} title="Regenerate this block with AI" active={regenBusyId === b.id}>
+                            {regenBusyId === b.id ? <Spinner size={14} /> : <IcRefresh />}
+                          </IconButton>
+                        </>
+                      )}
                       <span className="ui-divider-v" style={{ height: 24 }} />
                       <IconButton onClick={() => removeBlock(b.id)} title="Delete block" danger><IcTrash /></IconButton>
                     </div>
@@ -1700,6 +1760,88 @@ export default function CampaignEditor({
                     </div>
                   )}
 
+                  {kind === "image" && (() => {
+                    const slot = content.images.find((i) => i.id === b.imageSlotId);
+                    const layout = b.imageLayout ?? "column";
+                    return (
+                      <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Layout</span>
+                          <div style={segWrap}>
+                            {IMAGE_LAYOUTS.map((l, li) => (
+                              <SegButton
+                                key={l.key}
+                                active={layout === l.key}
+                                title={l.title}
+                                last={li === IMAGE_LAYOUTS.length - 1}
+                                onClick={() => {
+                                  // Full width and bleed are 16:9 banners; split
+                                  // is half-width, where a square reads better.
+                                  // Retarget the slot so the next generate comes
+                                  // back at the aspect this layout expects.
+                                  updateBlock(b.id, { imageLayout: l.key });
+                                  if (slot) {
+                                    const aspect = l.key === "split" ? "1:1" : "16:9";
+                                    if (slot.aspect !== aspect) updateImage({ ...slot, aspect });
+                                  }
+                                }}
+                              >
+                                {l.label}
+                              </SegButton>
+                            ))}
+                          </div>
+                        </div>
+
+                        {layout === "split" && (
+                          <>
+                            <div>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Image side</span>
+                              <div style={segWrap}>
+                                <SegButton active={(b.imageSplitSide ?? "left") === "left"} onClick={() => updateBlock(b.id, { imageSplitSide: "left" })} title="Image on the left">Left</SegButton>
+                                <SegButton active={b.imageSplitSide === "right"} onClick={() => updateBlock(b.id, { imageSplitSide: "right" })} title="Image on the right" last>Right</SegButton>
+                              </div>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Copy beside the image</span>
+                              <textarea
+                                value={b.imageSplitText ?? ""}
+                                onChange={(e) => updateBlock(b.id, { imageSplitText: e.target.value })}
+                                placeholder="A short paragraph that sits next to the image."
+                                style={{ ...input, fontSize: 12, minHeight: 72, resize: "vertical" }}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {layout !== "split" && (
+                          <div>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Text over the image (optional)</span>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              <input type="text" value={b.imageOverlayEyebrow ?? ""} onChange={(e) => updateBlock(b.id, { imageOverlayEyebrow: e.target.value })} placeholder="Eyebrow, e.g. CLINICALLY STUDIED" style={{ ...input, fontSize: 12 }} />
+                              <input type="text" value={b.imageOverlayHeadline ?? ""} onChange={(e) => updateBlock(b.id, { imageOverlayHeadline: e.target.value })} placeholder="Headline laid over the photo" style={{ ...input, fontSize: 12 }} />
+                            </div>
+                            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
+                              Rendered as real text, never baked into the image. Outlook shows it as a caption underneath.
+                            </div>
+                          </div>
+                        )}
+
+                        {slot ? (
+                          <ImageSlotControl
+                            slot={slot}
+                            label="Image"
+                            topic={topic}
+                            emailContext={emailContext}
+                            onChange={updateImage}
+                            onGenerated={(url) => markGenerated(slot.id, url)}
+                          />
+                        ) : (
+                          <div style={{ fontSize: 11, color: "var(--error)" }}>This image block lost its image slot. Delete it and add a new one.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {kind === "ingredients" && (
                     <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
                       <div>
@@ -1757,10 +1899,10 @@ export default function CampaignEditor({
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={sectionLabel}>Images</span>
-            {content.images.length < 5 && <button style={miniBtn(false)} onClick={addImage}>+ Image</button>}
+            {unplacedImages.length < 5 && <button style={miniBtn(false)} onClick={addImage}>+ Image</button>}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {content.images.map((img) => {
+            {unplacedImages.map((img) => {
               const label = img.role === "hero"
                 ? "Hero image"
                 : `Image ${secondaryImages.indexOf(img) + 2}`;

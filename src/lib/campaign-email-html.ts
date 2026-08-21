@@ -2,9 +2,11 @@
 // Matches the Lunia template: 600px navy shell, Inter type, rounded text
 // blocks, a 2-up secondary image row, a cream CTA button. All copy is real
 // HTML text so it stays crisp at any zoom — never baked into images.
+// Images can also be placed inline as kind:"image" blocks (column / bleed /
+// split), which is how an image escapes the half-width 2-up grid.
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
-import type { CampaignBlock, CampaignContent } from "./types";
+import type { CampaignBlock, CampaignContent, CampaignImageSlot } from "./types";
 
 const NAVY = "#01253f";
 const CREAM = "#f5f5e9";
@@ -279,6 +281,107 @@ function renderLogoStrip(url: string | null | undefined): string {
   </td></tr>`;
 }
 
+/** Text laid OVER an image as real HTML — stays crisp at any zoom and stays
+ *  editable, unlike words baked into the pixels. A dark scrim keeps it legible
+ *  over a bright photo.
+ *
+ *  Outlook (Word rendering engine) drops `position:absolute`, which would make
+ *  an overlay-only headline vanish entirely — unlike the hero CTA pill, whose
+ *  words are guaranteed by the bottom CTA button. So the same text is repeated
+ *  in an mso-only caption bar beneath the image: modern clients see the
+ *  overlay, Outlook sees a caption, nobody loses the copy. */
+function overlayHtml(b: CampaignBlock, radius: string): string {
+  const eyebrow = b.imageOverlayEyebrow?.trim();
+  const headline = b.imageOverlayHeadline?.trim();
+  if (!eyebrow && !headline) return "";
+  const eyebrowHtml = eyebrow
+    ? `<div style="color:${CREAM};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
+    : "";
+  const headlineHtml = headline
+    ? `<div class="img-overlay-headline" style="color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:26px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+    : "";
+  return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, rgba(1,37,63,0) 0%, rgba(1,37,63,0.82) 100%);border-radius:${radius};">
+      ${eyebrowHtml}${headlineHtml}
+    </div>`;
+}
+
+/** Outlook-only fallback for overlayHtml — same words, stacked under the
+ *  image, so the copy survives a client that cannot position it. */
+function overlayMsoFallback(b: CampaignBlock): string {
+  const eyebrow = b.imageOverlayEyebrow?.trim();
+  const headline = b.imageOverlayHeadline?.trim();
+  if (!eyebrow && !headline) return "";
+  const parts = [
+    eyebrow
+      ? `<div style="color:${CREAM};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
+      : "",
+    headline
+      ? `<div style="color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:24px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+      : "",
+  ].join("");
+  return `<!--[if mso]><div style="padding:16px 0 0;">${parts}</div><![endif]-->`;
+}
+
+/** A solid placeholder shown while a slot has no image yet, sized to the
+ *  block's aspect so the layout doesn't jump when the real image lands. */
+function imagePlaceholder(aspect: string, radius: string): string {
+  const ratio = aspect === "16:9" ? "16/9" : aspect === "4:5" ? "4/5" : "1/1";
+  return `<div style="width:100%;aspect-ratio:${ratio};background:#0c3354;border-radius:${radius};"></div>`;
+}
+
+/** An image placed in the body flow by a kind:"image" block. Three layouts:
+ *
+ *   column — inset to the 552px content column, 8px radius (the default, and
+ *            the answer to "I want it full width, not a small square")
+ *   bleed  — edge-to-edge across the whole 600px shell, no side padding and
+ *            no radius; the most editorial of the three
+ *   split  — 50/50 image + copy, stacking to full width on mobile via the
+ *            existing .secondary-cell rule
+ *
+ * Returns a complete <tr>, not an inner fragment: bleed has to escape the
+ * standard 24px cell padding, so these can't go through the shared padded
+ * wrapper the text/callout blocks use. */
+function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined): string {
+  const layout = b.imageLayout ?? "column";
+  const url = slot?.url;
+  const aspect = slot?.aspect ?? (layout === "split" ? "1:1" : "16:9");
+
+  if (layout === "split") {
+    const text = b.imageSplitText?.trim();
+    const imageOnRight = b.imageSplitSide === "right";
+    const imgCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
+      url
+        ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`
+        : imagePlaceholder(aspect, "8px")
+    }</td>`;
+    const textCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
+      text ? paragraphs(text, "left", !!b.italic, b.weight ?? "light") : "&nbsp;"
+    }</td>`;
+    const spacer = '<td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>';
+    return `<tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr>${imageOnRight ? textCell + spacer + imgCell : imgCell + spacer + textCell}</tr>
+      </table>
+    </td></tr>`;
+  }
+
+  const bleed = layout === "bleed";
+  const radius = bleed ? "0" : "8px";
+  const width = bleed ? "600" : "552";
+  const inner = url
+    ? `<img src="${esc(url)}" width="${width}" style="display:block;width:100%;height:auto;border-radius:${radius};" alt="">`
+    : imagePlaceholder(aspect, radius);
+  const padding = bleed ? "0 0 16px" : "0 24px 16px";
+  const cellClass = bleed ? "" : ' class="h-padding"';
+  return `<tr><td${cellClass} style="padding:${padding};">
+      <div style="position:relative;">
+        ${inner}
+        ${overlayHtml(b, radius)}
+      </div>
+      ${overlayMsoFallback(b)}
+    </td></tr>`;
+}
+
 function imageCell(url: string | null | undefined, width: string): string {
   // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
@@ -293,10 +396,23 @@ function imageCell(url: string | null | undefined, width: string): string {
 export function renderCampaignEmail(content: CampaignContent): string {
   const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
   const hero = content.images.find((i) => i.role === "hero");
-  const secondary = content.images.filter((i) => i.role === "secondary");
+  const slotById = new Map(content.images.map((i) => [i.id, i]));
+
+  // A slot claimed by a kind:"image" block renders at that block's position
+  // with that block's layout. Everything else keeps the original behaviour —
+  // the fixed 2-up grid after the first paragraph — so every campaign saved
+  // before image blocks existed renders byte-for-byte as it did.
+  const placedSlotIds = new Set(
+    content.blocks
+      .filter((b) => b.kind === "image" && b.imageSlotId)
+      .map((b) => b.imageSlotId!),
+  );
+  const secondary = content.images.filter(
+    (i) => i.role === "secondary" && !placedSlotIds.has(i.id),
+  );
   const ctaUrl = content.cta.url || "#";
 
-  // Layout: hero → promo band → blocks[0] → secondary images → blocks[1..] → CTA.
+  // Layout: hero → promo band → blocks[0] → unplaced secondaries → blocks[1..] → CTA.
   const introBlock = content.blocks[0];
   const closingBlocks = content.blocks.slice(1);
 
@@ -346,6 +462,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // An empty/unfilled structured block (e.g. a freshly-added stat with no
   // value yet) renders nothing rather than an empty styled box.
   const blockRow = (b: CampaignBlock) => {
+    // Image blocks own their whole row: "bleed" must escape the 24px cell
+    // padding, so they can't be nested in the shared padded text wrapper.
+    if (b.kind === "image") {
+      return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined);
+    }
     const inner =
       b.kind === "stat" ? statBlock(b)
       : b.kind === "discount" ? discountBlock(b)
@@ -423,6 +544,10 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .logo-crop{height:92px !important;}
     .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
   }
 </style>
 </head>

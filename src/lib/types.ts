@@ -713,7 +713,10 @@ export type CampaignImageSlot = {
   prompt?: string;
   /** generated: visual mood id (from VISUAL_MOODS) steering the look. */
   mood?: string;
-  aspect: "4:5" | "1:1";
+  /** "16:9" is the full-width/bleed banner aspect. All three have exact pixel
+   *  targets in EMAIL.imageSizes and are center-cropped server-side, so a
+   *  slot always comes back at the aspect the layout was designed around. */
+  aspect: "4:5" | "1:1" | "16:9";
   /** asset: chosen uploaded asset id (from the asset library). */
   assetId?: string;
   /** Resolved final image url — mirrored blob url (generated), asset url,
@@ -742,7 +745,7 @@ export type CampaignBlock = {
    *  (back-compat: every block saved before this field existed renders
    *  identically). All other kinds are structured callouts — see the
    *  kind-specific fields below. */
-  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison" | "ingredients";
+  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison" | "ingredients" | "image";
   /** kind "stat": the big number/headline, e.g. "558 reviews". */
   statValue?: string;
   /** kind "stat": the supporting caption, e.g. "91% five-star". */
@@ -789,6 +792,27 @@ export type CampaignBlock = {
   ingredientHeading?: string;
   ingredientItems?: { name: string; dose: string }[];
   ingredientFootnote?: string;
+  /** kind "image": which slot in `content.images` this block places. The block
+   *  owns POSITION and LAYOUT; the slot still owns the prompt/source/url, so
+   *  generation, asset-picking and the save-route's blob mirroring all keep
+   *  working unchanged. A slot referenced here is skipped by the legacy 2-up
+   *  secondary grid — it renders here instead. */
+  imageSlotId?: string;
+  /** kind "image": how wide the image renders.
+   *  "column" (default) — inset to the 552px content column, 8px radius.
+   *  "bleed"            — edge-to-edge across the full 600px shell, no radius.
+   *  "split"            — 50/50 image + copy row, stacks on mobile. */
+  imageLayout?: "column" | "bleed" | "split";
+  /** kind "image", layout "split": the copy beside the image, and which side
+   *  the image sits on. Unset side = image left. */
+  imageSplitText?: string;
+  imageSplitSide?: "left" | "right";
+  /** kind "image", layout "column"/"bleed": optional text laid OVER the image
+   *  as real HTML (never baked into pixels, so it stays crisp and editable).
+   *  Outlook drops position:absolute, so the same words also render in an
+   *  mso-only caption bar beneath the image. */
+  imageOverlayEyebrow?: string;
+  imageOverlayHeadline?: string;
 };
 
 /** A reusable block, banked from any campaign so it can be dropped into any

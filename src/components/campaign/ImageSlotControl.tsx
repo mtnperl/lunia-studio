@@ -286,7 +286,7 @@ export default function ImageSlotControl({
         <div style={{ display: "flex", gap: 10 }}>
           {/* Thumbnail */}
           <div style={{
-            width: 84, height: slot.aspect === "1:1" ? 84 : 105, flexShrink: 0,
+            width: 84, height: slot.aspect === "1:1" ? 84 : slot.aspect === "16:9" ? 47 : 105, flexShrink: 0,
             borderRadius: 6, overflow: "hidden", background: "var(--bg)",
             border: "1px solid var(--border)",
             display: "flex", alignItems: "center", justifyContent: "center",
