@@ -1,0 +1,378 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Everything inside one email</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">One of every block kind.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
+    EVERY BLOCK <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">KIND</span>
+  </td></tr>
+      <tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;border-top:1px solid rgba(0,0,0,0.08);">
+    <div class="logo-crop" style="height:130px;overflow:hidden;line-height:0;">
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5MT0dPPC90ZXh0PgogIDwvc3ZnPg==" alt="Lunia Life" class="logo-img" style="display:block;height:104px;width:auto;margin-top:13px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
+    </div>
+  </td></tr>
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
+           <div style="position:relative;">
+             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better →</span>
+       </div>
+           </div>
+         </a>
+       </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+         <div style="background:#f5f5e9;color:#01253f;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">ALL KINDS RENDERED</div>
+       </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">A plain paragraph with <strong>bold</strong> and a <a href="https://www.lunialife.com" style="color:inherit;text-decoration:underline;">link</a>, plus a {{ first_name }} token.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TRUMgMToxPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+          <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>
+        </tr>
+      </table>
+    </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><div style="text-align:center;padding:4px 0;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:36px;font-weight:300;color:#f5f5e9;line-height:1.15;">558 reviews</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#f5f5e9;opacity:0.75;margin-top:6px;">91% five-star</div>
+  </div></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><div style="border:1.5px dashed #f5f5e9;border-radius:8px;padding:16px;text-align:center;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:#f5f5e9;">SLEEP20</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;margin-top:8px;">
+           <span style="color:#ffffff;opacity:0.6;text-decoration:line-through;">$38.93</span>
+           <span style="color:#f5f5e9;margin-left:8px;">$29.20</span>
+         </div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;margin-top:4px;">20% off your first order</div>
+  </div></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="table-layout:auto;"><tr>
+        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#f5f5e9;line-height:1.5;">&#10003;</td>
+        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Melatonin-free</td>
+      </tr><tr>
+        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#f5f5e9;line-height:1.5;">&#10003;</td>
+        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">No proprietary blends</td>
+      </tr><tr>
+        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#f5f5e9;line-height:1.5;">&#10003;</td>
+        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Every dose printed</td>
+      </tr></table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><div style="text-align:center;">
+    <div style="color:#f5f5e9;font-size:16px;letter-spacing:2px;margin-bottom:10px;">★★★★★</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-style:italic;font-weight:300;color:#ffffff;line-height:1.5;">"The first thing that did not leave me groggy."</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;margin-top:10px;">— Verified customer</div>
+  </div></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><div style="padding:0 0 12px;">
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f5f5e9;margin-bottom:4px;">NIGHT 1</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Falling asleep faster</div>
+      </div><div style="padding:12px 0 12px;border-top:1px solid rgba(245,245,233,0.2);">
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f5f5e9;margin-bottom:4px;">WEEK 2</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Fewer 3am wake-ups</div>
+      </div></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+      <tr><td width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5UUlVTVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt=""><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.4;">Third-party tested</div></td><td width="12" style="width:12px;font-size:0;">&nbsp;</td><td width="48.91%" style="width:48.91%;vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;margin-bottom:8px;"></div><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.4;">Made in a GMP facility</div></td></tr>
+    </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+    <tr>
+      
+    <td width="48.91%" style="width:48.91%;vertical-align:top;background:transparent;border:1px solid rgba(245,245,233,0.3);border-radius:8px;padding:14px;">
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f5f5e9;margin-bottom:6px;">One-time</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:#ffffff;margin-bottom:4px;">$38.93</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:#ffffff;line-height:1.4;">Ships once</div>
+    </td>
+      <td width="12" style="width:12px;font-size:0;">&nbsp;</td>
+      
+    <td width="48.91%" style="width:48.91%;vertical-align:top;background:#f5f5e9;border:1px solid #f5f5e9;border-radius:8px;padding:14px;">
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#01253f;margin-bottom:6px;">Subscribe</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:#01253f;margin-bottom:4px;">$29.20</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:#01253f;line-height:1.4;">Cancel anytime</div>
+    </td>
+    </tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><div style="background:#f5f5e9;border-radius:8px;padding:20px 22px;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#01253f;padding-bottom:12px;border-bottom:2px solid #01253f;margin-bottom:12px;">What's inside</div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:auto;"><tr>
+        <td style="padding:0 0 10px 0;border-top:none;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:#01253f;line-height:1.3;">Magnesium Bisglycinate</td>
+        <td align="right" style="padding:0 0 10px 0;border-top:none;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#01253f;white-space:nowrap;">500mg</td>
+      </tr><tr>
+        <td style="padding:10px 0;border-top:1px solid #dcd7c6;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:#01253f;line-height:1.3;">L-Theanine</td>
+        <td align="right" style="padding:10px 0;border-top:1px solid #dcd7c6;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#01253f;white-space:nowrap;">300mg</td>
+      </tr><tr>
+        <td style="padding:10px 0;border-top:1px solid #dcd7c6;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:#01253f;line-height:1.3;">Apigenin</td>
+        <td align="right" style="padding:10px 0;border-top:1px solid #dcd7c6;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#01253f;white-space:nowrap;">50mg</td>
+      </tr></table>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#4d6a7d;text-align:center;margin-top:16px;letter-spacing:0.02em;">Melatonin-free, third-party tested</div>
+  </div></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+      <div style="position:relative;">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+        
+      </div>
+      
+    </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TUExJVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Copy beside the image, which stacks to full width on mobile.</p></td></tr>
+      </table>
+    </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Start sleeping better</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;
+
+exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Your wind-down window is shorter than you think</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Two hours before bed decides the whole night.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
+    MEMORIAL DAY WEEKEND <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">25% OFF</span>
+  </td></tr>
+      
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
+           <div style="position:relative;">
+             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale →</span>
+       </div>
+           </div>
+         </a>
+       </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+         <div style="background:#f5f5e9;color:#01253f;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">MEMORIAL DAY WEEKEND SALE</div>
+       </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Your body starts preparing for sleep about two hours before you feel tired. Core temperature begins to fall, melatonin rises, and cortisol should be near its daily low. Bright light, late meals, and intense exercise all push against this shift, which is why the hour before bed does more for your sleep than anything you do once you are lying down.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TRUMgMToxPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+          <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TRUMgMToxPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+        </tr>
+      </table>
+    </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5CT1RUTEU8L3RleHQ+CiAgPC9zdmc+" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+          <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>
+        </tr>
+      </table>
+    </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:center;">Protect the window and everything downstream gets easier. That is the whole idea behind Lunia Restore.</p></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:16px;font-weight:300;font-style:italic;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Sale ends Monday at midnight.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Shop the sale</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;
+
+exports[`renderCampaignEmail > renders three-generated-standard identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>The half of melatonin no one talks about</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">It is not just about falling asleep.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
+    NEW RESEARCH
+  </td></tr>
+      
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
+           <div style="position:relative;">
+             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
+             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better →</span>
+       </div>
+           </div>
+         </a>
+       </td></tr>
+      
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Most people think of melatonin as a sleep switch. The science says it is closer to a nightly repair signal, reaching all the way into your cells.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+        <tr>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TRUMgMToxPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+          <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
+          <td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TRUMgMToxPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>
+        </tr>
+      </table>
+    </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:center;">A calmer nervous system is the foundation. The deeper sleep and steadier mornings follow from there.</p></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:16px;font-weight:300;font-style:italic;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Only a few hours left at this price.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Start sleeping better</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;

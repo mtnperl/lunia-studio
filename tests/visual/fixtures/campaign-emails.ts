@@ -64,4 +64,43 @@ export const EMAIL_FIXTURES: EmailFixture[] = [
       ],
     },
   },
+  {
+    // Exercises EVERY block kind plus the logo strip in one document. The other
+    // two fixtures are all plain-text blocks with showLogo:false, which left
+    // statBlock/discountBlock/checklistBlock/testimonialBlock/timelineBlock/
+    // trustgridBlock/comparisonBlock/ingredientsBlock and renderLogoStrip
+    // completely unexercised — and those are exactly where the per-kind color
+    // literals live. Any regression gate over the fixtures is only as wide as
+    // this fixture makes it.
+    name: "all-kinds-navy",
+    content: {
+      subjectLines: ["Everything inside one email", "", ""],
+      selectedSubject: 0,
+      previewText: "One of every block kind.",
+      topBanner: "EVERY BLOCK **KIND**",
+      logoUrl: ph("1:1", "LOGO", "#01253F"),
+      showLogo: true,
+      promoBand: "ALL KINDS RENDERED",
+      blocks: [
+        { id: "k-text", kind: "text", body: "A plain paragraph with **bold** and a [link](https://www.lunialife.com), plus a {{ first_name }} token.", align: "left", italic: false },
+        { id: "k-stat", kind: "stat", body: "", align: "left", statValue: "558 reviews", statLabel: "91% five-star" },
+        { id: "k-discount", kind: "discount", body: "", align: "left", discountCode: "SLEEP20", discountDescription: "20% off your first order", originalPrice: "$38.93", newPrice: "$29.20" },
+        { id: "k-checklist", kind: "checklist", body: "", align: "left", items: ["Melatonin-free", "No proprietary blends", "Every dose printed"] },
+        { id: "k-testimonial", kind: "testimonial", body: "", align: "left", testimonialQuote: "The first thing that did not leave me groggy.", testimonialAuthor: "Verified customer", testimonialStars: 5 },
+        { id: "k-timeline", kind: "timeline", body: "", align: "left", timelineRows: [{ label: "NIGHT 1", text: "Falling asleep faster" }, { label: "WEEK 2", text: "Fewer 3am wake-ups" }] },
+        { id: "k-trustgrid", kind: "trustgrid", body: "", align: "left", trustItems: [{ imageUrl: ph("1:1", "TRUST", "#2C3F51"), caption: "Third-party tested" }, { caption: "Made in a GMP facility" }] },
+        { id: "k-comparison", kind: "comparison", body: "", align: "left", comparisonLeftLabel: "One-time", comparisonLeftPrice: "$38.93", comparisonLeftPerk: "Ships once", comparisonRightLabel: "Subscribe", comparisonRightPrice: "$29.20", comparisonRightPerk: "Cancel anytime" },
+        { id: "k-ingredients", kind: "ingredients", body: "", align: "left", ingredientHeading: "What's inside", ingredientItems: [{ name: "Magnesium Bisglycinate", dose: "500mg" }, { name: "L-Theanine", dose: "300mg" }, { name: "Apigenin", dose: "50mg" }], ingredientFootnote: "Melatonin-free, third-party tested" },
+        { id: "k-image-column", kind: "image", body: "", align: "left", imageSlotId: "s-col", imageLayout: "column" },
+        { id: "k-image-split", kind: "image", body: "", align: "left", imageSlotId: "s-split", imageLayout: "split", imageSplitText: "Copy beside the image, which stacks to full width on mobile.", imageSplitSide: "left" },
+      ],
+      cta: { label: "Start sleeping better", url: "https://www.lunialife.com" },
+      images: [
+        { id: "h", role: "hero", source: "generated", aspect: "4:5", url: ph("4:5", "HERO 4:5", "#01253F") },
+        { id: "s1", role: "secondary", source: "generated", aspect: "1:1", url: ph("1:1", "SEC 1:1", "#2C3F51") },
+        { id: "s-col", role: "secondary", source: "generated", aspect: "1:1", url: ph("1:1", "COLUMN", "#102635") },
+        { id: "s-split", role: "secondary", source: "generated", aspect: "1:1", url: ph("1:1", "SPLIT", "#2C3F51") },
+      ],
+    },
+  },
 ];

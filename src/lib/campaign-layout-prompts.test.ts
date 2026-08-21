@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  LayoutBlockSchema,
   buildRestructurePrompt,
   blocksToSourceText,
   blockToSourceText,
 } from "./campaign-layout-prompts";
+import { CAMPAIGN_BLOCK_KINDS } from "./types";
 import type { CampaignBlock } from "./types";
 
 const block = (over: Partial<CampaignBlock> = {}): CampaignBlock => ({
@@ -12,6 +14,50 @@ const block = (over: Partial<CampaignBlock> = {}): CampaignBlock => ({
   align: "left",
   kind: "text",
   ...over,
+});
+
+// The zod discriminated union is the one registry that cannot be keyed on
+// CAMPAIGN_BLOCK_KINDS (each variant carries different fields), so it gets a
+// runtime backstop instead of a compile-time one.
+describe("registry alignment", () => {
+  // Kinds the AI is deliberately never asked to emit. "image" places a slot
+  // from content.images, which is a user choice about their own assets, not
+  // something a copy-restructuring model should invent.
+  const EXCLUDED_FROM_SUGGESTIONS = new Set(["image"]);
+
+  const zodKinds = () => LayoutBlockSchema.options.map((o) => o.shape.kind.value as string);
+
+  it("every zod variant is a real block kind", () => {
+    for (const k of zodKinds()) {
+      expect(CAMPAIGN_BLOCK_KINDS as readonly string[]).toContain(k);
+    }
+  });
+
+  it("every non-excluded block kind has a zod variant", () => {
+    const zk = new Set(zodKinds());
+    for (const k of CAMPAIGN_BLOCK_KINDS) {
+      if (EXCLUDED_FROM_SUGGESTIONS.has(k)) continue;
+      expect(zk.has(k), `kind "${k}" has no zod variant — the AI can never suggest it`).toBe(true);
+    }
+  });
+
+  it("has no duplicate variants", () => {
+    const zk = zodKinds();
+    expect(new Set(zk).size).toBe(zk.length);
+  });
+
+  it("documents every suggestable kind in the prompt's schema examples", () => {
+    // A kind with a zod variant but no example line is one the model has no
+    // idea how to emit, so it silently never appears in a suggestion.
+    const prompt = buildRestructurePrompt(
+      [{ id: "x", body: "some source copy long enough to matter here", align: "left", kind: "text" }],
+      "Subject",
+      "",
+    );
+    for (const k of zodKinds()) {
+      expect(prompt, `kind "${k}" missing from KIND_SCHEMA_EXAMPLES`).toContain(`"kind": "${k}"`);
+    }
+  });
 });
 
 describe("blockToSourceText", () => {

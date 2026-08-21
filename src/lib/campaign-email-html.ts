@@ -6,7 +6,7 @@
 // split), which is how an image escapes the half-width 2-up grid.
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
-import type { CampaignBlock, CampaignContent, CampaignImageSlot } from "./types";
+import type { CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind } from "./types";
 
 const NAVY = "#01253f";
 const CREAM = "#f5f5e9";
@@ -392,6 +392,23 @@ function imageCell(url: string | null | undefined, width: string): string {
   )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
 }
 
+/** Every kind that renders INSIDE the shared padded wrapper, mapped to its
+ *  renderer. `image` is absent on purpose: it owns its whole <tr> so its
+ *  "bleed" layout can escape the 24px cell padding, and is handled ahead of
+ *  this table in blockRow. Because the key type is the kind union minus the
+ *  full-row kinds, a new kind cannot be added without a renderer. */
+const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock) => string> = {
+  text: (b) => paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light"),
+  stat: statBlock,
+  discount: discountBlock,
+  checklist: checklistBlock,
+  testimonial: testimonialBlock,
+  timeline: timelineBlock,
+  trustgrid: trustgridBlock,
+  comparison: comparisonBlock,
+  ingredients: ingredientsBlock,
+};
+
 /** Render the full campaign email as a standalone HTML document. */
 export function renderCampaignEmail(content: CampaignContent): string {
   const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
@@ -467,16 +484,16 @@ export function renderCampaignEmail(content: CampaignContent): string {
     if (b.kind === "image") {
       return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined);
     }
-    const inner =
-      b.kind === "stat" ? statBlock(b)
-      : b.kind === "discount" ? discountBlock(b)
-      : b.kind === "checklist" ? checklistBlock(b)
-      : b.kind === "testimonial" ? testimonialBlock(b)
-      : b.kind === "timeline" ? timelineBlock(b)
-      : b.kind === "trustgrid" ? trustgridBlock(b)
-      : b.kind === "comparison" ? comparisonBlock(b)
-      : b.kind === "ingredients" ? ingredientsBlock(b)
-      : paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light");
+    // Dispatch through a Record keyed on the kind union rather than a ternary
+    // chain: TypeScript then REQUIRES an entry for every kind, so adding one to
+    // CAMPAIGN_BLOCK_KINDS without writing its renderer fails the build instead
+    // of silently rendering an empty paragraph.
+    const render = INNER_BLOCK_RENDERERS[(b.kind ?? "text") as InnerBlockKind]
+      // Defensive fallback: a campaign saved by a NEWER build can carry a kind
+      // this one has never heard of (a rollback, or two deploys in flight).
+      // Render it as text rather than throwing.
+      ?? INNER_BLOCK_RENDERERS.text;
+    const inner = render(b);
     if (!inner) return "";
     return `<tr><td class="h-padding" style="padding:0 24px 16px;">
        <div class="text-block" style="padding:15px;">${inner}</div>

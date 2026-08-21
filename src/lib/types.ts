@@ -726,6 +726,43 @@ export type CampaignImageSlot = {
   url?: string | null;
 };
 
+/** Every block kind, in one place. This array is the single source of truth:
+ *  `CampaignBlockKind` derives from it, the editor's "+ Block" menu is keyed on
+ *  it, and the renderer dispatches through a Record keyed on it — so a kind
+ *  added here without a renderer is a compile error rather than a block that
+ *  silently renders nothing.
+ *
+ *  Two registries deliberately do NOT derive from this:
+ *   - The zod union in campaign-layout-prompts.ts (each variant carries
+ *     different fields, and "image" is intentionally absent because the AI
+ *     places copy, not image slots). It gets a runtime set-equality test with
+ *     an explicit exclusion list instead.
+ *   - `CampaignBlock` itself. The flat optional-field bag below is deliberately
+ *     a different shape from that discriminated union; deriving one from the
+ *     other would rewrite every consumer for no user-visible gain. */
+export const CAMPAIGN_BLOCK_KINDS = [
+  "text",
+  "stat",
+  "discount",
+  "checklist",
+  "testimonial",
+  "timeline",
+  "trustgrid",
+  "comparison",
+  "ingredients",
+  "image",
+] as const;
+
+export type CampaignBlockKind = (typeof CAMPAIGN_BLOCK_KINDS)[number];
+
+/** Kinds that own their whole table row rather than rendering inside the
+ *  shared 24px-padded text wrapper. "image" needs this so its `bleed` layout
+ *  can go edge-to-edge across the full 600px shell. */
+export const FULL_ROW_BLOCK_KINDS = ["image"] as const;
+export type FullRowBlockKind = (typeof FULL_ROW_BLOCK_KINDS)[number];
+/** Kinds whose renderer returns an inner fragment for the padded wrapper. */
+export type InnerBlockKind = Exclude<CampaignBlockKind, FullRowBlockKind>;
+
 export type CampaignBlock = {
   id: string;
   /** For kind "text" (or unset): the paragraph body — may contain inline
@@ -745,7 +782,7 @@ export type CampaignBlock = {
    *  (back-compat: every block saved before this field existed renders
    *  identically). All other kinds are structured callouts — see the
    *  kind-specific fields below. */
-  kind?: "text" | "stat" | "discount" | "checklist" | "testimonial" | "timeline" | "trustgrid" | "comparison" | "ingredients" | "image";
+  kind?: CampaignBlockKind;
   /** kind "stat": the big number/headline, e.g. "558 reviews". */
   statValue?: string;
   /** kind "stat": the supporting caption, e.g. "91% five-star". */

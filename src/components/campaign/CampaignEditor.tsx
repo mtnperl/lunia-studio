@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet } from "@/lib/types";
+import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
+import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
 import { Spinner, BlockSkeleton } from "./Loaders";
@@ -22,19 +23,33 @@ import {
   completionItems as computeCompletionItems,
 } from "@/lib/campaign-editor-state";
 
-type BlockKind = NonNullable<CampaignBlock["kind"]>;
-const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = [
-  { key: "text", label: "Text", title: "A paragraph block" },
-  { key: "stat", label: "Stat", title: "A big-number stat callout" },
-  { key: "discount", label: "Discount", title: "A discount/coupon callout, or a value-stack price" },
-  { key: "checklist", label: "Checklist", title: "A bulleted benefit/ingredient list" },
-  { key: "testimonial", label: "Testimonial", title: "A star rating + review quote + attribution" },
-  { key: "timeline", label: "Timeline", title: "A results-over-time progression (e.g. Day 30, Day 60...)" },
-  { key: "trustgrid", label: "Trust grid", title: "A 2-column grid of image + caption trust points" },
-  { key: "comparison", label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
-  { key: "ingredients", label: "Ingredients", title: "A supplement-facts panel: ingredient name + dose rows" },
-  { key: "image", label: "Image", title: "An image placed here in the flow — full width, edge-to-edge, or beside copy" },
-];
+type BlockKind = CampaignBlockKind;
+
+/** Menu metadata for every block kind. A Record keyed on the kind union rather
+ *  than a hand-ordered array, so adding a kind to CAMPAIGN_BLOCK_KINDS without
+ *  giving it a label fails the build — the array form would have compiled fine
+ *  and just quietly omitted it from the "+ Block" menu. Display order lives
+ *  separately in BLOCK_KIND_ORDER. */
+const BLOCK_KIND_META: Record<BlockKind, { label: string; title: string }> = {
+  text: { label: "Text", title: "A paragraph block" },
+  stat: { label: "Stat", title: "A big-number stat callout" },
+  discount: { label: "Discount", title: "A discount/coupon callout, or a value-stack price" },
+  checklist: { label: "Checklist", title: "A bulleted benefit/ingredient list" },
+  testimonial: { label: "Testimonial", title: "A star rating + review quote + attribution" },
+  timeline: { label: "Timeline", title: "A results-over-time progression (e.g. Day 30, Day 60...)" },
+  trustgrid: { label: "Trust grid", title: "A 2-column grid of image + caption trust points" },
+  comparison: { label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
+  ingredients: { label: "Ingredients", title: "A supplement-facts panel: ingredient name + dose rows" },
+  image: { label: "Image", title: "An image placed here in the flow — full width, edge-to-edge, or beside copy" },
+};
+
+/** Menu order. Defaults to declaration order in CAMPAIGN_BLOCK_KINDS; listing
+ *  it explicitly keeps presentation order independent of the type registry. */
+const BLOCK_KIND_ORDER: readonly BlockKind[] = CAMPAIGN_BLOCK_KINDS;
+
+const BLOCK_KINDS: { key: BlockKind; label: string; title: string }[] = BLOCK_KIND_ORDER.map(
+  (key) => ({ key, ...BLOCK_KIND_META[key] }),
+);
 
 /** Layout options for a kind:"image" block. "column" is the default because
  *  it is the one people reach for: the full content width, not the half-width

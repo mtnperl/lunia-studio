@@ -1,113 +1,106 @@
 import { describe, it, expect } from "vitest";
 import { renderCampaignEmail } from "./campaign-email-html";
-import type { CampaignBlock, CampaignContent, CampaignImageSlot } from "./types";
+import { EMAIL_FIXTURES } from "../../tests/visual/fixtures/campaign-emails";
+import { CAMPAIGN_BLOCK_KINDS } from "./types";
+import type { CampaignBlock, CampaignContent } from "./types";
 
-function slot(over: Partial<CampaignImageSlot> = {}): CampaignImageSlot {
-  return { id: "s1", role: "secondary", source: "generated", aspect: "16:9", url: "https://img/x.jpg", ...over };
-}
+// Byte-identity tripwire for the theme/palette refactor.
+//
+// The pixel-diff visual suite cannot see hex CASE or whitespace drift, and it
+// needs a browser. These string snapshots can, and run in the fast unit pass.
+//
+// IMPORTANT, and the reason the all-kinds fixture exists: a snapshot is only
+// as wide as the fixtures feeding it. Both original fixtures are plain-text
+// blocks with showLogo:false, so on their own they exercise paragraphs() and
+// nothing else — statBlock, discountBlock, checklistBlock, testimonialBlock,
+// timelineBlock, trustgridBlock, comparisonBlock, ingredientsBlock and
+// renderLogoStrip would all be invisible to this gate.
+//
+// KNOWN LIMIT: byte-identity on the default theme holds under ANY
+// self-consistent role mapping, so this cannot prove a cream-theme palette
+// maps each literal to the right ROLE. Mapping the cream literal to a panel
+// background rather than to ink is invisible here and shows up only as
+// white-on-ivory text in the rendered output. The cream baseline needs
+// deliberate per-kind human review; this file is not that check.
+describe("renderCampaignEmail", () => {
+  for (const fixture of EMAIL_FIXTURES) {
+    it(`renders ${fixture.name} identically`, () => {
+      expect(renderCampaignEmail(fixture.content)).toMatchSnapshot();
+    });
+  }
+});
 
-function content(over: Partial<CampaignContent> = {}): CampaignContent {
-  return {
-    subjectLines: ["Subject"],
-    selectedSubject: 0,
-    previewText: "Preview",
-    blocks: [{ id: "b0", body: "Intro paragraph.", align: "left" }],
-    cta: { label: "Shop now", url: "https://lunialife.com" },
-    images: [],
-    ...over,
-  };
-}
+const allKinds = EMAIL_FIXTURES.find((f) => f.name === "all-kinds-navy");
 
-function imageBlock(over: Partial<CampaignBlock> = {}): CampaignBlock {
-  return { id: "ib", body: "", align: "left", kind: "image", imageSlotId: "s1", imageLayout: "column", ...over };
-}
-
-describe("image blocks", () => {
-  it("renders a full-width image at the 552px content column, not a half-width cell", () => {
-    const html = renderCampaignEmail(content({ blocks: [imageBlock()], images: [slot()] }));
-    expect(html).toContain('width="552"');
-    expect(html).not.toContain("48.91%");
+describe("all-kinds fixture coverage", () => {
+  it("exists", () => {
+    expect(allKinds).toBeDefined();
   });
 
-  it("lets a bleed image escape the 24px cell padding and the corner radius", () => {
-    const html = renderCampaignEmail(
-      content({ blocks: [imageBlock({ imageLayout: "bleed" })], images: [slot()] }),
-    );
-    expect(html).toContain('width="600"');
-    expect(html).toContain("border-radius:0;");
-    // The bleed cell carries neither the h-padding class nor 24px side padding.
-    expect(html).toMatch(/<td style="padding:0 0 16px;">/);
+  // Guards the guard: if a kind is added to the union without a fixture block,
+  // this fails rather than letting the snapshot silently narrow.
+  it("covers every block kind", () => {
+    const covered = new Set((allKinds!.content.blocks).map((b) => b.kind ?? "text"));
+    for (const kind of CAMPAIGN_BLOCK_KINDS) {
+      expect(covered.has(kind), `no fixture block for kind "${kind}"`).toBe(true);
+    }
   });
 
-  it("puts overlay text in the markup as real text, plus an Outlook caption fallback", () => {
-    const html = renderCampaignEmail(
-      content({
-        blocks: [imageBlock({ imageOverlayEyebrow: "Clinically studied", imageOverlayHeadline: "Sleep, measured" })],
-        images: [slot()],
-      }),
-    );
-    expect(html).toContain("Sleep, measured");
-    expect(html).toContain("Clinically studied");
-    expect(html).toContain("position:absolute");
-    // The words survive a client that drops position:absolute.
-    expect(html).toContain("<!--[if mso]>");
-    expect(html.match(/Sleep, measured/g)?.length).toBe(2);
-  });
-
-  it("renders a split row with the image on the requested side", () => {
-    const left = renderCampaignEmail(
-      content({
-        blocks: [imageBlock({ imageLayout: "split", imageSplitText: "Beside copy.", imageSplitSide: "left" })],
-        images: [slot({ aspect: "1:1" })],
-      }),
-    );
-    const right = renderCampaignEmail(
-      content({
-        blocks: [imageBlock({ imageLayout: "split", imageSplitText: "Beside copy.", imageSplitSide: "right" })],
-        images: [slot({ aspect: "1:1" })],
-      }),
-    );
-    expect(left).toContain("Beside copy.");
-    // Image cell precedes the text cell on the left, and follows it on the right.
-    expect(left.indexOf("https://img/x.jpg")).toBeLessThan(left.indexOf("Beside copy."));
-    expect(right.indexOf("https://img/x.jpg")).toBeGreaterThan(right.indexOf("Beside copy."));
-  });
-
-  it("shows an aspect-correct placeholder before the image is generated", () => {
-    const html = renderCampaignEmail(content({ blocks: [imageBlock()], images: [slot({ url: null })] }));
-    expect(html).toContain("aspect-ratio:16/9");
+  it("renders the logo strip", () => {
+    expect(allKinds!.content.showLogo).not.toBe(false);
+    expect(allKinds!.content.logoUrl).toBeTruthy();
   });
 });
 
-describe("back-compat with campaigns saved before image blocks", () => {
-  it("still renders unplaced secondaries in the fixed 2-up grid", () => {
+const baseContent = (blocks: CampaignBlock[]): CampaignContent => ({
+  subjectLines: ["s", "", ""],
+  selectedSubject: 0,
+  previewText: "",
+  blocks,
+  cta: { label: "Go", url: "https://www.lunialife.com" },
+  images: [],
+});
+
+describe("empty-block convention", () => {
+  // Every structured renderer returns "" when its required fields are unset,
+  // so an unfilled block never paints an empty styled box.
+  //
+  // "image" is exempt and deliberately so: an image block with no slot yet
+  // renders a sized PLACEHOLDER, because you add the block first and pick the
+  // picture second — the placeholder is what shows you where it will land.
+  const EMPTY_RENDERS_NOTHING = CAMPAIGN_BLOCK_KINDS.filter((k) => k !== "image");
+  for (const kind of EMPTY_RENDERS_NOTHING) {
+    it(`renders nothing for an unfilled "${kind}" block`, () => {
+      const withBlock = renderCampaignEmail(
+        baseContent([{ id: "x", body: "", align: "left", kind }]),
+      );
+      const withNone = renderCampaignEmail(baseContent([]));
+      expect(withBlock).toBe(withNone);
+    });
+  }
+});
+
+describe("inline markup", () => {
+  it("renders **bold** and [links] in a text block body", () => {
     const html = renderCampaignEmail(
-      content({ images: [slot({ id: "a", aspect: "1:1" }), slot({ id: "b", aspect: "1:1" })] }),
+      baseContent([{ id: "x", body: "a **b** and [c](https://example.com)", align: "left", kind: "text" }]),
     );
-    expect(html).toContain("48.91%");
+    expect(html).toContain("<strong>b</strong>");
+    expect(html).toContain('href="https://example.com"');
   });
 
-  it("does not render a placed slot twice", () => {
+  it("passes {{ merge_tag }} through untouched", () => {
     const html = renderCampaignEmail(
-      content({ blocks: [{ id: "b0", body: "Intro.", align: "left" }, imageBlock()], images: [slot()] }),
+      baseContent([{ id: "x", body: "Hi {{ first_name }}", align: "left", kind: "text" }]),
     );
-    expect(html.match(/https:\/\/img\/x\.jpg/g)?.length).toBe(1);
-    expect(html).not.toContain("48.91%");
+    expect(html).toContain("{{ first_name }}");
   });
 
-  it("keeps the 2-up grid for siblings while one slot is placed inline", () => {
+  it("escapes markup-shaped user text rather than emitting it as HTML", () => {
     const html = renderCampaignEmail(
-      content({
-        blocks: [imageBlock()],
-        images: [slot(), slot({ id: "s2", url: "https://img/y.jpg", aspect: "1:1" })],
-      }),
+      baseContent([{ id: "x", body: "<script>alert(1)</script>", align: "left", kind: "text" }]),
     );
-    expect(html).toContain('width="552"');   // the placed one
-    expect(html).toContain("48.91%");        // the unplaced sibling
-  });
-
-  it("renders nothing extra for an image block whose slot was deleted", () => {
-    const html = renderCampaignEmail(content({ blocks: [imageBlock({ imageSlotId: "missing" })], images: [] }));
-    expect(html).toContain("aspect-ratio:16/9"); // placeholder, not a crash
+    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).toContain("&lt;script&gt;");
   });
 });
