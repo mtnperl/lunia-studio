@@ -220,18 +220,36 @@ function RepeatableRows<T extends Record<string, string>>({
   );
 }
 
+/** A restructure produced elsewhere (the flow-level "Make it all visual"
+ *  batch) and handed to this editor to review. Seeds the same pending-review
+ *  path a locally-triggered restructure uses, so there is exactly one review
+ *  UI and one apply path regardless of where the suggestion came from. */
+export type SeededPending = {
+  blocks: CampaignBlock[];
+  meta: { topBanner?: string; promoBand?: string; ctaLabel?: string };
+  mode: SuggestionMode;
+};
+
 export default function CampaignEditor({
   topic,
   content,
   savedId,
   onChange,
   onSaved,
+  initialPending = null,
+  onPendingResolved,
 }: {
   topic: string;
   content: CampaignContent;
   savedId: string | null;
   onChange: (next: CampaignContent) => void;
   onSaved: (id: string) => void;
+  /** Read once, on mount. FlowDeck remounts this component per email via
+   *  `key`, so a per-email seeded review lands exactly where it belongs. */
+  initialPending?: SeededPending | null;
+  /** Fired when a seeded review is accepted or discarded, so the owner can
+   *  drop it and not re-seed it on the next remount. */
+  onPendingResolved?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -250,12 +268,16 @@ export default function CampaignEditor({
   const [improveError, setImproveError] = useState<string | null>(null);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
-  const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(null);
-  const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>({});
+  const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(
+    initialPending ? initialPending.blocks.map((block) => ({ block, included: true })) : null,
+  );
+  const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>(
+    initialPending?.meta ?? {},
+  );
   // How the pending suggestion will be applied. "append" is Suggest layout and
   // the presets; "replace" is Make it visual, which re-expresses the copy that
   // is already there and would duplicate every paragraph if it appended.
-  const [pendingMode, setPendingMode] = useState<SuggestionMode>("append");
+  const [pendingMode, setPendingMode] = useState<SuggestionMode>(initialPending?.mode ?? "append");
   const [restructureBusy, setRestructureBusy] = useState(false);
   const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
@@ -934,12 +956,14 @@ export default function CampaignEditor({
     setPendingBlocks(null);
     setPendingMeta({});
     setPendingMode("append");
+    onPendingResolved?.();
   }
 
   function discardPendingBlocks() {
     setPendingBlocks(null);
     setPendingMeta({});
     setPendingMode("append");
+    onPendingResolved?.();
   }
 
   // Fetches 3 alternates for one block from the AI and opens a small picker.
