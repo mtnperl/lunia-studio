@@ -64,19 +64,38 @@ export function applyRedo(
 export type PendingBlock = { block: CampaignBlock; included: boolean };
 export type SuggestionMeta = { topBanner?: string; promoBand?: string; ctaLabel?: string };
 
-/** Apply an accepted AI/preset suggestion onto content: append only the
+/** How an accepted suggestion combines with the blocks already on the page.
+ *  "append" (the default) is the original behaviour used by Suggest layout and
+ *  the layout presets. "replace" swaps the body wholesale and is used by the
+ *  restructure flow ("Make it visual"), which re-expresses the SAME copy as a
+ *  different set of blocks: appending there would duplicate every paragraph. */
+export type SuggestionMode = "append" | "replace";
+
+/** Apply an accepted AI/preset suggestion onto content: take only the
  *  `included` blocks, and merge banner/promo/cta only when the suggestion
  *  provided them (never blow away existing values). One transform = one
- *  undo step. */
+ *  undo step.
+ *
+ *  `mode` defaults to "append" so every existing call site keeps its exact
+ *  behaviour. In "replace" mode an all-excluded suggestion is treated as a
+ *  no-op rather than emptying the email — rejecting every block means "I don't
+ *  want this restructure", not "delete my copy". */
 export function applySuggestion(
   content: CampaignContent,
   pending: PendingBlock[],
   meta: SuggestionMeta,
+  mode: SuggestionMode = "append",
 ): CampaignContent {
   const accepted = pending.filter((p) => p.included).map((p) => p.block);
+  const blocks =
+    mode === "replace"
+      ? accepted.length > 0
+        ? accepted
+        : content.blocks
+      : [...content.blocks, ...accepted];
   return {
     ...content,
-    blocks: [...content.blocks, ...accepted],
+    blocks,
     topBanner: meta.topBanner ?? content.topBanner,
     promoBand: meta.promoBand ?? content.promoBand,
     cta: meta.ctaLabel ? { ...content.cta, label: meta.ctaLabel } : content.cta,

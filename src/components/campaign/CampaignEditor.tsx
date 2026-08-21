@@ -8,7 +8,7 @@ import { useInsertAtCursor } from "./useInsertAtCursor";
 import { PRODUCT } from "@/lib/lunia-brand-guidelines";
 import { getSubjectLineHints } from "@/lib/subject-line-hints";
 import { CAMPAIGN_LAYOUT_PRESETS, type CampaignLayoutPreset } from "@/lib/campaign-layout-presets";
-import { layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
+import { layoutBlockToCampaignBlock, blocksToSourceText } from "@/lib/campaign-layout-prompts";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
@@ -18,7 +18,7 @@ import {
   IcChevron, IcDownload, IcSend, IcUndo, IcRedo, IcRefresh, IcPlus,
 } from "@/components/ui/icons";
 import {
-  reorderBlocks, applyUndo, applyRedo, applySuggestion,
+  reorderBlocks, applyUndo, applyRedo, applySuggestion, type SuggestionMode,
   completionItems as computeCompletionItems,
 } from "@/lib/campaign-editor-state";
 
@@ -252,6 +252,12 @@ export default function CampaignEditor({
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(null);
   const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>({});
+  // How the pending suggestion will be applied. "append" is Suggest layout and
+  // the presets; "replace" is Make it visual, which re-expresses the copy that
+  // is already there and would duplicate every paragraph if it appended.
+  const [pendingMode, setPendingMode] = useState<SuggestionMode>("append");
+  const [restructureBusy, setRestructureBusy] = useState(false);
+  const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
   const [regenError, setRegenError] = useState<string | null>(null);
@@ -516,6 +522,17 @@ export default function CampaignEditor({
   });
 
   const html = useMemo(() => renderCampaignEmail(content), [content]);
+
+  // Rendered before/after for a pending RESTRUCTURE. Built from the real
+  // renderer, not an approximation, because this diff is the only thing
+  // standing between a hallucinated number and a live send: fact preservation
+  // in the restructure prompt is not enforced in code. Only computed while a
+  // replace-mode suggestion is open, so the normal edit loop pays nothing.
+  const restructureDiff = useMemo(() => {
+    if (!pendingBlocks || pendingMode !== "replace") return null;
+    const after = applySuggestion(content, pendingBlocks, pendingMeta, "replace");
+    return { before: renderCampaignEmail(content), after: renderCampaignEmail(after) };
+  }, [pendingBlocks, pendingMode, pendingMeta, content]);
 
   // Concise email copy (subject + promo + body) handed to the image-prompt
   // generator so regenerated prompts reflect THIS email's message, not a
@@ -848,6 +865,7 @@ export default function CampaignEditor({
       }
       setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
       setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
+      setPendingMode("append");
       setTemplatePickerOpen(false);
     } catch (err) {
       setLayoutError(err instanceof Error ? err.message : "Network error");
@@ -861,8 +879,46 @@ export default function CampaignEditor({
   function applyPreset(preset: CampaignLayoutPreset) {
     setPendingBlocks(preset.blocks.map((b) => ({ block: layoutBlockToCampaignBlock(b), included: true })));
     setPendingMeta({ topBanner: preset.topBanner, promoBand: preset.promoBand, ctaLabel: preset.ctaLabel });
+    setPendingMode("append");
     setTemplatePickerOpen(false);
     setLayoutError(null);
+  }
+
+  // "Make it visual": re-expresses the copy already in the email as a richer
+  // set of blocks. Lands in the SAME pending-review path as suggestLayout, but
+  // in "replace" mode — the restructured blocks carry the same words, so
+  // appending them would duplicate the whole email.
+  //
+  // Fact preservation is prompt-only (the code-enforced verifier was cut in the
+  // 2026-08-21 CEO review), which is exactly why this never applies silently:
+  // the rendered before/after diff below is the only check that the model did
+  // not invent a number.
+  async function restructureBlocks() {
+    if (restructureBusy) return;
+    const c = latestContent.current;
+    const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
+    setRestructureBusy(true);
+    setRestructureError(null);
+    try {
+      const res = await fetch("/api/campaign/restructure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocks: c.blocks, subject, topic }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.blocks)) {
+        setRestructureError(data.error ?? "Restructure failed");
+        return;
+      }
+      setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
+      setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
+      setPendingMode("replace");
+      setTemplatePickerOpen(false);
+    } catch (err) {
+      setRestructureError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setRestructureBusy(false);
+    }
   }
 
   function togglePendingBlock(index: number) {
@@ -874,14 +930,16 @@ export default function CampaignEditor({
   // drag-and-drop reorder — not one commit per accepted block.
   function acceptPendingBlocks() {
     if (!pendingBlocks) return;
-    commit(applySuggestion(latestContent.current, pendingBlocks, pendingMeta));
+    commit(applySuggestion(latestContent.current, pendingBlocks, pendingMeta, pendingMode));
     setPendingBlocks(null);
     setPendingMeta({});
+    setPendingMode("append");
   }
 
   function discardPendingBlocks() {
     setPendingBlocks(null);
     setPendingMeta({});
+    setPendingMode("append");
   }
 
   // Fetches 3 alternates for one block from the AI and opens a small picker.
@@ -1327,55 +1385,6 @@ export default function CampaignEditor({
             </div>
           )}
         </div>
-
-        {/* Pending layout suggestion — never written into content.blocks
-            until accepted, so a suggestion never silently overwrites the
-            existing body. */}
-        {pendingBlocks && (
-          <div style={{ border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ ...sectionLabel, marginBottom: 0 }}>Suggested layout — review before adding</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button style={miniBtn(false)} onClick={() => setPendingBlocks((prev) => prev && prev.map((p) => ({ ...p, included: true })))}>Accept all</button>
-                <button style={miniBtn(false)} onClick={discardPendingBlocks}>Discard all</button>
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-              {/* Staged reveal: each suggested block fades in with a stagger
-                  (min(80ms, 500ms/blockCount) per block) as it lands — framed
-                  as functional progress feedback per DESIGN.md's Decisions
-                  Log, not decoration. A fade only, DESIGN.md's existing
-                  220ms ease-out timing, no bounce/spring. */}
-              {pendingBlocks.map((p, i) => (
-                <label key={p.block.id} style={{
-                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
-                  borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
-                  animation: "fadeIn 220ms ease-out both",
-                  animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
-                }}>
-                  <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
-                    style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 2 }}>
-                      {p.block.kind ?? "text"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {blockPreviewText(p.block)}
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <button
-              style={{ ...miniBtn(true), width: "100%", justifyContent: "center" }}
-              onClick={acceptPendingBlocks}
-              disabled={!pendingBlocks.some((p) => p.included)}
-            >
-              Add {pendingBlocks.filter((p) => p.included).length} block{pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"} to email
-            </button>
-          </div>
-        )}
-
         {/* Preview text */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -1414,6 +1423,136 @@ export default function CampaignEditor({
         </Section>
 
         <Section title="Body" defaultCollapsed={false}>
+        {/* Make it visual — restructures the copy ALREADY in this email into a
+            richer block layout. Lives here rather than next to "Suggest layout"
+            (which sits in Header, because it is driven by the subject line):
+            this one reads content.blocks, so it belongs with the blocks. Also
+            deliberately not in FlowDeck — FlowDeck only exists during an import
+            session, so a campaign reopened from the gallery could never reach
+            it. The sparkle is DESIGN.md's sanctioned exception for
+            LLM-triggering buttons. */}
+        {(() => {
+          const enough = blocksToSourceText(content.blocks).length >= 40;
+          return (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                style={{ ...miniBtn(false), width: "100%", justifyContent: "center", opacity: enough ? 1 : 0.45 }}
+                onClick={restructureBlocks}
+                disabled={restructureBusy || !enough}
+                title={
+                  enough
+                    ? "Re-express this email's existing copy as a richer block layout. Nothing is applied until you review the before/after."
+                    : "Write the email body first, then make it visual"
+                }
+              >
+                {restructureBusy && <Spinner size={10} color="var(--text)" />}
+                {restructureBusy ? "Restructuring…" : "✨ Make it visual"}
+              </button>
+              {restructureError && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
+              )}
+            </div>
+          );
+        })()}
+        {/* The review panel lives in Body, not Header, even though "Suggest
+            layout" (its other producer) sits in Header: what it reviews is
+            BLOCKS, and Header is collapsed by default — a review rendered
+            there is a review nobody sees. */}
+
+        {/* Pending layout suggestion — never written into content.blocks
+            until accepted, so a suggestion never silently overwrites the
+            existing body. */}
+        {pendingBlocks && (
+          <div style={{ border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...sectionLabel, marginBottom: 0 }}>
+                {pendingMode === "replace"
+                  ? "Restructured layout — this REPLACES the body"
+                  : "Suggested layout — review before adding"}
+              </span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button style={miniBtn(false)} onClick={() => setPendingBlocks((prev) => prev && prev.map((p) => ({ ...p, included: true })))}>Accept all</button>
+                <button style={miniBtn(false)} onClick={discardPendingBlocks}>Discard all</button>
+              </div>
+            </div>
+            {restructureDiff && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
+                  Same words, new structure. Check every number against the left
+                  side before accepting — the restructure is not fact-checked in code.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([
+                    { key: "before", label: "Before", doc: restructureDiff.before },
+                    { key: "after", label: "After", doc: restructureDiff.after },
+                  ] as const).map((pane) => (
+                    <div key={pane.key} style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                        letterSpacing: "0.08em", color: "var(--muted)", marginBottom: 4,
+                      }}>{pane.label}</div>
+                      {/* 600px document scaled to the pane width. overflow:hidden
+                          on the frame plus a fixed height keeps two full emails
+                          glanceable side by side; the real preview pane on the
+                          right is still the place to read one closely. */}
+                      <div style={{
+                        height: 260, overflow: "hidden", borderRadius: 6,
+                        border: "1px solid var(--border)", background: "#ffffff",
+                      }}>
+                        <iframe
+                          srcDoc={pane.doc}
+                          title={`${pane.label} restructure`}
+                          sandbox=""
+                          scrolling="no"
+                          style={{
+                            width: 600, height: 1040, border: 0, display: "block",
+                            transform: "scale(0.25)", transformOrigin: "top left",
+                            pointerEvents: "none",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+              {/* Staged reveal: each suggested block fades in with a stagger
+                  (min(80ms, 500ms/blockCount) per block) as it lands — framed
+                  as functional progress feedback per DESIGN.md's Decisions
+                  Log, not decoration. A fade only, DESIGN.md's existing
+                  220ms ease-out timing, no bounce/spring. */}
+              {pendingBlocks.map((p, i) => (
+                <label key={p.block.id} style={{
+                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
+                  borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
+                  animation: "fadeIn 220ms ease-out both",
+                  animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
+                }}>
+                  <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
+                    style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 2 }}>
+                      {p.block.kind ?? "text"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {blockPreviewText(p.block)}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              style={{ ...miniBtn(true), width: "100%", justifyContent: "center" }}
+              onClick={acceptPendingBlocks}
+              disabled={!pendingBlocks.some((p) => p.included)}
+            >
+              {pendingMode === "replace"
+                ? `Replace body with ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"}`
+                : `Add ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"} to email`}
+            </button>
+          </div>
+        )}
         {/* Blocks */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>

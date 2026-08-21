@@ -78,6 +78,57 @@ describe("applySuggestion", () => {
     expect(out.promoBand).toBe("PROMO");
     expect(out.cta.label).toBe("Shop now");
   });
+  it("defaults to append mode when no mode is passed", () => {
+    const c = baseContent();
+    const pending: PendingBlock[] = [{ block: block("a", "new"), included: true }];
+    const explicit = applySuggestion(c, pending, {}, "append");
+    const implicit = applySuggestion(c, pending, {});
+    expect(implicit.blocks.map((b) => b.id)).toEqual(explicit.blocks.map((b) => b.id));
+  });
+
+  describe("replace mode", () => {
+    it("swaps the body for the included blocks instead of appending", () => {
+      const c = baseContent();
+      const pending: PendingBlock[] = [
+        { block: block("a", "restructured one"), included: true },
+        { block: block("b", "rejected"), included: false },
+        { block: block("c", "restructured two"), included: true },
+      ];
+      const out = applySuggestion(c, pending, {}, "replace");
+      expect(out.blocks.map((b) => b.id)).toEqual(["a", "c"]);
+    });
+    it("keeps the original body when every block is rejected", () => {
+      // Rejecting the whole restructure means "I don't want this", not
+      // "delete my copy" — the email must not end up with zero blocks.
+      const c = baseContent();
+      const pending: PendingBlock[] = [
+        { block: block("a"), included: false },
+        { block: block("b"), included: false },
+      ];
+      const out = applySuggestion(c, pending, {}, "replace");
+      expect(out.blocks.map((b) => b.id)).toEqual(["1", "2", "3"]);
+    });
+    it("keeps the original body when the suggestion is empty", () => {
+      const c = baseContent();
+      const out = applySuggestion(c, [], {}, "replace");
+      expect(out.blocks.map((b) => b.id)).toEqual(["1", "2", "3"]);
+    });
+    it("still merges meta and preserves the cta url", () => {
+      const c = baseContent({ promoBand: "PROMO" });
+      const pending: PendingBlock[] = [{ block: block("a"), included: true }];
+      const out = applySuggestion(c, pending, { topBanner: "NEW", ctaLabel: "Go" }, "replace");
+      expect(out.topBanner).toBe("NEW");
+      expect(out.promoBand).toBe("PROMO");
+      expect(out.cta.label).toBe("Go");
+      expect(out.cta.url).toBe("https://lunia.com");
+    });
+    it("does not mutate the input content", () => {
+      const c = baseContent();
+      const before = c.blocks.map((b) => b.id);
+      applySuggestion(c, [{ block: block("a"), included: true }], {}, "replace");
+      expect(c.blocks.map((b) => b.id)).toEqual(before);
+    });
+  });
 });
 
 describe("completionItems", () => {
