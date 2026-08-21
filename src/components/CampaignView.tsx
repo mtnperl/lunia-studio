@@ -60,9 +60,12 @@ export default function CampaignView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...brief, test: brief.test === true }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.content) {
-        setError(data.error ?? "Generation failed, please try again.");
+      // A crashed function returns an HTML error page, not JSON. Parsing that
+      // used to throw into the catch below and report "Network error", which
+      // blames the user's connection for a server fault. Fail honestly instead.
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.content) {
+        setError(data?.error ?? `Generation failed on the server (${res.status}). Please try again.`);
         return;
       }
       const next: CampaignContent = data.content;
@@ -123,9 +126,9 @@ export default function CampaignView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ flow }),
       });
-      const data = await res.json();
-      if (!res.ok || !Array.isArray(data.emails) || data.emails.length === 0) {
-        setError(data.error ?? "Import failed — please try another flow.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data?.emails) || data.emails.length === 0) {
+        setError(data?.error ?? `Import failed on the server (${res.status}). Please try another flow.`);
         return;
       }
       const flowName: string = data.flowName ?? flow.flowName;

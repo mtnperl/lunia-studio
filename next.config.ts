@@ -20,6 +20,37 @@ const nextConfig: NextConfig = {
   // Native binaries are not JS — file tracing won't detect them automatically.
   // Explicitly include them so Vercel deploys them alongside each Puppeteer route.
   outputFileTracingIncludes: {
+    // sharp ships its libvips shared object (@img/sharp-libvips-linux-x64,
+    // ~"libvips-cpp.so.8.x") as a plain .so next to the .node binding. File
+    // tracing follows JS requires, so it pulled in @img/sharp-linux-x64 but
+    // left the .so behind, and every route importing email-image-engine died
+    // at module load with ERR_DLOPEN_FAILED — which the browser surfaced as a
+    // bogus "Network error" because the crashed function returns HTML, not JSON.
+    // Trace the native packages explicitly for each route that loads sharp.
+    "/api/campaign/generate": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
+    "/api/campaign/generate-image": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
+    "/api/email-review/generate-image": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
+    "/api/carousel-v2/generate-slide-bg": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
     "/api/video/render": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
       "./node_modules/@remotion/compositor-*/**/*",
