@@ -682,9 +682,23 @@ export default function CampaignEditor({
   // Every updater reads from `latestContent.current` (not the closure `content`)
   // and commits through `commit`, so a slow async handler resolving mid-edit
   // never clobbers a field the user just changed.
-  function updateBlock(id: string, changes: Partial<CampaignBlock>) {
+  /** `changes` may be an updater, which receives the block as it is RIGHT NOW.
+   *
+   *  Use the updater form for anything that rebuilds an array (grid cells,
+   *  table rows). The plain-object form closes over whatever the array looked
+   *  like when the component last rendered, which is fine for a keystroke but
+   *  silently wrong across an await: two grid cells generating at once both
+   *  captured the same empty array, so whichever image finished second wrote
+   *  its cell into that stale array and erased the first one. */
+  function updateBlock(
+    id: string,
+    changes: Partial<CampaignBlock> | ((prev: CampaignBlock) => Partial<CampaignBlock>),
+  ) {
     const c = latestContent.current;
-    commit({ ...c, blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...changes } : b)) });
+    commit({
+      ...c,
+      blocks: c.blocks.map((b) => (b.id === id ? { ...b, ...(typeof changes === "function" ? changes(b) : changes) } : b)),
+    });
   }
   function removeBlock(id: string) {
     const c = latestContent.current;
@@ -2079,8 +2093,13 @@ export default function CampaignEditor({
 
                   {kind === "grid" && (() => {
                     const cells = b.gridCells ?? [];
+                    // Updater form, NOT the render-time `cells`: image
+                    // generation is async and two cells can be in flight at
+                    // once, so this has to read the block as it is now.
                     const setCell = (i: number, patch: Partial<NonNullable<CampaignBlock["gridCells"]>[number]>) =>
-                      updateBlock(b.id, { gridCells: cells.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+                      updateBlock(b.id, (prev) => ({
+                        gridCells: (prev.gridCells ?? []).map((c, j) => (j === i ? { ...c, ...patch } : c)),
+                      }));
                     return (
                       <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
                         {cells.map((c, i) => (
@@ -2088,7 +2107,7 @@ export default function CampaignEditor({
                             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                               <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cell {i + 1}</span>
                               <div style={{ flex: 1 }} />
-                              <IconButton onClick={() => updateBlock(b.id, { gridCells: cells.filter((_, j) => j !== i) })} title="Remove cell"><IcTrash /></IconButton>
+                              <IconButton onClick={() => updateBlock(b.id, (prev) => ({ gridCells: (prev.gridCells ?? []).filter((_, j) => j !== i) }))} title="Remove cell"><IcTrash /></IconButton>
                             </div>
                             <input type="text" value={c.heading ?? ""} onChange={(e) => setCell(i, { heading: e.target.value })} placeholder="Heading" style={{ ...input, fontSize: 12 }} />
                             <input type="text" value={c.caption ?? ""} onChange={(e) => setCell(i, { caption: e.target.value })} placeholder="Caption" style={{ ...input, fontSize: 12 }} />
@@ -2107,7 +2126,7 @@ export default function CampaignEditor({
                           style={{ ...miniBtn(false), alignSelf: "flex-start" }}
                           disabled={cells.length >= 6}
                           title={cells.length >= 6 ? "Six cells is the maximum" : "Add a cell"}
-                          onClick={() => updateBlock(b.id, { gridCells: [...cells, {}] })}
+                          onClick={() => updateBlock(b.id, (prev) => ({ gridCells: [...(prev.gridCells ?? []), {}] }))}
                         >+ Cell</button>
                         <div style={{ fontSize: 11, color: "var(--muted)" }}>Two columns, stacking on mobile. Each cell can generate its own image from its own text.</div>
                       </div>
@@ -2157,23 +2176,27 @@ export default function CampaignEditor({
                     const headers = b.tableHeaders ?? ["", ""];
                     const rows = b.tableRows ?? [];
                     const cols = headers.length;
+                    // Updater form throughout, same reasoning as the grid: an
+                    // array rebuilt from a render-time closure is correct for a
+                    // keystroke and wrong the moment anything async lands
+                    // between the read and the write.
                     const setHeaders = (next: string[]) =>
-                      updateBlock(b.id, {
+                      updateBlock(b.id, (prev) => ({
                         tableHeaders: next,
                         // Keep every row exactly as wide as the header row, so
                         // changing the column count can never leave ragged data.
-                        tableRows: rows.map((r) => ({
+                        tableRows: (prev.tableRows ?? []).map((r) => ({
                           cells: Array.from({ length: next.length }, (_, i) => r.cells?.[i] ?? ""),
                         })),
-                      });
+                      }));
                     const setCell = (ri: number, ci: number, v: string) =>
-                      updateBlock(b.id, {
-                        tableRows: rows.map((r, i) =>
+                      updateBlock(b.id, (prev) => ({
+                        tableRows: (prev.tableRows ?? []).map((r, i) =>
                           i === ri
                             ? { cells: Array.from({ length: cols }, (_, j) => (j === ci ? v : r.cells?.[j] ?? "")) }
                             : r,
                         ),
-                      });
+                      }));
                     return (
                       <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
                         <label style={fieldLabel}>Columns</label>
@@ -2224,8 +2247,8 @@ export default function CampaignEditor({
                             ))}
                             <IconButton
                               onClick={() =>
-                                updateBlock(b.id, {
-                                  tableRows: rows.filter((_, i) => i !== ri),
+                                updateBlock(b.id, (prev) => ({
+                                  tableRows: (prev.tableRows ?? []).filter((_, i) => i !== ri),
                                   // Keep the emphasis pointing at the same row,
                                   // or drop it if that row just went away.
                                   tableEmphasisRow:
@@ -2234,7 +2257,7 @@ export default function CampaignEditor({
                                       : b.tableEmphasisRow > ri
                                         ? b.tableEmphasisRow - 1
                                         : b.tableEmphasisRow,
-                                })
+                                }))
                               }
                               title="Remove row"
                             ><IcTrash /></IconButton>
@@ -2245,7 +2268,7 @@ export default function CampaignEditor({
                           style={{ ...miniBtn(false), alignSelf: "flex-start" }}
                           disabled={rows.length >= 12}
                           title={rows.length >= 12 ? "Twelve rows is the maximum" : "Add a row"}
-                          onClick={() => updateBlock(b.id, { tableRows: [...rows, { cells: Array.from({ length: cols }, () => "") }] })}
+                          onClick={() => updateBlock(b.id, (prev) => ({ tableRows: [...(prev.tableRows ?? []), { cells: Array.from({ length: cols }, () => "") }] }))}
                         >+ Row</button>
                         <div style={{ fontSize: 11, color: "var(--muted)" }}>
                           First column is left-aligned, the rest right. The starred row is emphasised.
