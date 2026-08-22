@@ -7,7 +7,7 @@ import InlineStyleToolbar from "./InlineStyleToolbar";
 import { useAssets, pickSampleImageUrl } from "./useAssets";
 import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import { stripInlineTokens } from "@/lib/campaign-inline-style";
-import { withImagePrompt, type EmailImageContext } from "@/lib/campaign-image-prompt";
+import { withImagePrompt, suggestImagePrompt, type EmailImageContext } from "@/lib/campaign-image-prompt";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
@@ -2027,7 +2027,7 @@ export default function CampaignEditor({
                         imagePrompt={b.imagePrompt}
                         aspect="1:1"
                         topic={topic}
-                        suggestPrompt={() => [b.imageHeading, b.body].filter(Boolean).join(". ")}
+                        suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2071,7 +2071,7 @@ export default function CampaignEditor({
                         imagePrompt={b.imagePrompt}
                         aspect="1:1"
                         topic={topic}
-                        suggestPrompt={() => (b.bulletItems ?? []).filter(Boolean).join(". ")}
+                        suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2097,7 +2097,7 @@ export default function CampaignEditor({
                               imagePrompt={c.imagePrompt}
                               aspect="1:1"
                               topic={topic}
-                              suggestPrompt={() => [c.heading, c.caption].filter(Boolean).join(". ")}
+                              suggestPrompt={() => suggestImagePrompt({ kind: "grid", gridCells: [c] }, emailImageContext(content))}
                               onChange={(patch) => setCell(i, patch)}
                             />
                           </div>
@@ -2144,7 +2144,7 @@ export default function CampaignEditor({
                         imagePrompt={b.imagePrompt}
                         aspect="4:5"
                         topic={topic}
-                        suggestPrompt={() => [b.headerPillText, b.headerHeadline].filter(Boolean).join(" ")}
+                        suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
