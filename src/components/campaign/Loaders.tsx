@@ -56,7 +56,7 @@ const GEN_STEPS = [
   "FINALIZE CAMPAIGN",
 ];
 
-export function CampaignGenLoader() {
+export function CampaignGenLoader({ note }: { note?: string | null } = {}) {
   const frame = useSpinnerFrame();
   const elapsed = useElapsed();
   const [step, setStep] = useState(0);
@@ -86,7 +86,9 @@ export function CampaignGenLoader() {
         <span>{spinner}</span>
       </div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>WRITING CAMPAIGN</div>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
+          {note ? note.toUpperCase() : "WRITING CAMPAIGN"}
+        </div>
         <div style={{ color: "#888", fontSize: 11 }}>MODEL: claude-opus · EMAIL/v1</div>
       </div>
       <div style={{ marginBottom: 18 }}>

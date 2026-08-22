@@ -5,6 +5,7 @@ import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
 import FlowDeck, { type DeckEmail } from "@/components/campaign/FlowDeck";
 import KlaviyoFlowPicker from "@/components/email-review/KlaviyoFlowPicker";
+import { getShape } from "@/lib/campaign-shapes";
 import { CampaignGenLoader } from "@/components/campaign/Loaders";
 
 export default function CampaignView({
@@ -20,6 +21,8 @@ export default function CampaignView({
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
+  // What the loader is doing right now: writing, or laying out.
+  const [loadingNote, setLoadingNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState<CampaignContent | null>(null);
@@ -51,8 +54,44 @@ export default function CampaignView({
     onCampaignLoaded?.();
   }, [initialCampaign]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Restructure freshly generated copy into the chosen shape. Returns the
+   *  original content unchanged if anything goes wrong. */
+  async function layOutWithShape(
+    content: CampaignContent,
+    brief: CampaignBrief,
+    topicForPrompt: string,
+  ): Promise<CampaignContent> {
+    try {
+      const res = await fetch("/api/campaign/restructure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          blocks: content.blocks,
+          subject: content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "",
+          topic: topicForPrompt,
+          // The id, never guidance: guidance is resolved server-side.
+          shapeId: brief.shapeId,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !Array.isArray(data?.blocks) || data.blocks.length === 0) return content;
+      const shape = getShape(brief.shapeId!);
+      return {
+        ...content,
+        blocks: data.blocks as CampaignContent["blocks"],
+        theme: shape?.theme ?? content.theme,
+        topBanner: data.topBanner ?? content.topBanner,
+        promoBand: data.promoBand ?? content.promoBand,
+        cta: data.ctaLabel ? { ...content.cta, label: data.ctaLabel } : content.cta,
+      };
+    } catch {
+      return content;
+    }
+  }
+
   async function handleGenerate(brief: CampaignBrief, pinHeroUrl?: string | null) {
     setLoading(true);
+    setLoadingNote(null);
     setError(null);
     try {
       const res = await fetch("/api/campaign/generate", {
@@ -68,11 +107,26 @@ export default function CampaignView({
         setError(data?.error ?? `Generation failed on the server (${res.status}). Please try again.`);
         return;
       }
-      const next: CampaignContent = data.content;
+      let next: CampaignContent = data.content;
       if (pinHeroUrl) {
         const hero = next.images.find((i) => i.role === "hero");
         if (hero) hero.url = pinHeroUrl;
       }
+
+      // Generation writes plain text blocks, so a shape chosen in the brief is
+      // applied as a second pass here. Doing it client-side keeps the generate
+      // route untouched and reuses the restructure route rather than teaching a
+      // second prompt the whole block vocabulary.
+      //
+      // A failure FALLS BACK to the plain generated email, which is the
+      // opposite of the rule in the editor. There, falling back would overwrite
+      // copy you had written; here nothing exists to overwrite, and landing on
+      // a plain email beats an error page after a campaign was already written.
+      if (brief.shapeId && brief.shapeId !== "auto" && brief.test !== true) {
+        setLoadingNote("Laying it out…");
+        next = await layOutWithShape(next, brief, data.topic ?? brief.topic);
+      }
+
       setTopic(data.topic ?? brief.topic);
       setContent(next);
       setSavedId(null);
@@ -81,6 +135,7 @@ export default function CampaignView({
       setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
+      setLoadingNote(null);
     }
   }
 
@@ -199,7 +254,7 @@ export default function CampaignView({
         </div>
       )}
 
-      {(loading || importing) && <CampaignGenLoader />}
+      {(loading || importing) && <CampaignGenLoader note={loadingNote} />}
 
       {!loading && !importing && deck && (
         <FlowDeck flowName={deck.flowName} initialEmails={deck.emails} onExit={handleRestart} />

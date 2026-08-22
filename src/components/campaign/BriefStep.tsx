@@ -2,6 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Subject } from "@/lib/types";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
+import ShapeGallery from "./ShapeGallery";
+import {
+  CAMPAIGN_SHAPES,
+  savedShapeToCampaignShape,
+  type CampaignShape,
+  type SavedShape,
+} from "@/lib/campaign-shapes";
 
 export type CampaignBrief = {
   topic: string;
@@ -13,6 +20,10 @@ export type CampaignBrief = {
    *  returns canned text wired to existing asset-library images. Lets
    *  you dogfood layout changes without burning tokens. */
   test?: boolean;
+  /** Lay the generated copy out in this shape before it reaches the editor.
+   *  "auto" (the default) skips that second pass and lands plain text blocks,
+   *  which is what every campaign did before shapes existed. */
+  shapeId?: string;
 };
 
 type Mode = "list" | "custom";
@@ -32,6 +43,21 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function BriefStep({ onGenerate }: { onGenerate: (brief: CampaignBrief) => void }) {
+  // Generation writes plain text blocks, so without this a new campaign always
+  // landed as a wall of text you then had to lay out. Picking a shape here
+  // makes "generate" and "lay it out" one action.
+  const [shape, setShape] = useState<CampaignShape>(CAMPAIGN_SHAPES[0]!);
+  const [shapePickerOpen, setShapePickerOpen] = useState(false);
+  const [savedShapes, setSavedShapes] = useState<SavedShape[]>([]);
+  useEffect(() => {
+    if (!shapePickerOpen) return;
+    let alive = true;
+    fetch("/api/campaign/shapes")
+      .then((r) => r.json())
+      .then((d) => { if (alive && Array.isArray(d)) setSavedShapes(d as SavedShape[]); })
+      .catch(() => { /* built-ins are enough */ });
+    return () => { alive = false; };
+  }, [shapePickerOpen]);
   const [mode, setMode] = useState<Mode>("list");
   const [customTopic, setCustomTopic] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -175,11 +201,40 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
           })}
         </div>
       </div>
+      <div style={{ marginBottom: 18 }}>
+        <label style={labelStyle}>Layout</label>
+        <button
+          type="button"
+          onClick={() => setShapePickerOpen((v) => !v)}
+          title="Lay the generated copy out in a shape before it reaches the editor. Leave it on the default to land plain text blocks and choose later."
+          style={{
+            ...inputStyle, textAlign: "left", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            borderColor: shapePickerOpen ? "var(--accent)" : "var(--border)",
+          }}
+        >
+          <span>{shape.name}</span>
+          <span style={{ fontSize: 11, color: "var(--muted)" }}>{shapePickerOpen ? "Close" : "Change"}</span>
+        </button>
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+          {shape.guidance
+            ? `Adds one more pass after writing, so the campaign arrives already laid out as ${shape.name}.`
+            : "The campaign arrives as plain text blocks. You can pick a shape any time from the editor."}
+        </div>
+        {shapePickerOpen && (
+          <ShapeGallery
+            shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
+            busyShapeId={null}
+            onPick={(s) => { setShape(s); setShapePickerOpen(false); }}
+            onClose={() => setShapePickerOpen(false)}
+          />
+        )}
+      </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           className="btn"
           disabled={!canGenerate}
-          onClick={() => onGenerate({ topic, occasion, offer, ctaUrl, tone })}
+          onClick={() => onGenerate({ topic, occasion, offer, ctaUrl, tone, shapeId: shape.id })}
           style={{ minWidth: 180, opacity: canGenerate ? 1 : 0.5, cursor: canGenerate ? "pointer" : "not-allowed" }}
         >
           Generate campaign
