@@ -10,8 +10,9 @@
 // Generation is always an explicit click, never automatic — the same rule
 // ImageSlotControl follows, so adding a block never silently spends a
 // generation.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Spinner } from "./Loaders";
+import AssetPicker from "./AssetPicker";
 
 export default function BlockImageControl({
   imageUrl,
@@ -33,7 +34,33 @@ export default function BlockImageControl({
   compact?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Same endpoint the hero/secondary slots use: the blob lands under temp/ and
+  // is swept after a few days, so a one-off campaign photo never accumulates
+  // in the permanent asset library.
+  async function uploadFile(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/campaign/upload-temp-image", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Upload failed");
+        return;
+      }
+      onChange({ imageUrl: data.url as string });
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const effectivePrompt = (imagePrompt ?? "").trim() || suggestPrompt().trim();
 
@@ -99,7 +126,35 @@ export default function BlockImageControl({
           style={{ ...input, resize: "vertical", lineHeight: 1.45 }}
         />
       )}
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => setPickerOpen((v) => !v)}
+          style={{ ...btn, opacity: 1, cursor: "pointer" }}
+          title="Pick an image already in your asset library"
+        >Library</button>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          style={{ ...btn, opacity: uploading ? 0.5 : 1, cursor: uploading ? "wait" : "pointer" }}
+          title="Upload a photo from this device"
+        >
+          {uploading && <Spinner size={9} color="var(--text)" />}
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            // Reset first, so picking the same file twice still fires onChange.
+            e.target.value = "";
+            if (f) void uploadFile(f);
+          }}
+        />
         <button
           type="button"
           onClick={generate}
@@ -117,6 +172,15 @@ export default function BlockImageControl({
         )}
       </div>
       {error && <div style={{ fontSize: 11, color: "var(--error)" }}>{error}</div>}
+      {pickerOpen && (
+        <AssetPicker
+          onPick={(asset) => {
+            onChange({ imageUrl: asset.url });
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
