@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
+import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS } from "@/lib/campaign-theme";
+import BlockImageControl from "./BlockImageControl";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
@@ -41,6 +43,11 @@ const BLOCK_KIND_META: Record<BlockKind, { label: string; title: string }> = {
   comparison: { label: "Comparison", title: "A one-time vs subscribe side-by-side comparison" },
   ingredients: { label: "Ingredients", title: "A supplement-facts panel: ingredient name + dose rows" },
   image: { label: "Image", title: "An image placed here in the flow — full width, edge-to-edge, or beside copy" },
+  table: { label: "Table", title: "A comparison or pricing table, 2 to 4 columns, with one row emphasised" },
+  imagetext: { label: "Image + text", title: "A picture beside copy, on either side, stacking on mobile" },
+  imagebullets: { label: "Image + bullets", title: "A picture beside a bulleted list with a colour you choose" },
+  grid: { label: "Grid", title: "A 2-column grid of picture + heading + caption, each able to generate its own image" },
+  headerimage: { label: "Header image", title: "A header treatment that replaces the hero: headline card over the image, or highlighted headline above it" },
 };
 
 /** Menu order. Defaults to declaration order in CAMPAIGN_BLOCK_KINDS; listing
@@ -106,6 +113,12 @@ function blockPreviewText(b: CampaignBlock): string {
     b.trustItems?.map((t) => t.caption).join(", ") ||
     b.ingredientItems?.map((it) => it.name).join(", ") ||
     b.comparisonLeftLabel ||
+    b.imageHeading ||
+    b.headerHeadline ||
+    b.headerPillText ||
+    b.bulletItems?.filter(Boolean).join(", ") ||
+    b.tableHeaders?.filter(Boolean).join(" / ") ||
+    b.gridCells?.map((c) => c.heading ?? c.caption).filter(Boolean).join(", ") ||
     (b.kind === "image"
       ? [b.imageOverlayHeadline, b.imageSplitText].find((t) => t?.trim()) ?? "Image"
       : "") ||
@@ -1881,6 +1894,263 @@ export default function CampaignEditor({
                       </div>
                     </div>
                   )}
+
+                  {kind === "imagetext" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <input
+                        type="text"
+                        value={b.imageHeading ?? ""}
+                        onChange={(e) => updateBlock(b.id, { imageHeading: e.target.value })}
+                        placeholder="Heading, e.g. Energy you can count on"
+                        style={{ ...input, fontSize: 12 }}
+                      />
+                      <AutoTextarea
+                        value={b.body}
+                        onChange={(e) => updateBlock(b.id, { body: e.target.value })}
+                        minHeight={70}
+                        placeholder="The copy beside the picture"
+                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                      />
+                      <div>
+                        <label style={fieldLabel}>Image side</label>
+                        <div style={segWrap}>
+                          <SegButton active={(b.imagePosition ?? "left") === "left"} onClick={() => updateBlock(b.id, { imagePosition: "left" })} title="Picture on the left">Left</SegButton>
+                          <SegButton active={b.imagePosition === "right"} onClick={() => updateBlock(b.id, { imagePosition: "right" })} title="Picture on the right. On mobile both stack, text first." last>Right</SegButton>
+                        </div>
+                      </div>
+                      <BlockImageControl
+                        imageUrl={b.imageUrl}
+                        imagePrompt={b.imagePrompt}
+                        aspect="1:1"
+                        topic={topic}
+                        suggestPrompt={() => [b.imageHeading, b.body].filter(Boolean).join(". ")}
+                        onChange={(patch) => updateBlock(b.id, patch)}
+                      />
+                    </div>
+                  )}
+
+                  {kind === "imagebullets" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <AutoTextarea
+                        value={(b.bulletItems ?? []).join("\n")}
+                        onChange={(e) => updateBlock(b.id, { bulletItems: e.target.value.split("\n") })}
+                        minHeight={70}
+                        placeholder={"One bullet per line, e.g.\nBoosts energy levels\nSupports immune health"}
+                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                      />
+                      <div>
+                        <label style={fieldLabel}>Bullet colour</label>
+                        {/* Roles, not hex. An off-brand colour is not
+                            expressible, and a role that would be illegible on
+                            the active theme is swapped at render time. */}
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {BRAND_COLOR_ROLES.map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => updateBlock(b.id, { bulletColor: b.bulletColor === role ? undefined : role })}
+                              style={{ ...miniBtn(b.bulletColor === role), fontSize: 11 }}
+                              title={`${BRAND_ROLE_LABELS[role]} bullets`}
+                            >{BRAND_ROLE_LABELS[role]}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={fieldLabel}>Image side</label>
+                        <div style={segWrap}>
+                          <SegButton active={(b.imagePosition ?? "left") === "left"} onClick={() => updateBlock(b.id, { imagePosition: "left" })} title="Picture on the left">Left</SegButton>
+                          <SegButton active={b.imagePosition === "right"} onClick={() => updateBlock(b.id, { imagePosition: "right" })} title="Picture on the right" last>Right</SegButton>
+                        </div>
+                      </div>
+                      <BlockImageControl
+                        imageUrl={b.imageUrl}
+                        imagePrompt={b.imagePrompt}
+                        aspect="1:1"
+                        topic={topic}
+                        suggestPrompt={() => (b.bulletItems ?? []).filter(Boolean).join(". ")}
+                        onChange={(patch) => updateBlock(b.id, patch)}
+                      />
+                    </div>
+                  )}
+
+                  {kind === "grid" && (() => {
+                    const cells = b.gridCells ?? [];
+                    const setCell = (i: number, patch: Partial<NonNullable<CampaignBlock["gridCells"]>[number]>) =>
+                      updateBlock(b.id, { gridCells: cells.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+                    return (
+                      <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+                        {cells.map((c, i) => (
+                          <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cell {i + 1}</span>
+                              <div style={{ flex: 1 }} />
+                              <IconButton onClick={() => updateBlock(b.id, { gridCells: cells.filter((_, j) => j !== i) })} title="Remove cell"><IcTrash /></IconButton>
+                            </div>
+                            <input type="text" value={c.heading ?? ""} onChange={(e) => setCell(i, { heading: e.target.value })} placeholder="Heading" style={{ ...input, fontSize: 12 }} />
+                            <input type="text" value={c.caption ?? ""} onChange={(e) => setCell(i, { caption: e.target.value })} placeholder="Caption" style={{ ...input, fontSize: 12 }} />
+                            <BlockImageControl
+                              imageUrl={c.imageUrl}
+                              imagePrompt={c.imagePrompt}
+                              aspect="1:1"
+                              topic={topic}
+                              compact
+                              suggestPrompt={() => [c.heading, c.caption].filter(Boolean).join(". ")}
+                              onChange={(patch) => setCell(i, patch)}
+                            />
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          style={{ ...miniBtn(false), alignSelf: "flex-start" }}
+                          disabled={cells.length >= 6}
+                          title={cells.length >= 6 ? "Six cells is the maximum" : "Add a cell"}
+                          onClick={() => updateBlock(b.id, { gridCells: [...cells, {}] })}
+                        >+ Cell</button>
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>Two columns, stacking on mobile. Each cell can generate its own image from its own text.</div>
+                      </div>
+                    );
+                  })()}
+
+                  {kind === "headerimage" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                        This replaces the hero image at the top of the email while it has content.
+                      </div>
+                      <div>
+                        <label style={fieldLabel}>Style</label>
+                        <div style={segWrap}>
+                          <SegButton active={(b.headerStyle ?? "card") === "card"} onClick={() => updateBlock(b.id, { headerStyle: "card" })} title="Headline in a panel overlapping the top of the image">Card</SegButton>
+                          <SegButton active={b.headerStyle === "pill"} onClick={() => updateBlock(b.id, { headerStyle: "pill" })} title="Highlighted eyebrow and headline above the image" last>Pill</SegButton>
+                        </div>
+                      </div>
+                      {b.headerStyle === "pill" && (
+                        <input type="text" value={b.headerPillText ?? ""} onChange={(e) => updateBlock(b.id, { headerPillText: e.target.value })} placeholder="Highlighted eyebrow, e.g. PRO Move:" style={{ ...input, fontSize: 12 }} />
+                      )}
+                      <AutoTextarea
+                        value={b.headerHeadline ?? ""}
+                        onChange={(e) => updateBlock(b.id, { headerHeadline: e.target.value })}
+                        minHeight={48}
+                        placeholder="Headline"
+                        style={{ ...input, lineHeight: 1.4, fontSize: 12, background: "var(--bg)" }}
+                      />
+                      {(b.headerStyle ?? "card") === "card" && (
+                        <input type="text" value={b.headerSubcard ?? ""} onChange={(e) => updateBlock(b.id, { headerSubcard: e.target.value })} placeholder="Second card, optional, e.g. Make a PRO move." style={{ ...input, fontSize: 12 }} />
+                      )}
+                      <BlockImageControl
+                        imageUrl={b.imageUrl}
+                        imagePrompt={b.imagePrompt}
+                        aspect="4:5"
+                        topic={topic}
+                        suggestPrompt={() => [b.headerPillText, b.headerHeadline].filter(Boolean).join(" ")}
+                        onChange={(patch) => updateBlock(b.id, patch)}
+                      />
+                    </div>
+                  )}
+
+                  {kind === "table" && (() => {
+                    // RepeatableRows does not fit here: it is typed for
+                    // Record<string,string> rows, and a table row is a
+                    // variable-length array whose width is set by the headers.
+                    const headers = b.tableHeaders ?? ["", ""];
+                    const rows = b.tableRows ?? [];
+                    const cols = headers.length;
+                    const setHeaders = (next: string[]) =>
+                      updateBlock(b.id, {
+                        tableHeaders: next,
+                        // Keep every row exactly as wide as the header row, so
+                        // changing the column count can never leave ragged data.
+                        tableRows: rows.map((r) => ({
+                          cells: Array.from({ length: next.length }, (_, i) => r.cells?.[i] ?? ""),
+                        })),
+                      });
+                    const setCell = (ri: number, ci: number, v: string) =>
+                      updateBlock(b.id, {
+                        tableRows: rows.map((r, i) =>
+                          i === ri
+                            ? { cells: Array.from({ length: cols }, (_, j) => (j === ci ? v : r.cells?.[j] ?? "")) }
+                            : r,
+                        ),
+                      });
+                    return (
+                      <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                        <label style={fieldLabel}>Columns</label>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          {headers.map((h, i) => (
+                            <input
+                              key={i}
+                              type="text"
+                              value={h}
+                              onChange={(e) => setHeaders(headers.map((x, j) => (j === i ? e.target.value : x)))}
+                              placeholder={i === 0 ? "Path" : "Per bottle"}
+                              style={{ ...input, fontSize: 12, flex: 1, minWidth: 0 }}
+                            />
+                          ))}
+                          <button
+                            type="button"
+                            style={{ ...miniBtn(false), flexShrink: 0 }}
+                            disabled={cols >= 4}
+                            title={cols >= 4 ? "Four columns is the maximum that stays readable at 600px" : "Add a column"}
+                            onClick={() => setHeaders([...headers, ""])}
+                          >+</button>
+                          <button
+                            type="button"
+                            style={{ ...miniBtn(false), flexShrink: 0 }}
+                            disabled={cols <= 2}
+                            title={cols <= 2 ? "A table needs at least two columns" : "Remove the last column"}
+                            onClick={() => setHeaders(headers.slice(0, -1))}
+                          >-</button>
+                        </div>
+
+                        <label style={{ ...fieldLabel, marginTop: 4 }}>Rows</label>
+                        {rows.map((r, ri) => (
+                          <div key={ri} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => updateBlock(b.id, { tableEmphasisRow: b.tableEmphasisRow === ri ? undefined : ri })}
+                              title={b.tableEmphasisRow === ri ? "Remove emphasis" : "Emphasise this row"}
+                              style={{ ...miniBtn(b.tableEmphasisRow === ri), flexShrink: 0, width: 26, justifyContent: "center" }}
+                            >★</button>
+                            {Array.from({ length: cols }, (_, ci) => (
+                              <input
+                                key={ci}
+                                type="text"
+                                value={r.cells?.[ci] ?? ""}
+                                onChange={(e) => setCell(ri, ci, e.target.value)}
+                                style={{ ...input, fontSize: 12, flex: 1, minWidth: 0 }}
+                              />
+                            ))}
+                            <IconButton
+                              onClick={() =>
+                                updateBlock(b.id, {
+                                  tableRows: rows.filter((_, i) => i !== ri),
+                                  // Keep the emphasis pointing at the same row,
+                                  // or drop it if that row just went away.
+                                  tableEmphasisRow:
+                                    b.tableEmphasisRow === undefined || b.tableEmphasisRow === ri
+                                      ? undefined
+                                      : b.tableEmphasisRow > ri
+                                        ? b.tableEmphasisRow - 1
+                                        : b.tableEmphasisRow,
+                                })
+                              }
+                              title="Remove row"
+                            ><IcTrash /></IconButton>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          style={{ ...miniBtn(false), alignSelf: "flex-start" }}
+                          disabled={rows.length >= 12}
+                          title={rows.length >= 12 ? "Twelve rows is the maximum" : "Add a row"}
+                          onClick={() => updateBlock(b.id, { tableRows: [...rows, { cells: Array.from({ length: cols }, () => "") }] })}
+                        >+ Row</button>
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                          First column is left-aligned, the rest right. The starred row is emphasised.
+                          Tables shrink on mobile rather than stacking.
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {kind === "checklist" && (
                     <div style={{ padding: "8px 10px 10px" }}>

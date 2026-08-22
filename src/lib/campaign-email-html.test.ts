@@ -39,8 +39,11 @@ describe("all-kinds fixture coverage", () => {
 
   // Guards the guard: if a kind is added to the union without a fixture block,
   // this fails rather than letting the snapshot silently narrow.
-  it("covers every block kind", () => {
-    const covered = new Set((allKinds!.content.blocks).map((b) => b.kind ?? "text"));
+  it("covers every block kind across the fixture set", () => {
+    // Checked across ALL fixtures, not just all-kinds-navy: headerimage
+    // suppresses the hero, so it lives in its own fixture rather than
+    // stopping the main one from exercising the hero row.
+    const covered = new Set(EMAIL_FIXTURES.flatMap((f) => f.content.blocks.map((b) => b.kind ?? "text")));
     for (const kind of CAMPAIGN_BLOCK_KINDS) {
       expect(covered.has(kind), `no fixture block for kind "${kind}"`).toBe(true);
     }
@@ -102,5 +105,40 @@ describe("inline markup", () => {
     );
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("headerimage replaces the hero", () => {
+  for (const style of ["card", "pill"]) {
+    const fixture = EMAIL_FIXTURES.find((f) => f.name === `headerimage-${style}`)!;
+    it(`${style}: the hero image is not rendered`, () => {
+      // The fixture supplies a hero on purpose. If it appears, the header is
+      // sitting below a 552px photo and is a divider, not a header.
+      const heroUrl = fixture.content.images.find((i) => i.role === "hero")!.url!;
+      expect(renderCampaignEmail(fixture.content)).not.toContain(heroUrl);
+    });
+    it(`${style}: the header image IS rendered`, () => {
+      const headerUrl = fixture.content.blocks.find((b) => b.kind === "headerimage")!.imageUrl!;
+      expect(renderCampaignEmail(fixture.content)).toContain(headerUrl);
+    });
+    it(`${style}: goes full bleed, without the h-padding class`, () => {
+      // h-padding carries an !important 14px inset below 599px, so keeping it
+      // would make the image full-bleed on desktop and inset on mobile.
+      const html = renderCampaignEmail(fixture.content);
+      const row = html.slice(html.indexOf("<td style=\"padding:0 0 16px;\""));
+      expect(row.slice(0, 200)).not.toContain("h-padding");
+    });
+  }
+
+  it("an empty headerimage block does not suppress the hero", () => {
+    // Otherwise adding the block and not filling it in would silently delete
+    // the hero from the email.
+    const fixture = EMAIL_FIXTURES.find((f) => f.name === "headerimage-card")!;
+    const heroUrl = fixture.content.images.find((i) => i.role === "hero")!.url!;
+    const emptied = {
+      ...fixture.content,
+      blocks: [{ id: "hdr", kind: "headerimage" as const, body: "", align: "left" as const }],
+    };
+    expect(renderCampaignEmail(emptied)).toContain(heroUrl);
   });
 });

@@ -703,6 +703,10 @@ export type MultiVariantResponse = {
 
 // ─── Campaign builder (email campaigns) ──────────────────────────────────────
 
+// Type-only import: campaign-theme imports CampaignContent from here, so a
+// value import would be a cycle. `import type` is erased at compile time.
+import type { BrandColorRole } from "./campaign-theme";
+
 /** One image in a campaign email. Either AI-generated (lifestyle, no text/logo)
  *  or sourced from an uploaded asset (bottle / logo / product shots). */
 export type CampaignImageSlot = {
@@ -751,14 +755,21 @@ export const CAMPAIGN_BLOCK_KINDS = [
   "comparison",
   "ingredients",
   "image",
+  "table",
+  "imagetext",
+  "imagebullets",
+  "grid",
+  "headerimage",
 ] as const;
 
 export type CampaignBlockKind = (typeof CAMPAIGN_BLOCK_KINDS)[number];
 
 /** Kinds that own their whole table row rather than rendering inside the
  *  shared 24px-padded text wrapper. "image" needs this so its `bleed` layout
- *  can go edge-to-edge across the full 600px shell. */
-export const FULL_ROW_BLOCK_KINDS = ["image"] as const;
+ *  can go edge-to-edge across the full 600px shell; "headerimage" needs it for
+ *  the same reason, and additionally suppresses the hero row so it can be the
+ *  actual top of the email rather than a divider below a 552px photo. */
+export const FULL_ROW_BLOCK_KINDS = ["image", "headerimage"] as const;
 export type FullRowBlockKind = (typeof FULL_ROW_BLOCK_KINDS)[number];
 /** Kinds whose renderer returns an inner fragment for the padded wrapper. */
 export type InnerBlockKind = Exclude<CampaignBlockKind, FullRowBlockKind>;
@@ -829,6 +840,53 @@ export type CampaignBlock = {
   ingredientHeading?: string;
   ingredientItems?: { name: string; dose: string }[];
   ingredientFootnote?: string;
+  /** kind "table": column headers, 2 to 4 of them. The header count defines
+   *  the table's width; rows are padded or truncated to match at render time,
+   *  so adding a column never leaves ragged rows behind. */
+  tableHeaders?: string[];
+  /** kind "table": one entry per body row. Renders only when there is at least
+   *  one header and one row. */
+  tableRows?: { cells: string[] }[];
+  /** kind "table": 0-based index into `tableRows` of the row to emphasise (the
+   *  recommended option in a pricing comparison). Out-of-range means no
+   *  emphasis, so deleting the emphasised row degrades quietly. */
+  tableEmphasisRow?: number;
+  /** kinds "imagetext" / "imagebullets" / "headerimage": the picture. A plain
+   *  URL, either pasted or produced by the block's own generate button. Unlike
+   *  kind "image" this is NOT a slot in `content.images` — these blocks own
+   *  their picture, so it travels with the block when it is moved, copied or
+   *  banked as a snippet. */
+  imageUrl?: string;
+  /** The prompt that produced `imageUrl`, kept so regenerating is one click
+   *  and so the user can edit it rather than retyping. */
+  imagePrompt?: string;
+  /** kinds "imagetext" / "imagebullets": which side the picture sits on.
+   *  Unset is "left". On mobile both stack, image first. */
+  imagePosition?: "left" | "right";
+  /** kind "imagetext": an optional heading above the copy. The copy itself
+   *  reuses `body`, so the text toolbar, AutoTextarea and paragraph rendering
+   *  all work with no new plumbing. */
+  imageHeading?: string;
+  /** kind "imagebullets": one line per bullet. */
+  bulletItems?: string[];
+  /** kind "imagebullets": the marker colour, as a brand ROLE not a hex, so an
+   *  off-brand or illegible colour is unrepresentable. Resolved per theme by
+   *  resolveBrandColor, which substitutes when the pick would not be legible. */
+  bulletColor?: BrandColorRole;
+  /** kind "grid": 2-column cells of picture + heading + caption. Each cell can
+   *  generate its own image from its own text. */
+  gridCells?: { imageUrl?: string; imagePrompt?: string; heading?: string; caption?: string }[];
+  /** kind "headerimage": "card" puts the headline in a panel overlapping the
+   *  top of a full-bleed image; "pill" puts a highlighted eyebrow and headline
+   *  above it. Unset is "card". */
+  headerStyle?: "card" | "pill";
+  headerHeadline?: string;
+  /** kind "headerimage", style "pill": the highlighted eyebrow above the
+   *  headline. */
+  headerPillText?: string;
+  /** kind "headerimage", style "card": an optional second card below the
+   *  image, right-aligned. */
+  headerSubcard?: string;
   /** kind "image": which slot in `content.images` this block places. The block
    *  owns POSITION and LAYOUT; the slot still owns the prompt/source/url, so
    *  generation, asset-picking and the save-route's blob mirroring all keep

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NAVY_THEME, CREAM_THEME, resolveTheme, resolveCta, type CampaignTheme } from "./campaign-theme";
+import { NAVY_THEME, CREAM_THEME, resolveTheme, resolveCta, contrast, resolveBrandColor, BRAND_COLOR_ROLES, MIN_ACCENT_CONTRAST, type CampaignTheme } from "./campaign-theme";
 
 const THEMES: CampaignTheme[] = [NAVY_THEME, CREAM_THEME];
 
@@ -94,26 +94,8 @@ describe("resolveCta", () => {
 });
 
 // ─── Contrast ────────────────────────────────────────────────────────────────
-// Turns "a wrong role mapping is invisible to automation" into something a
-// machine can actually catch. A role pointed at the wrong surface almost always
-// shows up as a contrast ratio near 1.
-function srgb(hex: string): number[] {
-  const h = hex.replace("#", "");
-  const n = h.length === 3 ? h.split("").map((c) => c + c) : [h.slice(0, 2), h.slice(2, 4), h.slice(4, 6)];
-  return n.map((c) => {
-    const v = parseInt(c, 16) / 255;
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  });
-}
-function luminance(hex: string): number {
-  const [r, g, b] = srgb(hex);
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-}
-export function contrast(a: string, b: string): number {
-  const l1 = luminance(a);
-  const l2 = luminance(b);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-}
+// Uses the same contrast() the renderer uses, so these gates and the runtime
+// substitution can never disagree.
 
 describe("contrast ratios", () => {
   for (const t of THEMES) {
@@ -147,4 +129,37 @@ describe("contrast ratios", () => {
       });
     });
   }
+});
+
+describe("resolveBrandColor", () => {
+  it("returns the role's own colour when it is legible on the theme", () => {
+    expect(resolveBrandColor("yellow", NAVY_THEME)).toBe("#FFD800");
+    expect(resolveBrandColor("navy", CREAM_THEME)).toBe("#01253F");
+  });
+
+  it("substitutes when the pick would be illegible on the shell", () => {
+    // Navy on the navy shell, and ivory on the ivory shell, are the obvious
+    // cases; slate on navy is the one only a contrast check catches, since it
+    // is a genuinely different hex that is still unreadable.
+    expect(resolveBrandColor("navy", NAVY_THEME)).toBe(NAVY_THEME.inkAccent);
+    expect(resolveBrandColor("slate", NAVY_THEME)).toBe(NAVY_THEME.inkAccent);
+    expect(resolveBrandColor("ivory", CREAM_THEME)).toBe(CREAM_THEME.inkAccent);
+  });
+
+  it("falls back for an unset or unknown role", () => {
+    expect(resolveBrandColor(undefined, NAVY_THEME)).toBe(NAVY_THEME.inkAccent);
+    // A role persisted by a newer build, read by an older one.
+    expect(resolveBrandColor("chartreuse" as never, NAVY_THEME)).toBe(NAVY_THEME.inkAccent);
+  });
+
+  it("never resolves to something illegible, for any role on any theme", () => {
+    // The whole point of storing roles instead of hex: an unreadable accent
+    // should be unrepresentable, not merely discouraged.
+    for (const t of THEMES) {
+      for (const role of BRAND_COLOR_ROLES) {
+        const c = resolveBrandColor(role, t);
+        expect(contrast(c, t.shell), `${role} on ${t.id}`).toBeGreaterThanOrEqual(MIN_ACCENT_CONTRAST);
+      }
+    }
+  });
 });

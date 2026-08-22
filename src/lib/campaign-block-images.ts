@@ -36,6 +36,20 @@ type Accessor = {
 
 const ACCESSORS: Accessor[] = [
   {
+    // imagetext / imagebullets / headerimage: the block owns one picture.
+    path: "imageUrl",
+    get: (b) => [b.imageUrl],
+    set: (b, _i, url) => ({ ...b, imageUrl: url }),
+  },
+  {
+    path: "gridCells",
+    get: (b) => (b.gridCells ?? []).map((c) => c.imageUrl),
+    set: (b, i, url) => ({
+      ...b,
+      gridCells: (b.gridCells ?? []).map((c, j) => (j === i ? { ...c, imageUrl: url } : c)),
+    }),
+  },
+  {
     path: "trustItems",
     get: (b) => (b.trustItems ?? []).map((t) => t.imageUrl),
     set: (b, i, url) => ({

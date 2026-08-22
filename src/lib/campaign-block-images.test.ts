@@ -96,3 +96,43 @@ describe("setBlockImageUrls", () => {
     expect(out[1]!.trustItems![0]!.imageUrl).toBe("https://fal.example/a.png");
   });
 });
+
+describe("the newer image-bearing kinds", () => {
+  it("finds a block's own imageUrl", () => {
+    const refs = collectBlockImageUrls([
+      block({ id: "it", kind: "imagetext", imageUrl: "https://fal.example/x.png" }),
+    ]);
+    expect(refs).toEqual([{ blockId: "it", path: "imageUrl[0]", url: "https://fal.example/x.png" }]);
+  });
+
+  it("finds every grid cell image and writes them back independently", () => {
+    const blocks = [
+      block({ id: "g", kind: "grid", gridCells: [
+        { imageUrl: "https://fal.example/1.png", heading: "one" },
+        { heading: "no image" },
+        { imageUrl: "https://fal.example/3.png", heading: "three" },
+      ] }),
+    ];
+    const refs = collectBlockImageUrls(blocks);
+    expect(refs.map((r) => r.path)).toEqual(["gridCells[0]", "gridCells[2]"]);
+    const out = setBlockImageUrls(blocks, new Map([[refKey("g", "gridCells[2]"), "https://blob.example/3.png"]]));
+    expect(out[0]!.gridCells!.map((c) => c.imageUrl)).toEqual([
+      "https://fal.example/1.png",
+      undefined,
+      "https://blob.example/3.png",
+    ]);
+  });
+
+  it("covers every image-bearing kind, so none can be silently missed", () => {
+    // A kind that holds an image but is absent from ACCESSORS would rot
+    // exactly the way trustgrid did. Assert coverage explicitly.
+    const withImages = [
+      block({ id: "a", kind: "imagetext", imageUrl: "https://e/1.png" }),
+      block({ id: "b", kind: "imagebullets", imageUrl: "https://e/2.png" }),
+      block({ id: "c", kind: "headerimage", imageUrl: "https://e/3.png" }),
+      block({ id: "d", kind: "grid", gridCells: [{ imageUrl: "https://e/4.png" }] }),
+      block({ id: "e", kind: "trustgrid", trustItems: [{ imageUrl: "https://e/5.png", caption: "c" }] }),
+    ];
+    expect(collectBlockImageUrls(withImages)).toHaveLength(5);
+  });
+});

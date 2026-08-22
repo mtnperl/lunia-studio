@@ -48,6 +48,32 @@ export const LayoutBlockSchema = z.discriminatedUnion("kind", [
     comparisonRightPerk: z.string().optional(),
   }),
   z.object({
+    kind: z.literal("table"),
+    tableHeaders: z.array(z.string()).min(2).max(4),
+    tableRows: z.array(z.object({ cells: z.array(z.string()) })).min(1).max(12),
+    tableEmphasisRow: z.number().int().min(0).optional(),
+  }),
+  // The image-bearing kinds are suggestable, but ONLY their copy. The model
+  // never supplies an imageUrl: pictures are the user's own assets, and a
+  // restructure that invented one would be inventing content. The user fills
+  // or generates the image after accepting.
+  z.object({
+    kind: z.literal("imagetext"),
+    imageHeading: z.string().optional(),
+    body: z.string(),
+    imagePosition: z.enum(["left", "right"]).optional(),
+  }),
+  z.object({
+    kind: z.literal("imagebullets"),
+    bulletItems: z.array(z.string()).min(2).max(6),
+    bulletColor: z.enum(["ivory", "aqua", "yellow", "navy", "slate", "muted"]).optional(),
+    imagePosition: z.enum(["left", "right"]).optional(),
+  }),
+  z.object({
+    kind: z.literal("grid"),
+    gridCells: z.array(z.object({ heading: z.string().optional(), caption: z.string().optional() })).min(2).max(6),
+  }),
+  z.object({
     kind: z.literal("ingredients"),
     ingredientHeading: z.string().optional(),
     ingredientItems: z.array(z.object({ name: z.string(), dose: z.string() })).min(1).max(8),
@@ -79,6 +105,10 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 { "kind": "timeline", "timelineRows": [{ "label": "e.g. '30 DAYS'", "text": "e.g. '85% felt more energy'" }] }
 { "kind": "trustgrid", "trustItems": [{ "caption": "one short trust point" }] }
 { "kind": "comparison", "comparisonLeftLabel": "e.g. 'One-time'", "comparisonLeftPrice": "e.g. '$34.99'", "comparisonLeftPerk": "e.g. 'Ships once'", "comparisonRightLabel": "e.g. 'Subscribe'", "comparisonRightPrice": "e.g. '$29.20'", "comparisonRightPerk": "e.g. 'Save 15%, cancel anytime'" }
+{ "kind": "table", "tableHeaders": ["Path", "Per bottle", "Per night"], "tableRows": [{ "cells": ["One bottle at a time", "$38.93", "$1.30"] }, { "cells": ["Subscription", "$29.20", "$0.97"] }], "tableEmphasisRow": 1 }
+{ "kind": "imagetext", "imageHeading": "e.g. 'Energy you can count on'", "body": "the copy beside the picture", "imagePosition": "left" | "right" }
+{ "kind": "imagebullets", "bulletItems": ["2-6 short lines"], "bulletColor": "ivory" | "aqua" | "yellow" | "navy" | "slate" | "muted", "imagePosition": "left" | "right" }
+{ "kind": "grid", "gridCells": [{ "heading": "short title", "caption": "one or two lines" }] }
 { "kind": "ingredients", "ingredientHeading": "e.g. 'What's inside'", "ingredientItems": [{ "name": "Magnesium Glycinate", "dose": "400mg" }, { "name": "L-Theanine", "dose": "200mg" }, { "name": "Apigenin", "dose": "50mg" }], "ingredientFootnote": "e.g. 'Melatonin-free, third-party tested'" }
 
 Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
@@ -124,6 +154,45 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
         comparisonRightLabel: stripDashes(b.comparisonRightLabel),
         comparisonRightPrice: b.comparisonRightPrice,
         comparisonRightPerk: b.comparisonRightPerk ? stripDashes(b.comparisonRightPerk) : undefined,
+      };
+    case "table": {
+      // Normalise width here rather than trusting the model: every row is
+      // padded or truncated to the header count, so a short row can never
+      // render a ragged table.
+      const cols = b.tableHeaders.length;
+      return {
+        ...base,
+        tableHeaders: b.tableHeaders.map(stripDashes),
+        tableRows: b.tableRows.map((r) => ({
+          cells: Array.from({ length: cols }, (_, i) => stripDashes(r.cells[i] ?? "")),
+        })),
+        tableEmphasisRow:
+          b.tableEmphasisRow !== undefined && b.tableEmphasisRow < b.tableRows.length
+            ? b.tableEmphasisRow
+            : undefined,
+      };
+    }
+    case "imagetext":
+      return {
+        ...base,
+        imageHeading: b.imageHeading ? stripDashes(b.imageHeading) : undefined,
+        body: stripDashes(b.body),
+        imagePosition: b.imagePosition ?? "left",
+      };
+    case "imagebullets":
+      return {
+        ...base,
+        bulletItems: b.bulletItems.map(stripDashes),
+        bulletColor: b.bulletColor,
+        imagePosition: b.imagePosition ?? "left",
+      };
+    case "grid":
+      return {
+        ...base,
+        gridCells: b.gridCells.map((c) => ({
+          heading: c.heading ? stripDashes(c.heading) : undefined,
+          caption: c.caption ? stripDashes(c.caption) : undefined,
+        })),
       };
     case "ingredients":
       return {

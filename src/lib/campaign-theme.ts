@@ -144,3 +144,83 @@ export function resolveCta(
     ? { bg: theme.shell, fg: theme.text }
     : { bg: theme.panelBg, fg: theme.inkOnPanel };
 }
+
+// ─── Brand colour roles (user-choosable accents) ────────────────────────────
+//
+// One vocabulary, shared by the bullet-marker colour on `imagebullets` and by
+// the inline text-styling tokens. Both persist into the same un-migratable
+// Redis blob, so two vocabularies would mean two resolvers and no migration
+// path between them.
+//
+// Roles, never hex. That is what makes an off-brand colour unrepresentable,
+// and it is what lets the resolver below rescue a pick that would be
+// illegible on the active theme.
+
+export const BRAND_COLOR_ROLES = ["ivory", "aqua", "yellow", "navy", "slate", "muted"] as const;
+export type BrandColorRole = (typeof BRAND_COLOR_ROLES)[number];
+
+/** Role → hex. Theme-independent; legibility is handled by the resolver. */
+const BRAND_ROLE_HEX: Record<BrandColorRole, string> = {
+  ivory: "#F7F4EF",
+  aqua: "#BFFBF8",
+  yellow: "#FFD800",
+  navy: "#01253F",
+  slate: "#2C3F51",
+  muted: "#4d6a7d",
+};
+
+/** Human labels for the editor swatches. */
+export const BRAND_ROLE_LABELS: Record<BrandColorRole, string> = {
+  ivory: "Ivory",
+  aqua: "Aqua",
+  yellow: "Yellow",
+  navy: "Navy",
+  slate: "Slate",
+  muted: "Muted",
+};
+
+function channels(hex: string): number[] {
+  const h = hex.replace("#", "");
+  const parts = h.length === 3 ? h.split("").map((c) => c + c) : [h.slice(0, 2), h.slice(2, 4), h.slice(4, 6)];
+  return parts.map((c) => {
+    const v = parseInt(c, 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+}
+
+/** WCAG relative luminance. */
+function luminance(hex: string): number {
+  const [r, g, b] = channels(hex);
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/** WCAG contrast ratio between two hex colours, 1 (identical) to 21. */
+export function contrast(a: string, b: string): number {
+  const l1 = luminance(a);
+  const l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/** Minimum contrast a user-chosen accent must clear against the background it
+ *  lands on. WCAG AA for large/bold text, which is what these accents are
+ *  used for (bullet markers, emphasised words). */
+export const MIN_ACCENT_CONTRAST = 3;
+
+/** Resolve a brand colour role against the active theme.
+ *
+ *  Substitutes the theme's own accent ink when the chosen role would not be
+ *  legible on the shell. Checking CONTRAST rather than exact equality matters:
+ *  navy-on-navy is caught by either, but slate on the navy shell is a distinct
+ *  hex and still unreadable, and only a contrast check catches that. So a
+ *  colour picked while on one theme cannot turn into invisible text on the
+ *  other. */
+export function resolveBrandColor(
+  role: BrandColorRole | undefined,
+  theme: CampaignTheme,
+  fallback?: string,
+): string {
+  const base = fallback ?? theme.inkAccent;
+  if (!role || !(role in BRAND_ROLE_HEX)) return base;
+  const hex = BRAND_ROLE_HEX[role];
+  return contrast(hex, theme.shell) >= MIN_ACCENT_CONTRAST ? hex : base;
+}

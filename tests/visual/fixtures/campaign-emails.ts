@@ -91,6 +91,13 @@ export const EMAIL_FIXTURES: EmailFixture[] = [
         { id: "k-trustgrid", kind: "trustgrid", body: "", align: "left", trustItems: [{ imageUrl: ph("1:1", "TRUST", "#2C3F51"), caption: "Third-party tested" }, { caption: "Made in a GMP facility" }] },
         { id: "k-comparison", kind: "comparison", body: "", align: "left", comparisonLeftLabel: "One-time", comparisonLeftPrice: "$38.93", comparisonLeftPerk: "Ships once", comparisonRightLabel: "Subscribe", comparisonRightPrice: "$29.20", comparisonRightPerk: "Cancel anytime" },
         { id: "k-ingredients", kind: "ingredients", body: "", align: "left", ingredientHeading: "What's inside", ingredientItems: [{ name: "Magnesium Bisglycinate", dose: "500mg" }, { name: "L-Theanine", dose: "300mg" }, { name: "Apigenin", dose: "50mg" }], ingredientFootnote: "Melatonin-free, third-party tested" },
+        { id: "k-imagetext", kind: "imagetext", body: "B vitamins support your energy metabolism so you can perform your best all day long.", align: "left", imageHeading: "Energy you can count on", imagePosition: "left", imageUrl: ph("1:1", "IMG+TEXT", "#2C3F51") },
+        { id: "k-imagebullets", kind: "imagebullets", body: "", align: "left", imagePosition: "right", bulletColor: "aqua", bulletItems: ["Boosts energy levels", "Supports immune health", "Helps fill common nutrient gaps"], imageUrl: ph("1:1", "BULLETS", "#102635") },
+        { id: "k-grid", kind: "grid", body: "", align: "left", gridCells: [
+          { heading: "Melatonin-free", caption: "No grogginess, no tolerance.", imageUrl: ph("1:1", "CELL 1", "#2C3F51") },
+          { heading: "Transparent dosing", caption: "Every dose printed on the label.", imageUrl: ph("1:1", "CELL 2", "#102635") },
+        ] },
+        { id: "k-table", kind: "table", body: "", align: "left", tableHeaders: ["Path", "Over 90 nights", "Per bottle", "Per night"], tableRows: [{ cells: ["One bottle at a time", "$116.79", "$38.93", "$1.30"] }, { cells: ["Monthly plan", "$87.60", "$29.20", "$0.97"] }, { cells: ["3 month plan", "$75.90", "$25.30", "$0.84"] }], tableEmphasisRow: 2 },
         { id: "k-image-column", kind: "image", body: "", align: "left", imageSlotId: "s-col", imageLayout: "column" },
         { id: "k-image-split", kind: "image", body: "", align: "left", imageSlotId: "s-split", imageLayout: "split", imageSplitText: "Copy beside the image, which stacks to full width on mobile.", imageSplitSide: "left" },
       ],
@@ -108,6 +115,66 @@ export const EMAIL_FIXTURES: EmailFixture[] = [
 /** The all-kinds document on the cream theme. Derived from the navy fixture
  *  rather than hand-written, so the two can only ever differ by theme — which
  *  is exactly what a theme baseline should isolate. */
+/** The two header treatments. Kept OUT of the all-kinds fixture on purpose: a
+ *  headerimage block suppresses the hero row, so including one there would
+ *  stop that fixture from exercising the hero at all. */
+for (const style of ["card", "pill"] as const) {
+  EMAIL_FIXTURES.push({
+    name: `headerimage-${style}`,
+    content: {
+      subjectLines: [`Header ${style}`, "", ""],
+      selectedSubject: 0,
+      previewText: "A header that replaces the hero.",
+      logoUrl: null,
+      showLogo: false,
+      blocks: [
+        {
+          id: "hdr", kind: "headerimage", body: "", align: "left",
+          headerStyle: style,
+          headerHeadline: style === "card" ? "Feeling the effects of GLP-1s?" : "Save More Than Just Time",
+          headerPillText: style === "pill" ? "PRO Move:" : undefined,
+          headerSubcard: style === "card" ? "Make a PRO move." : undefined,
+          imageUrl: ph("4:5", "HEADER", "#01253F"),
+        },
+        { id: "body", kind: "text", body: "Maintaining muscle mass gets harder over time, whether due to aging, calorie restriction, or a GLP-1 medication.", align: "left" },
+      ],
+      cta: { label: "Get started", url: "https://www.lunialife.com" },
+      // A hero IS supplied, to prove the header suppresses it.
+      images: [{ id: "h", role: "hero", source: "generated", aspect: "4:5", url: ph("4:5", "SHOULD NOT APPEAR", "#C40000") }],
+    },
+  });
+}
+
+/** Deliberately hostile content. A fixed-layout table of unbroken 40-character
+ *  strings and a very long headline are the two shapes most likely to push the
+ *  600px shell wide, which is precisely what the suite's right-edge assertion
+ *  exists to catch. */
+EMAIL_FIXTURES.push({
+  name: "overflow-stress",
+  content: {
+    subjectLines: ["Overflow stress", "", ""],
+    selectedSubject: 0,
+    previewText: "Unbreakable strings in a fixed-layout table.",
+    topBanner: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA **BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB**",
+    logoUrl: null,
+    showLogo: false,
+    blocks: [
+      {
+        id: "os-table", kind: "table", body: "", align: "left",
+        tableHeaders: ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC", "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"],
+        tableRows: [
+          { cells: ["EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG", "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH"] },
+          { cells: ["IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII", "JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ", "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK", "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"] },
+        ],
+        tableEmphasisRow: 1,
+      },
+      { id: "os-text", kind: "text", body: "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM", align: "left" },
+    ],
+    cta: { label: "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", url: "https://www.lunialife.com" },
+    images: [],
+  },
+});
+
 const allKindsNavy = EMAIL_FIXTURES.find((f) => f.name === "all-kinds-navy")!;
 EMAIL_FIXTURES.push({
   name: "all-kinds-cream",

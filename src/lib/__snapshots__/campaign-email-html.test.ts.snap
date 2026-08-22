@@ -31,6 +31,11 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -160,6 +165,32 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#4d6a7d;text-align:center;margin-top:16px;letter-spacing:0.02em;">Melatonin-free, third-party tested</div>
   </div></div>
      </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td class="secondary-cell" width="39.13%" style="width:39.13%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5JTUcrVEVYVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:#01253F;line-height:1.3;margin-bottom:8px;">Energy you can count on</div><p style="margin:0 0 16px;color:#102635;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">B vitamins support your energy metabolism so you can perform your best all day long.</p></td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#01253F;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#102635;line-height:1.5;">Boosts energy levels</td>
+      </tr><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#01253F;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#102635;line-height:1.5;">Supports immune health</td>
+      </tr><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#01253F;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#102635;line-height:1.5;">Helps fill common nutrient gaps</td>
+      </tr></table></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="39.13%" style="width:39.13%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5CVUxMRVRTPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+      <tr><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DRUxMIDE8L3RleHQ+CiAgPC9zdmc+" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt=""><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#01253F;line-height:1.3;margin-bottom:4px;">Melatonin-free</div><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#102635;line-height:1.45;">No grogginess, no tolerance.</div></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DRUxMIDI8L3RleHQ+CiAgPC9zdmc+" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt=""><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#01253F;line-height:1.3;margin-bottom:4px;">Transparent dosing</div><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#102635;line-height:1.45;">Every dose printed on the label.</div></td></tr>
+    </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table class="email-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#01253F;border-bottom:2px solid #01253F;">Path</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#01253F;border-bottom:2px solid #01253F;">Over 90 nights</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#01253F;border-bottom:2px solid #01253F;">Per bottle</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#01253F;border-bottom:2px solid #01253F;">Per night</td></tr>
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">One bottle at a time</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$116.79</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$38.93</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$1.30</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">Monthly plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$87.60</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$29.20</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$0.97</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">3 month plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$75.90</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$25.30</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$0.84</td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
       <div style="position:relative;">
         <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
         
@@ -212,6 +243,11 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -341,6 +377,32 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#4d6a7d;text-align:center;margin-top:16px;letter-spacing:0.02em;">Melatonin-free, third-party tested</div>
   </div></div>
      </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td class="secondary-cell" width="39.13%" style="width:39.13%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5JTUcrVEVYVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:#f5f5e9;line-height:1.3;margin-bottom:8px;">Energy you can count on</div><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">B vitamins support your energy metabolism so you can perform your best all day long.</p></td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#BFFBF8;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Boosts energy levels</td>
+      </tr><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#BFFBF8;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Supports immune health</td>
+      </tr><tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#BFFBF8;">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">Helps fill common nutrient gaps</td>
+      </tr></table></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="39.13%" style="width:39.13%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5CVUxMRVRTPC90ZXh0PgogIDwvc3ZnPg==" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
+      <tr><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DRUxMIDE8L3RleHQ+CiAgPC9zdmc+" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt=""><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#f5f5e9;line-height:1.3;margin-bottom:4px;">Melatonin-free</div><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.45;">No grogginess, no tolerance.</div></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DRUxMIDI8L3RleHQ+CiAgPC9zdmc+" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt=""><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:#f5f5e9;line-height:1.3;margin-bottom:4px;">Transparent dosing</div><div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.45;">Every dose printed on the label.</div></td></tr>
+    </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table class="email-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">Path</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">Over 90 nights</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">Per bottle</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">Per night</td></tr>
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">One bottle at a time</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$116.79</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$38.93</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$1.30</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">Monthly plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$87.60</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$29.20</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$0.97</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">3 month plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$75.90</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$25.30</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$0.84</td></tr>
+  </table></div>
+     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
       <div style="position:relative;">
         <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
         
@@ -354,6 +416,165 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
       <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
     <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
       <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Start sleeping better</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;
+
+exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Header card</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">A header that replaces the hero.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      
+      
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      
+      
+      <tr><td style="padding:0 0 16px;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRUFERVI8L3RleHQ+CiAgPC9zdmc+" width="600" style="display:block;width:100%;height:auto;" alt=""><div style="margin:-28px 24px 0;position:relative;">
+         <div style="background:#f5f5e9;border-radius:10px;padding:18px 20px;">
+           <div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:28px;font-weight:300;color:#01253f;line-height:1.15;">Feeling the effects of GLP-1s?</div>
+         </div>
+       </div><div style="margin:10px 24px 0;text-align:right;">
+         <span style="display:inline-block;background:#f5f5e9;border-radius:10px;padding:12px 16px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:300;color:#01253f;line-height:1.2;">Make a PRO move.</span>
+       </div></td></tr>
+      
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Maintaining muscle mass gets harder over time, whether due to aging, calorie restriction, or a GLP-1 medication.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Get started</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;
+
+exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Header pill</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">A header that replaces the hero.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      
+      
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      
+      
+      <tr><td style="padding:0 0 16px;">
+      <div style="padding:0 24px 14px;text-align:center;"><div style="margin-bottom:6px;"><span style="display:inline-block;background:#ffd800;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.04em;padding:3px 10px;border-radius:3px;">PRO Move:</span></div><div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:#ffffff;line-height:1.15;">Save More Than Just Time</div></div>
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRUFERVI8L3RleHQ+CiAgPC9zdmc+" width="600" style="display:block;width:100%;height:auto;" alt="">
+    </td></tr>
+      
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Maintaining muscle mass gets harder over time, whether due to aging, calorie restriction, or a GLP-1 medication.</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">Get started</span>
     </a>
   </td></tr>
     </table>
@@ -393,6 +614,11 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -465,6 +691,88 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
 </body></html>"
 `;
 
+exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
+"<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>Overflow stress</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
+     table, and the inner email container. Stops any default user-agent
+     background from showing as a gray band above/below the email. */
+  html, body{margin:0;padding:0;background:#01253f;width:100%;}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;}
+  img{border:0;outline:none;max-width:100%;display:block;}
+  table{border-collapse:collapse;border-spacing:0;}
+  .email-container{width:600px;max-width:600px;background:#01253f;}
+
+  /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
+     600px) so the desktop preview, which renders the iframe at exactly
+     600px, stays in the desktop layout instead of straddling the
+     breakpoint. */
+  @media only screen and (max-width:599px) {
+    .email-container{width:100% !important;max-width:100% !important;}
+    .h-padding{padding-left:14px !important;padding-right:14px !important;}
+    .text-block{padding:8px !important;}
+    .text-block p{font-size:16px !important;line-height:1.6 !important;}
+    /* Stack 2-up image grids on narrow screens. */
+    .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
+    .secondary-spacer{display:none !important;width:0 !important;}
+    .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
+    /* Tighten new top header + hero overlay on narrow viewports. */
+    /* Mobile — image 20% smaller than wrapper, vertically centered. */
+    .logo-img{height:74px !important;margin-top:9px !important;}
+    .logo-crop{height:92px !important;}
+    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Image-block overlays — smaller type and padding so the scrim never
+       swallows the photo on a narrow screen. */
+    .img-overlay{padding:14px !important;}
+    .img-overlay-headline{font-size:19px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#01253f;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Unbreakable strings in a fixed-layout table.</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
+  <tr><td align="center" style="padding:0;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+      <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</span>
+  </td></tr>
+      
+      <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
+      
+      
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><table class="email-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#f5f5e9;border-bottom:2px solid #f5f5e9;">DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD</td></tr>
+    <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL</td></tr>
+  </table></div>
+     </td></tr>
+      
+      <tr><td class="h-padding" style="padding:0 24px 16px;">
+       <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM</p></div>
+     </td></tr>
+      <tr><td class="h-padding" style="padding:0 24px 24px;" align="center">
+    <a class="cta-link" href="https://www.lunialife.com" target="_blank" style="text-decoration:none;display:block;max-width:300px;">
+      <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;line-height:1.3;padding:13px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;">NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN</span>
+    </a>
+  </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"
+`;
+
 exports[`renderCampaignEmail > renders three-generated-standard identically 1`] = `
 "<!DOCTYPE html>
 <html><head>
@@ -496,6 +804,11 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}

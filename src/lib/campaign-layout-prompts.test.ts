@@ -23,7 +23,11 @@ describe("registry alignment", () => {
   // Kinds the AI is deliberately never asked to emit. "image" places a slot
   // from content.images, which is a user choice about their own assets, not
   // something a copy-restructuring model should invent.
-  const EXCLUDED_FROM_SUGGESTIONS = new Set(["image"]);
+  // "image" places a slot from content.images; "headerimage" REPLACES the
+  // user's hero. Both are decisions about the user's own assets and layout,
+  // not about how their copy should be structured, so a copy-restructuring
+  // model is never asked to make them.
+  const EXCLUDED_FROM_SUGGESTIONS = new Set(["image", "headerimage"]);
 
   const zodKinds = () => LayoutBlockSchema.options.map((o) => o.shape.kind.value as string);
 

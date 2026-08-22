@@ -11,7 +11,7 @@
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
 import type { CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind } from "./types";
-import { resolveTheme, resolveCta, type CampaignTheme } from "./campaign-theme";
+import { resolveTheme, resolveCta, resolveBrandColor, type CampaignTheme } from "./campaign-theme";
 
 
 function esc(s: string): string {
@@ -393,6 +393,206 @@ function imageCell(url: string | null | undefined, width: string, t: CampaignThe
   )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
 }
 
+/** A comparison / pricing table. Fixed layout with hard word-breaking, which
+ *  is the whole defence against a long unbroken string pushing the 600px shell
+ *  wide — `table-layout:fixed` alone will not do it.
+ *
+ *  Rows are padded and truncated to the header count so adding a column never
+ *  leaves ragged rows. First column left-aligned, the rest right: that is what
+ *  makes a column of prices read as a column of prices.
+ *
+ *  Deliberately does NOT stack on mobile, unlike every other multi-column
+ *  block here. A stacked pricing table stops being a comparison, which is the
+ *  only reason to use one, so it shrinks its type instead. */
+function tableBlock(b: CampaignBlock, t: CampaignTheme): string {
+  const headers = (b.tableHeaders ?? []).map((h) => (h ?? "").trim());
+  const rows = (b.tableRows ?? []).filter((r) => (r.cells ?? []).some((c) => (c ?? "").trim()));
+  if (headers.length === 0 || rows.length === 0) return "";
+
+  const cols = Math.min(Math.max(headers.length, 2), 4);
+  const width = `${(100 / cols).toFixed(2)}%`;
+  const size = cols <= 2 ? "14px" : "13px";
+  const align = (i: number) => (i === 0 ? "left" : "right");
+  const cellBase = `padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:${size};line-height:1.4;word-break:break-word;`;
+
+  const headerCells = Array.from({ length: cols }, (_, i) =>
+    `<td width="${width}" align="${align(i)}" style="${cellBase}width:${width};font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};border-bottom:2px solid ${t.accentBorder};">${renderInline(headers[i] ?? "")}</td>`,
+  ).join("");
+
+  const bodyRows = rows
+    .map((r, ri) => {
+      const emphasized = b.tableEmphasisRow === ri;
+      // An emphasised row is a filled panel, so its ink switches surface.
+      const ink = emphasized ? t.inkOnPanel : t.text;
+      const bg = emphasized ? `background:${t.panelBg};` : "";
+      const weight = emphasized ? 700 : 300;
+      const cells = Array.from({ length: cols }, (_, ci) =>
+        `<td width="${width}" align="${align(ci)}" style="${cellBase}width:${width};${bg}color:${ink};font-weight:${weight};${ri > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">${renderInline((r.cells ?? [])[ci] ?? "")}</td>`,
+      ).join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+
+  return `<table class="email-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr>${headerCells}</tr>
+    ${bodyRows}
+  </table>`;
+}
+
+/** True when a headerimage block has enough content to render. Used both by
+ *  the renderer and by the hero-suppression check, so the two cannot disagree
+ *  about whether a header is present. */
+function hasHeaderContent(b: CampaignBlock): boolean {
+  return !!(b.headerHeadline?.trim() || b.headerPillText?.trim() || b.imageUrl?.trim());
+}
+
+/** A header treatment that is genuinely the TOP of the email: when one of
+ *  these is present the hero row is suppressed, otherwise the fixed layout
+ *  order would put it below a 552px photo and it would read as a mid-email
+ *  divider rather than a header.
+ *
+ *  Returns a complete <tr> and drops the `h-padding` class rather than merely
+ *  zeroing the padding — that class carries a `!important` 14px inset below
+ *  599px, so keeping it would make the image full-bleed on desktop and inset
+ *  on mobile.
+ *
+ *  "card" overlaps the headline panel onto the image with a negative top
+ *  margin. Clients that honour it get the overlap; Outlook desktop ignores
+ *  negative margins and simply stacks the card under the image, which still
+ *  reads correctly. That is why this is not `position:absolute`, which Outlook
+ *  drops entirely and would leave the headline sitting on top of the picture.
+ *  NOTE: the degradation is reasoned, not measured — this repo has no
+ *  real-client test rig, so verify by sending yourself one before relying on it. */
+function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
+  if (!hasHeaderContent(b)) return "";
+  const url = b.imageUrl?.trim();
+  const headline = b.headerHeadline?.trim();
+  const style = b.headerStyle ?? "card";
+
+  const image = url
+    ? `<img src="${esc(url)}" width="600" style="display:block;width:100%;height:auto;" alt="">`
+    : `<div style="width:100%;aspect-ratio:16/9;background:${t.placeholder};"></div>`;
+
+  if (style === "pill") {
+    const pill = b.headerPillText?.trim()
+      ? `<div style="margin-bottom:6px;"><span style="display:inline-block;background:${t.highlight};color:${t.highlightText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.04em;padding:3px 10px;border-radius:3px;">${esc(b.headerPillText)}</span></div>`
+      : "";
+    const head = headline
+      ? `<div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline)}</div>`
+      : "";
+    return `<tr><td style="padding:0 0 16px;">
+      ${pill || head ? `<div style="padding:0 24px 14px;text-align:center;">${pill}${head}</div>` : ""}
+      ${image}
+    </td></tr>`;
+  }
+
+  // card
+  const card = headline
+    ? `<div style="margin:-28px 24px 0;position:relative;">
+         <div style="background:${t.panelBg};border-radius:10px;padding:18px 20px;">
+           <div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:28px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline)}</div>
+         </div>
+       </div>`
+    : "";
+  // The optional second card is a right-aligned row BELOW, not an absolutely
+  // positioned overlay: absolute bottom-right over a variable-aspect image is
+  // unreliable in email and untestable here.
+  const subcard = b.headerSubcard?.trim()
+    ? `<div style="margin:10px 24px 0;text-align:right;">
+         <span style="display:inline-block;background:${t.panelBg};border-radius:10px;padding:12px 16px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:300;color:${t.inkOnPanel};line-height:1.2;">${renderInline(b.headerSubcard)}</span>
+       </div>`
+    : "";
+  return `<tr><td style="padding:0 0 16px;">${image}${card}${subcard}</td></tr>`;
+}
+
+/** Shared skeleton for the two "picture beside content" kinds. Both cells carry
+ *  `secondary-cell` and the gap carries `secondary-spacer`, so the existing
+ *  mobile rules stack them and collapse the gap with no new CSS. Cells are
+ *  emitted in DOM order, so a right-positioned image stacks text-first on
+ *  mobile, which reads better than a picture with no context above it. */
+function sideBySide(imageCell: string, contentCell: string, imageOnRight: boolean): string {
+  const spacer = '<td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>';
+  const cells = imageOnRight ? [contentCell, spacer, imageCell] : [imageCell, spacer, contentCell];
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;width:100%;">
+    <tr>${cells.join("")}</tr>
+  </table>`;
+}
+
+function blockImageCell(b: CampaignBlock, t: CampaignTheme, width: string): string {
+  const url = b.imageUrl?.trim();
+  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:middle;">${
+    url
+      ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`
+      : imagePlaceholder("1/1", "8px", t)
+  }</td>`;
+}
+
+/** Picture beside copy. The copy reuses `body`, so everything that already
+ *  works on a text block works here too. */
+function imagetextBlock(b: CampaignBlock, t: CampaignTheme): string {
+  const heading = b.imageHeading?.trim();
+  const body = b.body?.trim();
+  if (!heading && !body && !b.imageUrl?.trim()) return "";
+  const headingHtml = heading
+    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading)}</div>`
+    : "";
+  const bodyHtml = body ? paragraphs(t, body, "left", !!b.italic, b.weight ?? "light") : "";
+  const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${headingHtml}${bodyHtml}</td>`;
+  return sideBySide(blockImageCell(b, t, "39.13%"), content, b.imagePosition === "right");
+}
+
+/** Picture beside a bulleted list, with a user-chosen marker colour. The marker
+ *  is a text glyph in a narrow cell, the same shape checklistBlock uses, so it
+ *  renders everywhere without an image request. */
+function imagebulletsBlock(b: CampaignBlock, t: CampaignTheme): string {
+  const items = (b.bulletItems ?? []).map((i) => (i ?? "").trim()).filter(Boolean);
+  if (items.length === 0 && !b.imageUrl?.trim()) return "";
+  // A role, resolved per theme, and swapped out if it would be illegible.
+  const marker = resolveBrandColor(b.bulletColor, t);
+  const rows = items
+    .map(
+      (item) => `<tr>
+        <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:${marker};">&#9679;</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${renderInline(item)}</td>
+      </tr>`,
+    )
+    .join("");
+  const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table></td>`;
+  return sideBySide(blockImageCell(b, t, "39.13%"), content, b.imagePosition === "right");
+}
+
+/** A 2-column grid of picture + heading + caption. Always two columns: a
+ *  three-across grid at 600px gives ~170px cells, which is too small for the
+ *  caption to read. Reuses the secondary-cell classes so mobile stacking is
+ *  free. */
+function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
+  const cells = (b.gridCells ?? []).filter(
+    (c) => (c.heading ?? "").trim() || (c.caption ?? "").trim() || (c.imageUrl ?? "").trim(),
+  );
+  if (cells.length === 0) return "";
+  const cell = (c?: { imageUrl?: string; heading?: string; caption?: string }) => {
+    if (!c) return `<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>`;
+    const url = c.imageUrl?.trim();
+    const img = url
+      ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
+      : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
+    const heading = c.heading?.trim()
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading)}</div>`
+      : "";
+    const caption = c.caption?.trim()
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.45;">${renderInline(c.caption)}</div>`
+      : "";
+    return `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;">${img}${heading}${caption}</td>`;
+  };
+  let html = "";
+  for (let i = 0; i < cells.length; i += 2) {
+    html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;${i > 0 ? "margin-top:16px;" : ""}">
+      <tr>${cell(cells[i])}<td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>${cell(cells[i + 1])}</tr>
+    </table>`;
+  }
+  return html;
+}
+
 /** Every kind that renders INSIDE the shared padded wrapper, mapped to its
  *  renderer. `image` is absent on purpose: it owns its whole <tr> so its
  *  "bleed" layout can escape the 24px cell padding, and is handled ahead of
@@ -408,6 +608,10 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: Campai
   trustgrid: trustgridBlock,
   comparison: comparisonBlock,
   ingredients: ingredientsBlock,
+  table: tableBlock,
+  imagetext: imagetextBlock,
+  imagebullets: imagebulletsBlock,
+  grid: gridBlock,
 };
 
 /** Render the full campaign email as a standalone HTML document. */
@@ -416,7 +620,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // byte-for-byte as it did.
   const t = resolveTheme(content.theme);
   const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
-  const hero = content.images.find((i) => i.role === "hero");
+  // A headerimage block IS the top of the email, so it replaces the hero
+  // rather than stacking under it. Without this the fixed layout order (hero →
+  // promo → blocks) would put a "header" below a 552px photo.
+  const hasHeaderBlock = content.blocks.some((b) => b.kind === "headerimage" && hasHeaderContent(b));
+  const hero = hasHeaderBlock ? undefined : content.images.find((i) => i.role === "hero");
   const slotById = new Map(content.images.map((i) => [i.id, i]));
 
   // A slot claimed by a kind:"image" block renders at that block's position
@@ -483,6 +691,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     // padding, so they can't be nested in the shared padded text wrapper.
     if (b.kind === "image") {
       return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t);
+    }
+    if (b.kind === "headerimage") {
+      return headerimageBlockRow(b, t);
     }
     // Dispatch through a Record keyed on the kind union rather than a ternary
     // chain: TypeScript then REQUIRES an entry for every kind, so adding one to
@@ -555,6 +766,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
     .secondary-cell{display:block !important;width:100% !important;padding-bottom:10px !important;}
     .secondary-spacer{display:none !important;width:0 !important;}
     .cta-link{max-width:100% !important;}
+    /* Pricing tables shrink instead of stacking: a stacked comparison table
+       is no longer a comparison. Four columns at 11px in ~347px is tight,
+       and that is the tradeoff the layout is making on purpose. */
+    .email-table td{font-size:11px !important;padding:8px 5px !important;}
+    .headerimage-h{font-size:22px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
