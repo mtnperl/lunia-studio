@@ -851,6 +851,12 @@ export type CampaignBlock = {
    *  recommended option in a pricing comparison). Out-of-range means no
    *  emphasis, so deleting the emphasised row degrades quietly. */
   tableEmphasisRow?: number;
+  /** Editor-only: this block still holds the starter content it was created
+   *  with. NEVER read by the renderer, so it cannot affect an email or change
+   *  how any previously-saved campaign renders. Cleared only by an explicit
+   *  Keep or Clear, not by the first keystroke: a table has twelve cells, and
+   *  editing one of them does not make the other eleven yours. */
+  isSample?: boolean;
   /** kinds "imagetext" / "imagebullets" / "headerimage": the picture. A plain
    *  URL, either pasted or produced by the block's own generate button. Unlike
    *  kind "image" this is NOT a slot in `content.images` — these blocks own

@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
 import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS } from "@/lib/campaign-theme";
 import BlockImageControl from "./BlockImageControl";
+import { useAssets, pickSampleImageUrl } from "./useAssets";
+import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
@@ -306,6 +308,9 @@ export default function CampaignEditor({
   // the presets; "replace" is Make it visual, which re-expresses the copy that
   // is already there and would duplicate every paragraph if it appended.
   const [pendingMode, setPendingMode] = useState<SuggestionMode>(initialPending?.mode ?? "append");
+  // Shared with AssetPicker, so this costs one request per session. Used only
+  // to give a newly-added block a picture without spending a generation.
+  const assets = useAssets();
   const [restructureBusy, setRestructureBusy] = useState(false);
   const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
@@ -683,9 +688,16 @@ export default function CampaignEditor({
       images: orphanSlotId ? c.images.filter((i) => i.id !== orphanSlotId) : c.images,
     });
   }
+  // New blocks arrive filled in. An empty block asks you to picture the result
+  // before you can judge it; a seeded one lets you say yes, no, or nudge. The
+  // content is real brand fact drawn from PRODUCT (the one exception being the
+  // testimonial, which is visibly placeholder — see campaign-block-samples).
+  //
+  // The picture comes from the asset library, never from a generation: a click
+  // that adds a block must not spend one.
   function addBlock(kind: BlockKind = "text") {
     const c = latestContent.current;
-    const base: CampaignBlock = { id: newId(), body: "", align: "left", kind };
+    const base = sampleBlock(kind, newId(), pickSampleImageUrl(assets));
     // An image block places a slot rather than owning an image itself, so it
     // is created together with the slot it points at — one commit, one undo
     // step, and the slot keeps working with the existing ImageSlotControl.
@@ -693,21 +705,30 @@ export default function CampaignEditor({
       const slot: CampaignImageSlot = {
         id: newId(), role: "secondary", source: "generated", aspect: "16:9", prompt: "", url: null,
       };
-      base.imageLayout = "column";
       base.imageSlotId = slot.id;
       commit({ ...c, blocks: [...c.blocks, base], images: [...c.images, slot] });
       return;
     }
-    if (kind === "checklist") base.items = [];
-    if (kind === "testimonial") base.testimonialStars = 5;
-    if (kind === "timeline") base.timelineRows = [];
-    if (kind === "trustgrid") base.trustItems = [];
-    if (kind === "ingredients") {
-      base.ingredientHeading = "What's inside";
-      base.ingredientItems = LUNIA_INGREDIENTS.map((it) => ({ ...it }));
-      base.ingredientFootnote = "Melatonin-free · Third-party tested";
-    }
     commit({ ...c, blocks: [...c.blocks, base] });
+  }
+
+  /** Accept the starter content as your own: drops the Sample chip, changes
+   *  nothing about the copy. */
+  function keepSample(id: string) {
+    updateBlock(id, { isSample: undefined });
+  }
+
+  /** Reset the block to the empty shape it would have had before samples
+   *  existed. Not a delete — the block stays, its starter copy goes. */
+  function clearSample(id: string) {
+    const c = latestContent.current;
+    const b = c.blocks.find((x) => x.id === id);
+    if (!b) return;
+    const cleared = emptyBlock(b.kind ?? "text", b.id);
+    // An image block keeps its slot pointer: the slot lives in content.images
+    // and clearing the copy must not orphan it.
+    if (b.kind === "image") cleared.imageSlotId = b.imageSlotId;
+    commit({ ...c, blocks: c.blocks.map((x) => (x.id === id ? cleared : x)) });
   }
   // Duplicates the currently-focused block (Cmd+D), falling back to the last
   // block so the shortcut still does something useful with nothing focused.
@@ -1777,6 +1798,34 @@ export default function CampaignEditor({
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                       <span style={{ cursor: "grab", color: "var(--muted)", display: "inline-flex" }} title="Drag to reorder"><IcDragHandle size={16} /></span>
                       Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
+                      {/* Starter content still in place. The chip clears only
+                          on an explicit Keep or Clear, never on the first
+                          keystroke: a table has twelve cells, and editing one
+                          of them does not make the other eleven yours. */}
+                      {b.isSample && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span
+                            title="This block still holds its starter content"
+                            style={{
+                              fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
+                              padding: "2px 6px", borderRadius: 4, textTransform: "uppercase",
+                              border: "1px solid var(--border)", color: "var(--muted)", background: "var(--bg)",
+                            }}
+                          >Sample</span>
+                          <button
+                            type="button"
+                            onClick={() => keepSample(b.id)}
+                            title="Keep this copy as your own and drop the Sample label"
+                            style={{ ...miniBtn(false), fontSize: 10, padding: "2px 7px", letterSpacing: 0, textTransform: "none" }}
+                          >Keep</button>
+                          <button
+                            type="button"
+                            onClick={() => clearSample(b.id)}
+                            title="Empty this block and start from scratch. The block stays."
+                            style={{ ...miniBtn(false), fontSize: 10, padding: "2px 7px", letterSpacing: 0, textTransform: "none" }}
+                          >Clear</button>
+                        </span>
+                      )}
                     </span>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {kind !== "image" && (

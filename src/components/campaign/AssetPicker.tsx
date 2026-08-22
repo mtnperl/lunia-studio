@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
+import { useAssets } from "./useAssets";
 import { Spinner } from "./Loaders";
 
 /** Inline grid of uploaded assets. Used to pick / swap the image for an
@@ -14,18 +14,10 @@ export default function AssetPicker({
   onPick: (asset: AssetMetadata) => void;
   onClose: () => void;
 }) {
-  const [assets, setAssets] = useState<AssetMetadata[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/assets")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setAssets(data);
-        else setError("Could not load assets");
-      })
-      .catch(() => setError("Could not load assets"));
-  }, []);
+  // Shared with block sample data, so opening the picker after a sample has
+  // already loaded the library costs nothing.
+  const assets = useAssets();
+  const error = assets !== null && assets.length === 0 ? "No assets found" : null;
 
   return (
     <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", overflow: "hidden" }}>
