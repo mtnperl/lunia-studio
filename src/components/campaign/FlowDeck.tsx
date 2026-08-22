@@ -6,6 +6,13 @@
 import { useState, useRef, useEffect } from "react";
 import type { CampaignContent, CampaignBlock } from "@/lib/types";
 import { blocksToSourceText } from "@/lib/campaign-layout-prompts";
+import {
+  CAMPAIGN_SHAPES,
+  savedShapeToCampaignShape,
+  type CampaignShape,
+  type SavedShape,
+} from "@/lib/campaign-shapes";
+import ShapeGallery from "./ShapeGallery";
 import CampaignEditor, { type SeededPending } from "./CampaignEditor";
 import { Spinner } from "./Loaders";
 
@@ -54,6 +61,24 @@ export default function FlowDeck({
   const [batchStatus, setBatchStatus] = useState<Record<string, BatchStatus>>({});
   const [batchError, setBatchError] = useState<Record<string, string>>({});
   const [pendingByEmail, setPendingByEmail] = useState<Record<string, SeededPending>>({});
+  // One shape for the WHOLE flow, so a series can be made to look like a
+  // series. Defaults to model-chosen on purpose: emails in a flow do different
+  // jobs, and forcing one shape on all of them would make the welcome and the
+  // last call look identical. This is an override for coherence, not the
+  // default behaviour.
+  const [flowShape, setFlowShape] = useState<CampaignShape>(CAMPAIGN_SHAPES[0]!);
+  const [shapePickerOpen, setShapePickerOpen] = useState(false);
+  const [savedShapes, setSavedShapes] = useState<SavedShape[]>([]);
+
+  useEffect(() => {
+    if (!shapePickerOpen) return;
+    let alive = true;
+    fetch("/api/campaign/shapes")
+      .then((r) => r.json())
+      .then((d) => { if (alive && Array.isArray(d)) setSavedShapes(d as SavedShape[]); })
+      .catch(() => { /* built-ins are enough */ });
+    return () => { alive = false; };
+  }, [shapePickerOpen]);
   // Set on unmount and by Stop. Read inside the loop so leaving the deck halts
   // the queue instead of letting it run on against a dead component.
   const abortRef = useRef(false);
@@ -75,6 +100,9 @@ export default function FlowDeck({
           blocks: email.content.blocks,
           subject: email.content.subjectLines[email.content.selectedSubject] ?? email.subject,
           topic: email.topic,
+          // The whole flow runs in one shape. The id, never its guidance:
+          // guidance is resolved server-side.
+          shapeId: flowShape.id,
         }),
       });
       const data = await res.json();
@@ -87,7 +115,7 @@ export default function FlowDeck({
         ...p,
         [email.emailId]: {
           blocks: data.blocks as CampaignBlock[],
-          meta: { topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel },
+          meta: { topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel, theme: flowShape.theme },
           mode: "replace",
         },
       }));
@@ -176,13 +204,22 @@ export default function FlowDeck({
               <Spinner size={12} color="var(--text)" /> Stop
             </button>
           ) : (
+            <>
+            <button
+              onClick={() => setShapePickerOpen((v) => !v)}
+              title="Choose one shape for every email in this flow, so the series looks like a series. Defaults to letting the model pick per email."
+              style={{ padding: "6px 12px", fontSize: 13, fontWeight: 600, background: shapePickerOpen ? "var(--accent-dim)" : "var(--surface)", color: "var(--text)", border: `1px solid ${shapePickerOpen ? "var(--accent)" : "var(--border)"}`, borderRadius: 7, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Shape: {flowShape.name}
+            </button>
             <button
               onClick={restructureAll}
-              title="Restructure every email in this flow into a richer block layout. Nothing is applied — each email gets a before/after review."
+              title={`Restructure every email in this flow${flowShape.guidance ? ` into the ${flowShape.name} shape` : ", letting the model pick a layout for each"}. Nothing is applied — each email gets a before/after review.`}
               style={{ padding: "6px 14px", fontSize: 13, fontWeight: 600, background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", fontFamily: "inherit" }}
             >
               ✨ Make it all visual
             </button>
+            </>
           )}
           <button
             onClick={saveAll}
@@ -201,6 +238,17 @@ export default function FlowDeck({
           </button>
         </div>
       </div>
+
+      {shapePickerOpen && (
+        <div style={{ marginBottom: 16 }}>
+          <ShapeGallery
+            shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
+            busyShapeId={null}
+            onPick={(shape) => { setFlowShape(shape); setShapePickerOpen(false); }}
+            onClose={() => setShapePickerOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Batch restructure progress. Rows stay after the run so a failure is
           still actionable (per-row Retry) rather than a transient toast. */}
