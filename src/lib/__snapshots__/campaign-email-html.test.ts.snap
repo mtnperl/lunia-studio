@@ -40,7 +40,11 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -252,7 +256,11 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -464,7 +472,11 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -545,7 +557,11 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -623,7 +639,11 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -731,7 +751,11 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
@@ -813,7 +837,11 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */

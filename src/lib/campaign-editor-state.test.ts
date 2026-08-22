@@ -4,6 +4,11 @@ import {
   applyUndo,
   applyRedo,
   applySuggestion,
+  clampHeroCta,
+  HERO_CTA_MIN_X,
+  HERO_CTA_MAX_X,
+  HERO_WIDTH,
+  HERO_CTA_MAX_WIDTH,
   completionItems,
   type PendingBlock,
 } from "./campaign-editor-state";
@@ -143,5 +148,46 @@ describe("completionItems", () => {
     const items = completionItems(c);
     expect(items.find((i) => i.label === "0 blocks")?.done).toBe(false);
     expect(items.every((i) => !i.done)).toBe(true);
+  });
+});
+
+describe("clampHeroCta", () => {
+  it("leaves a position inside the bounds alone", () => {
+    expect(clampHeroCta(50, 50)).toEqual({ x: 50, y: 50 });
+  });
+
+  it("keeps the pill inside the hero horizontally", () => {
+    expect(clampHeroCta(0, 50).x).toBe(HERO_CTA_MIN_X);
+    expect(clampHeroCta(100, 50).x).toBe(HERO_CTA_MAX_X);
+  });
+
+  it("derives its bounds from the real geometry", () => {
+    // 300px pill centred on its own x inside a 552px hero: half the pill has
+    // to fit, so the minimum is ceil(150/552 * 100) = 28.
+    expect(HERO_CTA_MIN_X).toBe(Math.ceil((HERO_CTA_MAX_WIDTH / 2 / HERO_WIDTH) * 100));
+    expect(HERO_CTA_MIN_X).toBe(28);
+    expect(HERO_CTA_MAX_X).toBe(72);
+  });
+
+  it("at either horizontal extreme the pill still fits", () => {
+    const half = HERO_CTA_MAX_WIDTH / 2;
+    const leftEdge = (HERO_CTA_MIN_X / 100) * HERO_WIDTH - half;
+    const rightEdge = (HERO_CTA_MAX_X / 100) * HERO_WIDTH + half;
+    expect(leftEdge).toBeGreaterThanOrEqual(0);
+    expect(rightEdge).toBeLessThanOrEqual(HERO_WIDTH);
+  });
+
+  it("clamps vertically", () => {
+    expect(clampHeroCta(50, -20).y).toBe(8);
+    expect(clampHeroCta(50, 500).y).toBe(92);
+  });
+
+  it("rounds to whole percents, so the style attribute stays tidy", () => {
+    expect(clampHeroCta(50.4, 49.6)).toEqual({ x: 50, y: 50 });
+  });
+
+  it("falls back to centre for non-finite input rather than emitting NaN", () => {
+    expect(clampHeroCta(Number.NaN, Number.NaN)).toEqual({ x: 50, y: 50 });
+    expect(clampHeroCta(Infinity, -Infinity)).toEqual({ x: HERO_CTA_MAX_X, y: 8 });
   });
 });

@@ -117,3 +117,38 @@ export function completionItems(content: CampaignContent): CompletionItem[] {
     { label: "CTA", done: !!content.cta.label.trim() && !!content.cta.url.trim() },
   ];
 }
+
+// ─── Hero CTA position ───────────────────────────────────────────────────────
+
+/** Geometry the clamp is derived from, so the numbers are traceable rather
+ *  than magic. The hero sits inside the 600px shell's 24px side padding, and
+ *  the CTA pill is `width:calc(100% - 48px); max-width:300px`, so at this
+ *  width it is exactly 300px and is centred on its own x. */
+export const HERO_WIDTH = 552;
+export const HERO_CTA_MAX_WIDTH = 300;
+
+/** Percent bounds that keep a centre-anchored pill fully inside the hero.
+ *  half = 300 / 2 = 150px; 150 / 552 = 27.17%, so 28..72 with a little slack.
+ *  Vertical has no equivalent constraint (the pill is short relative to the
+ *  image) so 8..92 is simply a sane margin. */
+export const HERO_CTA_MIN_X = Math.ceil((HERO_CTA_MAX_WIDTH / 2 / HERO_WIDTH) * 100);
+export const HERO_CTA_MAX_X = 100 - HERO_CTA_MIN_X;
+export const HERO_CTA_MIN_Y = 8;
+export const HERO_CTA_MAX_Y = 92;
+
+/** Clamp a hero-CTA position into the region where the pill stays inside the
+ *  image.
+ *
+ *  Only NaN falls back to the centre. Infinity is left to clamp naturally to
+ *  the nearest bound, which is what someone would expect from a number that is
+ *  merely too large — the fallback exists to stop `NaN%` reaching a style
+ *  attribute, not to reinterpret every unusual value. */
+export function clampHeroCta(x: number, y: number): { x: number; y: number } {
+  const cx = Number.isNaN(x) ? 50 : x;
+  const cy = Number.isNaN(y) ? 50 : y;
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(v)));
+  return {
+    x: clamp(cx, HERO_CTA_MIN_X, HERO_CTA_MAX_X),
+    y: clamp(cy, HERO_CTA_MIN_Y, HERO_CTA_MAX_Y),
+  };
+}

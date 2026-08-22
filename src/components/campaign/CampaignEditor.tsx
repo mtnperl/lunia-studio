@@ -3,8 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
 import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS } from "@/lib/campaign-theme";
 import BlockImageControl from "./BlockImageControl";
+import InlineStyleToolbar from "./InlineStyleToolbar";
 import { useAssets, pickSampleImageUrl } from "./useAssets";
 import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
+import { stripInlineTokens } from "@/lib/campaign-inline-style";
+import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
@@ -105,7 +108,7 @@ const newId = () => crypto.randomUUID();
 /** One-line preview text for a block of any kind, used in the pending-
  *  suggestion review list and the regenerate-alternates picker. */
 function blockPreviewText(b: CampaignBlock): string {
-  return (
+  return stripInlineTokens(
     b.body ||
     b.statValue ||
     b.discountDescription ||
@@ -1875,8 +1878,17 @@ export default function CampaignEditor({
                           ))}
                         </div>
                       </div>
-                      {/* Body — supports **bold**, [text](url), and {{ merge_tags }} */}
+                      {/* Body — supports **bold**, [text](url), {{ merge_tags }},
+                          and [[size,style,colour]]…[[/]] for styling a phrase. */}
                       <div style={{ padding: "0 10px 10px" }}>
+                        <InlineStyleToolbar
+                          blockId={b.id}
+                          value={b.body}
+                          onChange={(next) => updateBlock(b.id, { body: next })}
+                          getSelection={insertHook.getSelection}
+                          setSelection={insertHook.setSelection}
+                          preserveSelectionOnClick={insertHook.preserveSelectionOnClick}
+                        />
                         <AutoTextarea
                           registerRef={insertHook.registerTextarea(b.id)}
                           onFocus={() => insertHook.onFocusBlock(b.id)}
@@ -1953,13 +1965,25 @@ export default function CampaignEditor({
                         placeholder="Heading, e.g. Energy you can count on"
                         style={{ ...input, fontSize: 12 }}
                       />
-                      <AutoTextarea
-                        value={b.body}
-                        onChange={(e) => updateBlock(b.id, { body: e.target.value })}
-                        minHeight={70}
-                        placeholder="The copy beside the picture"
-                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
-                      />
+                      <div>
+                        <InlineStyleToolbar
+                          blockId={b.id}
+                          value={b.body}
+                          onChange={(next) => updateBlock(b.id, { body: next })}
+                          getSelection={insertHook.getSelection}
+                          setSelection={insertHook.setSelection}
+                          preserveSelectionOnClick={insertHook.preserveSelectionOnClick}
+                        />
+                        <AutoTextarea
+                          registerRef={insertHook.registerTextarea(b.id)}
+                          onFocus={() => insertHook.onFocusBlock(b.id)}
+                          value={b.body}
+                          onChange={(e) => updateBlock(b.id, { body: e.target.value })}
+                          minHeight={70}
+                          placeholder="The copy beside the picture"
+                          style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                        />
+                      </div>
                       <div>
                         <label style={fieldLabel}>Image side</label>
                         <div style={segWrap}>
@@ -2522,8 +2546,74 @@ export default function CampaignEditor({
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show CTA on hero image</span>
             <span style={{ fontSize: 11, color: "var(--muted)" }}>Remove the button overlay from the hero photo</span>
           </label>
+          {/* Where the pill sits on the hero. Unset means the original
+              bottom-centre placement and the renderer emits the exact markup
+              it always did, so nothing saved before this shifts. Positions are
+              clamped so the pill cannot leave the image. */}
+          {content.cta.showOnHero !== false && (() => {
+            const positioned = content.cta.heroX !== undefined || content.cta.heroY !== undefined;
+            const pos = clampHeroCta(content.cta.heroX ?? 50, content.cta.heroY ?? 88);
+            const locked = !!content.cta.heroLocked;
+            const nudge = (dx: number, dy: number, big: boolean) => {
+              const step = big ? 10 : 2;
+              const next = clampHeroCta(pos.x + dx * step, pos.y + dy * step);
+              patch({ cta: { ...latestContent.current.cta, heroX: next.x, heroY: next.y } });
+            };
+            const arrow = (dx: number, dy: number, glyph: string, title: string) => (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={(e) => nudge(dx, dy, e.shiftKey)}
+                title={locked ? "Unlock to move the CTA" : `${title}. Hold Shift for a bigger step.`}
+                style={{
+                  width: 26, height: 24, borderRadius: 5, fontSize: 12, lineHeight: 1,
+                  border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)",
+                  fontFamily: "inherit", cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.4 : 1,
+                }}
+              >{glyph}</button>
+            );
+            const spacer = <span style={{ width: 26, height: 24 }} />;
+            return (
+              <div style={{ marginTop: 10 }}>
+                <label style={fieldLabel}>CTA position on the hero</label>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 26px)", gap: 3 }}>
+                    {spacer}{arrow(0, -1, "\u2191", "Move up")}{spacer}
+                    {arrow(-1, 0, "\u2190", "Move left")}
+                    <button
+                      type="button"
+                      disabled={locked || !positioned}
+                      onClick={() => patch({ cta: { ...latestContent.current.cta, heroX: undefined, heroY: undefined } })}
+                      title={positioned ? "Reset to the default bottom-centre placement" : "Already at the default placement"}
+                      style={{
+                        width: 26, height: 24, borderRadius: 5, fontSize: 10, lineHeight: 1,
+                        border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)",
+                        fontFamily: "inherit", cursor: locked || !positioned ? "not-allowed" : "pointer",
+                        opacity: locked || !positioned ? 0.4 : 1,
+                      }}
+                    >{"\u21BA"}</button>
+                    {arrow(1, 0, "\u2192", "Move right")}
+                    {spacer}{arrow(0, 1, "\u2193", "Move down")}{spacer}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => patch({ cta: { ...latestContent.current.cta, heroLocked: !locked } })}
+                      style={{ ...miniBtn(locked), fontSize: 11 }}
+                      title={locked ? "Unlock so the arrows move the CTA" : "Lock the position so it cannot be nudged by accident"}
+                    >{locked ? "Locked" : "Unlocked"}</button>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                      {positioned ? `${pos.x}% across, ${pos.y}% down` : "Default: bottom centre"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
             The bottom CTA button and the hero-image overlay are styled independently.
+            In Outlook the pill is decorative: the whole hero stays tappable, and
+            the bottom button is the guaranteed render.
           </div>
         </div>
         </Section>

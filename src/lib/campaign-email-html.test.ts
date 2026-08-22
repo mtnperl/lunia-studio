@@ -142,3 +142,62 @@ describe("headerimage replaces the hero", () => {
     expect(renderCampaignEmail(emptied)).toContain(heroUrl);
   });
 });
+
+describe("hero CTA positioning", () => {
+  const withCta = (cta: Partial<CampaignContent["cta"]>): CampaignContent => ({
+    subjectLines: ["s", "", ""], selectedSubject: 0, previewText: "",
+    blocks: [{ id: "b", body: "copy", align: "left", kind: "text" }],
+    cta: { label: "Go", url: "https://www.lunialife.com", ...cta },
+    images: [{ id: "h", role: "hero", source: "generated", aspect: "4:5", url: "https://example.com/h.png" }],
+  });
+
+  it("emits the original markup when no position is set", () => {
+    // Byte-identity for every campaign saved before this feature existed.
+    const html = renderCampaignEmail(withCta({}));
+    expect(html).toContain("left:50%;bottom:24px;transform:translateX(-50%)");
+    // Scoped to the element's class attribute: the free-variant selector
+    // legitimately appears in the <style> block of every email.
+    expect(html).toContain('class="hero-cta-overlay"');
+    expect(html).not.toContain('class="hero-cta-overlay hero-cta-free"');
+  });
+
+  it("switches to percent placement once positioned", () => {
+    const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
+    expect(html).toContain("left:30%;top:20%;transform:translate(-50%,-50%)");
+    expect(html).toContain("hero-cta-free");
+    expect(html).not.toContain("bottom:24px");
+  });
+
+  it("treats one axis as positioned and defaults the other", () => {
+    const html = renderCampaignEmail(withCta({ heroX: 40 }));
+    expect(html).toContain("left:40%;top:88%");
+  });
+
+  it("clamps a position that would push the pill off the image", () => {
+    const html = renderCampaignEmail(withCta({ heroX: 0, heroY: 200 }));
+    expect(html).toContain("left:28%;top:92%");
+  });
+
+  it("never emits NaN from a corrupt stored value", () => {
+    const html = renderCampaignEmail(withCta({ heroX: Number.NaN, heroY: Number.NaN }));
+    expect(html).not.toContain("NaN");
+    expect(html).toContain("left:50%;top:50%");
+  });
+
+  it("keeps the mobile bottom override off the positioned variant", () => {
+    // Forcing a bottom onto a percent-top pill would drag it back to the foot.
+    const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
+    expect(html).toContain(".hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}");
+  });
+
+  it("heroLocked is editor-only and never reaches the email", () => {
+    const locked = renderCampaignEmail(withCta({ heroX: 30, heroY: 20, heroLocked: true }));
+    const unlocked = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
+    expect(locked).toBe(unlocked);
+  });
+
+  it("still lets the whole hero be tappable, the Outlook fallback", () => {
+    const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
+    expect(html).toContain('<a href="https://www.lunialife.com" target="_blank"');
+  });
+});

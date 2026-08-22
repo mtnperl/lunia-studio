@@ -23,6 +23,7 @@ import {
 import type { CampaignBlock } from "@/lib/types";
 
 import { stripDashes } from "@/lib/strip-dashes";
+import { blockTokensBalanced } from "@/lib/campaign-inline-style";
 // One LLM call with thinking enabled over a whole email's copy. The batch
 // ("restructure this whole flow") path is driven from the client as one request
 // per email, so this budget is per-email and never has to cover a whole flow.
@@ -89,9 +90,26 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
     }
 
-    const restructured = result.data.blocks.map(layoutBlockToCampaignBlock);
+    const mapped = result.data.blocks.map(layoutBlockToCampaignBlock);
+
+    // The prompt asks the model to keep an inline-styling token pair inside one
+    // block; this is the check. A split pair would leave an unterminated opener
+    // in one block and an orphan close in another, and the renderer would
+    // faithfully print a literal "[[lg]]" into the email. Dropping the block is
+    // better than shipping that, and the count is reported so the drop is
+    // visible rather than silent.
+    const restructured = mapped.filter(blockTokensBalanced);
+    const droppedForTokens = mapped.length - restructured.length;
+    if (droppedForTokens > 0) {
+      console.warn(`[api/campaign/restructure] dropped ${droppedForTokens} block(s) with split styling tokens`);
+    }
+
+    if (restructured.length === 0) {
+      return Response.json({ error: "Restructure produced nothing usable, please try again." }, { status: 422 });
+    }
 
     return Response.json({
+      droppedForTokens,
       topBanner: result.data.topBanner ? stripDashes(result.data.topBanner) : undefined,
       promoBand: result.data.promoBand ? stripDashes(result.data.promoBand) : undefined,
       ctaLabel: result.data.ctaLabel ? stripDashes(result.data.ctaLabel) : undefined,

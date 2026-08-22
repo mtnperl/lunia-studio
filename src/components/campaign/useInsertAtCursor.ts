@@ -54,5 +54,32 @@ export function useInsertAtCursor() {
     [],
   );
 
-  return { registerTextarea, onFocusBlock, insertAtCursor, preserveSelectionOnClick, focusedId };
+  /** The textarea element for a block, if it is mounted. */
+  const getTextarea = useCallback((id: string) => textareas.current.get(id), []);
+
+  /** Current selection in a block's textarea, or null when it is not mounted.
+   *  Read on demand rather than tracked, so it is always current — the
+   *  toolbar pairs this with preserveSelectionOnClick so blur cannot clear it
+   *  before the click lands. */
+  const getSelection = useCallback((id: string): { start: number; end: number } | null => {
+    const el = textareas.current.get(id);
+    if (!el) return null;
+    return { start: el.selectionStart ?? 0, end: el.selectionEnd ?? 0 };
+  }, []);
+
+  /** Restore a selection after a controlled re-render, so styling a phrase
+   *  leaves it selected and a second click can refine it. */
+  const setSelection = useCallback((id: string, start: number, end: number) => {
+    const el = textareas.current.get(id);
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start, end);
+    });
+  }, []);
+
+  return {
+    registerTextarea, onFocusBlock, insertAtCursor, preserveSelectionOnClick,
+    focusedId, getTextarea, getSelection, setSelection,
+  };
 }

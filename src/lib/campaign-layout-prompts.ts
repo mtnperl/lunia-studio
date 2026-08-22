@@ -321,6 +321,10 @@ HARD RULES, in priority order:
    already contains the numbers those blocks display.
 6. Dropping words is allowed. Compressing a paragraph into a checklist is allowed.
    Adding facts is not.
+7. The source may contain inline styling markers that look like [[lg,yellow]]
+   ... [[/]]. They are formatting, not words. Either keep an opening marker and
+   its matching [[/]] together inside the SAME output block, or drop both. Never
+   split a pair across two blocks, and never emit one without the other.
 
 If the source copy is too thin to justify a structured block, return "text" blocks.
 A faithful plain result is correct; an impressive invented one is a failure.

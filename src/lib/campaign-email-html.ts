@@ -12,6 +12,8 @@
 // paddings / font sizes on narrow viewports.
 import type { CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind } from "./types";
 import { resolveTheme, resolveCta, resolveBrandColor, type CampaignTheme } from "./campaign-theme";
+import { parseMods, isEmptyMods, modsToCss } from "./campaign-inline-style";
+import { clampHeroCta } from "./campaign-editor-state";
 
 
 function esc(s: string): string {
@@ -28,20 +30,41 @@ function esc(s: string): string {
  *  segment is never escaped twice or a markup segment left unescaped.
  *  `{{ merge_tag }}` personalization tokens need no special handling here —
  *  esc() doesn't touch `{`/`}`, so they pass through as literal text. */
-function renderInline(raw: string): string {
-  const re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)/g;
+function renderInline(raw: string, t: CampaignTheme): string {
+  // Three alternatives in ONE left-to-right pass, style token first so a
+  // [[...]] wins over a bare [link](url) that would otherwise match its
+  // brackets. Plain segments are escaped exactly once, match segments emitted
+  // exactly once, so no text is ever escaped twice or left unescaped.
+  //
+  // The token's inner content gets esc() and nothing else: no bold, no links,
+  // no recursion. That flatness is what makes the invariant provable.
+  const re = /\[\[([a-z0-9,]+)\]\]([\s\S]*?)\[\[\/\]\]|\*\*([^*]+)\*\*|\[([^\]]+)\]\(([^)]+)\)/gi;
   let result = "";
   let lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(raw)) !== null) {
     result += esc(raw.slice(lastIndex, m.index));
     if (m[1] !== undefined) {
-      result += `<strong>${esc(m[1])}</strong>`;
+      const mods = parseMods(m[1]);
+      const inner = esc(m[2] ?? "");
+      // Nothing recognised in the token: render the text plainly rather than
+      // an empty <span>, and never leak the markers to the reader.
+      if (isEmptyMods(mods)) {
+        result += inner;
+      } else {
+        const css = modsToCss(mods, mods.color ? resolveBrandColor(mods.color, t) : undefined);
+        result += `<span style="${css};">${inner}</span>`;
+      }
+    } else if (m[3] !== undefined) {
+      result += `<strong>${esc(m[3])}</strong>`;
     } else {
-      result += `<a href="${esc(m[3])}" style="color:inherit;text-decoration:underline;">${esc(m[2])}</a>`;
+      result += `<a href="${esc(m[5])}" style="color:inherit;text-decoration:underline;">${esc(m[4])}</a>`;
     }
     lastIndex = re.lastIndex;
   }
+  // Anything after the last match, INCLUDING an unterminated opening token,
+  // is escaped literal text. A malformed token can never swallow the rest of
+  // the email or emit raw markup.
   result += esc(raw.slice(lastIndex));
   return result;
 }
@@ -59,9 +82,7 @@ function paragraphs(t: CampaignTheme, body: string, align: "left" | "center", it
     .filter(Boolean)
     .map(
       (p) =>
-        `<p style="margin:0 0 16px;color:${t.text};font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${renderInline(
-          p,
-        ).replace(/\n/g, "<br>")}</p>`,
+        `<p style="margin:0 0 16px;color:${t.text};font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${renderInline(p, t).replace(/\n/g, "<br>")}</p>`,
     )
     .join("");
 }
@@ -416,7 +437,7 @@ function tableBlock(b: CampaignBlock, t: CampaignTheme): string {
   const cellBase = `padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:${size};line-height:1.4;word-break:break-word;`;
 
   const headerCells = Array.from({ length: cols }, (_, i) =>
-    `<td width="${width}" align="${align(i)}" style="${cellBase}width:${width};font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};border-bottom:2px solid ${t.accentBorder};">${renderInline(headers[i] ?? "")}</td>`,
+    `<td width="${width}" align="${align(i)}" style="${cellBase}width:${width};font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};border-bottom:2px solid ${t.accentBorder};">${renderInline(headers[i] ?? "", t)}</td>`,
   ).join("");
 
   const bodyRows = rows
@@ -427,7 +448,7 @@ function tableBlock(b: CampaignBlock, t: CampaignTheme): string {
       const bg = emphasized ? `background:${t.panelBg};` : "";
       const weight = emphasized ? 700 : 300;
       const cells = Array.from({ length: cols }, (_, ci) =>
-        `<td width="${width}" align="${align(ci)}" style="${cellBase}width:${width};${bg}color:${ink};font-weight:${weight};${ri > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">${renderInline((r.cells ?? [])[ci] ?? "")}</td>`,
+        `<td width="${width}" align="${align(ci)}" style="${cellBase}width:${width};${bg}color:${ink};font-weight:${weight};${ri > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">${renderInline((r.cells ?? [])[ci] ?? "", t)}</td>`,
       ).join("");
       return `<tr>${cells}</tr>`;
     })
@@ -478,7 +499,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
       ? `<div style="margin-bottom:6px;"><span style="display:inline-block;background:${t.highlight};color:${t.highlightText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.04em;padding:3px 10px;border-radius:3px;">${esc(b.headerPillText)}</span></div>`
       : "";
     const head = headline
-      ? `<div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline)}</div>`
+      ? `<div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline, t)}</div>`
       : "";
     return `<tr><td style="padding:0 0 16px;">
       ${pill || head ? `<div style="padding:0 24px 14px;text-align:center;">${pill}${head}</div>` : ""}
@@ -490,7 +511,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
   const card = headline
     ? `<div style="margin:-28px 24px 0;position:relative;">
          <div style="background:${t.panelBg};border-radius:10px;padding:18px 20px;">
-           <div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:28px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline)}</div>
+           <div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:28px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline, t)}</div>
          </div>
        </div>`
     : "";
@@ -499,7 +520,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
   // unreliable in email and untestable here.
   const subcard = b.headerSubcard?.trim()
     ? `<div style="margin:10px 24px 0;text-align:right;">
-         <span style="display:inline-block;background:${t.panelBg};border-radius:10px;padding:12px 16px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:300;color:${t.inkOnPanel};line-height:1.2;">${renderInline(b.headerSubcard)}</span>
+         <span style="display:inline-block;background:${t.panelBg};border-radius:10px;padding:12px 16px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:300;color:${t.inkOnPanel};line-height:1.2;">${renderInline(b.headerSubcard, t)}</span>
        </div>`
     : "";
   return `<tr><td style="padding:0 0 16px;">${image}${card}${subcard}</td></tr>`;
@@ -534,7 +555,7 @@ function imagetextBlock(b: CampaignBlock, t: CampaignTheme): string {
   const body = b.body?.trim();
   if (!heading && !body && !b.imageUrl?.trim()) return "";
   const headingHtml = heading
-    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading)}</div>`
+    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading, t)}</div>`
     : "";
   const bodyHtml = body ? paragraphs(t, body, "left", !!b.italic, b.weight ?? "light") : "";
   const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${headingHtml}${bodyHtml}</td>`;
@@ -553,7 +574,7 @@ function imagebulletsBlock(b: CampaignBlock, t: CampaignTheme): string {
     .map(
       (item) => `<tr>
         <td valign="top" style="width:18px;padding:0 8px 10px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:${marker};">&#9679;</td>
-        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${renderInline(item)}</td>
+        <td valign="top" style="padding:0 0 10px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${renderInline(item, t)}</td>
       </tr>`,
     )
     .join("");
@@ -577,10 +598,10 @@ function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
       ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
       : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
     const heading = c.heading?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading, t)}</div>`
       : "";
     const caption = c.caption?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.45;">${renderInline(c.caption)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.45;">${renderInline(c.caption, t)}</div>`
       : "";
     return `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:top;">${img}${heading}${caption}</td>`;
   };
@@ -657,8 +678,19 @@ export function renderCampaignEmail(content: CampaignContent): string {
   const { bg: heroBg, fg: heroFg } = resolveCta(content.cta.heroStyle ?? content.cta.style, t);
   const heroCtaLabel = content.cta.label?.trim();
   const showOnHero = content.cta.showOnHero !== false;
+  // Byte-identity: with no position set, emit the exact string this always
+  // emitted. Only a campaign that has actually been repositioned takes the
+  // percent-based branch, so nothing saved before this feature can shift.
+  const heroPositioned = content.cta.heroX !== undefined || content.cta.heroY !== undefined;
+  const heroPos = heroPositioned
+    ? clampHeroCta(content.cta.heroX ?? 50, content.cta.heroY ?? 88)
+    : null;
+  const heroOverlayStyle = heroPos
+    ? `position:absolute;left:${heroPos.x}%;top:${heroPos.y}%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:300px;`
+    : "position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;";
+  const heroOverlayClass = heroPos ? "hero-cta-overlay hero-cta-free" : "hero-cta-overlay";
   const heroOverlay = hero?.url && heroCtaLabel && showOnHero
-    ? `<div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
+    ? `<div class="${heroOverlayClass}" style="${heroOverlayStyle}">
          <span style="display:block;background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
        </div>`
     : "";
@@ -775,7 +807,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    .hero-cta-overlay{bottom:14px !important;width:calc(100% - 28px) !important;}
+    /* The bottom override applies only to the DEFAULT placement. A
+       positioned pill uses a percent top, which is already responsive, and
+       forcing a bottom onto it would drag it back to the foot of the image. */
+    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
+    .hero-cta-overlay{width:calc(100% - 28px) !important;}
     .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */

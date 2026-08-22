@@ -955,7 +955,23 @@ export type CampaignContent = {
    *  the split). `showOnHero: false` removes the overlay pill from the hero
    *  image entirely (the hero stays tappable via its wrapping link; the
    *  bottom CTA button is unaffected). Unset/true = shown. */
-  cta: { label: string; url: string; style?: "cream" | "navy"; heroStyle?: "cream" | "navy"; showOnHero?: boolean };
+  cta: {
+    label: string;
+    url: string;
+    style?: "cream" | "navy";
+    heroStyle?: "cream" | "navy";
+    showOnHero?: boolean;
+    /** Position of the CTA pill over the hero image, as percentages of the
+     *  hero. BOTH unset means "the original bottom-centre placement", and the
+     *  renderer then emits the exact markup it always did, so every campaign
+     *  saved before this existed renders byte-for-byte unchanged. Clamped by
+     *  clampHeroCta so the pill cannot leave the image. */
+    heroX?: number;
+    heroY?: number;
+    /** Editor-only guard against nudging the pill by accident. NEVER read by
+     *  the renderer, so it cannot affect an email. */
+    heroLocked?: boolean;
+  };
   images: CampaignImageSlot[];   // 1 hero + 2–4 secondary
 };
 
