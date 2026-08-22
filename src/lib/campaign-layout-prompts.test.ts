@@ -151,3 +151,50 @@ describe("buildRestructurePrompt", () => {
     expect(p).toContain("Additional context / topic: sleep education");
   });
 });
+
+describe("restructure kind variety", () => {
+  const p = () => buildRestructurePrompt(
+    [{ id: "x", body: "Real source copy about sleep, long enough to pass the guard.", align: "left", kind: "text" }],
+    "Subject", "",
+  );
+
+  // Regression guard for a real failure: restructure kept returning only
+  // "checklist" and "ingredients". Two causes, both fixed here.
+  it("does not inherit the subject-line flow's steer", () => {
+    // KIND_SCHEMA_EXAMPLES used to end with guidance written for Suggest
+    // layout, including a "2 to 5 blocks is typical" cap that quietly held
+    // restructure down.
+    expect(p()).not.toMatch(/subject line's angle/);
+    expect(p()).not.toMatch(/2 to 5 blocks is typical/);
+  });
+
+  it("demands variety explicitly", () => {
+    expect(p()).toMatch(/VARY THE OUTPUT/);
+    expect(p()).toMatch(/at least THREE DIFFERENT kinds/);
+    expect(p()).toMatch(/Never emit the same kind more than twice/);
+  });
+
+  it("names the exact habit it is correcting", () => {
+    expect(p()).toMatch(/all-"checklist"/);
+  });
+
+  it("tells the model the visual kinds are the SAFEST under the fact rules", () => {
+    // This is the insight the earlier prompt missed: the fact rules rule out
+    // the number-carrying kinds, and the model concluded the prose-only
+    // visual kinds were risky too. They are the opposite.
+    expect(p()).toMatch(/SAFEST choices/);
+    expect(p()).toMatch(/imagetext/);
+    expect(p()).toMatch(/imagebullets/);
+  });
+
+  it("asks for art direction on image blocks", () => {
+    expect(p()).toMatch(/imagePrompt/);
+    // Art direction is explicitly exempted from the no-invention rule, since
+    // a photograph is not a claim.
+    expect(p()).toMatch(/art direction, not a\s+claim/);
+  });
+
+  it("still forbids inventing facts", () => {
+    expect(p()).toMatch(/MUST NOT invent any number/);
+  });
+});

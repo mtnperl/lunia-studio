@@ -62,16 +62,22 @@ export const LayoutBlockSchema = z.discriminatedUnion("kind", [
     imageHeading: z.string().optional(),
     body: z.string(),
     imagePosition: z.enum(["left", "right"]).optional(),
+    imagePrompt: z.string().optional(),
   }),
   z.object({
     kind: z.literal("imagebullets"),
     bulletItems: z.array(z.string()).min(2).max(6),
     bulletColor: z.enum(["ivory", "aqua", "yellow", "navy", "slate", "muted"]).optional(),
     imagePosition: z.enum(["left", "right"]).optional(),
+    imagePrompt: z.string().optional(),
   }),
   z.object({
     kind: z.literal("grid"),
-    gridCells: z.array(z.object({ heading: z.string().optional(), caption: z.string().optional() })).min(2).max(6),
+    gridCells: z.array(z.object({
+      heading: z.string().optional(),
+      caption: z.string().optional(),
+      imagePrompt: z.string().optional(),
+    })).min(2).max(6),
   }),
   z.object({
     kind: z.literal("ingredients"),
@@ -106,12 +112,17 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 { "kind": "trustgrid", "trustItems": [{ "caption": "one short trust point" }] }
 { "kind": "comparison", "comparisonLeftLabel": "e.g. 'One-time'", "comparisonLeftPrice": "e.g. '$34.99'", "comparisonLeftPerk": "e.g. 'Ships once'", "comparisonRightLabel": "e.g. 'Subscribe'", "comparisonRightPrice": "e.g. '$29.20'", "comparisonRightPerk": "e.g. 'Save 15%, cancel anytime'" }
 { "kind": "table", "tableHeaders": ["Path", "Per bottle", "Per night"], "tableRows": [{ "cells": ["One bottle at a time", "$38.93", "$1.30"] }, { "cells": ["Subscription", "$29.20", "$0.97"] }], "tableEmphasisRow": 1 }
-{ "kind": "imagetext", "imageHeading": "e.g. 'Energy you can count on'", "body": "the copy beside the picture", "imagePosition": "left" | "right" }
-{ "kind": "imagebullets", "bulletItems": ["2-6 short lines"], "bulletColor": "ivory" | "aqua" | "yellow" | "navy" | "slate" | "muted", "imagePosition": "left" | "right" }
-{ "kind": "grid", "gridCells": [{ "heading": "short title", "caption": "one or two lines" }] }
+{ "kind": "imagetext", "imageHeading": "e.g. 'Energy you can count on'", "body": "the copy beside the picture", "imagePosition": "left" | "right", "imagePrompt": "the photo to sit beside it" }
+{ "kind": "imagebullets", "bulletItems": ["2-6 short lines"], "bulletColor": "ivory" | "aqua" | "yellow" | "navy" | "slate" | "muted", "imagePosition": "left" | "right", "imagePrompt": "the photo to sit beside it" }
+{ "kind": "grid", "gridCells": [{ "heading": "short title", "caption": "one or two lines", "imagePrompt": "the photo for this cell" }] }
 { "kind": "ingredients", "ingredientHeading": "e.g. 'What's inside'", "ingredientItems": [{ "name": "Magnesium Glycinate", "dose": "400mg" }, { "name": "L-Theanine", "dose": "200mg" }, { "name": "Apigenin", "dose": "50mg" }], "ingredientFootnote": "e.g. 'Melatonin-free, third-party tested'" }
+`;
 
-Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
+/** Kind guidance for the SUBJECT-LINE flow (Suggest layout). Kept out of
+ *  KIND_SCHEMA_EXAMPLES because the restructure flow needs the opposite steer:
+ *  it has no subject-line angle to serve, it has existing copy to redistribute,
+ *  and this paragraph's "2 to 5 blocks is typical" quietly caps it. */
+const SUGGEST_KIND_GUIDANCE = `Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
 
 
 /** Maps one validated LayoutBlock onto a real CampaignBlock. Only the
@@ -178,6 +189,7 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
         imageHeading: b.imageHeading ? stripDashes(b.imageHeading) : undefined,
         body: stripDashes(b.body),
         imagePosition: b.imagePosition ?? "left",
+        imagePrompt: b.imagePrompt ? stripDashes(b.imagePrompt) : undefined,
       };
     case "imagebullets":
       return {
@@ -185,6 +197,7 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
         bulletItems: b.bulletItems.map(stripDashes),
         bulletColor: b.bulletColor,
         imagePosition: b.imagePosition ?? "left",
+        imagePrompt: b.imagePrompt ? stripDashes(b.imagePrompt) : undefined,
       };
     case "grid":
       return {
@@ -192,6 +205,7 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
         gridCells: b.gridCells.map((c) => ({
           heading: c.heading ? stripDashes(c.heading) : undefined,
           caption: c.caption ? stripDashes(c.caption) : undefined,
+          imagePrompt: c.imagePrompt ? stripDashes(c.imagePrompt) : undefined,
         })),
       };
     case "ingredients":
@@ -213,6 +227,8 @@ Subject line: ${subject}
 ${topic ? `Additional context / topic: ${topic}` : ""}
 
 ${KIND_SCHEMA_EXAMPLES}
+
+${SUGGEST_KIND_GUIDANCE}
 
 Also suggest:
 - "topBanner": a short (2-8 word) uppercase-style top banner line, or omit if not needed.
@@ -325,6 +341,41 @@ HARD RULES, in priority order:
    ... [[/]]. They are formatting, not words. Either keep an opening marker and
    its matching [[/]] together inside the SAME output block, or drop both. Never
    split a pair across two blocks, and never emit one without the other.
+
+WHICH KINDS TO REACH FOR:
+
+The fact rules above rule OUT the number-carrying kinds unless the source
+supplies the numbers. They do not rule out the visual ones. "imagetext",
+"imagebullets" and "grid" carry prose only, so they are your SAFEST choices,
+not your riskiest, and they are what actually makes an email look designed
+rather than typed. Reach for them first when the source is ordinary prose.
+
+- imagetext: one idea that deserves a picture beside it. A benefit, a
+  mechanism, a "here is why" paragraph.
+- imagebullets: a short list that earns a picture next to it.
+- grid: two to six parallel points of the same shape, each a title plus a line.
+- table: any comparison with numbers ALREADY in the source (prices, plans).
+- checklist: a bare list with no picture. Use it when the source really is
+  just a list, not as the default for everything.
+- stat / timeline / comparison / ingredients / discount / testimonial: only
+  with the numbers or quotes the rules above demand.
+- text: connective prose, an opener, a close. Fine to use, but an email that
+  is only text blocks has not been restructured.
+
+VARY THE OUTPUT. Do not return the same one or two kinds every time.
+- Use at least THREE DIFFERENT kinds when the source has enough copy for it.
+- Never emit the same kind more than twice.
+- Do not return an all-"checklist" or all-"ingredients" answer. If you find
+  yourself reaching for "checklist" a second time, an "imagebullets" or "grid"
+  almost always serves that copy better.
+- Aim for 4 to 7 blocks on a normal email. Fewer only when the source is
+  genuinely thin.
+
+For any image-bearing kind, also return "imagePrompt": a short description of
+the PHOTOGRAPH that should sit beside that copy. This is art direction, not a
+claim, so you may describe a scene that is not in the source. Keep it to a
+calm, real, unstaged image of a person or a place. Never describe text,
+packaging, logos, or a supplement bottle.
 
 If the source copy is too thin to justify a structured block, return "text" blocks.
 A faithful plain result is correct; an impressive invented one is a failure.

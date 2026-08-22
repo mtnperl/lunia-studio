@@ -315,6 +315,11 @@ export default function CampaignEditor({
   // to give a newly-added block a picture without spending a generation.
   const assets = useAssets();
   const [restructureBusy, setRestructureBusy] = useState(false);
+  // Progress while a restructure's suggested images are being generated.
+  const [pendingImgProgress, setPendingImgProgress] = useState<{ done: number; total: number } | null>(null);
+  // Slots already attempted this session, so a failure is not retried forever
+  // and a re-render never re-fires a generation that is already in flight.
+  const attemptedImages = useRef<Set<string>>(new Set());
   const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
@@ -987,6 +992,7 @@ export default function CampaignEditor({
       setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
       setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
       setPendingMode("replace");
+      attemptedImages.current.clear();
       setTemplatePickerOpen(false);
     } catch (err) {
       setRestructureError(err instanceof Error ? err.message : "Network error");
@@ -994,6 +1000,79 @@ export default function CampaignEditor({
       setRestructureBusy(false);
     }
   }
+
+  // A restructure that proposes image blocks fills in their pictures, so the
+  // before/after diff shows the real thing rather than grey placeholders.
+  //
+  // Runs only for replace-mode (Make it visual) reviews, and only for slots
+  // the model gave a prompt for. Sequential, one request each, so a six-cell
+  // suggestion does not fire six generations at once.
+  useEffect(() => {
+    if (!pendingBlocks || pendingMode !== "replace") return;
+
+    type Slot = { blockId: string; cell?: number; prompt: string; aspect: "1:1" | "4:5" };
+    const slots: Slot[] = [];
+    for (const p of pendingBlocks) {
+      const b = p.block;
+      if (b.kind === "grid") {
+        (b.gridCells ?? []).forEach((c, i) => {
+          if (!c.imageUrl?.trim() && c.imagePrompt?.trim()) {
+            slots.push({ blockId: b.id, cell: i, prompt: c.imagePrompt, aspect: "1:1" });
+          }
+        });
+      } else if (b.kind === "imagetext" || b.kind === "imagebullets" || b.kind === "headerimage") {
+        if (!b.imageUrl?.trim() && b.imagePrompt?.trim()) {
+          slots.push({ blockId: b.id, prompt: b.imagePrompt, aspect: b.kind === "headerimage" ? "4:5" : "1:1" });
+        }
+      }
+    }
+    const todo = slots.filter((s) => !attemptedImages.current.has(`${s.blockId}:${s.cell ?? "-"}`));
+    if (todo.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      setPendingImgProgress({ done: 0, total: todo.length });
+      for (let i = 0; i < todo.length; i++) {
+        if (cancelled) return;
+        const slot = todo[i]!;
+        attemptedImages.current.add(`${slot.blockId}:${slot.cell ?? "-"}`);
+        try {
+          const res = await fetch("/api/campaign/generate-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: slot.prompt, aspect: slot.aspect, topic, role: "secondary" }),
+          });
+          const data = await res.json();
+          if (!cancelled && res.ok && data.url) {
+            setPendingBlocks((prev) =>
+              prev
+                ? prev.map((p) => {
+                    if (p.block.id !== slot.blockId) return p;
+                    if (slot.cell === undefined) return { ...p, block: { ...p.block, imageUrl: data.url as string } };
+                    return {
+                      ...p,
+                      block: {
+                        ...p.block,
+                        gridCells: (p.block.gridCells ?? []).map((c, j) =>
+                          j === slot.cell ? { ...c, imageUrl: data.url as string } : c,
+                        ),
+                      },
+                    };
+                  })
+                : prev,
+            );
+          }
+        } catch {
+          // A failed image leaves the block's placeholder in place. The copy is
+          // still reviewable, and the block's own Generate button can retry.
+        }
+        if (!cancelled) setPendingImgProgress({ done: i + 1, total: todo.length });
+      }
+      if (!cancelled) setPendingImgProgress(null);
+    })();
+
+    return () => { cancelled = true; };
+  }, [pendingBlocks, pendingMode, topic]);
 
   function togglePendingBlock(index: number) {
     setPendingBlocks((prev) => prev && prev.map((p, i) => (i === index ? { ...p, included: !p.included } : p)));
@@ -1588,6 +1667,12 @@ export default function CampaignEditor({
                   Same words, new structure. Check every number against the left
                   side before accepting — the restructure is not fact-checked in code.
                 </div>
+                {pendingImgProgress && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>
+                    <Spinner size={9} color="var(--muted)" />
+                    Generating images {pendingImgProgress.done}/{pendingImgProgress.total} — the After panel fills in as they land
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   {([
                     { key: "before", label: "Before", doc: restructureDiff.before },
