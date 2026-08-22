@@ -979,6 +979,9 @@ export type SavedCampaign = {
   id: string;
   topic: string;
   createdAt: string;
+  /** Last save. Optional: records written before this field existed have none,
+   *  so readers fall back to createdAt. */
+  updatedAt?: string;
   content: CampaignContent;
 };
 

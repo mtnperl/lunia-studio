@@ -1,4 +1,4 @@
-import { saveCampaignEmail } from "@/lib/kv";
+import { saveCampaignEmail, getCampaignEmailById } from "@/lib/kv";
 import { mirrorImageToBlob } from "@/lib/blob-mirror";
 import { collectBlockImageUrls, setBlockImageUrls, refKey } from "@/lib/campaign-block-images";
 import type { CampaignContent, SavedCampaign } from "@/lib/types";
@@ -26,6 +26,13 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const id = existingId || randomUUID();
+
+    // An update must not rewrite the creation date. The library card shows
+    // createdAt, so stamping "now" on every autosave made a campaign written
+    // months ago read as written today. A genuinely new save, or an id that no
+    // longer resolves, still gets a fresh stamp.
+    const existing = existingId ? await getCampaignEmailById(existingId) : null;
+    const now = new Date().toISOString();
 
     // Persist generated image URLs (fal CDN expires) to Vercel Blob.
     const images = await Promise.all(
@@ -59,7 +66,8 @@ export async function POST(req: Request): Promise<Response> {
     const campaign: SavedCampaign = {
       id,
       topic,
-      createdAt: new Date().toISOString(),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
       content: { ...content, images, blocks },
     };
 

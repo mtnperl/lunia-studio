@@ -47,7 +47,8 @@ export default function CampaignLibraryView({
       });
       const data = await res.json();
       if (!res.ok || !data.id) return;
-      const clone: SavedCampaign = { id: data.id, topic: c.topic, createdAt: new Date().toISOString(), content: clonedContent };
+      const now = new Date().toISOString();
+      const clone: SavedCampaign = { id: data.id, topic: c.topic, createdAt: now, updatedAt: now, content: clonedContent };
       setCampaigns((prev) => (prev ? [clone, ...prev] : prev));
       onOpen(clone);
     } catch { /* best-effort */ }
@@ -104,7 +105,10 @@ export default function CampaignLibraryView({
                     {subject}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                    <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+                    <span
+                      style={{ fontSize: 11, color: "var(--subtle)" }}
+                      title={`Created ${new Date(c.createdAt).toLocaleString()}${c.updatedAt ? `\nLast edited ${new Date(c.updatedAt).toLocaleString()}` : ""}`}
+                    >
                       {new Date(c.createdAt).toLocaleDateString()}
                     </span>
                     <span style={{ display: "flex", gap: 10 }}>
