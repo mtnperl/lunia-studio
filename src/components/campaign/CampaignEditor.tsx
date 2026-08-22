@@ -8,17 +8,23 @@ import { useAssets, pickSampleImageUrl } from "./useAssets";
 import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import { stripInlineTokens } from "@/lib/campaign-inline-style";
 import { withImagePrompt, suggestImagePrompt, blockOwnText, type EmailImageContext } from "@/lib/campaign-image-prompt";
+import ShapeGallery from "./ShapeGallery";
+import {
+  CAMPAIGN_SHAPES,
+  captureShapeStructure,
+  savedShapeToCampaignShape,
+  type CampaignShape,
+  type SavedShape,
+} from "@/lib/campaign-shapes";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import ImageSlotControl from "./ImageSlotControl";
-import { Spinner, BlockSkeleton } from "./Loaders";
+import { Spinner } from "./Loaders";
 import { useInsertAtCursor } from "./useInsertAtCursor";
 import { PRODUCT } from "@/lib/lunia-brand-guidelines";
 import { getSubjectLineHints } from "@/lib/subject-line-hints";
-import { CAMPAIGN_LAYOUT_PRESETS, type CampaignLayoutPreset } from "@/lib/campaign-layout-presets";
 import { layoutBlockToCampaignBlock, blocksToSourceText } from "@/lib/campaign-layout-prompts";
-import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
@@ -27,7 +33,7 @@ import {
   IcChevron, IcDownload, IcSend, IcUndo, IcRedo, IcRefresh, IcPlus,
 } from "@/components/ui/icons";
 import {
-  reorderBlocks, applyUndo, applyRedo, applySuggestion, type SuggestionMode,
+  reorderBlocks, applyUndo, applyRedo, applySuggestion, type SuggestionMode, type SuggestionMeta,
   completionItems as computeCompletionItems,
 } from "@/lib/campaign-editor-state";
 
@@ -255,7 +261,7 @@ function RepeatableRows<T extends Record<string, string>>({
  *  UI and one apply path regardless of where the suggestion came from. */
 export type SeededPending = {
   blocks: CampaignBlock[];
-  meta: { topBanner?: string; promoBand?: string; ctaLabel?: string };
+  meta: SuggestionMeta;
   mode: SuggestionMode;
 };
 
@@ -295,8 +301,6 @@ export default function CampaignEditor({
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const [improveBusy, setImproveBusy] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
-  const [layoutBusy, setLayoutBusy] = useState(false);
-  const [layoutError, setLayoutError] = useState<string | null>(null);
   const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(
     initialPending
       ? initialPending.blocks.map((block) => ({
@@ -312,9 +316,7 @@ export default function CampaignEditor({
         }))
       : null,
   );
-  const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>(
-    initialPending?.meta ?? {},
-  );
+  const [pendingMeta, setPendingMeta] = useState<SuggestionMeta>(initialPending?.meta ?? {});
   // How the pending suggestion will be applied. "append" is Suggest layout and
   // the presets; "replace" is Make it visual, which re-expresses the copy that
   // is already there and would duplicate every paragraph if it appended.
@@ -322,10 +324,11 @@ export default function CampaignEditor({
   // Shared with AssetPicker, so this costs one request per session. Used only
   // to give a newly-added block a picture without spending a generation.
   const assets = useAssets();
-  const [restructureBusy, setRestructureBusy] = useState(false);
-  const [restructureStyle, setRestructureStyle] = useState<"default" | "editorial">("default");
+  const [shapeGalleryOpen, setShapeGalleryOpen] = useState(false);
+  const [shapeBusyId, setShapeBusyId] = useState<string | null>(null);
+  const [savedShapes, setSavedShapes] = useState<SavedShape[]>([]);
+  const [savingShape, setSavingShape] = useState(false);
   const [restructureError, setRestructureError] = useState<string | null>(null);
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [regenAlternates, setRegenAlternates] = useState<{ blockId: string; alternates: CampaignBlock[] } | null>(null);
@@ -950,90 +953,130 @@ export default function CampaignEditor({
     }
   }
 
-  // Suggests a full block-by-block layout from the current subject line.
-  // Never writes into content.blocks directly — lands in pendingBlocks for
-  // per-block Accept/Skip review first (see the review UI in the render).
-  async function suggestLayout() {
-    if (layoutBusy) return;
-    const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
-    if (!subject.trim()) {
-      setLayoutError("Type a subject line first.");
+
+
+  // Saved shapes load when the gallery opens, not on mount: most editing
+  // sessions never open it.
+  useEffect(() => {
+    if (!shapeGalleryOpen) return;
+    let alive = true;
+    fetch("/api/campaign/shapes")
+      .then((r) => r.json())
+      .then((d) => { if (alive && Array.isArray(d)) setSavedShapes(d as SavedShape[]); })
+      .catch(() => { /* the gallery still works with built-ins only */ });
+    return () => { alive = false; };
+  }, [shapeGalleryOpen]);
+
+  /** Bank this email's LAYOUT. Captures block order and layout options only —
+   *  no copy, and no instruction text, which is derived from the structure at
+   *  prompt time so nothing typed here reaches a model. */
+  async function saveCurrentAsShape() {
+    if (savingShape) return;
+    const c = latestContent.current;
+    if (c.blocks.length === 0) {
+      setRestructureError("Nothing to save yet — this email has no blocks.");
       return;
     }
-    setLayoutBusy(true);
-    setLayoutError(null);
+    const suggested = (c.subjectLines[c.selectedSubject] ?? topic ?? "").slice(0, 40).trim();
+    const name = window.prompt("Name this shape", suggested || "My shape");
+    if (!name?.trim()) return;
+    setSavingShape(true);
+    setRestructureError(null);
     try {
-      const res = await fetch("/api/campaign/suggest-layout", {
+      const res = await fetch("/api/campaign/shapes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, topic }),
+        body: JSON.stringify({ name: name.trim(), ...captureShapeStructure(c) }),
       });
       const data = await res.json();
-      if (!res.ok || !Array.isArray(data.blocks)) {
-        setLayoutError(data.error ?? "Suggestion failed");
+      if (!res.ok || !data.id) {
+        setRestructureError(data.error ?? "Could not save the shape");
         return;
       }
-      setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
-      setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
-      setPendingMode("append");
-      setTemplatePickerOpen(false);
+      setSavedShapes((prev) => [data as SavedShape, ...prev]);
+      setShapeGalleryOpen(true);
     } catch (err) {
-      setLayoutError(err instanceof Error ? err.message : "Network error");
+      setRestructureError(err instanceof Error ? err.message : "Network error");
     } finally {
-      setLayoutBusy(false);
+      setSavingShape(false);
     }
   }
 
-  // Presets skip the LLM call but share the exact same pending-review shape
-  // and apply path as an AI suggestion.
-  function applyPreset(preset: CampaignLayoutPreset) {
-    setPendingBlocks(preset.blocks.map((b) => ({ block: layoutBlockToCampaignBlock(b), included: true })));
-    setPendingMeta({ topBanner: preset.topBanner, promoBand: preset.promoBand, ctaLabel: preset.ctaLabel });
-    setPendingMode("append");
-    setTemplatePickerOpen(false);
-    setLayoutError(null);
+  async function deleteSavedShapeById(shape: CampaignShape) {
+    const rawId = shape.id.replace(/^saved:/, "");
+    setSavedShapes((prev) => prev.filter((s) => s.id !== rawId));
+    try {
+      await fetch(`/api/campaign/shapes?id=${encodeURIComponent(rawId)}`, { method: "DELETE" });
+    } catch {
+      // Already gone from the list; a failed delete resurfaces on next open.
+    }
   }
 
-  // "Make it visual": re-expresses the copy already in the email as a richer
-  // set of blocks. Lands in the SAME pending-review path as suggestLayout, but
-  // in "replace" mode — the restructured blocks carry the same words, so
-  // appending them would duplicate the whole email.
+  // Apply a SHAPE.
   //
-  // Fact preservation is prompt-only (the code-enforced verifier was cut in the
-  // 2026-08-21 CEO review), which is exactly why this never applies silently:
-  // the rendered before/after diff below is the only check that the model did
-  // not invent a number.
-  async function restructureBlocks(style: "default" | "editorial" = "default") {
-    if (restructureBusy) return;
+  // Two branches, because an email arrives in one of two states:
+  //   - it already has copy -> restructure it into that shape, so the words
+  //     stay yours and only the layout changes
+  //   - it is empty         -> drop in the shape's starter blocks
+  //
+  // Both land in the SAME pending review, so a shape is never applied without
+  // a diff. A restructure failure surfaces the error and NEVER falls back to
+  // the starter copy: that would overwrite your words with canned text.
+  async function applyShape(shape: CampaignShape) {
+    if (shapeBusyId) return;
     const c = latestContent.current;
-    const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
-    setRestructureBusy(true);
+    const hasCopy = blocksToSourceText(c.blocks).length >= 40;
+    const meta = {
+      topBanner: shape.topBanner,
+      promoBand: shape.promoBand,
+      ctaLabel: shape.ctaLabel,
+      // Absent theme means leave the campaign's theme alone, not "navy".
+      theme: shape.theme,
+    };
+
+    if (!hasCopy) {
+      const ctx = emailImageContext(c);
+      setPendingBlocks(
+        (shape.starter ?? []).map(layoutBlockToCampaignBlock).map((block) => ({
+          block: withImagePrompt(block, ctx),
+          included: true,
+        })),
+      );
+      setPendingMeta(meta);
+      // Starter blocks are the whole body of an empty email, so replacing and
+      // appending are the same thing; replace keeps one code path.
+      setPendingMode("replace");
+      setShapeGalleryOpen(false);
+      return;
+    }
+
+    setShapeBusyId(shape.id);
     setRestructureError(null);
     try {
-      setRestructureStyle(style);
+      const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
       const res = await fetch("/api/campaign/restructure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks: c.blocks, subject, topic, style }),
+        // The SHAPE ID, never its guidance: guidance is interpolated into an
+        // LLM prompt and is resolved server-side.
+        body: JSON.stringify({ blocks: c.blocks, subject, topic, shapeId: shape.id }),
       });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.blocks)) {
         setRestructureError(data.error ?? "Restructure failed");
         return;
       }
-      // The model supplies imagePrompt for image kinds; fill in any it left
-      // empty so every image block in the review is ready to generate.
       const ctx = emailImageContext(c);
       setPendingBlocks(
         (data.blocks as CampaignBlock[]).map((block) => ({ block: withImagePrompt(block, ctx), included: true })),
       );
-      setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
+      setPendingMeta({ topBanner: data.topBanner ?? meta.topBanner, promoBand: data.promoBand ?? meta.promoBand, ctaLabel: data.ctaLabel ?? meta.ctaLabel, theme: shape.theme });
       setPendingMode("replace");
-      setTemplatePickerOpen(false);
+      setShapeGalleryOpen(false);
     } catch (err) {
       setRestructureError(err instanceof Error ? err.message : "Network error");
     } finally {
-      setRestructureBusy(false);
+      setShapeBusyId(null);
     }
   }
 
@@ -1454,54 +1497,6 @@ export default function CampaignEditor({
               </div>
             );
           })()}
-          <div style={{ display: "flex", gap: 6, position: "relative" }}>
-            <Button
-              variant="primary"
-              onClick={suggestLayout}
-              disabled={layoutBusy}
-              title="Suggest a complete block-by-block layout from the subject line above"
-              style={{ flex: 1 }}
-            >
-              {layoutBusy && <Spinner size={10} color="var(--bg)" />}
-              {layoutBusy ? "Drafting…" : "✨ Suggest layout"}
-            </Button>
-            <button
-              style={{ ...miniBtn(templatePickerOpen), flex: 1 }}
-              onClick={() => setTemplatePickerOpen((v) => !v)}
-              title="Apply a named starting-point layout"
-            >
-              Templates <IcChevron size={14} style={{ transform: templatePickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
-            </button>
-            {templatePickerOpen && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20,
-                background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
-                boxShadow: "none", overflow: "hidden",
-              }}>
-                {CAMPAIGN_LAYOUT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => applyPreset(preset)}
-                    style={{
-                      display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
-                      border: "none", borderBottom: "1px solid var(--border)", background: "transparent",
-                      cursor: "pointer", fontFamily: "inherit",
-                    }}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{preset.name}</div>
-                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{preset.description}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {layoutError && <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{layoutError}</div>}
-          {layoutBusy && (
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              <BlockSkeleton lines={1} />
-              <BlockSkeleton lines={2} />
-            </div>
-          )}
         </div>
         {/* Preview text */}
         <div>
@@ -1572,52 +1567,46 @@ export default function CampaignEditor({
             </div>
           )}
         </div>
-        {/* Make it visual — restructures the copy ALREADY in this email into a
-            richer block layout. Lives here rather than next to "Suggest layout"
-            (which sits in Header, because it is driven by the subject line):
-            this one reads content.blocks, so it belongs with the blocks. Also
-            deliberately not in FlowDeck — FlowDeck only exists during an import
-            session, so a campaign reopened from the gallery could never reach
-            it. The sparkle is DESIGN.md's sanctioned exception for
-            LLM-triggering buttons. */}
+        {/* Shapes — one door for what used to be three: "Make it visual",
+            "AG1 style" and the Templates dropdown all did the same job, laying
+            your copy out in a shape. Every shape, including the plain
+            model-chosen one, is an entry in the gallery now. */}
         {(() => {
           const enough = blocksToSourceText(content.blocks).length >= 40;
           return (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  style={{ ...miniBtn(false), flex: 1, justifyContent: "center", opacity: enough ? 1 : 0.45 }}
-                  onClick={() => restructureBlocks("default")}
-                  disabled={restructureBusy || !enough}
-                  title={
-                    enough
-                      ? "Re-express this email's existing copy as a richer block layout. Nothing is applied until you review the before/after."
-                      : "Write the email body first, then make it visual"
-                  }
-                >
-                  {restructureBusy && restructureStyle === "default" && <Spinner size={10} color="var(--text)" />}
-                  {restructureBusy && restructureStyle === "default" ? "Restructuring…" : "✨ Make it visual"}
-                </button>
-                {/* The dense, image-led shape the big DTC supplement brands
-                    use, in Lunia's voice and palette: a header image, then
-                    alternating picture-and-copy rows, and almost no bare
-                    paragraphs. Same copy rules as the plain version. */}
-                <button
-                  style={{ ...miniBtn(false), flex: 1, justifyContent: "center", opacity: enough ? 1 : 0.45 }}
-                  onClick={() => restructureBlocks("editorial")}
-                  disabled={restructureBusy || !enough}
-                  title={
-                    enough
-                      ? "Same copy, laid out AG1-style in Lunia's branding: header image, alternating image-and-text rows, coloured bullets. Nothing is applied until you review it."
-                      : "Write the email body first, then make it visual"
-                  }
-                >
-                  {restructureBusy && restructureStyle === "editorial" && <Spinner size={10} color="var(--text)" />}
-                  {restructureBusy && restructureStyle === "editorial" ? "Restructuring…" : "✨ AG1 style"}
-                </button>
-              </div>
+              <button
+                style={{ ...miniBtn(shapeGalleryOpen), width: "100%", justifyContent: "center" }}
+                onClick={() => setShapeGalleryOpen((v) => !v)}
+                disabled={!!shapeBusyId}
+                title={
+                  enough
+                    ? "Lay this email's copy out in a shape. Nothing is applied until you review the before and after."
+                    : "The email is empty, so a shape will drop in its starter copy for you to edit"
+                }
+              >
+                {shapeBusyId && <Spinner size={10} color="var(--text)" />}
+                {shapeBusyId ? "Restructuring…" : "✨ Shapes"}
+              </button>
+              {!enough && (
+                <div style={{ marginTop: 5, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                  This email has no copy yet, so a shape will bring its own starter text.
+                  Write the body first if you want your own words laid out instead.
+                </div>
+              )}
               {restructureError && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
+              )}
+              {shapeGalleryOpen && (
+                <ShapeGallery
+                  shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
+                  busyShapeId={shapeBusyId}
+                  onPick={applyShape}
+                  onClose={() => setShapeGalleryOpen(false)}
+                  onDelete={deleteSavedShapeById}
+                  onSaveCurrent={saveCurrentAsShape}
+                  savingCurrent={savingShape}
+                />
               )}
             </div>
           );

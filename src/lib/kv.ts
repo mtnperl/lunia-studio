@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
+import type { SavedShape } from "./campaign-shapes";
 import type { DecisionModelSnapshot } from "./decision-model";
 
 // Supports Vercel KV (KV_URL is the redis:// URL), standard Redis (REDIS_URL),
@@ -367,6 +368,27 @@ export async function saveCampaignSnippet(snippet: CampaignSnippet): Promise<voi
 export async function deleteCampaignSnippet(id: string): Promise<void> {
   const all = await getCampaignSnippets();
   await writeCollection(CAMPAIGN_SNIPPETS_KEY, all.filter((s) => s.id !== id));
+}
+
+// Layouts the user banked from a campaign they liked. Same single-key array
+// pattern as snippets. NOTE: the no-evict note above describes URL-only
+// payloads; a shape record is a short list of block kinds carrying no URLs and
+// no copy, so it is smaller still.
+const CAMPAIGN_SHAPES_KEY = "lunia:campaign-shapes";
+
+export async function getSavedShapes(): Promise<SavedShape[]> {
+  return readCollection<SavedShape>(CAMPAIGN_SHAPES_KEY);
+}
+
+export async function saveSavedShape(shape: SavedShape): Promise<void> {
+  const all = await getSavedShapes();
+  all.unshift(shape);
+  await writeCollection(CAMPAIGN_SHAPES_KEY, all);
+}
+
+export async function deleteSavedShape(id: string): Promise<void> {
+  const all = await getSavedShapes();
+  await writeCollection(CAMPAIGN_SHAPES_KEY, all.filter((s) => s.id !== id));
 }
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────

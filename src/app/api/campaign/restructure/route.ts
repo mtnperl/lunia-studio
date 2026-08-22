@@ -1,7 +1,7 @@
 // "Make it visual": re-express an existing campaign's copy as a richer set of
-// blocks. Distinct from /suggest-layout, which writes NEW copy from a subject
-// line — this one is forbidden from writing anything, takes the whole blocks
-// array as input, and its result REPLACES the body rather than appending to it.
+// blocks. It is forbidden from writing anything: it takes the whole blocks
+// array as input and its result REPLACES the body rather than appending to it.
+// The layout it builds is named by a shapeId, resolved server-side.
 //
 // Fact preservation is enforced by prompt only. The code-enforced verifier was
 // considered and cut during the 2026-08-21 CEO review, so the caller's
@@ -16,7 +16,6 @@ import {
 import { checkRateLimit } from "@/lib/kv";
 import {
   buildRestructurePrompt,
-  type RestructureStyle,
   blocksToSourceText,
   LayoutSuggestionSchema,
   layoutBlockToCampaignBlock,
@@ -25,6 +24,13 @@ import type { CampaignBlock } from "@/lib/types";
 
 import { stripDashes } from "@/lib/strip-dashes";
 import { blockTokensBalanced } from "@/lib/campaign-inline-style";
+import {
+  resolveShapeGuidance,
+  isSavedShapeId,
+  savedShapeIdOf,
+  deriveShapeGuidance,
+} from "@/lib/campaign-shapes";
+import { getSavedShapes } from "@/lib/kv";
 // One LLM call with thinking enabled over a whole email's copy. The batch
 // ("restructure this whole flow") path is driven from the client as one request
 // per email, so this budget is per-email and never has to cover a whole flow.
@@ -52,7 +58,24 @@ export async function POST(req: Request): Promise<Response> {
     const blocks: CampaignBlock[] = Array.isArray(body.blocks) ? body.blocks : [];
     const subject: string = (body.subject ?? "").trim();
     const topic: string = (body.topic ?? "").trim();
-    const style: RestructureStyle = body.style === "editorial" ? "editorial" : "default";
+    // The client names a SHAPE; the guidance text is resolved here, from the
+    // server-side registry. Guidance is interpolated into an LLM prompt, so
+    // accepting it over the wire would let a caller inject arbitrary
+    // instructions. An unknown id is a 400, never a silent plain restructure.
+    const shapeId: string = typeof body.shapeId === "string" ? body.shapeId : "auto";
+    let guidance: string | undefined;
+    if (isSavedShapeId(shapeId)) {
+      // A saved shape stores STRUCTURE. Its instruction is derived here, from
+      // the stored record, so a saved shape can no more inject prompt text
+      // than a built-in one can.
+      const saved = (await getSavedShapes()).find((sh) => sh.id === savedShapeIdOf(shapeId));
+      guidance = saved ? deriveShapeGuidance(saved) : undefined;
+    } else {
+      guidance = resolveShapeGuidance(shapeId);
+    }
+    if (guidance === undefined) {
+      return Response.json({ error: `Unknown shape "${shapeId}".` }, { status: 400 });
+    }
 
     // Guard on the SOURCE COPY, not the block count: a campaign can hold ten
     // blocks that are all empty scaffolding, and there is nothing to restructure
@@ -65,7 +88,7 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const prompt = buildRestructurePrompt(blocks, subject, topic, style);
+    const prompt = buildRestructurePrompt(blocks, subject, topic, guidance);
     const response = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_LONG,
@@ -81,7 +104,7 @@ export async function POST(req: Request): Promise<Response> {
       parsedJson = JSON.parse(jsonText);
     } catch {
       // A model refusal lands here too — it is prose, so it fails to parse the
-      // same way malformed JSON does. Same shape as /suggest-layout.
+      // same way malformed JSON does.
       console.error("[api/campaign/restructure] JSON parse failed:", raw.slice(0, 400));
       return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
     }
