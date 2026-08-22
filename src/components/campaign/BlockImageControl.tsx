@@ -22,6 +22,8 @@ export default function BlockImageControl({
   suggestPrompt,
   onChange,
   compact = false,
+  blockText,
+  emailContext,
 }: {
   imageUrl?: string;
   imagePrompt?: string;
@@ -32,10 +34,49 @@ export default function BlockImageControl({
   suggestPrompt: () => string;
   onChange: (patch: { imageUrl?: string; imagePrompt?: string }) => void;
   compact?: boolean;
+  /** The copy this picture sits beside. Sent as the FOCUS when rewriting, so
+   *  the scene is about this block rather than about the brand. */
+  blockText?: string;
+  /** The rest of the email, for context only. */
+  emailContext?: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
+
+  /** Ask the model for a scene that actually depicts this block's copy. The
+   *  offline writer composes from the copy verbatim, which keeps it tied to
+   *  the email but reads like an instruction rather than a photograph; this is
+   *  the escape hatch when that is not good enough. */
+  async function rewritePrompt() {
+    if (rewriting) return;
+    setRewriting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/campaign/regenerate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          role: "secondary",
+          focus: blockText ?? suggestPrompt(),
+          emailContext,
+          currentPrompt: imagePrompt ?? "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.prompt) {
+        setError(data.error ?? "Could not rewrite the prompt");
+        return;
+      }
+      onChange({ imagePrompt: data.prompt as string });
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setRewriting(false);
+    }
+  }
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -155,6 +196,16 @@ export default function BlockImageControl({
             if (f) void uploadFile(f);
           }}
         />
+        <button
+          type="button"
+          onClick={rewritePrompt}
+          disabled={rewriting}
+          style={{ ...btn, opacity: rewriting ? 0.5 : 1, cursor: rewriting ? "wait" : "pointer" }}
+          title="Rewrite the prompt so the photo depicts what THIS block says, rather than the brand in general"
+        >
+          {rewriting && <Spinner size={9} color="var(--text)" />}
+          {rewriting ? "Writing…" : "✨ Rewrite prompt"}
+        </button>
         <button
           type="button"
           onClick={generate}

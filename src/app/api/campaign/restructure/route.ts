@@ -16,6 +16,7 @@ import {
 import { checkRateLimit } from "@/lib/kv";
 import {
   buildRestructurePrompt,
+  type RestructureStyle,
   blocksToSourceText,
   LayoutSuggestionSchema,
   layoutBlockToCampaignBlock,
@@ -51,6 +52,7 @@ export async function POST(req: Request): Promise<Response> {
     const blocks: CampaignBlock[] = Array.isArray(body.blocks) ? body.blocks : [];
     const subject: string = (body.subject ?? "").trim();
     const topic: string = (body.topic ?? "").trim();
+    const style: RestructureStyle = body.style === "editorial" ? "editorial" : "default";
 
     // Guard on the SOURCE COPY, not the block count: a campaign can hold ten
     // blocks that are all empty scaffolding, and there is nothing to restructure
@@ -63,7 +65,7 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const prompt = buildRestructurePrompt(blocks, subject, topic);
+    const prompt = buildRestructurePrompt(blocks, subject, topic, style);
     const response = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_LONG,

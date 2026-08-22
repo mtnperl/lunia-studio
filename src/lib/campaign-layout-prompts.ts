@@ -79,6 +79,18 @@ export const LayoutBlockSchema = z.discriminatedUnion("kind", [
       imagePrompt: z.string().optional(),
     })).min(2).max(6),
   }),
+  // Suggestable, unlike kind "image". A headerimage REPLACES the hero, which
+  // is a real layout decision — but the editorial shape is built on it, the
+  // user reviews every restructure before it applies, and an empty header
+  // block does not suppress the hero anyway.
+  z.object({
+    kind: z.literal("headerimage"),
+    headerStyle: z.enum(["card", "pill"]).optional(),
+    headerHeadline: z.string(),
+    headerPillText: z.string().optional(),
+    headerSubcard: z.string().optional(),
+    imagePrompt: z.string().optional(),
+  }),
   z.object({
     kind: z.literal("ingredients"),
     ingredientHeading: z.string().optional(),
@@ -115,6 +127,7 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 { "kind": "imagetext", "imageHeading": "e.g. 'Energy you can count on'", "body": "the copy beside the picture", "imagePosition": "left" | "right", "imagePrompt": "the photo to sit beside it" }
 { "kind": "imagebullets", "bulletItems": ["2-6 short lines"], "bulletColor": "ivory" | "aqua" | "yellow" | "navy" | "slate" | "muted", "imagePosition": "left" | "right", "imagePrompt": "the photo to sit beside it" }
 { "kind": "grid", "gridCells": [{ "heading": "short title", "caption": "one or two lines", "imagePrompt": "the photo for this cell" }] }
+{ "kind": "headerimage", "headerStyle": "card" | "pill", "headerHeadline": "the headline", "headerPillText": "short eyebrow, pill style only", "headerSubcard": "optional second card, card style only", "imagePrompt": "the full-width photo behind it" }
 { "kind": "ingredients", "ingredientHeading": "e.g. 'What's inside'", "ingredientItems": [{ "name": "Magnesium Glycinate", "dose": "400mg" }, { "name": "L-Theanine", "dose": "200mg" }, { "name": "Apigenin", "dose": "50mg" }], "ingredientFootnote": "e.g. 'Melatonin-free, third-party tested'" }
 `;
 
@@ -207,6 +220,15 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
           caption: c.caption ? stripDashes(c.caption) : undefined,
           imagePrompt: c.imagePrompt ? stripDashes(c.imagePrompt) : undefined,
         })),
+      };
+    case "headerimage":
+      return {
+        ...base,
+        headerStyle: b.headerStyle ?? "card",
+        headerHeadline: stripDashes(b.headerHeadline),
+        headerPillText: b.headerPillText ? stripDashes(b.headerPillText) : undefined,
+        headerSubcard: b.headerSubcard ? stripDashes(b.headerSubcard) : undefined,
+        imagePrompt: b.imagePrompt ? stripDashes(b.imagePrompt) : undefined,
       };
     case "ingredients":
       return {
@@ -302,7 +324,43 @@ function defuseFence(text: string): string {
  *  nothing enforces them at runtime (the code-enforced verifier was cut during
  *  the 2026-08-21 CEO review), so the prompt plus the user's before/after diff
  *  are the only checks. */
-export function buildRestructurePrompt(blocks: CampaignBlock[], subject: string, topic: string): string {
+/** How aggressively to restructure.
+ *  - "default": read the copy, use whichever kinds fit.
+ *  - "editorial": the dense, image-led shape the big DTC supplement brands
+ *    use, rendered in Lunia's own voice and palette. Picture-first, alternating
+ *    sides, almost no bare paragraphs. */
+export type RestructureStyle = "default" | "editorial";
+
+/** The editorial shape, on top of the normal rules. Describes the LAYOUT to
+ *  imitate, never another brand's words: the copy still comes only from the
+ *  source, and LUNIA_VOICE_SPEC still governs how it reads. */
+const EDITORIAL_STYLE_GUIDANCE = `
+EDITORIAL MODE. Build the image-led shape a premium DTC supplement brand uses,
+in Lunia's own voice. Concretely:
+
+1. OPEN with a "headerimage" block. Use headerStyle "card" when the source has
+   one strong headline, "pill" when it has a short label plus a headline.
+2. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right", then
+   "left". Two or three of them. This alternation is the single most
+   recognisable part of the look, so do not emit them all on one side.
+3. Include ONE "imagebullets" block for the strongest short list, with
+   bulletColor "aqua" or "yellow".
+4. Include ONE "grid" when the source has three or more parallel points.
+5. Use "table" only when the source already contains prices or plan numbers.
+6. Keep bare "text" blocks to AT MOST ONE. In this mode a paragraph on its own
+   is a last resort; almost everything should carry a picture.
+7. Aim for 5 to 8 blocks.
+
+Every block that can hold a picture MUST come with its own imagePrompt, and
+they must be different scenes from each other. Repeating the same scene across
+blocks is the failure mode this layout exposes most.`;
+
+export function buildRestructurePrompt(
+  blocks: CampaignBlock[],
+  subject: string,
+  topic: string,
+  style: RestructureStyle = "default",
+): string {
   const source = defuseFence(blocksToSourceText(blocks));
   return `${LUNIA_VOICE_SPEC}
 
@@ -371,16 +429,35 @@ VARY THE OUTPUT. Do not return the same one or two kinds every time.
 - Aim for 4 to 7 blocks on a normal email. Fewer only when the source is
   genuinely thin.
 
-For any image-bearing kind, also return "imagePrompt": a short description of
-the PHOTOGRAPH that should sit beside that copy. This is art direction, not a
-claim, so you may describe a scene that is not in the source. Keep it to a
-calm, real, unstaged image of a person or a place. Never describe text,
-packaging, logos, or a supplement bottle.
+For any image-bearing kind, also return "imagePrompt": the PHOTOGRAPH that
+belongs beside THAT BLOCK's copy specifically. This is art direction, not a
+claim, so you may describe a scene that is not in the source.
+
+The single most common failure here is answering with the brand's default
+imagery instead of the block's actual subject. Do not do that. The picture has
+to depict what THAT block is about:
+- copy about social media or publishing research -> someone reading on a phone
+  or a laptop, a screen lit in a dim room
+- copy about a morning walk or exercise -> that walk, outdoors, in daylight
+- copy about third-party testing or dosing -> a lab bench, a clipboard, hands
+  measuring, clean daylight
+- copy about the ingredients themselves -> the raw botanicals or powder, macro,
+  on a plain surface
+- copy about waking up rested -> a morning bedroom, light through a window
+
+A calm bedroom, a person asleep, or a warm mug is the RIGHT answer only when
+that block is genuinely about sleeping or winding down. If several blocks would
+otherwise get the same bedroom, you have defaulted rather than read the copy.
+
+Name a subject, a setting and a time of day, in one or two sentences. Real
+people and real places, unstaged, natural light. Never describe text, words,
+signage, packaging, logos, or a supplement bottle.
 
 If the source copy is too thin to justify a structured block, return "text" blocks.
 A faithful plain result is correct; an impressive invented one is a failure.
 
 ${KIND_SCHEMA_EXAMPLES}
+${style === "editorial" ? EDITORIAL_STYLE_GUIDANCE : ""}
 
 Also suggest, ONLY if the source supports it:
 - "topBanner": a short uppercase-style banner line drawn from the source, or omit.

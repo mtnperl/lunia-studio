@@ -23,11 +23,12 @@ describe("registry alignment", () => {
   // Kinds the AI is deliberately never asked to emit. "image" places a slot
   // from content.images, which is a user choice about their own assets, not
   // something a copy-restructuring model should invent.
-  // "image" places a slot from content.images; "headerimage" REPLACES the
-  // user's hero. Both are decisions about the user's own assets and layout,
-  // not about how their copy should be structured, so a copy-restructuring
-  // model is never asked to make them.
-  const EXCLUDED_FROM_SUGGESTIONS = new Set(["image", "headerimage"]);
+  // "image" places a slot from content.images, which is a choice about the
+  // user's own assets rather than about their copy, so the model is never
+  // asked to make it. "headerimage" IS suggestable: the editorial shape is
+  // built on it, every restructure is reviewed before it applies, and an
+  // empty header block does not suppress the hero.
+  const EXCLUDED_FROM_SUGGESTIONS = new Set(["image"]);
 
   const zodKinds = () => LayoutBlockSchema.options.map((o) => o.shape.kind.value as string);
 
@@ -196,5 +197,66 @@ describe("restructure kind variety", () => {
 
   it("still forbids inventing facts", () => {
     expect(p()).toMatch(/MUST NOT invent any number/);
+  });
+});
+
+describe("editorial (AG1-style) restructure", () => {
+  const src = [{ id: "x", body: "Real source copy about sleep, long enough to pass the guard.", align: "left" as const, kind: "text" as const }];
+  const plain = () => buildRestructurePrompt(src, "Subject", "");
+  const editorial = () => buildRestructurePrompt(src, "Subject", "", "editorial");
+
+  it("is opt-in: the default prompt is unchanged", () => {
+    expect(plain()).not.toMatch(/EDITORIAL MODE/);
+  });
+
+  it("asks for the recognisable shape", () => {
+    const p = editorial();
+    expect(p).toMatch(/OPEN with a "headerimage" block/);
+    expect(p).toMatch(/ALTERNATE "imagetext"/);
+    expect(p).toMatch(/imagebullets/);
+    expect(p).toMatch(/5 to 8 blocks/);
+  });
+
+  it("calls out the all-on-one-side failure, since alternation is the look", () => {
+    expect(editorial()).toMatch(/do not emit them all on one side/);
+  });
+
+  it("holds bare text blocks to at most one", () => {
+    expect(editorial()).toMatch(/AT MOST ONE/);
+  });
+
+  it("keeps every copy rule from the default mode", () => {
+    // Editorial changes the LAYOUT, never the licence to invent.
+    const p = editorial();
+    expect(p).toMatch(/MUST NOT invent any number/);
+    expect(p).toMatch(/Every word you output must appear in the source/);
+    expect(p).toMatch(/NEVER use em dashes/);
+  });
+
+  it("imitates a layout, never another brand's words", () => {
+    // The guidance describes block shapes; the voice spec still governs tone.
+    expect(editorial()).toMatch(/in Lunia's own voice/);
+  });
+
+  it("demands a distinct scene per image block", () => {
+    expect(editorial()).toMatch(/different scenes from each other/);
+  });
+});
+
+describe("image prompts must depict the block, not the brand", () => {
+  const p = () => buildRestructurePrompt(
+    [{ id: "x", body: "Real source copy, long enough to pass the guard here.", align: "left", kind: "text" }],
+    "Subject", "",
+  );
+
+  it("names the default-imagery failure explicitly", () => {
+    // The reported bug: a block about publishing research on Instagram got a
+    // prompt for a calm bedroom.
+    expect(p()).toMatch(/social media or publishing research -> someone reading on a phone/);
+    expect(p()).toMatch(/you have defaulted rather than read the copy/);
+  });
+
+  it("still bars text, packaging and bottles", () => {
+    expect(p()).toMatch(/Never describe text, words,\s+signage, packaging, logos, or a supplement bottle/);
   });
 });

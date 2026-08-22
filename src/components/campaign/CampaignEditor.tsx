@@ -7,7 +7,7 @@ import InlineStyleToolbar from "./InlineStyleToolbar";
 import { useAssets, pickSampleImageUrl } from "./useAssets";
 import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import { stripInlineTokens } from "@/lib/campaign-inline-style";
-import { withImagePrompt, suggestImagePrompt, type EmailImageContext } from "@/lib/campaign-image-prompt";
+import { withImagePrompt, suggestImagePrompt, blockOwnText, type EmailImageContext } from "@/lib/campaign-image-prompt";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
@@ -323,6 +323,7 @@ export default function CampaignEditor({
   // to give a newly-added block a picture without spending a generation.
   const assets = useAssets();
   const [restructureBusy, setRestructureBusy] = useState(false);
+  const [restructureStyle, setRestructureStyle] = useState<"default" | "editorial">("default");
   const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
@@ -1002,17 +1003,18 @@ export default function CampaignEditor({
   // 2026-08-21 CEO review), which is exactly why this never applies silently:
   // the rendered before/after diff below is the only check that the model did
   // not invent a number.
-  async function restructureBlocks() {
+  async function restructureBlocks(style: "default" | "editorial" = "default") {
     if (restructureBusy) return;
     const c = latestContent.current;
     const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
     setRestructureBusy(true);
     setRestructureError(null);
     try {
+      setRestructureStyle(style);
       const res = await fetch("/api/campaign/restructure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks: c.blocks, subject, topic }),
+        body: JSON.stringify({ blocks: c.blocks, subject, topic, style }),
       });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.blocks)) {
@@ -1582,19 +1584,38 @@ export default function CampaignEditor({
           const enough = blocksToSourceText(content.blocks).length >= 40;
           return (
             <div style={{ marginBottom: 12 }}>
-              <button
-                style={{ ...miniBtn(false), width: "100%", justifyContent: "center", opacity: enough ? 1 : 0.45 }}
-                onClick={restructureBlocks}
-                disabled={restructureBusy || !enough}
-                title={
-                  enough
-                    ? "Re-express this email's existing copy as a richer block layout. Nothing is applied until you review the before/after."
-                    : "Write the email body first, then make it visual"
-                }
-              >
-                {restructureBusy && <Spinner size={10} color="var(--text)" />}
-                {restructureBusy ? "Restructuring…" : "✨ Make it visual"}
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  style={{ ...miniBtn(false), flex: 1, justifyContent: "center", opacity: enough ? 1 : 0.45 }}
+                  onClick={() => restructureBlocks("default")}
+                  disabled={restructureBusy || !enough}
+                  title={
+                    enough
+                      ? "Re-express this email's existing copy as a richer block layout. Nothing is applied until you review the before/after."
+                      : "Write the email body first, then make it visual"
+                  }
+                >
+                  {restructureBusy && restructureStyle === "default" && <Spinner size={10} color="var(--text)" />}
+                  {restructureBusy && restructureStyle === "default" ? "Restructuring…" : "✨ Make it visual"}
+                </button>
+                {/* The dense, image-led shape the big DTC supplement brands
+                    use, in Lunia's voice and palette: a header image, then
+                    alternating picture-and-copy rows, and almost no bare
+                    paragraphs. Same copy rules as the plain version. */}
+                <button
+                  style={{ ...miniBtn(false), flex: 1, justifyContent: "center", opacity: enough ? 1 : 0.45 }}
+                  onClick={() => restructureBlocks("editorial")}
+                  disabled={restructureBusy || !enough}
+                  title={
+                    enough
+                      ? "Same copy, laid out AG1-style in Lunia's branding: header image, alternating image-and-text rows, coloured bullets. Nothing is applied until you review it."
+                      : "Write the email body first, then make it visual"
+                  }
+                >
+                  {restructureBusy && restructureStyle === "editorial" && <Spinner size={10} color="var(--text)" />}
+                  {restructureBusy && restructureStyle === "editorial" ? "Restructuring…" : "✨ AG1 style"}
+                </button>
+              </div>
               {restructureError && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
               )}
@@ -2042,6 +2063,8 @@ export default function CampaignEditor({
                         aspect="1:1"
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
+                        blockText={blockOwnText(b)}
+                        emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2086,6 +2109,8 @@ export default function CampaignEditor({
                         aspect="1:1"
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
+                        blockText={blockOwnText(b)}
+                        emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2117,6 +2142,8 @@ export default function CampaignEditor({
                               aspect="1:1"
                               topic={topic}
                               suggestPrompt={() => suggestImagePrompt({ kind: "grid", gridCells: [c] }, emailImageContext(content))}
+                              blockText={blockOwnText({ kind: "grid", gridCells: [c] })}
+                              emailContext={emailImageContext(content).copy?.join(" ")}
                               onChange={(patch) => setCell(i, patch)}
                             />
                           </div>
@@ -2164,6 +2191,8 @@ export default function CampaignEditor({
                         aspect="4:5"
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
+                        blockText={blockOwnText(b)}
+                        emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
