@@ -5,6 +5,7 @@ import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
 import type { CampaignContent, CampaignImageSlot } from "@/lib/types";
 import { randomUUID } from "crypto";
 
+import { stripDashes } from "@/lib/strip-dashes";
 // Long enough for the LLM pass + three parallel gpt-image-2 generations.
 export const maxDuration = 240;
 
@@ -263,17 +264,6 @@ Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero
 
     const images: CampaignImageSlot[] = [...generatedSlots, ...assetSlots];
 
-    // Defensive em / en dash scrubber — replaces any em-dash with a comma
-    // and any en-dash with a hyphen. Belt-and-braces in case the model
-    // ignored the HARD BRAND RULE in the prompt. Used on every string
-    // field that gets surfaced to the user.
-    function stripDashes(s: string): string {
-      return s
-        .replace(/\s*—\s*/g, ", ")  // em dash → comma + space
-        .replace(/\s*–\s*/g, "-")   // en dash → hyphen
-        .replace(/\s{2,}/g, " ")    // collapse double spaces left behind
-        .trim();
-    }
 
     const content: CampaignContent = {
       subjectLines: parsed.subjectLines.slice(0, 3).map(stripDashes),

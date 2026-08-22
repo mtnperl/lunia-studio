@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CampaignBlock } from "./types";
 
+import { stripDashes } from "./strip-dashes";
 // Uses the Web Crypto global (available in both Node and the browser), not
 // Node's `crypto` module — this file is imported from a client component
 // (CampaignEditor.tsx) as well as server routes, and a Node built-in import
@@ -82,13 +83,6 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 
 Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
 
-function stripDashes(s: string): string {
-  return s
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/\s*–\s*/g, "-")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 /** Maps one validated LayoutBlock onto a real CampaignBlock. Only the
  *  kind-specific fields for that kind are set; `body`/`align` always exist

@@ -1,6 +1,7 @@
 import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
+import { stripDashes } from "@/lib/strip-dashes";
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
@@ -49,15 +50,6 @@ Return ONLY the rewritten text. No explanation, no quotes, no markdown. No em da
       messages: [{ role: "user", content: prompt }],
     });
 
-    // Defensive scrub: replace any em-dash with a comma + space and any
-    // en-dash with a hyphen, in case the model ignored the HARD BRAND RULE.
-    function stripDashes(s: string): string {
-      return s
-        .replace(/\s*—\s*/g, ", ")
-        .replace(/\s*–\s*/g, "-")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-    }
 
     const enhanced =
       response.content[0].type === "text"

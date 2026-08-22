@@ -13,6 +13,7 @@ import {
 } from "@/lib/anthropic";
 import { checkRateLimit, getAssets } from "@/lib/kv";
 import { mirrorImageToBlob, isSafeToFetch } from "@/lib/blob-mirror";
+import { stripDashes } from "@/lib/strip-dashes";
 import {
   buildKlaviyoImportPrompt,
   extractImages,
@@ -41,9 +42,6 @@ type LlmStructure = {
 };
 
 /** Replace em/en dashes with plain punctuation so imported copy stays on-brand. */
-function stripDashes(text: string): string {
-  return text.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-");
-}
 
 function safeParseJson(raw: string): LlmStructure | null {
   const s = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();

@@ -1,19 +1,13 @@
 import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT, extractText } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
+import { stripDashes } from "@/lib/strip-dashes";
 export const maxDuration = 30;
 
 const LUNIA_VOICE_SPEC = `Lunia Life brand voice: Aspirational, minimal, wellness-science grounded. Tone: calm confidence. No hype. No FOMO manipulation. Language: clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimizing their sleep. Lunia Life sells a melatonin-free sleep supplement (magnesium glycinate, L-theanine, apigenin).
 
 HARD BRAND RULE — NEVER use em dashes (—) or en dashes (–) anywhere. Use commas, periods, or short sentences instead.`;
 
-function stripDashes(s: string): string {
-  return s
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/\s*–\s*/g, "-")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 export async function POST(req: Request): Promise<Response> {
   const ip =

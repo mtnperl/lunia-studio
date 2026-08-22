@@ -2,15 +2,9 @@ import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKE
 import { checkRateLimit } from "@/lib/kv";
 import { buildLayoutSuggestionPrompt, LayoutSuggestionSchema, layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
 
+import { stripDashes } from "@/lib/strip-dashes";
 export const maxDuration = 60;
 
-function stripDashes(s: string): string {
-  return s
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/\s*–\s*/g, "-")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 export async function POST(req: Request) {
   const ip =

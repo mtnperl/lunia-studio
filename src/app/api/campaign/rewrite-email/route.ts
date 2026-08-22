@@ -5,13 +5,11 @@
 import { createContentMessage } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
+import { stripDashes } from "@/lib/strip-dashes";
 export const maxDuration = 60;
 
 type Body = { topic?: string; subject?: string; blocks?: string[] };
 
-function stripDashes(s: string): string {
-  return s.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-").replace(/\s{2,}/g, " ").trim();
-}
 
 function safeParse(raw: string): { subject?: string; blocks?: string[] } | null {
   const s = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();

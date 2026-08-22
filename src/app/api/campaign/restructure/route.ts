@@ -22,6 +22,7 @@ import {
 } from "@/lib/campaign-layout-prompts";
 import type { CampaignBlock } from "@/lib/types";
 
+import { stripDashes } from "@/lib/strip-dashes";
 // One LLM call with thinking enabled over a whole email's copy. The batch
 // ("restructure this whole flow") path is driven from the client as one request
 // per email, so this budget is per-email and never has to cover a whole flow.
@@ -32,13 +33,6 @@ function stripJsonFence(raw: string): string {
   return raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
 }
 
-function stripDashes(s: string): string {
-  return s
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/\s*–\s*/g, "-")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 export async function POST(req: Request): Promise<Response> {
   const ip =
