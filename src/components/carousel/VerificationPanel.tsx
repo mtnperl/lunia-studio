@@ -243,7 +243,7 @@ export default function VerificationPanel({
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <Dot status={verdictStatus(claim)} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, lineHeight: 1.45 }}>{claim.text}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.55 }}>{claim.text}</div>
             <div style={{ ...subtleStyle, marginTop: 3 }}>
               {verdictLabel(claim)}
               {claim.overriddenTo && ` (checker said: ${claim.verdict})`}
@@ -320,7 +320,7 @@ export default function VerificationPanel({
       <div style={fixBoxStyle}>
         {drafted.suggestions.map((s, si) => (
           <div key={si} style={{ marginBottom: si === drafted.suggestions.length - 1 ? 0 : 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               {si === 0 ? "Minimal change" : "Stronger rewrite"}
             </div>
             <div style={{ ...subtleStyle, marginBottom: 8 }}>{s.rationale}</div>
@@ -334,7 +334,7 @@ export default function VerificationPanel({
                 <div key={key} style={{ marginBottom: 8 }}>
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       textTransform: "uppercase",
                       letterSpacing: "0.08em",
                       color: "var(--subtle, var(--muted))",
@@ -395,7 +395,7 @@ export default function VerificationPanel({
       return (
         <div style={{ ...subtleStyle, color: "var(--warning)" }}>
           <div style={{ fontWeight: 600, marginBottom: 3 }}>Check did not complete</div>
-          <div style={{ fontFamily: "var(--font-mono, 'Fira Code', monospace)", fontSize: 11, marginBottom: 4 }}>
+          <div style={{ fontFamily: "var(--font-mono, 'Fira Code', monospace)", fontSize: 12, marginBottom: 4 }}>
             {unit.error}
           </div>
           This unit&apos;s text was never assessed. It is not a verdict on the content, and
@@ -406,8 +406,8 @@ export default function VerificationPanel({
     if (unit.claims.length === 0) {
       return (
         <div style={subtleStyle}>
-          No factual claims found in this {unit.kind === "hook" ? "hook" : "unit"}. That is a normal
-          result for copy that is framing rather than fact.
+          No factual claims found in this unit. That is a normal result for copy that is framing
+          rather than fact.
         </div>
       );
     }
@@ -708,7 +708,7 @@ export default function VerificationPanel({
           style={{ ...rowStyle, opacity: stale ? 0.55 : 1, background: open ? "var(--surface-h)" : "transparent" }}
         >
           <Dot status={deriveUnitStatus(unit)} />
-          <span style={{ fontWeight: 500, minWidth: 74, textAlign: "left" }}>{unit.label}</span>
+          <span style={{ fontWeight: 500, minWidth: 82, textAlign: "left" }}>{unit.label}</span>
           <span style={{ ...subtleStyle, flex: 1, textAlign: "left" }}>
             {stale
               ? "Edited since this check"
@@ -718,7 +718,7 @@ export default function VerificationPanel({
                   ? "No factual claims to verify"
                   : summarizeUnit(unit)}
           </span>
-          <span style={{ ...subtleStyle, fontSize: 11 }}>{open ? "Hide" : "Details"}</span>
+          <span style={{ ...subtleStyle, fontSize: 12 }}>{open ? "Hide" : "Details"}</span>
         </button>
         {open && <div style={detailWrap}>{renderUnitBody(unit)}</div>}
       </div>
@@ -803,7 +803,7 @@ export default function VerificationPanel({
             <div key={unit.id} style={{ ...decideCard, opacity: staleSet.has(unit.id) ? 0.55 : 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Dot status="red" />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{unit.label}</span>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{unit.label}</span>
                 <span style={{ ...subtleStyle, flex: 1 }}>
                   {staleSet.has(unit.id) ? "Edited since this check" : summarizeUnit(unit)}
                 </span>
@@ -871,12 +871,16 @@ export default function VerificationPanel({
 // Inline to match the surrounding carousel step components, which do not use
 // CSS modules. No box-shadow anywhere: DESIGN.md forbids it in light mode.
 
+// Sized a step up the DESIGN.md scale from the rest of the preview chrome. This
+// panel is read, not glanced at — every row is a sentence about a claim — and at
+// 12/13px it was the densest block on the page.
 const panelStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   background: "var(--surface)",
   borderRadius: 10,
-  padding: 14,
+  padding: 20,
   fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: 14,
   color: "var(--text)",
 };
 
@@ -887,17 +891,17 @@ const headerRow: React.CSSProperties = {
   gap: 12,
 };
 
-const titleStyle: React.CSSProperties = { fontSize: 14, fontWeight: 600 };
+const titleStyle: React.CSSProperties = { fontSize: 16, fontWeight: 600 };
 
-const subtleStyle: React.CSSProperties = { fontSize: 12, color: "var(--muted)", lineHeight: 1.4 };
+const subtleStyle: React.CSSProperties = { fontSize: 13, color: "var(--muted)", lineHeight: 1.5 };
 
-const groupStyle: React.CSSProperties = { marginTop: 14 };
+const groupStyle: React.CSSProperties = { marginTop: 20 };
 
 const groupHeader: React.CSSProperties = {
   display: "flex",
   alignItems: "baseline",
   gap: 8,
-  marginBottom: 6,
+  marginBottom: 8,
   flexWrap: "wrap",
 };
 
@@ -907,8 +911,8 @@ const decideCard: React.CSSProperties = {
   borderLeft: "3px solid var(--error)",
   borderRadius: "0 8px 8px 0",
   background: "var(--bg)",
-  padding: "10px 12px",
-  marginBottom: 8,
+  padding: "14px 16px",
+  marginBottom: 10,
 };
 
 const rowStyle: React.CSSProperties = {
@@ -916,38 +920,38 @@ const rowStyle: React.CSSProperties = {
   alignItems: "center",
   gap: 10,
   width: "100%",
-  padding: "7px 8px",
+  padding: "10px 10px",
   border: "none",
   borderRadius: 6,
   cursor: "pointer",
-  fontSize: 13,
+  fontSize: 14,
   color: "var(--text)",
   fontFamily: "inherit",
   background: "transparent",
 };
 
 const detailWrap: React.CSSProperties = {
-  padding: "6px 8px 10px 26px",
+  padding: "8px 10px 14px 28px",
   display: "flex",
   flexDirection: "column",
-  gap: 10,
+  gap: 12,
 };
 
 const claimStyle: React.CSSProperties = {
   borderLeft: "2px solid var(--border)",
-  paddingLeft: 10,
+  paddingLeft: 12,
 };
 
 const quoteStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 13,
   color: "var(--muted)",
   fontStyle: "italic",
-  marginTop: 5,
-  lineHeight: 1.5,
+  marginTop: 6,
+  lineHeight: 1.6,
 };
 
 const linkStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   color: "var(--muted)",
   textDecoration: "underline",
   display: "inline-block",
@@ -958,41 +962,41 @@ const linkStyle: React.CSSProperties = {
 const fixBoxStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: 8,
-  padding: 10,
+  padding: 14,
   marginBottom: 4,
   background: "var(--surface)",
 };
 
 /** Struck-through original. Colour carries no meaning beyond "this is the old one". */
 const beforeStyle: React.CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.5,
+  fontSize: 13,
+  lineHeight: 1.6,
   color: "var(--muted)",
   textDecoration: "line-through",
   marginBottom: 2,
 };
 
 const afterStyle: React.CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.5,
+  fontSize: 13,
+  lineHeight: 1.6,
   color: "var(--text)",
   borderLeft: "2px solid var(--success)",
   paddingLeft: 8,
 };
 
 const noticeStyle: React.CSSProperties = {
-  marginTop: 10,
-  padding: "7px 9px",
+  marginTop: 12,
+  padding: "10px 12px",
   border: "1px solid var(--border-strong)",
   borderRadius: 6,
-  fontSize: 12,
+  fontSize: 13,
   color: "var(--muted)",
-  lineHeight: 1.45,
+  lineHeight: 1.5,
 };
 
 const errorStyle: React.CSSProperties = {
-  marginTop: 10,
-  fontSize: 12,
+  marginTop: 12,
+  fontSize: 13,
   color: "var(--error)",
-  lineHeight: 1.45,
+  lineHeight: 1.5,
 };

@@ -58,36 +58,17 @@ export type ExtractedUnit = {
 /**
  * Flatten a carousel into verifiable units.
  *
- * Only the SELECTED hook is extracted, not all three. Verification runs after
- * the user picks a variant, so checking hooks they discarded is pure waste.
- * Pass `allHooks` to override (the library re-verify path has no selection
- * context and checks whatever is stored).
+ * The hook and the caption are deliberately NOT extracted. Both are framing
+ * rather than fact — a hook exists to earn the swipe and a caption to earn the
+ * comment — so they returned "unverifiable" almost every time and spent a
+ * model call to say nothing. The body of the deck is where a wrong number
+ * actually reaches the reader, so that is what gets checked.
  */
 export function extractCarouselUnits(
   content: CarouselContent | undefined | null,
-  selectedHook = 0,
-  allHooks = false,
 ): ExtractedUnit[] {
   if (!content || typeof content !== "object") return [];
   const units: ExtractedUnit[] = [];
-
-  const hooks = Array.isArray(content.hooks) ? content.hooks : [];
-  const hookIndices = allHooks
-    ? hooks.map((_, i) => i)
-    : hooks[selectedHook]
-      ? [selectedHook]
-      : hooks.length > 0
-        ? [0]
-        : [];
-
-  for (const i of hookIndices) {
-    const h = hooks[i];
-    if (!h) continue;
-    // sourceNote is joined in deliberately: an unsourced hook should surface as
-    // unverifiable, and a hook citing a journal makes that citation checkable.
-    const text = [h.headline, h.subline, h.sourceNote].filter(Boolean).join(". ").trim();
-    if (text) units.push({ id: `hook-${i}`, label: `Hook ${i + 1}`, kind: "hook", text });
-  }
 
   const slides = Array.isArray(content.slides) ? content.slides : [];
   slides.forEach((s, i) => {
@@ -99,10 +80,6 @@ export function extractCarouselUnits(
   if (tk?.headline || (Array.isArray(tk?.points) && tk.points.length > 0)) {
     const text = [tk?.headline, ...(tk?.points ?? [])].filter(Boolean).join(". ").trim();
     if (text) units.push({ id: "takeaway", label: "Takeaway", kind: "takeaway", text });
-  }
-
-  if (content.caption && content.caption.trim()) {
-    units.push({ id: "caption", label: "Caption", kind: "caption", text: content.caption.trim() });
   }
 
   return units;

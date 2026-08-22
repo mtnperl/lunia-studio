@@ -913,14 +913,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setStaleUnitIds([]);
       return;
     }
-    const units = extractCarouselUnits(config.content, config.selectedHook ?? 0);
+    const units = extractCarouselUnits(config.content);
     findStaleUnits(verification, units).then((ids) => {
       if (!cancelled) setStaleUnitIds(ids);
     });
     return () => {
       cancelled = true;
     };
-  }, [verification, config.content, config.selectedHook]);
+  }, [verification, config.content]);
 
   // Export state, driven by the gating policy rather than a hardcoded rule.
   // DEFAULT_GATING ships fully advisory, so nothing blocks: the export always
@@ -2700,7 +2700,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             // claimed a block that no longer existed.
             gating={gating}
             staleUnitIds={staleUnitIds}
-            pendingUnitLabels={extractCarouselUnits(config.content, config.selectedHook ?? 0).map((u) => u.label)}
+            pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
             onRecordChange={setVerification}
             onApplyFix={(unitId, fields: UnitFields) => {
               // Writes into the live content. The unit's hash now differs from
@@ -2713,7 +2713,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           <div style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 10, padding: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Fact check</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
-              Save this carousel first, then every hook and slide can be checked against real sources.
+              Save this carousel first, then every slide can be checked against real sources.
             </div>
           </div>
         )}

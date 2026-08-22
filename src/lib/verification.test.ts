@@ -121,36 +121,15 @@ describe("extractCarouselUnits", () => {
     caption: "A caption about sleep.",
   } as unknown as CarouselContent;
 
-  it("extracts only the selected hook by default", () => {
-    const units = extractCarouselUnits(content, 1);
-    const hooks = units.filter((u) => u.kind === "hook");
-    expect(hooks).toHaveLength(1);
-    expect(hooks[0].id).toBe("hook-1");
+  it("extracts slides and the takeaway", () => {
+    const units = extractCarouselUnits(content);
+    expect(units.map((u) => u.id)).toEqual(["slide-0", "slide-1", "takeaway"]);
   });
 
-  it("extracts every hook when asked", () => {
-    expect(extractCarouselUnits(content, 0, true).filter((u) => u.kind === "hook")).toHaveLength(3);
-  });
-
-  it("falls back to hook 0 when the selection is out of range", () => {
-    expect(extractCarouselUnits(content, 99).filter((u) => u.kind === "hook")[0].id).toBe("hook-0");
-  });
-
-  it("folds the sourceNote into the hook text so the citation is checkable", () => {
-    const hook = extractCarouselUnits(content, 0)[0];
-    expect(hook.text).toContain("Sleep Med research");
-  });
-
-  it("survives an empty sourceNote without emitting a dangling separator", () => {
-    const hook = extractCarouselUnits(content, 1)[0];
-    expect(hook.text).toBe("H2. S2");
-  });
-
-  it("extracts slides, takeaway and caption", () => {
-    const units = extractCarouselUnits(content, 0);
-    expect(units.map((u) => u.id)).toEqual([
-      "hook-0", "slide-0", "slide-1", "takeaway", "caption",
-    ]);
+  it("never checks the hook or the caption — both are framing, not fact", () => {
+    const kinds = extractCarouselUnits(content).map((u) => u.kind);
+    expect(kinds).not.toContain("hook");
+    expect(kinds).not.toContain("caption");
   });
 
   it("returns nothing for missing or malformed content", () => {
@@ -162,7 +141,7 @@ describe("extractCarouselUnits", () => {
   });
 
   it("skips units whose text is empty", () => {
-    const sparse = { hooks: [{ headline: "", subline: "" }], slides: [], caption: "" } as unknown as CarouselContent;
+    const sparse = { hooks: [{ headline: "H", subline: "S" }], slides: [], caption: "cap" } as unknown as CarouselContent;
     expect(extractCarouselUnits(sparse)).toEqual([]);
   });
 });
@@ -268,8 +247,8 @@ describe("getUnitFields / applyUnitFields", () => {
   });
 
   it("changes the unit hash, so an applied fix marks the unit stale", async () => {
-    const before = extractCarouselUnits(base, 0).find((u) => u.id === "slide-0")!;
-    const after = extractCarouselUnits(applyUnitFields(base, "slide-0", { body: "new body" }), 0)
+    const before = extractCarouselUnits(base).find((u) => u.id === "slide-0")!;
+    const after = extractCarouselUnits(applyUnitFields(base, "slide-0", { body: "new body" }))
       .find((u) => u.id === "slide-0")!;
     expect(await hashUnitText(before.text)).not.toBe(await hashUnitText(after.text));
   });

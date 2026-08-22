@@ -6,7 +6,7 @@
 // budget, and a timeout there loses the carousel, not just the check. Verifying
 // on selection also means checking one variant instead of three.
 //
-// POST /api/verify        { kind, id, allHooks? }  → verify and persist
+// POST /api/verify        { kind, id }  → verify and persist
 // PATCH /api/verify       { id, unitId, claimId, verdict, reason }  → override
 //
 // GET is not offered: the record lives on the content object, so the existing
@@ -36,7 +36,6 @@ type VerifyBody = {
   kind?: string;
   id?: string;
   /** Library re-verify has no selection context, so it checks every hook. */
-  allHooks?: boolean;
   /**
    * Opt in to the NDJSON progress stream. Off by default so the JSON contract
    * every other caller relies on is untouched.
@@ -84,11 +83,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     const carousel = await getCarouselById(id);
     if (!carousel) return Response.json({ error: "Carousel not found" }, { status: 404 });
 
-    const units = extractCarouselUnits(
-      carousel.content,
-      carousel.selectedHook ?? 0,
-      body.allHooks === true,
-    );
+    const units = extractCarouselUnits(carousel.content);
 
     if (units.length === 0) {
       return Response.json(

@@ -473,6 +473,6 @@ export async function verifyUnits(
 
 /** Convenience wrapper for the carousel path. */
 export async function verifyCarousel(carousel: SavedCarousel): Promise<VerificationRecord> {
-  const units = extractCarouselUnits(carousel.content, carousel.selectedHook ?? 0);
+  const units = extractCarouselUnits(carousel.content);
   return verifyUnits(units, "carousel", carousel.id);
 }
