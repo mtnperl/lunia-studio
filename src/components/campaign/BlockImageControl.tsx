@@ -90,12 +90,13 @@ export default function BlockImageControl({
         )}
       </div>
       {!compact && (
-        <input
-          type="text"
+        <textarea
           value={imagePrompt ?? ""}
           onChange={(e) => onChange({ imagePrompt: e.target.value })}
+          rows={2}
           placeholder={suggestPrompt().trim() ? `Prompt (defaults to: ${suggestPrompt().trim().slice(0, 44)}…)` : "Image prompt"}
-          style={input}
+          title="Written from this email's copy. Edit it, then press Generate."
+          style={{ ...input, resize: "vertical", lineHeight: 1.45 }}
         />
       )}
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

@@ -7,6 +7,7 @@ import InlineStyleToolbar from "./InlineStyleToolbar";
 import { useAssets, pickSampleImageUrl } from "./useAssets";
 import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import { stripInlineTokens } from "@/lib/campaign-inline-style";
+import { withImagePrompt, type EmailImageContext } from "@/lib/campaign-image-prompt";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
@@ -74,11 +75,6 @@ const IMAGE_LAYOUTS: { key: NonNullable<CampaignBlock["imageLayout"]>; label: st
 
 // Prefilled Lunia formula for a new ingredients block — editable, so it's one
 // tweak instead of typing the whole label from scratch.
-const LUNIA_INGREDIENTS: { name: string; dose: string }[] = [
-  { name: "Magnesium Glycinate", dose: "400mg" },
-  { name: "L-Theanine", dose: "200mg" },
-  { name: "Apigenin", dose: "50mg" },
-];
 
 // Klaviyo merge-tag presets. `|default:'...'` keeps a broken/missing profile
 // field from rendering literally blank — plain text, survives copy-paste
@@ -302,7 +298,19 @@ export default function CampaignEditor({
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [pendingBlocks, setPendingBlocks] = useState<{ block: CampaignBlock; included: boolean }[] | null>(
-    initialPending ? initialPending.blocks.map((block) => ({ block, included: true })) : null,
+    initialPending
+      ? initialPending.blocks.map((block) => ({
+          // Seeded by the flow-level batch, which does not know this email's
+          // context. Fill any missing prompt so every image block in the
+          // review is ready to generate, same as a local restructure.
+          block: withImagePrompt(block, {
+            subject: content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "",
+            topic,
+            copy: content.blocks.map((b) => b.body).filter(Boolean),
+          }),
+          included: true,
+        }))
+      : null,
   );
   const [pendingMeta, setPendingMeta] = useState<{ topBanner?: string; promoBand?: string; ctaLabel?: string }>(
     initialPending?.meta ?? {},
@@ -315,11 +323,6 @@ export default function CampaignEditor({
   // to give a newly-added block a picture without spending a generation.
   const assets = useAssets();
   const [restructureBusy, setRestructureBusy] = useState(false);
-  // Progress while a restructure's suggested images are being generated.
-  const [pendingImgProgress, setPendingImgProgress] = useState<{ done: number; total: number } | null>(null);
-  // Slots already attempted this session, so a failure is not retried forever
-  // and a re-render never re-fires a generation that is already in flight.
-  const attemptedImages = useRef<Set<string>>(new Set());
   const [restructureError, setRestructureError] = useState<string | null>(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
@@ -703,9 +706,22 @@ export default function CampaignEditor({
   //
   // The picture comes from the asset library, never from a generation: a click
   // that adds a block must not spend one.
+  /** What this email is about, for writing an image prompt that belongs to it
+   *  rather than to wellness in general. */
+  function emailImageContext(c: CampaignContent): EmailImageContext {
+    return {
+      subject: c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "",
+      topic,
+      copy: c.blocks.map((b) => b.body).filter(Boolean),
+    };
+  }
+
   function addBlock(kind: BlockKind = "text") {
     const c = latestContent.current;
-    const base = sampleBlock(kind, newId(), pickSampleImageUrl(assets));
+    // The picture is NOT generated here: the block arrives with a prompt
+    // written from this email's own copy, and Generate stays a deliberate
+    // press on the block itself.
+    const base = withImagePrompt(sampleBlock(kind, newId(), pickSampleImageUrl(assets)), emailImageContext(c));
     // An image block places a slot rather than owning an image itself, so it
     // is created together with the slot it points at — one commit, one undo
     // step, and the slot keeps working with the existing ImageSlotControl.
@@ -989,10 +1005,14 @@ export default function CampaignEditor({
         setRestructureError(data.error ?? "Restructure failed");
         return;
       }
-      setPendingBlocks((data.blocks as CampaignBlock[]).map((block) => ({ block, included: true })));
+      // The model supplies imagePrompt for image kinds; fill in any it left
+      // empty so every image block in the review is ready to generate.
+      const ctx = emailImageContext(c);
+      setPendingBlocks(
+        (data.blocks as CampaignBlock[]).map((block) => ({ block: withImagePrompt(block, ctx), included: true })),
+      );
       setPendingMeta({ topBanner: data.topBanner, promoBand: data.promoBand, ctaLabel: data.ctaLabel });
       setPendingMode("replace");
-      attemptedImages.current.clear();
       setTemplatePickerOpen(false);
     } catch (err) {
       setRestructureError(err instanceof Error ? err.message : "Network error");
@@ -1000,79 +1020,6 @@ export default function CampaignEditor({
       setRestructureBusy(false);
     }
   }
-
-  // A restructure that proposes image blocks fills in their pictures, so the
-  // before/after diff shows the real thing rather than grey placeholders.
-  //
-  // Runs only for replace-mode (Make it visual) reviews, and only for slots
-  // the model gave a prompt for. Sequential, one request each, so a six-cell
-  // suggestion does not fire six generations at once.
-  useEffect(() => {
-    if (!pendingBlocks || pendingMode !== "replace") return;
-
-    type Slot = { blockId: string; cell?: number; prompt: string; aspect: "1:1" | "4:5" };
-    const slots: Slot[] = [];
-    for (const p of pendingBlocks) {
-      const b = p.block;
-      if (b.kind === "grid") {
-        (b.gridCells ?? []).forEach((c, i) => {
-          if (!c.imageUrl?.trim() && c.imagePrompt?.trim()) {
-            slots.push({ blockId: b.id, cell: i, prompt: c.imagePrompt, aspect: "1:1" });
-          }
-        });
-      } else if (b.kind === "imagetext" || b.kind === "imagebullets" || b.kind === "headerimage") {
-        if (!b.imageUrl?.trim() && b.imagePrompt?.trim()) {
-          slots.push({ blockId: b.id, prompt: b.imagePrompt, aspect: b.kind === "headerimage" ? "4:5" : "1:1" });
-        }
-      }
-    }
-    const todo = slots.filter((s) => !attemptedImages.current.has(`${s.blockId}:${s.cell ?? "-"}`));
-    if (todo.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      setPendingImgProgress({ done: 0, total: todo.length });
-      for (let i = 0; i < todo.length; i++) {
-        if (cancelled) return;
-        const slot = todo[i]!;
-        attemptedImages.current.add(`${slot.blockId}:${slot.cell ?? "-"}`);
-        try {
-          const res = await fetch("/api/campaign/generate-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: slot.prompt, aspect: slot.aspect, topic, role: "secondary" }),
-          });
-          const data = await res.json();
-          if (!cancelled && res.ok && data.url) {
-            setPendingBlocks((prev) =>
-              prev
-                ? prev.map((p) => {
-                    if (p.block.id !== slot.blockId) return p;
-                    if (slot.cell === undefined) return { ...p, block: { ...p.block, imageUrl: data.url as string } };
-                    return {
-                      ...p,
-                      block: {
-                        ...p.block,
-                        gridCells: (p.block.gridCells ?? []).map((c, j) =>
-                          j === slot.cell ? { ...c, imageUrl: data.url as string } : c,
-                        ),
-                      },
-                    };
-                  })
-                : prev,
-            );
-          }
-        } catch {
-          // A failed image leaves the block's placeholder in place. The copy is
-          // still reviewable, and the block's own Generate button can retry.
-        }
-        if (!cancelled) setPendingImgProgress({ done: i + 1, total: todo.length });
-      }
-      if (!cancelled) setPendingImgProgress(null);
-    })();
-
-    return () => { cancelled = true; };
-  }, [pendingBlocks, pendingMode, topic]);
 
   function togglePendingBlock(index: number) {
     setPendingBlocks((prev) => prev && prev.map((p, i) => (i === index ? { ...p, included: !p.included } : p)));
@@ -1667,12 +1614,11 @@ export default function CampaignEditor({
                   Same words, new structure. Check every number against the left
                   side before accepting — the restructure is not fact-checked in code.
                 </div>
-                {pendingImgProgress && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>
-                    <Spinner size={9} color="var(--muted)" />
-                    Generating images {pendingImgProgress.done}/{pendingImgProgress.total} — the After panel fills in as they land
-                  </div>
-                )}
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
+                  Image blocks arrive with a prompt already written from this
+                  email&apos;s copy. Nothing is generated until you press Generate
+                  on the block.
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([
                     { key: "before", label: "Before", doc: restructureDiff.before },
@@ -2151,7 +2097,6 @@ export default function CampaignEditor({
                               imagePrompt={c.imagePrompt}
                               aspect="1:1"
                               topic={topic}
-                              compact
                               suggestPrompt={() => [c.heading, c.caption].filter(Boolean).join(". ")}
                               onChange={(patch) => setCell(i, patch)}
                             />
