@@ -1481,6 +1481,17 @@ export default function CampaignEditor({
               last
             >Cream</SegButton>
           </div>
+          {/* The matching note in the CTA block lives in the Images section,
+              which auto-collapses once a hero image exists — i.e. exactly when
+              someone is likely to switch themes. Repeat it here, where the
+              switch actually happened, so the disabled CTA control is never
+              unexplained. */}
+          {content.theme === "cream" && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+              On cream the CTA is always navy, for contrast. Your Cream/Navy button
+              choice is kept and returns if you switch back.
+            </div>
+          )}
         </div>
         {/* Make it visual — restructures the copy ALREADY in this email into a
             richer block layout. Lives here rather than next to "Suggest layout"
