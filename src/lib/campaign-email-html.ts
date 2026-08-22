@@ -1,17 +1,18 @@
 // Renders a campaign email to standalone, email-client-safe HTML.
-// Matches the Lunia template: 600px navy shell, Inter type, rounded text
-// blocks, a 2-up secondary image row, a cream CTA button. All copy is real
+// Matches the Lunia template: a 600px shell, Inter type, rounded text blocks,
+// a 2-up secondary image row, and a CTA button. Two themes: navy (the default,
+// and what every campaign saved before themes existed renders as) and cream,
+// the handbook's Soft Ivory treatment. Colours come from the theme's ROLES,
+// never from literals — see campaign-theme.ts for why a hex map is not
+// sufficient here. All copy is real
 // HTML text so it stays crisp at any zoom — never baked into images.
 // Images can also be placed inline as kind:"image" blocks (column / bleed /
 // split), which is how an image escapes the half-width 2-up grid.
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
 import type { CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind } from "./types";
+import { resolveTheme, resolveCta, type CampaignTheme } from "./campaign-theme";
 
-const NAVY = "#01253f";
-const CREAM = "#f5f5e9";
-/** Highlighter-style mark color for top-banner `**...**` fragments. */
-const HIGHLIGHT = "#ffd800";
 
 function esc(s: string): string {
   return (s ?? "")
@@ -46,7 +47,7 @@ function renderInline(raw: string): string {
 }
 
 /** A block body → paragraphs (split on blank lines), newlines → <br>. */
-function paragraphs(body: string, align: "left" | "center", italic: boolean, weight: "thin" | "extralight" | "light" | "normal" = "light"): string {
+function paragraphs(t: CampaignTheme, body: string, align: "left" | "center", italic: boolean, weight: "thin" | "extralight" | "light" | "normal" = "light"): string {
   const fontStyle = italic ? "font-style:italic;" : "";
   const size = italic ? "16px" : "18.7px";
   // Inter 300 (light) is the template default; 100 (thin), 200 (extralight),
@@ -58,7 +59,7 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean, wei
     .filter(Boolean)
     .map(
       (p) =>
-        `<p style="margin:0 0 16px;color:#ffffff;font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${renderInline(
+        `<p style="margin:0 0 16px;color:${t.text};font-size:${size};font-weight:${fontWeight};${fontStyle}font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:${align};">${renderInline(
           p,
         ).replace(/\n/g, "<br>")}</p>`,
     )
@@ -66,13 +67,13 @@ function paragraphs(body: string, align: "left" | "center", italic: boolean, wei
 }
 
 /** Big hero number + caption — social-proof / stat callout, centered. */
-function statBlock(b: CampaignBlock): string {
+function statBlock(b: CampaignBlock, t: CampaignTheme): string {
   const value = b.statValue?.trim();
   if (!value) return "";
   return `<div style="text-align:center;padding:4px 0;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:36px;font-weight:300;color:${CREAM};line-height:1.15;">${esc(value)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:36px;font-weight:300;color:${t.inkAccent};line-height:1.15;">${esc(value)}</div>
     ${b.statLabel?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:${CREAM};opacity:0.75;margin-top:6px;">${esc(b.statLabel)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};opacity:0.75;margin-top:6px;">${esc(b.statLabel)}</div>`
       : ""}
   </div>`;
 }
@@ -82,51 +83,51 @@ function statBlock(b: CampaignBlock): string {
  *  FREE" pattern, which has no literal coupon code). Renders if either a
  *  code or an original price is present — a value-stack offer shouldn't
  *  require a code that doesn't exist. */
-function discountBlock(b: CampaignBlock): string {
+function discountBlock(b: CampaignBlock, t: CampaignTheme): string {
   const code = b.discountCode?.trim();
   const originalPrice = b.originalPrice?.trim();
   const newPrice = b.newPrice?.trim();
   if (!code && !originalPrice) return "";
-  return `<div style="border:1.5px dashed ${CREAM};border-radius:8px;padding:16px;text-align:center;">
+  return `<div style="border:1.5px dashed ${t.accentBorder};border-radius:8px;padding:16px;text-align:center;">
     ${code
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${CREAM};">${esc(code)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${t.inkAccent};">${esc(code)}</div>`
       : ""}
     ${originalPrice
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;${code ? "margin-top:8px;" : ""}">
-           <span style="color:#ffffff;opacity:0.6;text-decoration:line-through;">${esc(originalPrice)}</span>
-           ${newPrice ? `<span style="color:${CREAM};margin-left:8px;">${esc(newPrice)}</span>` : ""}
+           <span style="color:${t.text};opacity:0.6;text-decoration:line-through;">${esc(originalPrice)}</span>
+           ${newPrice ? `<span style="color:${t.inkAccent};margin-left:8px;">${esc(newPrice)}</span>` : ""}
          </div>`
       : ""}
     ${b.discountDescription?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;margin-top:4px;">${esc(b.discountDescription)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};margin-top:4px;">${esc(b.discountDescription)}</div>`
       : ""}
   </div>`;
 }
 
 /** Star rating + quote + attribution — social proof, centered. */
-function testimonialBlock(b: CampaignBlock): string {
+function testimonialBlock(b: CampaignBlock, t: CampaignTheme): string {
   const quote = b.testimonialQuote?.trim();
   if (!quote) return "";
   const stars = Math.min(5, Math.max(1, b.testimonialStars ?? 5));
   return `<div style="text-align:center;">
-    <div style="color:${CREAM};font-size:16px;letter-spacing:2px;margin-bottom:10px;">${"★".repeat(stars)}</div>
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-style:italic;font-weight:300;color:#ffffff;line-height:1.5;">"${esc(quote)}"</div>
+    <div style="color:${t.inkAccent};font-size:16px;letter-spacing:2px;margin-bottom:10px;">${"★".repeat(stars)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-style:italic;font-weight:300;color:${t.text};line-height:1.5;">"${esc(quote)}"</div>
     ${b.testimonialAuthor?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${CREAM};margin-top:10px;">— ${esc(b.testimonialAuthor)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};margin-top:10px;">— ${esc(b.testimonialAuthor)}</div>`
       : ""}
   </div>`;
 }
 
 /** Results-over-time progression — a vertical list of time-labeled rows,
  *  each a bold label + claim, separated by thin dividers. */
-function timelineBlock(b: CampaignBlock): string {
+function timelineBlock(b: CampaignBlock, t: CampaignTheme): string {
   const rows = (b.timelineRows ?? []).filter((r) => r.label?.trim() || r.text?.trim());
   if (rows.length === 0) return "";
   return rows
     .map(
-      (r, i) => `<div style="padding:${i === 0 ? "0" : "12px"} 0 12px;${i > 0 ? `border-top:1px solid rgba(245,245,233,0.2);` : ""}">
-        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${CREAM};margin-bottom:4px;">${esc(r.label ?? "")}</div>
-        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">${esc(r.text ?? "")}</div>
+      (r, i) => `<div style="padding:${i === 0 ? "0" : "12px"} 0 12px;${i > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};margin-bottom:4px;">${esc(r.label ?? "")}</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${esc(r.text ?? "")}</div>
       </div>`,
     )
     .join("");
@@ -136,7 +137,7 @@ function timelineBlock(b: CampaignBlock): string {
  *  + caption pairs. imageUrl is a plain pasted URL (no asset picker); a
  *  row with no caption is dropped, an image with no url shows a solid
  *  placeholder (same pattern as imageCell()). */
-function trustgridBlock(b: CampaignBlock): string {
+function trustgridBlock(b: CampaignBlock, t: CampaignTheme): string {
   const items = (b.trustItems ?? []).filter((i) => i.caption?.trim());
   if (items.length === 0) return "";
   let html = "";
@@ -147,8 +148,8 @@ function trustgridBlock(b: CampaignBlock): string {
       if (!item) return `<td width="48.91%" style="width:48.91%;">&nbsp;</td>`;
       const img = item.imageUrl?.trim()
         ? `<img src="${esc(item.imageUrl)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
-        : `<div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;margin-bottom:8px;"></div>`;
-      return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${img}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:#ffffff;line-height:1.4;">${esc(item.caption)}</div></td>`;
+        : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
+      return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${img}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.4;">${esc(item.caption)}</div></td>`;
     };
     html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;${i > 0 ? "margin-top:16px;" : ""}">
       <tr>${cell(left)}<td width="12" style="width:12px;font-size:0;">&nbsp;</td>${cell(right)}</tr>
@@ -161,15 +162,15 @@ function trustgridBlock(b: CampaignBlock): string {
  *  recommended option) gets a cream background to visually favor it, same
  *  emphasis pattern competitor subscription emails use. Renders only when
  *  both labels are set — a one-sided comparison isn't a comparison. */
-function comparisonBlock(b: CampaignBlock): string {
+function comparisonBlock(b: CampaignBlock, t: CampaignTheme): string {
   const leftLabel = b.comparisonLeftLabel?.trim();
   const rightLabel = b.comparisonRightLabel?.trim();
   if (!leftLabel || !rightLabel) return "";
   const card = (label: string, price?: string, perk?: string, emphasized = false) => `
-    <td width="48.91%" style="width:48.91%;vertical-align:top;background:${emphasized ? CREAM : "transparent"};border:1px solid ${emphasized ? CREAM : "rgba(245,245,233,0.3)"};border-radius:8px;padding:14px;">
-      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? NAVY : CREAM};margin-bottom:6px;">${esc(label)}</div>
-      ${price?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${emphasized ? NAVY : "#ffffff"};margin-bottom:4px;">${esc(price)}</div>` : ""}
-      ${perk?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:${emphasized ? NAVY : "#ffffff"};line-height:1.4;">${esc(perk)}</div>` : ""}
+    <td width="48.91%" style="width:48.91%;vertical-align:top;background:${emphasized ? t.panelBg : "transparent"};border:1px solid ${emphasized ? t.accentBorder : t.accentBorderSoft};border-radius:8px;padding:14px;">
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? t.inkOnPanel : t.inkAccent};margin-bottom:6px;">${esc(label)}</div>
+      ${price?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${emphasized ? t.inkOnPanel : t.text};margin-bottom:4px;">${esc(price)}</div>` : ""}
+      ${perk?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:${emphasized ? t.inkOnPanel : t.text};line-height:1.4;">${esc(perk)}</div>` : ""}
     </td>`;
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
     <tr>
@@ -185,7 +186,7 @@ function comparisonBlock(b: CampaignBlock): string {
  *  centered trust footnote. Table-based, right-aligned dose column, no
  *  flexbox — Outlook-safe like the rest of the template. Renders only when at
  *  least one item has a name. */
-function ingredientsBlock(b: CampaignBlock): string {
+function ingredientsBlock(b: CampaignBlock, t: CampaignTheme): string {
   const items = (b.ingredientItems ?? []).filter((i) => i.name?.trim());
   if (items.length === 0) return "";
   const heading = (b.ingredientHeading?.trim() || "What's inside");
@@ -193,31 +194,31 @@ function ingredientsBlock(b: CampaignBlock): string {
   const rows = items
     .map((it, idx) => {
       const pad = idx === 0 ? "0 0 10px 0" : "10px 0";
-      const border = idx === 0 ? "none" : "1px solid #dcd7c6";
+      const border = idx === 0 ? "none" : `1px solid ${t.ruleOnPanel}`;
       return `<tr>
-        <td style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:${NAVY};line-height:1.3;">${esc(it.name)}</td>
-        <td align="right" style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${NAVY};white-space:nowrap;">${esc(it.dose || "")}</td>
+        <td style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:400;color:${t.inkOnPanel};line-height:1.3;">${esc(it.name)}</td>
+        <td align="right" style="padding:${pad};border-top:${border};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${t.inkOnPanel};white-space:nowrap;">${esc(it.dose || "")}</td>
       </tr>`;
     })
     .join("");
-  return `<div style="background:${CREAM};border-radius:8px;padding:20px 22px;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${NAVY};padding-bottom:12px;border-bottom:2px solid ${NAVY};margin-bottom:12px;">${esc(heading)}</div>
+  return `<div style="background:${t.panelBg};border-radius:8px;padding:20px 22px;">
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${t.inkOnPanel};padding-bottom:12px;border-bottom:2px solid ${t.inkOnPanel};margin-bottom:12px;">${esc(heading)}</div>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:auto;">${rows}</table>
-    ${footnote ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#4d6a7d;text-align:center;margin-top:16px;letter-spacing:0.02em;">${esc(footnote)}</div>` : ""}
+    ${footnote ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:${t.mutedOnPanel};text-align:center;margin-top:16px;letter-spacing:0.02em;">${esc(footnote)}</div>` : ""}
   </div>`;
 }
 
 /** Benefit/ingredient checklist. A 2-cell table row per item — a cream
  *  checkmark that stays top-aligned next to wrapping text (cleaner than the
  *  old em-dash bullet). Table-based, no flexbox — Outlook-safe. */
-function checklistBlock(b: CampaignBlock): string {
+function checklistBlock(b: CampaignBlock, t: CampaignTheme): string {
   const items = (b.items ?? []).map((i) => i.trim()).filter(Boolean);
   if (items.length === 0) return "";
   const rows = items
     .map(
       (item) => `<tr>
-        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${CREAM};line-height:1.5;">&#10003;</td>
-        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:#ffffff;line-height:1.5;">${esc(item)}</td>
+        <td valign="top" style="width:24px;padding:0 8px 12px 0;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:${t.inkAccent};line-height:1.5;">&#10003;</td>
+        <td valign="top" style="padding:0 0 12px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${esc(item)}</td>
       </tr>`,
     )
     .join("");
@@ -225,9 +226,9 @@ function checklistBlock(b: CampaignBlock): string {
 }
 
 /** Top banner above the logo. Caps Inter on white. Wrap a fragment with
- *  `**...**` to render that fragment as a navy pill (background NAVY, color
- *  CREAM). Empty/whitespace text → returns "" so the row is skipped. */
-function renderTopBanner(text: string): string {
+ *  `**...**` to render that fragment as a highlighter pill. Empty/whitespace
+ *  text → returns "" so the row is skipped. */
+function renderTopBanner(text: string, t: CampaignTheme): string {
   const trimmed = (text ?? "").trim();
   if (!trimmed) return "";
   // Split by `**...**` markers, preserving the surrounding chunks. Even-indexed
@@ -238,12 +239,12 @@ function renderTopBanner(text: string): string {
       if (!chunk) return "";
       const safe = esc(chunk);
       if (i % 2 === 1) {
-        return `<span style="background:${HIGHLIGHT};color:${NAVY};padding:2px 8px;border-radius:3px;">${safe}</span>`;
+        return `<span style="background:${t.highlight};color:${t.highlightText};padding:2px 8px;border-radius:3px;">${safe}</span>`;
       }
       return safe;
     })
     .join("");
-  return `<tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:${NAVY};line-height:1.4;">
+  return `<tr><td style="background:${t.stripBg};padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:${t.stripText};line-height:1.4;">
     ${inner}
   </td></tr>`;
 }
@@ -258,7 +259,7 @@ function renderTopBanner(text: string): string {
  *  clipped the glyph in Gmail/Outlook — keeping it conservative now.
  *  If the asset is ever replaced with a TRULY zero-padding crop, set
  *  CROP_TOP / CROP_BOTTOM to 0 so the strip doesn't eat any of the mark. */
-function renderLogoStrip(url: string | null | undefined): string {
+function renderLogoStrip(url: string | null | undefined, t: CampaignTheme): string {
   if (!url) return "";
   // Wrapper height defines the strip's overall vertical footprint (and
   // therefore the banner-to-hero spacing). Image height defines how big
@@ -274,7 +275,7 @@ function renderLogoStrip(url: string | null | undefined): string {
   // border collapsing; email clients strip that, so we have to render it
   // explicitly. Subtle near-transparent black reads on white in every
   // major client.
-  return `<tr><td style="background:#ffffff;padding:0.5px 24px;text-align:left;border-top:1px solid rgba(0,0,0,0.08);">
+  return `<tr><td style="background:${t.stripBg};padding:0.5px 24px;text-align:left;border-top:1px solid ${t.stripRule};">
     <div class="logo-crop" style="height:${WRAPPER_HEIGHT}px;overflow:hidden;line-height:0;">
       <img src="${esc(url)}" alt="Lunia Life" class="logo-img" style="display:block;height:${IMAGE_HEIGHT}px;width:auto;margin-top:${VERTICAL_CENTER}px;border:0 none;outline:none;box-shadow:none;background:transparent;-webkit-appearance:none;">
     </div>
@@ -290,33 +291,33 @@ function renderLogoStrip(url: string | null | undefined): string {
  *  words are guaranteed by the bottom CTA button. So the same text is repeated
  *  in an mso-only caption bar beneath the image: modern clients see the
  *  overlay, Outlook sees a caption, nobody loses the copy. */
-function overlayHtml(b: CampaignBlock, radius: string): string {
+function overlayHtml(b: CampaignBlock, radius: string, t: CampaignTheme): string {
   const eyebrow = b.imageOverlayEyebrow?.trim();
   const headline = b.imageOverlayHeadline?.trim();
   if (!eyebrow && !headline) return "";
   const eyebrowHtml = eyebrow
-    ? `<div style="color:${CREAM};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
+    ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
     : "";
   const headlineHtml = headline
-    ? `<div class="img-overlay-headline" style="color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:26px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+    ? `<div class="img-overlay-headline" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:26px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
     : "";
-  return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, rgba(1,37,63,0) 0%, rgba(1,37,63,0.82) 100%);border-radius:${radius};">
+  return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, ${t.scrimFrom} 0%, ${t.scrimTo} 100%);border-radius:${radius};">
       ${eyebrowHtml}${headlineHtml}
     </div>`;
 }
 
 /** Outlook-only fallback for overlayHtml — same words, stacked under the
  *  image, so the copy survives a client that cannot position it. */
-function overlayMsoFallback(b: CampaignBlock): string {
+function overlayMsoFallback(b: CampaignBlock, t: CampaignTheme): string {
   const eyebrow = b.imageOverlayEyebrow?.trim();
   const headline = b.imageOverlayHeadline?.trim();
   if (!eyebrow && !headline) return "";
   const parts = [
     eyebrow
-      ? `<div style="color:${CREAM};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
+      ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
       : "",
     headline
-      ? `<div style="color:#ffffff;font-family:Inter,Arial,Helvetica,sans-serif;font-size:24px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:24px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
       : "",
   ].join("");
   return `<!--[if mso]><div style="padding:16px 0 0;">${parts}</div><![endif]-->`;
@@ -324,9 +325,9 @@ function overlayMsoFallback(b: CampaignBlock): string {
 
 /** A solid placeholder shown while a slot has no image yet, sized to the
  *  block's aspect so the layout doesn't jump when the real image lands. */
-function imagePlaceholder(aspect: string, radius: string): string {
+function imagePlaceholder(aspect: string, radius: string, t: CampaignTheme): string {
   const ratio = aspect === "16:9" ? "16/9" : aspect === "4:5" ? "4/5" : "1/1";
-  return `<div style="width:100%;aspect-ratio:${ratio};background:#0c3354;border-radius:${radius};"></div>`;
+  return `<div style="width:100%;aspect-ratio:${ratio};background:${t.placeholder};border-radius:${radius};"></div>`;
 }
 
 /** An image placed in the body flow by a kind:"image" block. Three layouts:
@@ -341,7 +342,7 @@ function imagePlaceholder(aspect: string, radius: string): string {
  * Returns a complete <tr>, not an inner fragment: bleed has to escape the
  * standard 24px cell padding, so these can't go through the shared padded
  * wrapper the text/callout blocks use. */
-function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined): string {
+function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t: CampaignTheme): string {
   const layout = b.imageLayout ?? "column";
   const url = slot?.url;
   const aspect = slot?.aspect ?? (layout === "split" ? "1:1" : "16:9");
@@ -352,10 +353,10 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined): s
     const imgCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
       url
         ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`
-        : imagePlaceholder(aspect, "8px")
+        : imagePlaceholder(aspect, "8px", t)
     }</td>`;
     const textCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
-      text ? paragraphs(text, "left", !!b.italic, b.weight ?? "light") : "&nbsp;"
+      text ? paragraphs(t, text, "left", !!b.italic, b.weight ?? "light") : "&nbsp;"
     }</td>`;
     const spacer = '<td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>';
     return `<tr><td class="h-padding" style="padding:0 24px 16px;">
@@ -370,22 +371,22 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined): s
   const width = bleed ? "600" : "552";
   const inner = url
     ? `<img src="${esc(url)}" width="${width}" style="display:block;width:100%;height:auto;border-radius:${radius};" alt="">`
-    : imagePlaceholder(aspect, radius);
+    : imagePlaceholder(aspect, radius, t);
   const padding = bleed ? "0 0 16px" : "0 24px 16px";
   const cellClass = bleed ? "" : ' class="h-padding"';
   return `<tr><td${cellClass} style="padding:${padding};">
       <div style="position:relative;">
         ${inner}
-        ${overlayHtml(b, radius)}
+        ${overlayHtml(b, radius, t)}
       </div>
-      ${overlayMsoFallback(b)}
+      ${overlayMsoFallback(b, t)}
     </td></tr>`;
 }
 
-function imageCell(url: string | null | undefined, width: string): string {
+function imageCell(url: string | null | undefined, width: string, t: CampaignTheme): string {
   // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
-    return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:#0c3354;border-radius:8px;"></div></td>`;
+    return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;"></div></td>`;
   }
   return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
     url,
@@ -397,8 +398,8 @@ function imageCell(url: string | null | undefined, width: string): string {
  *  "bleed" layout can escape the 24px cell padding, and is handled ahead of
  *  this table in blockRow. Because the key type is the kind union minus the
  *  full-row kinds, a new kind cannot be added without a renderer. */
-const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock) => string> = {
-  text: (b) => paragraphs(b.body, b.align, !!b.italic, b.weight ?? "light"),
+const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: CampaignTheme) => string> = {
+  text: (b, t) => paragraphs(t, b.body, b.align, !!b.italic, b.weight ?? "light"),
   stat: statBlock,
   discount: discountBlock,
   checklist: checklistBlock,
@@ -411,6 +412,9 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock) => string
 
 /** Render the full campaign email as a standalone HTML document. */
 export function renderCampaignEmail(content: CampaignContent): string {
+  // Unset resolves to navy, so a campaign saved before themes existed renders
+  // byte-for-byte as it did.
+  const t = resolveTheme(content.theme);
   const subject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
   const hero = content.images.find((i) => i.role === "hero");
   const slotById = new Map(content.images.map((i) => [i.id, i]));
@@ -441,12 +445,8 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // fallback. Don't try to make this pixel-perfect in Outlook.
   // Bottom button and hero overlay carry independent styles. heroStyle
   // falls back to style for saves made before the two were split.
-  const ctaIsNavy = content.cta.style === "navy";
-  const ctaBg = ctaIsNavy ? NAVY : CREAM;
-  const ctaFg = ctaIsNavy ? "#ffffff" : NAVY;
-  const heroIsNavy = (content.cta.heroStyle ?? content.cta.style) === "navy";
-  const heroBg = heroIsNavy ? NAVY : CREAM;
-  const heroFg = heroIsNavy ? "#ffffff" : NAVY;
+  const { bg: ctaBg, fg: ctaFg } = resolveCta(content.cta.style, t);
+  const { bg: heroBg, fg: heroFg } = resolveCta(content.cta.heroStyle ?? content.cta.style, t);
   const heroCtaLabel = content.cta.label?.trim();
   const showOnHero = content.cta.showOnHero !== false;
   const heroOverlay = hero?.url && heroCtaLabel && showOnHero
@@ -468,7 +468,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // Promo band
   const promoHtml = content.promoBand?.trim()
     ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
-         <div style="background:${CREAM};color:${NAVY};text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">${esc(
+         <div style="background:${t.panelBg};color:${t.inkOnPanel};text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">${esc(
            content.promoBand,
          )}</div>
        </td></tr>`
@@ -482,7 +482,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
     // Image blocks own their whole row: "bleed" must escape the 24px cell
     // padding, so they can't be nested in the shared padded text wrapper.
     if (b.kind === "image") {
-      return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined);
+      return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t);
     }
     // Dispatch through a Record keyed on the kind union rather than a ternary
     // chain: TypeScript then REQUIRES an entry for every kind, so adding one to
@@ -493,7 +493,7 @@ export function renderCampaignEmail(content: CampaignContent): string {
       // this one has never heard of (a rollback, or two deploys in flight).
       // Render it as text rather than throwing.
       ?? INNER_BLOCK_RENDERERS.text;
-    const inner = render(b);
+    const inner = render(b, t);
     if (!inner) return "";
     return `<tr><td class="h-padding" style="padding:0 24px 16px;">
        <div class="text-block" style="padding:15px;">${inner}</div>
@@ -508,9 +508,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
     secondaryHtml += `<tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr>
-          ${imageCell(left?.url, "48.91%")}
+          ${imageCell(left?.url, "48.91%", t)}
           <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
-          ${right ? imageCell(right.url, "48.91%") : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
+          ${right ? imageCell(right.url, "48.91%", t) : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
         </tr>
       </table>
     </td></tr>`;
@@ -536,11 +536,11 @@ export function renderCampaignEmail(content: CampaignContent): string {
   /* Edge-to-edge navy on every wrapper: html, body, the outer wrapper
      table, and the inner email container. Stops any default user-agent
      background from showing as a gray band above/below the email. */
-  html, body{margin:0;padding:0;background:${NAVY};width:100%;}
+  html, body{margin:0;padding:0;background:${t.shell};width:100%;}
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:${NAVY};}
+  .email-container{width:600px;max-width:600px;background:${t.shell};}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -568,14 +568,14 @@ export function renderCampaignEmail(content: CampaignContent): string {
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background:${NAVY};">
+<body style="margin:0;padding:0;background:${t.shell};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(content.previewText)}</div>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${NAVY};">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${t.shell};">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${NAVY};">
-      ${renderTopBanner(content.topBanner ?? "")}
-      ${content.showLogo === false ? "" : renderLogoStrip(content.logoUrl)}
-      <tr><td style="height:16px;font-size:0;line-height:0;background:${NAVY};">&nbsp;</td></tr>
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${t.shell};">
+      ${renderTopBanner(content.topBanner ?? "", t)}
+      ${content.showLogo === false ? "" : renderLogoStrip(content.logoUrl, t)}
+      <tr><td style="height:16px;font-size:0;line-height:0;background:${t.shell};">&nbsp;</td></tr>
       ${heroHtml}
       ${promoHtml}
       ${introBlock ? blockRow(introBlock) : ""}

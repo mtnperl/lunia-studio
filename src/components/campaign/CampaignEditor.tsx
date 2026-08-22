@@ -1462,6 +1462,26 @@ export default function CampaignEditor({
         </Section>
 
         <Section title="Body" defaultCollapsed={false}>
+        {/* Whole-email colour theme. Lives in Body because it is the only
+            section that never auto-collapses: headerDefaultCollapsed and
+            imagesDefaultCollapsed both close once the email has a subject and
+            a hero, which is precisely when you would reach for this. */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={fieldLabel}>Email theme</label>
+          <div style={segWrap}>
+            <SegButton
+              active={(content.theme ?? "navy") === "navy"}
+              onClick={() => patch({ theme: "navy" })}
+              title="Navy shell, white copy (default)"
+            >Navy</SegButton>
+            <SegButton
+              active={content.theme === "cream"}
+              onClick={() => patch({ theme: "cream" })}
+              title="Soft Ivory background with dark copy, the brand handbook's light treatment"
+              last
+            >Cream</SegButton>
+          </div>
+        </div>
         {/* Make it visual — restructures the copy ALREADY in this email into a
             richer block layout. Lives here rather than next to "Suggest layout"
             (which sits in Header, because it is driven by the subject line):
@@ -2113,11 +2133,22 @@ export default function CampaignEditor({
           <input type="text" value={content.cta.url}
             onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
             style={{ ...input, marginBottom: 8 }} />
-          {/* Bottom button and hero overlay styled independently. */}
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          {/* Bottom button and hero overlay styled independently.
+              On the cream theme both collapse to the handbook treatment
+              (ivory on Rich Navy), because a cream pill on an ivory ground is
+              invisible. The controls are disabled and say why rather than
+              silently ignoring the pick, and cta.style is left untouched so
+              switching back to Navy restores the choice. */}
+          {content.theme === "cream" && (
+            <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
+              On the cream theme the CTA is always navy, for contrast. Your saved
+              choice is kept and comes back if you switch to Navy.
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", opacity: content.theme === "cream" ? 0.45 : 1 }}>
             <div>
               <label style={fieldLabel}>Bottom button</label>
-              <div style={segWrap}>
+              <div style={{ ...segWrap, pointerEvents: content.theme === "cream" ? "none" : "auto" }}>
                 <SegButton
                   active={(content.cta.style ?? "cream") === "cream"}
                   onClick={() => patch({ cta: { ...latestContent.current.cta, style: "cream" } })}
@@ -2133,7 +2164,7 @@ export default function CampaignEditor({
             </div>
             <div>
               <label style={fieldLabel}>Hero overlay</label>
-              <div style={{ ...segWrap, opacity: content.cta.showOnHero === false ? 0.4 : 1 }}>
+              <div style={{ ...segWrap, opacity: content.cta.showOnHero === false ? 0.4 : 1, pointerEvents: content.theme === "cream" ? "none" : "auto" }}>
                 <SegButton
                   active={(content.cta.heroStyle ?? content.cta.style ?? "cream") === "cream"}
                   onClick={() => patch({ cta: { ...latestContent.current.cta, heroStyle: "cream" } })}

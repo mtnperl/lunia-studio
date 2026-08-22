@@ -877,6 +877,11 @@ export type CampaignContent = {
    *  Unset/true = shown (back-compatible with saves that predate the toggle). */
   showLogo?: boolean;
   promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
+  /** Whole-email colour theme. Unset/"navy" is the original navy shell with
+   *  white copy; "cream" is the handbook's Soft Ivory ground with dark ink.
+   *  Back-compat: unset renders byte-identically to every campaign saved
+   *  before this field existed. */
+  theme?: "navy" | "cream";
   blocks: CampaignBlock[];       // ordered body text blocks
   /** style: "cream" (default, unset = cream) is the cream-pill/navy-text
    *  button used since launch. "navy" inverts it to a solid navy button

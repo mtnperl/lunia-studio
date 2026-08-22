@@ -104,3 +104,12 @@ export const EMAIL_FIXTURES: EmailFixture[] = [
     },
   },
 ];
+
+/** The all-kinds document on the cream theme. Derived from the navy fixture
+ *  rather than hand-written, so the two can only ever differ by theme — which
+ *  is exactly what a theme baseline should isolate. */
+const allKindsNavy = EMAIL_FIXTURES.find((f) => f.name === "all-kinds-navy")!;
+EMAIL_FIXTURES.push({
+  name: "all-kinds-cream",
+  content: { ...allKindsNavy.content, theme: "cream" },
+});
