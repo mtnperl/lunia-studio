@@ -10,6 +10,8 @@ import { parseGraphicSpec } from "@/lib/carousel-utils";
 import { renderGraphicSpec } from "@/components/carousel/graphics/graphicComponentMap";
 
 import { SLIDE, BRAND_FONT_FAMILY, FONT_WEIGHT } from "@/lib/brand-tokens";
+import type { SlideElement } from '@/lib/slide-elements';
+import { pickableStyle } from '@/lib/slide-elements';
 
 const SLIDE_H = SLIDE.height;
 const PAD = SLIDE.editorialPad;
@@ -39,6 +41,10 @@ type Props = {
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
+  /** Editor only — see ContentSlide. Undefined on the export/render path, so
+   *  those render exactly the markup they always did. */
+  onSelectElement?: (element: SlideElement) => void;
+  selectedElement?: SlideElement | null;
   // Accepted (but visually ignored) so this component is drop-in compatible
   // with the existing ContentSlide call sites in PreviewStep:
   arrowScale?: number;
@@ -88,9 +94,18 @@ export default function EditorialContentSlide({
   bodyScale = 1,
   iconScale = 1,
   showCitationBars = true,
+  onSelectElement,
+  selectedElement = null,
   showSlideArrows = true,
   arrowScale = 1,
 }: Props) {
+  const pick = (element: SlideElement) =>
+    onSelectElement
+      ? {
+          onClick: (e: React.MouseEvent) => { e.stopPropagation(); onSelectElement(element); },
+          style: pickableStyle(element, selectedElement, true),
+        }
+      : { style: {} as React.CSSProperties };
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 200 : PAD.y;
   // Reserve a band at the bottom for the citation (up to ~2 lines) so the
@@ -199,7 +214,7 @@ export default function EditorialContentSlide({
         // over the citation that sits below it (bottom: py).
         overflow: "hidden",
       }}>
-        <h1 style={{
+        <h1 {...pick('headline')} style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
           fontWeight: 300,
@@ -207,6 +222,7 @@ export default function EditorialContentSlide({
           color: headlineCol,
           lineHeight: 1.04,
           letterSpacing: "-0.02em",
+          ...pick('headline').style,
         }}>
           {headline}
         </h1>
@@ -214,7 +230,7 @@ export default function EditorialContentSlide({
         {/* Thin editorial rule */}
         <div style={{ height: 2, width: 96, background: ruleCol, opacity: 0.7 }} />
 
-        <p style={{
+        <p {...pick('body')} style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
           // Weight 300 (brand body weight) — 200 was never loaded in headless
@@ -225,6 +241,7 @@ export default function EditorialContentSlide({
           color: bodyCol,
           lineHeight: 1.5,
           // No artificial cap — let the body fill the column so the page breathes.
+          ...pick('body').style,
         }}>
           {body}
         </p>
@@ -246,7 +263,7 @@ export default function EditorialContentSlide({
         )}
 
         {hasOtherGraphic && otherGraphicSpec && (
-          <div style={{
+          <div {...pick('graphic')} style={{
             marginTop: 12,
             // Capped height + FitBox so the graphic scales down instead of
             // running into the citation. flex-grow:1 lets this zone claim its
@@ -259,6 +276,7 @@ export default function EditorialContentSlide({
             maxHeight: graphicMaxH,
             overflow: "hidden",
             display: "flex",
+            ...pick('graphic').style,
             // Centre the graphic block in the body column so its internal
             // centred content (e.g. StatCallout's 75% rules + centred number)
             // aligns visually with the body text's column-centre.
@@ -311,7 +329,7 @@ export default function EditorialContentSlide({
       {/* Citation — small navy text at the bottom. Centered horizontally when a
           product photo is present (so it doesn't crowd the left column). */}
       {showCitationBars && citation && (
-        <div style={{
+        <div {...pick('citation')} style={{
           position: "absolute",
           left: PAD.x, right: PAD.x, bottom: py,
           fontFamily: EDITORIAL_FONT,
@@ -321,6 +339,7 @@ export default function EditorialContentSlide({
           opacity: 0.75,
           lineHeight: 1.4,
           textAlign: hasPhoto ? "center" : "left",
+          ...pick('citation').style,
         }}>
           {citation}
         </div>

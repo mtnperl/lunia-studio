@@ -16,6 +16,8 @@ import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { DEFAULT_HOOK_OVERLAYS, SOFT_WHITE, type HookOverlaySettings, type BackgroundWash } from "@/components/carousel/shared/HookOverlays";
 import FeedPreview from "@/components/carousel/preview/FeedPreview";
+import { SLIDE_ELEMENT_LABEL, type SlideElement } from "@/lib/slide-elements";
+import { Button } from "@/components/ui/Button";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
@@ -25,6 +27,7 @@ import InspectorPanel from "@/components/carousel/preview/InspectorPanel";
 // v2 editor: which tool panel is docked in the inspector (null = closed).
 type InspectorMode =
   | null
+  | "element"
   | "settings"
   | "text"
   | "takeaway"
@@ -347,6 +350,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [feedIndex, setFeedIndex] = useState(0);
   // v2 editor: focused slide shown in the canvas + which inspector panel is open
   const [focusedSlide, setFocusedSlide] = useState(0);
+  // Which PART of the focused slide is selected. Clicking the headline on the
+  // canvas puts the headline's controls in the inspector and hides everything
+  // else — instead of six identical S/M/L/XL rows, none of which said which
+  // part of the picture they moved.
+  const [selectedElement, setSelectedElement] = useState<SlideElement | null>(null);
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>(null);
   // v2 editor: AI-suggested icon ids for the focused content slide, held
   // un-applied so opening the icon panel never mutates the slide.
@@ -422,7 +430,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
   // Text editor state (content slides 1–3, i.e. slideIndex 0–2)
 
-  function updateSlideField(slideIndex: number, field: "headline" | "body", value: string) {
+  function updateSlideField(slideIndex: number, field: "headline" | "body" | "citation", value: string) {
     const slides = [...content.slides];
     slides[slideIndex] = { ...slides[slideIndex], [field]: value };
     onContentChange({ ...config, content: { ...content, slides } });
@@ -1221,13 +1229,25 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  /** Click a part of the slide → that part's controls, and only those. */
+  function selectElement(slideIndex: number, element: SlideElement) {
+    if (slideIndex !== focusedSlide) {
+      setFocusedSlide(slideIndex);
+      setIconSuggestions([]);
+    }
+    setSelectedElement(element);
+    setInspectorMode("element");
+  }
+
   // Focus a slide in the canvas. Clears stale icon suggestions and closes any
   // inspector panel that doesn't apply to the newly focused slide.
   function selectSlide(i: number) {
     setFocusedSlide(i);
     setIconSuggestions([]);
+    setSelectedElement(null);
     setInspectorMode((cur) => {
       if (cur === null || cur === "settings") return cur;
+      if (cur === "element") return null;
       const isContent = i >= 1 && i <= 3;
       const isHook = i === 0;
       const isTakeaway = hasTakeaway && i === 4;
@@ -1650,30 +1670,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // ─── v2 inspector body renderer ───────────────────────────────────────────
   // Returns the docked panel's title + body for the current inspectorMode.
   // All tool panels live here so opening one never reflows the canvas.
+  // Shared by the settings panel and the per-element panel. Hoisted out of the
+  // settings branch when the size rows moved to the elements they resize.
+  const sizeRow = (label: string, vals: readonly number[], labels: string[], cur: number, set: (v: number) => void) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>{label}</span>
+      {vals.map((s, idx) => (
+        <button key={s} onClick={() => set(s)} style={{
+          padding: "3px 8px", fontSize: 11, fontWeight: 700,
+          background: cur === s ? "var(--text)" : "var(--surface)",
+          color: cur === s ? "var(--bg)" : "var(--muted)",
+          border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+        }}>{labels[idx]}</button>
+      ))}
+    </div>
+  );
+
   function getInspector(): { title: string; subtitle?: string; body: React.ReactNode } | null {
     if (!inspectorMode) return null;
     const slideIdx = focusedSlide - 1; // 0-2 when a content slide is focused
 
     // ── Settings ──────────────────────────────────────────────────────────
     if (inspectorMode === "settings") {
-      const sizeRow = (label: string, vals: readonly number[], labels: string[], cur: number, set: (v: number) => void) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>{label}</span>
-          {vals.map((s, idx) => (
-            <button key={s} onClick={() => set(s)} style={{
-              padding: "3px 8px", fontSize: 11, fontWeight: 700,
-              background: cur === s ? "var(--text)" : "var(--surface)",
-              color: cur === s ? "var(--bg)" : "var(--muted)",
-              border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
-            }}>{labels[idx]}</button>
-          ))}
-        </div>
-      );
       return {
         title: "Settings",
         body: (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
+            {/* Only what applies to the WHOLE deck lives here. Headline, body,
+                citation and icon sizing moved onto the elements they resize —
+                click that part of the slide. Six identical S/M/L/XL rows in one
+                panel was the thing nobody could read. */}
             {sizeRow("Logo", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], logoScale, setLogoScale)}
             {sizeRow("Arrows", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], arrowScale, setArrowScale)}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1750,8 +1777,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <span style={{ fontSize: 10, color: "var(--muted)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
               </div>
             )}
-            {sizeRow("Citation", [18, 26, 36, 48], ["S", "M", "L", "XL"], citationFontSize, setCitationFontSize)}
-            {sizeRow("Headline", [0.85, 1, 1.15, 1.3], ["S", "M", "L", "XL"], headlineScale, setHeadlineScale)}
             {/* Hook slide only — boldness of the first-slide headline text. "Default" preserves today's weight. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Hook weight</span>
@@ -1792,11 +1817,123 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 ⚠ Regenerate the hook image to apply this weight
               </div>
             )}
-            {sizeRow("Body", [0.85, 1, 1.2, 1.5, 1.85, 2.25], ["S", "M", "L", "XL", "2XL", "3XL"], bodyScale, setBodyScale)}
-            {/* Icon size — only bites on slides whose graphic is an icon layout. */}
-            {sizeRow("Icons", [0.75, 1, 1.3, 1.6], ["S", "M", "L", "XL"], iconScale, setIconScale)}
           </div>
         ),
+      };
+    }
+
+    // ── Selected element ──────────────────────────────────────────────────
+    // The controls for the part of the slide you clicked, and nothing else.
+    // Everything here used to live in one flat Settings panel where a headline
+    // control and a logo control looked identical and sat next to each other.
+    if (inspectorMode === "element" && selectedElement) {
+      const slide = content.slides[slideIdx];
+      if (!slide) return null;
+
+      const fieldStyle: React.CSSProperties = {
+        width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.45,
+        fontFamily: "inherit", color: "var(--text)", background: "var(--bg)",
+        border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px",
+      };
+      const groupLabel = (t: string) => (
+        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{t}</div>
+      );
+
+      let body: React.ReactNode = null;
+
+      if (selectedElement === "headline") {
+        body = (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              {groupLabel("Text")}
+              <textarea
+                value={slide.headline}
+                onChange={(e) => updateSlideField(slideIdx, "headline", e.target.value)}
+                rows={2}
+                style={{ ...fieldStyle, resize: "vertical" }}
+              />
+            </div>
+            <div>
+              {groupLabel("Size")}
+              {sizeRow("Headline", [0.85, 1, 1.15, 1.3], ["S", "M", "L", "XL"], headlineScale, setHeadlineScale)}
+            </div>
+          </div>
+        );
+      }
+
+      if (selectedElement === "body") {
+        body = (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              {groupLabel("Text")}
+              <textarea
+                value={slide.body}
+                onChange={(e) => updateSlideField(slideIdx, "body", e.target.value)}
+                rows={7}
+                style={{ ...fieldStyle, resize: "vertical" }}
+              />
+            </div>
+            <div>
+              {groupLabel("Size")}
+              {sizeRow("Body", [0.85, 1, 1.2, 1.5, 1.85, 2.25], ["S", "M", "L", "XL", "2XL", "3XL"], bodyScale, setBodyScale)}
+            </div>
+          </div>
+        );
+      }
+
+      if (selectedElement === "citation") {
+        body = (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              {groupLabel("Source")}
+              <textarea
+                value={slide.citation}
+                onChange={(e) => updateSlideField(slideIdx, "citation", e.target.value)}
+                rows={3}
+                style={{ ...fieldStyle, resize: "vertical" }}
+              />
+            </div>
+            <div>
+              {groupLabel("Size")}
+              {sizeRow("Citation", [18, 26, 36, 48], ["S", "M", "L", "XL"], citationFontSize, setCitationFontSize)}
+            </div>
+            <div>
+              {groupLabel("Visibility")}
+              <Button
+                variant={showCitationBars ? "selected" : "secondary"}
+                onClick={() => setShowCitationBars((v) => !v)}
+              >
+                {showCitationBars ? "Shown on every slide" : "Hidden on every slide"}
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
+      if (selectedElement === "graphic") {
+        body = (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div>
+              {groupLabel("Graphic")}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button onClick={() => setInspectorMode("graphicType")}>Change type</Button>
+                <Button onClick={() => setInspectorMode("graphicData")}>Edit data</Button>
+                <Button onClick={openIconInspector}>Icons</Button>
+              </div>
+            </div>
+            <div>
+              {groupLabel("Icon size")}
+              {/* Only bites on slides whose graphic is an icon layout. */}
+              {sizeRow("Icons", [0.75, 1, 1.3, 1.6], ["S", "M", "L", "XL"], iconScale, setIconScale)}
+            </div>
+          </div>
+        );
+      }
+
+      return {
+        title: SLIDE_ELEMENT_LABEL[selectedElement],
+        subtitle: slideLabels[focusedSlide],
+        body,
       };
     }
 
@@ -2533,7 +2670,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageShimmer={contentBgGenerating.has(i)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageShimmer={contentBgGenerating.has(i)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
+        onSelectElement={(el) => selectElement(i + 1, el)}
+        selectedElement={focusedSlide === i + 1 ? selectedElement : null} />
     )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
@@ -2834,7 +2973,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               {/* Inspector */}
               <div style={{ overflow: "hidden", minWidth: 0, alignSelf: "stretch" }}>
                 {inspector && (
-                  <InspectorPanel title={inspector.title} subtitle={inspector.subtitle} onClose={() => setInspectorMode(null)}>
+                  <InspectorPanel title={inspector.title} subtitle={inspector.subtitle} onClose={() => { setInspectorMode(null); setSelectedElement(null); }}>
                     {inspector.body}
                   </InspectorPanel>
                 )}

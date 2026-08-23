@@ -44,6 +44,8 @@ import { isRetiredGraphic } from '@/lib/graphic-types';
 import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
+import type { SlideElement } from '@/lib/slide-elements';
+import { pickableStyle } from '@/lib/slide-elements';
 
 // ─── Layout tokens (shared with the render + regression pipeline) ────────────
 import { SLIDE } from '@/lib/brand-tokens';
@@ -206,6 +208,13 @@ type Props = {
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
+  /** Editor only. When provided, the headline / body / citation / graphic
+   *  zones become clickable and report which one was hit. The export and
+   *  render paths leave this undefined, so they render byte-identical
+   *  markup — no cursor, no outline, no handlers. */
+  onSelectElement?: (element: SlideElement) => void;
+  /** Which element currently carries the selection ring. */
+  selectedElement?: SlideElement | null;
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -238,7 +247,18 @@ export default function ContentSlide({
   showSlideArrows = true,
   showSlideNumbers: _showSlideNumbers = true,
   showCitationBars = true,
+  onSelectElement,
+  selectedElement = null,
 }: Props) {
+  // One flag rather than testing the callback at every site.
+  const pickable = !!onSelectElement;
+  const pick = (element: SlideElement) =>
+    onSelectElement
+      ? {
+          onClick: (e: React.MouseEvent) => { e.stopPropagation(); onSelectElement(element); },
+          style: pickableStyle(element, selectedElement, true),
+        }
+      : { style: {} as React.CSSProperties };
   const isEditorial = stylePreset === "editorial-scientific";
   const editorialFontFamily = "Inter, system-ui, -apple-system, sans-serif";
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
@@ -392,35 +412,39 @@ export default function ContentSlide({
         boxSizing: 'border-box',
       }}>
         {/* Headline zone */}
-        <div style={isEditorial ? {
-          fontFamily: editorialFontFamily,
-          fontWeight: 400,
-          fontSize: headlineFontSize,
-          color: headlineColor,
-          textTransform: 'none',
-          letterSpacing: '-0.01em',
-          lineHeight: 1.15,
-          flexShrink: 0,
-        } : {
-          fontFamily: 'Jost, Montserrat, sans-serif',
-          fontWeight: 400,
-          fontSize: headlineFontSize,
-          color: headlineColor,
-          textTransform: 'uppercase',
-          letterSpacing: '0.14em',
-          lineHeight: 1.2,
-          flexShrink: 0,
+        <div {...pick('headline')} style={{
+          ...(isEditorial ? {
+            fontFamily: editorialFontFamily,
+            fontWeight: 400,
+            fontSize: headlineFontSize,
+            color: headlineColor,
+            textTransform: 'none' as const,
+            letterSpacing: '-0.01em',
+            lineHeight: 1.15,
+            flexShrink: 0,
+          } : {
+            fontFamily: 'Jost, Montserrat, sans-serif',
+            fontWeight: 400,
+            fontSize: headlineFontSize,
+            color: headlineColor,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.14em',
+            lineHeight: 1.2,
+            flexShrink: 0,
+          }),
+          ...pick('headline').style,
         }}>
           {headline}
         </div>
 
         {/* Body — fixed size, never clipped (the graphic zone flexes instead). */}
-        <div style={{
+        <div {...pick('body')} style={{
           fontFamily: 'Inter, system-ui, sans-serif',
           fontSize: bodyFontSize,
           color: bodyColor,
           lineHeight: 1.55,
           flexShrink: 0,
+          ...pick('body').style,
         }}>
           <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
           {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
@@ -439,7 +463,7 @@ export default function ContentSlide({
             graphic zone's cap couldn't. */}
         {hasInlineGraphic ? (
           <>
-          <div style={{ flex: '1 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex' }}>
+          <div {...pick('graphic')} style={{ flex: '1 1 auto', minHeight: 0, maxHeight: graphicMaxH, overflow: 'hidden', display: 'flex', ...pick('graphic').style }}>
            <FitBox align="center" onDrop={onGraphicDrop}>
             {hasAiGraphicImage ? (
               // Path 0 — fal.ai AI-generated image for TIER B/C slides
@@ -494,15 +518,16 @@ export default function ContentSlide({
 
         {/* Citation — below the graphic, lifted off the bottom edge. */}
         {showCitationBars && (
-          <div style={{
+          <div {...pick('citation')} style={{
             fontFamily: isEditorial ? editorialFontFamily : 'Cormorant Garamond, Lora, serif',
             fontWeight: isEditorial ? 300 : 400,
-            fontStyle: isEditorial ? 'normal' : 'italic',
+            fontStyle: isEditorial ? 'normal' as const : 'italic' as const,
             fontSize: citationFontSize,
             color: citationColor,
             lineHeight: 1.4,
             flexShrink: 0,
             marginBottom: reels ? 40 : 28,
+            ...pick('citation').style,
           }}>
             {citation}
           </div>
