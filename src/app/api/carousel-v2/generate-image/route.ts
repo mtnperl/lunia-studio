@@ -255,10 +255,53 @@ export async function POST(req: Request) {
     try {
       url = await runEngine(engine, { prompt, imageStyle, imageSize, imageAspect, referenceImageUrls });
     } catch (engineErr) {
-      // Surface fal.ai's actual error body so we can see what's wrong client-side
       const detail = extractFalError(engineErr);
-      console.error(`[api/carousel-v2/generate-image] ${engine} call failed:`, detail);
-      return Response.json({ error: `${engine} failed: ${detail}` }, { status: 500 });
+
+      // ── Content-policy rejection ────────────────────────────────────────
+      // A sleep brand generates bedroom imagery, and the image engines' safety
+      // classifiers reject some of it. A real example: "a partial silhouette of
+      // a shoulder and bare foot beyond the glass" — ordinary editorial styling
+      // for a slide about bedroom temperature, refused outright.
+      //
+      // Retrying the identical prompt is guaranteed to fail again, which is why
+      // the old "Try again" button could never help. The offending text is
+      // almost always the free-text `concept`, which the writing model composes
+      // in prose. So the retry drops the concept and keeps the structured
+      // fields: the same editorial look, without the sentence that described a
+      // body. One retry only — if a brand-safe assembled prompt is also refused,
+      // that is a real answer and the user should hear it.
+      if (isContentPolicyRejection(detail) && useEditorialHookFramework && hookImageSpec?.concept) {
+        const saferPrompt = buildEditorialHookPrompt({
+          spec: { ...hookImageSpec, concept: undefined },
+          headline: hookHeadline,
+          subline:  hookSubline,
+          topic:    topic,
+          hasRefs:  referenceImageUrls.length > 0,
+          userPrompt: undefined,
+          direction: imageDirection,
+          paperTone,
+          contrastMode,
+          imageSubject,
+          headlineWeight,
+        });
+        console.warn(`[v2/generate-image] slide=${slideIndex} concept refused by content checker — retrying without it`);
+        try {
+          url = await runEngine(engine, { prompt: saferPrompt, imageStyle, imageSize, imageAspect, referenceImageUrls });
+        } catch (retryErr) {
+          const retryDetail = extractFalError(retryErr);
+          console.error(`[api/carousel-v2/generate-image] ${engine} refused the re-roll too:`, retryDetail);
+          return Response.json({
+            error: `${engine} declined this image on content grounds, twice.`,
+            kind: "content_policy",
+          }, { status: 422 });
+        }
+      } else {
+        console.error(`[api/carousel-v2/generate-image] ${engine} call failed:`, detail);
+        return Response.json({
+          error: `${engine} failed: ${detail}`,
+          kind: isContentPolicyRejection(detail) ? "content_policy" : "engine_error",
+        }, { status: isContentPolicyRejection(detail) ? 422 : 500 });
+      }
     }
     if (!url) throw new Error(`No image URL in ${engine} response`);
 
@@ -407,6 +450,17 @@ function buildHeadlineWeightEditPrompt(args: {
     overlay ? `  • Overlay accent (leave exactly as-is, Inter Light 300, uppercase, wide tracking): "${overlay}"` : "",
     "Text colour stays rich navy (#01253f). Only the stroke weight of the headline letterforms changes — no drop shadows, no glow, no outlines, no repositioning.",
   ].filter(Boolean).join("\n");
+}
+
+/**
+ * Did the image engine refuse this on content grounds?
+ *
+ * Matches on the machine-readable `content_policy_violation` type and on the
+ * human sentence fal returns alongside it, because the two engines word it
+ * differently and only one of them is a stable contract.
+ */
+function isContentPolicyRejection(detail: string): boolean {
+  return /content_policy_violation|flagged by a content checker|safety system/i.test(detail);
 }
 
 function buildEditorialHookPrompt(args: {

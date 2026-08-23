@@ -121,11 +121,19 @@ export function RetroImageError({
   modelLabel?: string;
 }) {
   const errored = items.filter((it) => !!it.error);
+  // A refusal and an outage need different words and different advice. Telling
+  // someone to check their API key when the engine declined the picture sends
+  // them to the one place that cannot help.
+  const declined = errored.some((it) => /declined this concept|content grounds/i.test(it.error ?? ""));
   return (
     <div style={{ ...shellStyle, borderColor: "var(--error)" }} role="alert">
-      <h2 className="display display-md" style={{ margin: "0 0 8px" }}>The images didn&apos;t render</h2>
+      <h2 className="display display-md" style={{ margin: "0 0 8px" }}>
+        {declined ? "The image engine declined this one" : "The images didn't render"}
+      </h2>
       <p style={{ margin: "0 0 20px", fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>
-        Your copy is safe — only the backgrounds failed. Retrying usually clears it.
+        {declined
+          ? "Your copy is safe. Sleep imagery trips content filters more often than you would expect, and a fresh concept usually passes."
+          : "Your copy is safe — only the backgrounds failed. Retrying usually clears it."}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 16, marginBottom: 20 }}>
@@ -140,7 +148,9 @@ export function RetroImageError({
       <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
         <button type="button" className="ui-btn ui-btn-primary" onClick={onRetry}>Try again</button>
         <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
-          If it keeps failing, check the {modelLabel} key and rate limits.
+          {declined
+            ? "The server already retried once without the written concept. Editing the prompt in Refine image is the next step."
+            : `If it keeps failing, check the ${modelLabel} key and rate limits.`}
         </span>
       </div>
     </div>

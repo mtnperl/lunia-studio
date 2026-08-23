@@ -273,7 +273,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           // (Vercel timeout pages, HTML 502/504 responses, etc.) instead
           // of throwing a useless "Unexpected token" JSON parse error.
           const raw = await r.text();
-          let parsed: { url?: string; error?: string; engine?: string } = {};
+          let parsed: { url?: string; error?: string; engine?: string; kind?: string } = {};
           try {
             parsed = raw ? JSON.parse(raw) : {};
           } catch {
@@ -285,14 +285,18 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           }
           return parsed;
         })
-        .then(({ url, error: apiErr }) => {
+        .then(({ url, error: apiErr, kind }) => {
           if (url) {
             setSlideImages((prev) => { const next = [...prev]; next[i] = url; return next; });
             loaded++;
             setFalCount(loaded);
             if (loaded + failed === FAL_TOTAL) setFalStatus("done");
           } else {
-            const msg = apiErr ?? "Image generation failed";
+            // A refusal is not a fault to retry — say so, rather than dumping
+            // fal's JSON body at someone who cannot act on it.
+            const msg = kind === "content_policy"
+              ? "The image engine declined this concept. Rewrite the hook image prompt in Refine image, then generate again."
+              : apiErr ?? "Image generation failed";
             setFalErrors((prev) => { const next = [...prev]; next[i] = msg; return next; });
             failed++;
             if (loaded + failed === FAL_TOTAL) setFalStatus(loaded > 0 ? "done" : "failed");
