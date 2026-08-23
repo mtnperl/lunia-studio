@@ -19,6 +19,7 @@ import {
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
+import { autoScrollDelta, iframePointToPageY } from "@/lib/drag-autoscroll";
 import ImageSlotControl from "./ImageSlotControl";
 import { Spinner } from "./Loaders";
 import { useInsertAtCursor } from "./useInsertAtCursor";
@@ -387,6 +388,10 @@ export default function CampaignEditor({
   // rail; the ring inside the iframe is painted by the injected script.
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const blockCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Auto-scroll while dragging inside the preview. `y` is the pointer in the
+  // iframe's own unscaled coordinates; the rAF loop converts it to a page
+  // position and nudges the window when the pointer nears an edge.
+  const dragAutoScroll = useRef<{ y: number; raf: number | null }>({ y: 0, raf: null });
   // Preview scaling — the email is hard-coded to 600px so we render the
   // iframe at the email's NATIVE width and CSS-scale it down to fit the
   // preview pane. Previously the iframe just stretched to whatever pane
@@ -627,13 +632,39 @@ export default function CampaignEditor({
   // anywhere; only the document we injected the script into says this.
   useEffect(() => {
     function onMessage(e: MessageEvent) {
-      const d = e.data as { source?: string; type?: string; id?: string } | null;
-      if (!d || d.source !== "lunia-preview" || d.type !== "selectBlock" || !d.id) return;
-      setSelectedBlockId(d.id);
-      blockCardRefs.current[d.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const d = e.data as
+        | { source?: string; type?: string; id?: string; dragId?: string; overId?: string; y?: number }
+        | null;
+      if (!d || d.source !== "lunia-preview") return;
+
+      if (d.type === "selectBlock" && d.id) {
+        setSelectedBlockId(d.id);
+        blockCardRefs.current[d.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
+      // Reordering runs through the same reorderBlock the rail uses, with the
+      // same two ids, so both gestures mean exactly one thing.
+      if (d.type === "reorderBlock" && d.dragId && d.overId) {
+        reorderBlock(d.dragId, d.overId);
+        setSelectedBlockId(d.dragId);
+        return;
+      }
+
+      // The iframe is sized to its content and has no scrollbar of its own —
+      // the editor page scrolls instead. An HTML5 drag inside the iframe
+      // therefore can't reach anything below the fold unless someone out here
+      // moves the page, so the iframe reports its pointer and this does it.
+      if (d.type === "dragMove" && typeof d.y === "number") {
+        dragAutoScroll.current.y = d.y;
+        startDragAutoScroll();
+        return;
+      }
+      if (d.type === "dragEnd") stopDragAutoScroll();
     }
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    return () => { window.removeEventListener("message", onMessage); stopDragAutoScroll(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
@@ -648,6 +679,39 @@ export default function CampaignEditor({
     }
     return String(h);
   }, [html]);
+
+  /**
+   * Nudge the page while a preview drag nears the top or bottom of the window.
+   *
+   * The ramp and the coordinate conversion live in lib/drag-autoscroll so they
+   * can be tested: a hidden tab pauses requestAnimationFrame outright, which
+   * makes this loop unobservable in a headless check while the arithmetic it
+   * runs stays perfectly checkable.
+   */
+  function startDragAutoScroll() {
+    if (dragAutoScroll.current.raf !== null) return;
+    const step = () => {
+      const frame = iframeRef.current;
+      if (!frame) { stopDragAutoScroll(); return; }
+      const rect = frame.getBoundingClientRect();
+      // Geometry is read live rather than closed over: the listener that
+      // drives this has an empty dep array, so anything captured from the
+      // first render is stale — previewScale included, which is 0 until the
+      // ResizeObserver first fires.
+      const pageY = iframePointToPageY(rect.top, rect.height, frame.offsetHeight, dragAutoScroll.current.y);
+      const delta = autoScrollDelta({ pageY, viewportHeight: window.innerHeight });
+      if (delta !== 0) window.scrollBy(0, delta);
+      dragAutoScroll.current.raf = requestAnimationFrame(step);
+    };
+    dragAutoScroll.current.raf = requestAnimationFrame(step);
+  }
+
+  function stopDragAutoScroll() {
+    if (dragAutoScroll.current.raf !== null) {
+      cancelAnimationFrame(dragAutoScroll.current.raf);
+      dragAutoScroll.current.raf = null;
+    }
+  }
 
   function fitIframe() {
     const f = iframeRef.current;

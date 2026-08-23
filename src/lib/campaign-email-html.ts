@@ -653,9 +653,22 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: Campai
  * right-hand rail — a list four levels deep with 22 identically-sized inputs.
  * You typed in one place and watched the result change in another.
  *
- * Runs inside the iframe, talks to the editor by postMessage, and touches
- * nothing else about the document. Links are suppressed on click so hitting a
- * CTA selects it instead of navigating the preview away from the email.
+ * Handles two gestures: click to select, and drag to reorder. Both talk to the
+ * editor by postMessage and touch nothing else about the document. Links are
+ * suppressed on click so hitting a CTA selects it instead of navigating the
+ * preview away from the email.
+ *
+ * Reorder deliberately posts the SAME (dragged, over) id pair the rail's
+ * drag-and-drop uses and lets the editor run the one `reorderBlocks` it
+ * already had. Two ways to reorder, one definition of what reordering means —
+ * a second before/after model living in here would be a bug waiting for the
+ * day the two disagreed.
+ *
+ * Drag position is forwarded to the parent on every dragover because the
+ * iframe is sized to its content and never scrolls: the page outside it does.
+ * Without that, dragging a block from the top of a long email to the bottom
+ * would be impossible — the destination is below the fold and nothing would
+ * scroll to bring it into view.
  */
 const SELECT_SCRIPT = `<script>
 (function () {
@@ -680,10 +693,74 @@ const SELECT_SCRIPT = `<script>
   }, true);
   document.addEventListener("mouseover", function (e) {
     var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
-    document.body.style.cursor = row ? "pointer" : "";
+    document.body.style.cursor = row ? "grab" : "";
   });
   window.addEventListener("message", function (e) {
     if (e.data && e.data.source === "lunia-editor" && e.data.type === "highlightBlock") paint(e.data.id);
+  });
+
+  // ── Drag to reorder ─────────────────────────────────────────────────────
+  // draggable is set here rather than emitted in the markup, so the HTML
+  // string this file produces stays exactly what it always was apart from the
+  // one data attribute. Every affordance is added at runtime, in the preview.
+  var rows = document.querySelectorAll("[data-lunia-block]");
+  for (var i = 0; i < rows.length; i++) rows[i].setAttribute("draggable", "true");
+
+  var dragId = null;
+  var overRow = null;
+
+  function clearOver() {
+    if (overRow) { overRow.style.boxShadow = ""; overRow = null; }
+  }
+  function markOver(row) {
+    if (row === overRow) return;
+    clearOver();
+    // An inset ring rather than an insertion line: dropping puts the block in
+    // THIS block's position, so the honest indicator is the slot itself.
+    row.style.boxShadow = "inset 0 0 0 2px #1D1D1F";
+    overRow = row;
+  }
+
+  document.addEventListener("dragstart", function (e) {
+    var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
+    if (!row) return;
+    dragId = row.getAttribute("data-lunia-block");
+    row.style.opacity = "0.4";
+    document.body.style.cursor = "grabbing";
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+      // Firefox refuses to start a drag unless some data is set.
+      try { e.dataTransfer.setData("text/plain", dragId); } catch (err) {}
+    }
+  });
+
+  document.addEventListener("dragover", function (e) {
+    if (!dragId) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    parent.postMessage({ source: "lunia-preview", type: "dragMove", y: e.clientY }, "*");
+    var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
+    if (!row || row.getAttribute("data-lunia-block") === dragId) { clearOver(); return; }
+    markOver(row);
+  });
+
+  document.addEventListener("drop", function (e) {
+    if (!dragId) return;
+    e.preventDefault();
+    var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
+    var overId = row && row.getAttribute("data-lunia-block");
+    if (overId && overId !== dragId) {
+      parent.postMessage({ source: "lunia-preview", type: "reorderBlock", dragId: dragId, overId: overId }, "*");
+    }
+  });
+
+  document.addEventListener("dragend", function () {
+    var all = document.querySelectorAll("[data-lunia-block]");
+    for (var j = 0; j < all.length; j++) all[j].style.opacity = "";
+    clearOver();
+    dragId = null;
+    document.body.style.cursor = "";
+    parent.postMessage({ source: "lunia-preview", type: "dragEnd" }, "*");
   });
 })();
 </script>`;
