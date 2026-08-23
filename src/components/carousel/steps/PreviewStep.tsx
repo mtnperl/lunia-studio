@@ -51,6 +51,9 @@ type Props = {
   config: CarouselConfig;
   hookTone: HookTone;
   onRestart: () => void;
+  /** Batch review only: return this item to the review list. The single-carousel
+   *  builder no longer passes it — switching the hook happens in the Brief
+   *  drawer on this surface, so there is nowhere to go back TO. */
   onChangeHook?: () => void;
   /** Switch the hook variant without leaving the canvas. */
   onSelectHook?: (index: number) => void;
@@ -3182,24 +3185,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       {/* Footer actions */}
       <div style={{ display: "flex", gap: 20, marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+        {/* Batch review only. The builder passes no onChangeHook, so nothing
+            renders here — there is no screen behind the canvas any more. */}
         {onChangeHook && (
           <button
             onClick={onChangeHook}
             style={{
-              background: "transparent",
-              color: "var(--text)",
-              border: "none",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: "inherit",
-              cursor: "pointer",
-              padding: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
+              background: "transparent", color: "var(--text)", border: "none",
+              fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+              cursor: "pointer", padding: 0,
+              display: "flex", alignItems: "center", gap: 4,
             }}
           >
-            ← Change hook
+            ← Back to review
           </button>
         )}
         <button
@@ -3214,7 +3212,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             padding: 0,
           }}
         >
-          {onChangeHook ? "Start over" : "← Back"}
+          {"Start over"}
         </button>
       </div>
 

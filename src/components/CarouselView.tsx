@@ -2,8 +2,6 @@
 import { useState, useEffect, useRef } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, CarouselContrastMode, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
-import ContentStep from "@/components/carousel/steps/ContentStep";
-import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
@@ -11,14 +9,12 @@ import { useCarouselApi } from "@/components/carousel/api-context";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 
-type Step = 1 | 2 | 3 | 4;
-
-const STEP_LABELS: Record<Step, string> = {
-  1: "Topic",
-  2: "Content",
-  3: "Hook",
-  4: "Preview",
-};
+/** The studio has two states: writing the brief, or working on the artwork.
+ *  It kept a 1-4 step machine long after Content and Hook stopped being
+ *  screens; 1 and 4 are all that is left, and the names below say which. */
+type Step = 1 | 4;
+const BRIEF = 1 as const;
+const STUDIO = 4 as const;
 
 const CAROUSEL_LOADER_MSGS = [
   "Reading the topic",
@@ -93,11 +89,6 @@ function CarouselLoader() {
 export default function CarouselView({ initialCarousel, onCarouselLoaded, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; version?: "v1" | "v2" }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
-  // The furthest point you have actually reached. Step navigation is gated on
-  // this rather than on the CURRENT step, so jumping back to Topic from
-  // Preview doesn't strand you — everything you have already seen stays one
-  // click away, and only ground you have never covered is closed off.
-  const [furthestStep, setFurthestStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -139,10 +130,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     onCarouselLoaded?.();
 
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    setFurthestStep((f) => (step > f ? step : f));
-  }, [step]);
 
   // ─── Draft persistence ────────────────────────────────────────────────────
   const draftIdRef = useRef<string>("");
@@ -383,7 +370,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
         std.warning ?? null,
       ].filter(Boolean);
       if (msgs.length) setWarning(msgs.join(" "));
-      setStep(2);
+      // Straight to the canvas. Content and Hook used to be two screens
+      // between here and the artwork; both of their jobs now happen ON the
+      // canvas — copy is edited in place, the hook is switched from the Brief
+      // drawer — so stopping at them was asking you to visit a page to do
+      // something you could already do on the next one.
+      setStep(4);
+      startImages(std.variants[0], 0);
     } catch {
       setError("Network error — please check your connection and try again.");
     } finally {
@@ -391,9 +384,27 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     }
   }
 
+  /**
+   * Begin the image pass and record a recoverable draft.
+   *
+   * Previously inlined in HookStep's "Preview carousel" handler, which is
+   * also why images could not start until you had visited that screen. Now
+   * generation and rendering are one continuous act.
+   */
+  function startImages(c: CarouselContent, hookIndex: number) {
+    generateSlideImages(topic, c, hookIndex, imageStyle, moodId, stylePreset, contrastMode);
+    try {
+      const draftId = draftIdRef.current || `draft_${Date.now()}`;
+      draftIdRef.current = draftId;
+      const existing = JSON.parse(localStorage.getItem("lunia:drafts") ?? "[]") as Array<Record<string, unknown>>;
+      const others = existing.filter((d) => d.id !== draftId);
+      others.unshift({ id: draftId, topic, hookTone, content: c, selectedHook: hookIndex, savedAt: new Date().toISOString(), _unsaved: true });
+      localStorage.setItem("lunia:drafts", JSON.stringify(others.slice(0, 20)));
+    } catch {}
+  }
+
   function handleRestart() {
     setStep(1);
-    setFurthestStep(1);
     setTopic("");
     setHookTone("educational");
     setImageStyle("realistic");
@@ -457,48 +468,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
       />
 
       <>
-          {/* Step indicator — now navigation, not decoration.
-              These were plain divs with no click handler, so once you reached
-              Preview there was no way back to Content: the only exits were
-              "← Change hook" and "Start over", both at the bottom of a
-              2,000px page. Wanting to fix one word of body copy after seeing
-              the render is the most ordinary thing in the world.
-              A step is reachable once you have the content it needs — you can
-              always go back, and you can jump forward only over ground you
-              have already covered. */}
-          <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)" }}>
-            {([1, 2, 3, 4] as Step[]).map((s) => {
-              const reachable = s <= furthestStep;
-              const current = step === s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  disabled={!reachable}
-                  aria-current={current ? "step" : undefined}
-                  onClick={() => reachable && !current && setStep(s)}
-                  style={{
-                    padding: "10px 18px", fontSize: 13,
-                    fontWeight: current ? 700 : 500,
-                    color: current ? "var(--text)" : reachable ? "var(--muted)" : "var(--subtle)",
-                    marginBottom: -1,
-                    background: "none",
-                    borderWidth: 0,
-                    borderStyle: "solid",
-                    borderBottomWidth: 2,
-                    borderBottomColor: current ? "var(--accent)" : "transparent",
-                    fontFamily: "inherit",
-                    cursor: reachable && !current ? "pointer" : "default",
-                    opacity: reachable ? 1 : 0.4,
-                    transition: "color 0.12s, border-color 0.12s",
-                  }}
-                >
-                  {s}. {STEP_LABELS[s]}
-                </button>
-              );
-            })}
-          </div>
-
           {restoredDraft && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--accent)" }}>
               <span>↩ Restored your unsaved carousel from this browser.</span>
@@ -532,62 +501,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
           {!loading && !error && step === 1 && (
             <TopicStep onNext={handleTopicNext} />
           )}
-          {!loading && !error && step === 2 && content && (
-            <ContentStep
-              content={content}
-              topic={topic}
-              hookTone={hookTone}
-              carouselFormat={carouselFormat}
-              onChange={(c) => {
-                const next = [...variants];
-                next[selectedVariant] = c;
-                setVariants(next);
-              }}
-              onNext={() => setStep(3)}
-            />
-          )}
-          {!loading && !error && step === 3 && content && (
-            <HookStep
-              content={content}
-              selectedHook={selectedHook}
-              onSelectHook={setSelectedHook}
-              onNext={() => {
-                setStep(4);
-                generateSlideImages(topic, content, selectedHook, imageStyle, moodId, stylePreset, contrastMode);
-                // Persist draft so HomeView can reopen it (30-min window)
-                try {
-                  const draftId = draftIdRef.current || `draft_${Date.now()}`;
-                  draftIdRef.current = draftId;
-                  const existing = JSON.parse(localStorage.getItem("lunia:drafts") ?? "[]") as Array<Record<string, unknown>>;
-                  const others = existing.filter((d) => d.id !== draftId);
-                  others.unshift({ id: draftId, topic, hookTone, content, selectedHook, savedAt: new Date().toISOString(), _unsaved: true });
-                  localStorage.setItem("lunia:drafts", JSON.stringify(others.slice(0, 20)));
-                } catch {}
-              }}
-              onImagePromptChange={(prompt) => {
-                const next = [...variants];
-                next[selectedVariant] = { ...content, imagePrompt: prompt };
-                setVariants(next);
-              }}
-              onHooksChange={(hooks) => {
-                const next = [...variants];
-                next[selectedVariant] = { ...content, hooks };
-                setVariants(next);
-                setSelectedHook(0);
-              }}
-              hookTone={hookTone}
-              brandStyle={brandStyle}
-              backgroundImageUrl={hookImageUrl}
-              topic={topic}
-              imageStyle={imageStyle}
-              onImageStyleChange={setImageStyle}
-              moodId={moodId}
-              onMoodChange={setMoodId}
-              stylePreset={stylePreset}
-              contrastMode={contrastMode}
-              onContrastChange={setContrastMode}
-            />
-          )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
             <DidYouKnowPreviewStep
               topic={topic}
@@ -615,7 +528,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               config={config}
               hookTone={hookTone}
               onRestart={handleRestart}
-              onChangeHook={() => setStep(3)}
               onSelectHook={setSelectedHook}
               initialImageStyle={imageStyle}
               initialContrastMode={contrastMode}
