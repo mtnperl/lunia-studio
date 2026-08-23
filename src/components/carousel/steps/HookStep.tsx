@@ -6,6 +6,7 @@ import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
+import { Button } from "@/components/ui/Button";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -509,17 +510,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
         )}
       </div>
 
-      <button
-        onClick={onNext}
-        style={{
-          background: "var(--accent)", color: "#fff",
-          border: "none", borderRadius: 8,
-          padding: "14px 36px", fontSize: 15, fontWeight: 700,
-          fontFamily: "inherit", cursor: "pointer", letterSpacing: "-0.01em",
-        }}
-      >
-        Preview carousel →
-      </button>
+      <Button variant="primary" size="lg" onClick={onNext}>Preview carousel →</Button>
     </div>
   );
 }

@@ -2612,15 +2612,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const canvasScale = Math.min(1, canvasColW / slideW);
 
   return (
-    <div style={{ maxWidth: 960 }}>
-      {/* Header */}
+    // Was capped at 960 inside an 860 column — the artwork, which is the entire
+    // point of this screen, got less room than the controls beside it.
+    <div style={{ maxWidth: "100%" }}>
+      {/* Header — the topic is the heading. A generic "Your carousel" title
+          sat directly under the view's own title and said nothing the page
+          did not already say. */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>
-            Your carousel
-          </h2>
-          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>
-            {topic} · {slideCount} slides
+        <div style={{ minWidth: 0, flex: "1 1 340px" }}>
+          <h2 className="display display-md" style={{ margin: 0 }}>{topic}</h2>
+          <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: 13, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            {slideCount} slides
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

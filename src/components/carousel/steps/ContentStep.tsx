@@ -4,6 +4,7 @@ import { CarouselContent, CarouselFormat, HookTone } from "@/lib/types";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
+import { Button } from "@/components/ui/Button";
 
 type Props = {
   content: CarouselContent;
@@ -512,23 +513,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
         <input style={inputStyle} value={content.cta.followLine} onChange={(e) => onChange({ ...content, cta: { ...content.cta, followLine: e.target.value } })} />
       </div>
 
-      <button
-        onClick={onNext}
-        style={{
-          background: "var(--accent)",
-          color: "#fff",
-          border: "none",
-          borderRadius: 8,
-          padding: "14px 36px",
-          fontSize: 15,
-          fontWeight: 700,
-          fontFamily: "inherit",
-          cursor: "pointer",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        Looks good →
-      </button>
+      <Button variant="primary" size="lg" onClick={onNext}>Looks good →</Button>
     </div>
   );
 }

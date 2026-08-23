@@ -7,6 +7,8 @@ import FlowDeck, { type DeckEmail } from "@/components/campaign/FlowDeck";
 import KlaviyoFlowPicker from "@/components/email-review/KlaviyoFlowPicker";
 import { getShape } from "@/lib/campaign-shapes";
 import { CampaignGenLoader } from "@/components/campaign/Loaders";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 
 export default function CampaignView({
   initialCampaign,
@@ -221,29 +223,12 @@ export default function CampaignView({
   }
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "32px 24px 80px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-            Campaign builder
-          </h1>
-          <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
-            Generate a Lunia Life marketing email — subject, copy, and images — then export the HTML.
-          </p>
-        </div>
-        {step === 2 && (
-          <button
-            onClick={handleRestart}
-            style={{
-              padding: "6px 14px", fontSize: 13, fontWeight: 600,
-              background: "var(--surface)", color: "var(--text)",
-              border: "1px solid var(--border)", borderRadius: 7,
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >New</button>
-        )}
-      </div>
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 40px 80px" }}>
+      <PageHeader
+        title="Campaign builder"
+        description="Write a Lunia Life email — subject, copy and images — then export the HTML."
+        actions={step === 2 ? <Button variant="secondary" onClick={handleRestart}>New</Button> : undefined}
+      />
 
       {error && (
         <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>

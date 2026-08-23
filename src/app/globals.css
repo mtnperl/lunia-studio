@@ -19,17 +19,15 @@
   --border:        #d2d2d7;
   --border-strong: #bcbcc5;
 
-  /* Categorical status palette — chip fills only (DESIGN.md is silent on
-     chips; semantic --success/--warning/--error below use Apple values). */
-  --mon-green:   #00c875;
-  --mon-yellow:  #fdab3d;
-  --mon-red:     #e2445c;
-  --mon-purple:  #a25ddc;
-  --mon-sky:     #579bfc;
-  --mon-pink:    #ff158a;
-  --mon-indigo:  #225091;
-  --mon-teal:    #00a09d;
-  --mon-grey:    #c4c4c4;
+  /* Chip fills. DESIGN.md light mode carries no colour accent, so a chip
+     earns colour only when it reports a STATE (--success/--warning/--error).
+     Everything else — categories, tones, counts — is ink on a wash, told
+     apart by its word rather than its hue. Replaces a borrowed Monday.com
+     palette whose purple and sky read as generic SaaS and fought the gold
+     in dark mode. */
+  --chip-bg:      rgba(0,0,0,0.06);
+  --chip-fg:      #1d1d1f;
+  --chip-bg-firm: rgba(0,0,0,0.10);
 
   --success: #1c7a3a;
   --warning: #b86040;
@@ -95,6 +93,10 @@
   --success: #5f9e75;
   --warning: #c47a5a;
   --error:   #b85c5c;
+
+  --chip-bg:      rgba(200, 169, 110, 0.12);
+  --chip-fg:      #ede8df;
+  --chip-bg-firm: rgba(200, 169, 110, 0.22);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -163,7 +165,14 @@ html, body {
 .ui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ui-btn--sm { min-height: 32px; padding: 0 12px; font-size: 12px; }
 .ui-btn--md { min-height: 36px; padding: 0 16px; font-size: 13px; }
-.ui-btn--primary   { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* For the button that advances a flow. Bigger than a toolbar control because
+   it is the only thing on the screen you are certain to press. */
+.ui-btn--lg { min-height: 46px; padding: 0 30px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+/* --bg, not #fff: the accent is near-black in light mode and GOLD in dark, so
+   a hardcoded white label sat at about 1.9:1 on gold — unreadable, and it
+   shipped everywhere the ui/ system had already been adopted. --bg is the
+   ground the accent was chosen against, so it inverts correctly in both. */
+.ui-btn--primary   { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 .ui-btn--primary:not(:disabled):hover   { background: var(--accent-hover); border-color: var(--accent-hover); }
 .ui-btn--secondary { background: transparent; color: var(--text); border-color: var(--border-strong); }
 .ui-btn--secondary:not(:disabled):hover { background: var(--surface-h); border-color: var(--border-strong); }
@@ -219,25 +228,63 @@ select option { background: var(--surface); color: var(--text); }
   border-color: var(--border-strong);
 }
 
-/* ── Status chips (Monday pill system) ─────────────────────────────────── */
+/* ── Status chips ──────────────────────────────────────────────────────── */
+/* A chip is a label, not a decoration. The default is ink on a wash; the
+   semantic variants below are the only ones allowed to carry a hue, and they
+   carry it at tint strength so a row of them never turns into a fruit salad. */
 .chip {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 2px 10px; min-height: 22px;
   border-radius: var(--r-sm);
   font-size: 11px; font-weight: 600;
-  letter-spacing: 0.02em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: uppercase;
   font-family: var(--font-ui);
-  color: #ffffff;
+  background: var(--chip-bg);
+  color: var(--chip-fg);
   white-space: nowrap;
 }
-.chip-draft   { background: var(--mon-grey); color: #ffffff; }
-.chip-review  { background: var(--mon-yellow); }
-.chip-locked  { background: var(--mon-green); }
-.chip-done    { background: var(--mon-green); }
-.chip-working { background: var(--mon-yellow); }
-.chip-stuck   { background: var(--mon-red); }
-.chip-info    { background: var(--mon-sky); }
-.chip-plan    { background: var(--mon-purple); }
+/* All three were distinct hues that encoded nothing, so they now share one
+   neutral appearance. --muted was tried for "draft" and dropped: on the
+   tinted chip ground in dark mode it landed near 3:1, under AA for 11px. */
+.chip-draft   { background: var(--chip-bg); color: var(--chip-fg); }
+.chip-info    { background: var(--chip-bg); color: var(--chip-fg); }
+.chip-plan    { background: var(--chip-bg); color: var(--chip-fg); }
+.chip-review  { background: transparent; color: var(--warning); border: 1px solid var(--warning); }
+.chip-working { background: transparent; color: var(--warning); border: 1px solid var(--warning); }
+.chip-locked  { background: transparent; color: var(--success); border: 1px solid var(--success); }
+.chip-done    { background: transparent; color: var(--success); border: 1px solid var(--success); }
+.chip-stuck   { background: transparent; color: var(--error);   box-shadow: inset 0 0 0 1px var(--error); }
+
+/* ── Display type ──────────────────────────────────────────────────────── */
+/* DESIGN.md's first stated design risk: "No creator tool uses a serif. It
+   signals editorial authority. Every heading and greeting uses it." The
+   typeface was loaded in this file from day one and then used in exactly one
+   component, so the app had no display tier at all — its largest heading was
+   18px Inter, which is why every screen read as one flat grey field.
+   Cormorant is a high-contrast face: it needs SIZE to show its contrast and a
+   LIGHT weight to stay elegant, so these start at 30px and never go above 400.
+   Tightened tracking counters the airiness the serif gains at scale. */
+.display {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  line-height: 1.06;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin: 0;
+  text-wrap: balance;
+}
+.display-xl { font-size: clamp(38px, 5vw, 52px); }
+.display-lg { font-size: clamp(32px, 4vw, 42px); }
+.display-md { font-size: clamp(26px, 3vw, 32px); line-height: 1.12; }
+
+/* Italic in the accent is reserved for greetings — the one place DESIGN.md
+   asks for warmth. In light mode the accent is near-black, so this reads as
+   emphasis rather than colour, which is the intent. */
+.display-greeting {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--accent);
+}
 
 /* ── Section label ─────────────────────────────────────────────────────── */
 .section-label {

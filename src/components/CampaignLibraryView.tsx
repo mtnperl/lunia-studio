@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { SavedCampaign } from "@/lib/types";
 import { SkeletonTile } from "@/components/campaign/Loaders";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function CampaignLibraryView({
   onOpen,
@@ -54,13 +55,11 @@ export default function CampaignLibraryView({
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 24px 80px" }}>
-      <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>
-        Campaign library
-      </h1>
-      <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13, marginBottom: 28 }}>
-        Saved email campaigns. Open one to keep editing.
-      </p>
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 40px 80px" }}>
+      <PageHeader
+        title="Campaign library"
+        description="Every email you have written. Open one to keep editing."
+      />
 
       {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
       {!campaigns && !error && (

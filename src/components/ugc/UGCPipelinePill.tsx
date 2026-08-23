@@ -3,13 +3,20 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { UGCPipelineStage, UGC_PIPELINE_STAGES, UGC_STAGE_LABELS } from "@/lib/types";
 
-const STAGE_STYLES: Record<UGCPipelineStage, { bg: string; text: string }> = {
-  invited:            { bg: "var(--mon-grey)",   text: "#ffffff" },
-  approved:           { bg: "var(--mon-sky)",    text: "#ffffff" },
-  delivered:          { bg: "var(--mon-purple)", text: "#ffffff" },
-  "edited-and-ready": { bg: "var(--mon-yellow)", text: "#ffffff" },
-  posted:             { bg: "var(--mon-green)",  text: "#ffffff" },
-  cancelled:          { bg: "var(--mon-red)",    text: "#ffffff" },
+/**
+ * The pipeline IS a progression, so it is drawn as one: a wash that firms up
+ * as work advances, with colour held back for the two stages that are actually
+ * outcomes. The previous grey/sky/purple/yellow/green/red ramp was six
+ * unrelated hues borrowed from a project-management tool — it told you a stage
+ * had changed but never which direction it had moved.
+ */
+const STAGE_STYLES: Record<UGCPipelineStage, { bg: string; text: string; border?: string }> = {
+  invited:            { bg: "transparent",         text: "var(--muted)", border: "var(--border-strong)" },
+  approved:           { bg: "var(--chip-bg)",      text: "var(--chip-fg)" },
+  delivered:          { bg: "var(--chip-bg-firm)", text: "var(--chip-fg)" },
+  "edited-and-ready": { bg: "transparent",         text: "var(--warning)", border: "var(--warning)" },
+  posted:             { bg: "transparent",         text: "var(--success)", border: "var(--success)" },
+  cancelled:          { bg: "transparent",         text: "var(--error)",   border: "var(--error)" },
 };
 
 const MENU_HEIGHT = 220; // approximate max height of the dropdown
@@ -125,7 +132,7 @@ export default function UGCPipelinePill({ stage, onChange }: Props) {
         title="Click to change stage"
         style={{
           background: style.bg,
-          border: "none",
+          border: style.border ? `1px solid ${style.border}` : "1px solid transparent",
           color: style.text,
           padding: "3px 10px",
           minHeight: 22,

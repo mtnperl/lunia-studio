@@ -300,7 +300,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
             fontSize: 11, fontWeight: 600,
             padding: "2px 8px",
             borderRadius: "var(--r-sm)",
-            background: Object.keys(dirty).length > 0 ? "var(--mon-yellow)" : "var(--mon-green)",
+            background: Object.keys(dirty).length > 0 ? "var(--warning)" : "var(--success)",
             color: "#fff",
             letterSpacing: "0.02em",
           }}>
@@ -767,13 +767,13 @@ const selectStyle: React.CSSProperties = {
 };
 
 const STAT_ACCENT: Record<string, string> = {
-  "Ready to post": "var(--mon-green)",
-  "Total spend": "var(--mon-yellow)",
-  "Cost / delivered": "var(--mon-grey)",
-  "Approved": "var(--mon-sky)",
-  "Delivered": "var(--mon-purple)",
-  "Edited & ready": "var(--mon-yellow)",
-  "Posted": "var(--mon-green)",
+  "Ready to post": "var(--success)",
+  "Total spend": "var(--border-strong)",
+  "Cost / delivered": "var(--border-strong)",
+  "Approved": "var(--border-strong)",
+  "Delivered": "var(--border-strong)",
+  "Edited & ready": "var(--warning)",
+  "Posted": "var(--success)",
 };
 
 function Stat({ label, value, onClick, active, tooltip }: {

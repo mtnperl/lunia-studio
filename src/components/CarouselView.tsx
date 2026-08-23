@@ -8,6 +8,8 @@ import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import { useCarouselApi } from "@/components/carousel/api-context";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/Button";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -19,30 +21,71 @@ const STEP_LABELS: Record<Step, string> = {
 };
 
 const CAROUSEL_LOADER_MSGS = [
-  "Reading topic...",
-  "Drafting hooks...",
-  "Writing slide content...",
-  "Pulling citations...",
-  "Applying brand rules...",
-  "Generating infographics...",
-  "Formatting CTA...",
-  "Finalizing...",
+  "Reading the topic",
+  "Drafting hooks",
+  "Writing the slides",
+  "Finding citations",
+  "Applying your brand rules",
+  "Building the infographics",
+  "Shaping the call to action",
+  "Almost there",
 ];
 
 
+/**
+ * Generation progress.
+ *
+ * Was a terminal log — `GEN PROGRESS`, `> Reading topic... OK`, a blinking
+ * underscore — which is a different product's aesthetic wearing this one's
+ * clothes. It also lied: the four lines were a fixed slice, so the same three
+ * steps always showed "OK" whatever the model was actually doing.
+ *
+ * This walks the real step list on a timer instead. It is still an estimate,
+ * and it says so by naming only the step it believes it is on rather than
+ * ticking off work it cannot observe.
+ */
 function CarouselLoader() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setIdx((i) => Math.min(i + 1, CAROUSEL_LOADER_MSGS.length - 1));
+    }, 4200);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <div className="loader-wrap" style={{ marginTop: 20 }}>
-      <div className="hp-label">GEN PROGRESS</div>
-      <div className="hp-track"><div className="hp-fill" /></div>
-      <div className="loader-log">
-        {CAROUSEL_LOADER_MSGS.slice(0, 4).map((msg, i, arr) => (
-          <div key={i} className={i === arr.length - 1 ? "active" : ""}>
-            {i === arr.length - 1 ? `> ${msg}` : `  ${msg} OK`}
-            {i === arr.length - 1 && <span className="blink">_</span>}
-          </div>
-        ))}
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
+        borderRadius: "var(--r-lg)",
+        padding: "28px 30px",
+        maxWidth: 560,
+        margin: "40px auto",
+      }}
+      aria-live="polite"
+    >
+      <h2 className="display display-md" style={{ margin: "0 0 20px" }}>
+        Writing your carousel
+      </h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+            background: "var(--accent)", animation: "pulse 1s ease-in-out infinite",
+          }}
+        />
+        <span style={{ fontSize: 14.5 }}>{CAROUSEL_LOADER_MSGS[idx]}</span>
       </div>
+      <div
+        style={{
+          height: 3, borderRadius: 2,
+          background: "linear-gradient(90deg, var(--surface) 0%, var(--surface-h) 50%, var(--surface) 100%)",
+          backgroundSize: "200% 100%",
+          animation: "shimmer 1.6s ease-in-out infinite",
+        }}
+      />
     </div>
   );
 }
@@ -50,6 +93,11 @@ function CarouselLoader() {
 export default function CarouselView({ initialCarousel, onCarouselLoaded, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; version?: "v1" | "v2" }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
+  // The furthest point you have actually reached. Step navigation is gated on
+  // this rather than on the CURRENT step, so jumping back to Topic from
+  // Preview doesn't strand you — everything you have already seen stays one
+  // click away, and only ground you have never covered is closed off.
+  const [furthestStep, setFurthestStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -91,6 +139,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
     onCarouselLoaded?.();
 
   }, [initialCarousel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setFurthestStep((f) => (step > f ? step : f));
+  }, [step]);
 
   // ─── Draft persistence ────────────────────────────────────────────────────
   const draftIdRef = useRef<string>("");
@@ -341,6 +393,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
 
   function handleRestart() {
     setStep(1);
+    setFurthestStep(1);
     setTopic("");
     setHookTone("educational");
     setImageStyle("realistic");
@@ -387,48 +440,63 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
   );
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "32px 24px 80px" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.2, letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10 }}>
-            Carousel builder
-          </h1>
-          <p style={{ color: "var(--muted)", marginTop: 3, fontSize: 13 }}>
-            Opus 4.7 content, Recraft imagery, and per-slide infographic regeneration.
-          </p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* fal.ai status badge */}
+    // 860px was narrower than the artwork deserved: on a 1440 screen it left
+    // ~380px empty and clipped the slide, and on a 1920 monitor it wasted
+    // nearly half the width. The creative is the point of this screen.
+    <div style={{ maxWidth: 1240, margin: "0 auto", padding: "48px 40px 80px" }}>
+      {/* The subtitle here used to read "Opus 4.7 content, Recraft imagery, and
+          per-slide infographic regeneration" — the build sheet, not a
+          description of what the screen is for. */}
+      <PageHeader
+        title="Carousel builder"
+        description="Pick a subject, shape the slides, and export a finished set for Instagram."
+        actions={<>
           {falBadge}
-
-          <button
-            onClick={handleRestart}
-            style={{
-              padding: "6px 14px", fontSize: 13, fontWeight: 600,
-              background: "var(--surface)",
-              color: "var(--text)",
-              border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >New</button>
-        </div>
-      </div>
+          <Button variant="secondary" onClick={handleRestart}>New</Button>
+        </>}
+      />
 
       <>
-          {/* Step indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
-            {([1, 2, 3, 4] as Step[]).map((s) => (
-              <div key={s} style={{
-                padding: "8px 18px", fontSize: 13,
-                fontWeight: step === s ? 700 : 500,
-                color: step === s ? "var(--accent)" : "var(--subtle)",
-                borderBottom: step === s ? "2px solid var(--accent)" : "2px solid transparent",
-                marginBottom: -1,
-                opacity: step < s ? 0.35 : 1,
-              }}>
-                {s}. {STEP_LABELS[s]}
-              </div>
-            ))}
+          {/* Step indicator — now navigation, not decoration.
+              These were plain divs with no click handler, so once you reached
+              Preview there was no way back to Content: the only exits were
+              "← Change hook" and "Start over", both at the bottom of a
+              2,000px page. Wanting to fix one word of body copy after seeing
+              the render is the most ordinary thing in the world.
+              A step is reachable once you have the content it needs — you can
+              always go back, and you can jump forward only over ground you
+              have already covered. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 36, borderBottom: "1px solid var(--border)" }}>
+            {([1, 2, 3, 4] as Step[]).map((s) => {
+              const reachable = s <= furthestStep;
+              const current = step === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={!reachable}
+                  aria-current={current ? "step" : undefined}
+                  onClick={() => reachable && !current && setStep(s)}
+                  style={{
+                    padding: "10px 18px", fontSize: 13,
+                    fontWeight: current ? 700 : 500,
+                    color: current ? "var(--text)" : reachable ? "var(--muted)" : "var(--subtle)",
+                    marginBottom: -1,
+                    background: "none",
+                    borderWidth: 0,
+                    borderStyle: "solid",
+                    borderBottomWidth: 2,
+                    borderBottomColor: current ? "var(--accent)" : "transparent",
+                    fontFamily: "inherit",
+                    cursor: reachable && !current ? "pointer" : "default",
+                    opacity: reachable ? 1 : 0.4,
+                    transition: "color 0.12s, border-color 0.12s",
+                  }}
+                >
+                  {s}. {STEP_LABELS[s]}
+                </button>
+              );
+            })}
           </div>
 
           {restoredDraft && (

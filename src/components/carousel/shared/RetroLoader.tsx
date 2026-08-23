@@ -1,146 +1,184 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢◣◤"];
+/**
+ * Progress surfaces for image generation.
+ *
+ * These were a black CRT terminal — scanline overlay, `◆ LUNIA.EXE`, a
+ * block-character progress bar in Courier, a blinking cursor and an
+ * `EXIT CODE: 1` error screen. Charming in isolation and completely foreign to
+ * a spec whose stated goal is "this feels expensive". DESIGN.md already
+ * sanctions a shimmer for exactly this moment, so that is what it uses now.
+ *
+ * The export names are kept so callers across the batch, video and carousel
+ * views don't all have to change in one go; the surface itself no longer
+ * pretends to be a 1983 render farm.
+ */
 
 type LoaderItem = { label: string; done: boolean; error: string | null };
 
-// ─── Full-page retro loader (used in CarouselView during fal.ai generation) ───
-export function RetroImageLoader({ items, modelLabel = "fal-ai/recraft-v3" }: { items: LoaderItem[]; modelLabel?: string }) {
-  const [frame, setFrame] = useState(0);
+/** Sweeping highlight over a neutral base. No colour, no bounce. */
+const shimmer: React.CSSProperties = {
+  background:
+    "linear-gradient(90deg, var(--surface) 0%, var(--surface-h) 50%, var(--surface) 100%)",
+  backgroundSize: "200% 100%",
+  animation: "shimmer 1.6s ease-in-out infinite",
+};
 
+function Elapsed() {
+  const [secs, setSecs] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 180);
+    const t = setInterval(() => setSecs((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
-
-  const total = items.length;
-  const completed = items.filter((it) => it.done || !!it.error).length;
-  const loaded = items.filter((it) => it.done).length;
-  const activeIdx = items.findIndex((it) => !it.done && !it.error);
-  const barFilled = Math.round((completed / total) * 28);
-  const bar = "█".repeat(barFilled) + "░".repeat(28 - barFilled);
-  const pct = Math.round((completed / total) * 100);
-  const spinner = SPINNER_FRAMES[frame];
-
   return (
-    <div style={{
-      fontFamily: "'Courier New', Courier, monospace",
-      background: "#000", color: "#fff",
-      border: "3px solid #fff", borderRadius: 2,
-      padding: "32px 36px", maxWidth: 520,
-      margin: "48px auto", position: "relative",
-      overflow: "hidden", userSelect: "none",
-    }}>
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: `repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)` }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fff", paddingBottom: 10, marginBottom: 18, fontSize: 11, letterSpacing: "0.12em" }}>
-        <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
-        <span style={{ color: "#888" }}>{modelLabel} · v2.0</span>
-        <span>{spinner}</span>
-      </div>
-      <div style={{ marginBottom: 22, fontSize: 12, letterSpacing: "0.08em" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>RENDERING SLIDE BACKGROUNDS</div>
-        <div style={{ color: "#888", fontSize: 11 }}>MODEL: {modelLabel} · 1024×1280</div>
-      </div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 10, color: "#888", marginBottom: 5, letterSpacing: "0.1em" }}>── RENDER PROGRESS ──────────────────────</div>
-        <div style={{ fontSize: 14, letterSpacing: 1.5, marginBottom: 6 }}>[{bar}]</div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#ccc" }}>
-          <span>{loaded} / {total} BACKGROUNDS COMPLETE</span>
-          <span>{pct}%</span>
-        </div>
-      </div>
-      <div style={{ borderTop: "1px solid #333", borderBottom: "1px solid #333", padding: "12px 0", marginBottom: 16 }}>
-        {items.map((item, i) => {
-          const isActive = i === activeIdx;
-          return (
-            <div key={i} style={{ marginBottom: item.error ? 8 : 5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, letterSpacing: "0.06em", color: item.error ? "#f55" : item.done ? "#fff" : isActive ? "#fff" : "#444" }}>
-                <span style={{ width: 16, flexShrink: 0 }}>{item.error ? "✗" : item.done ? "✓" : isActive ? ">" : "·"}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-                <span style={{ fontSize: 11 }}>
-                  {item.error ? "FAILED" : item.done ? "DONE" : isActive
-                    ? <span>GEN{frame % 2 === 0 ? "..." : ".  "}<span style={{ animation: "blink 1s step-end infinite" }}>█</span></span>
-                    : "QUEUE"}
-                </span>
-              </div>
-              {item.error && <div style={{ marginLeft: 26, fontSize: 10, color: "#f55", marginTop: 2, lineHeight: 1.4 }}>ERR: {item.error}</div>}
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>
-        <span>{modelLabel.toUpperCase()} — ANTHROPIC × FAL.AI</span>
-        <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
-      </div>
-    </div>
+    <span style={{ fontFamily: "var(--font-mono)", fontVariantNumeric: "tabular-nums" }}>
+      {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
+    </span>
   );
 }
 
-// ─── Retro error screen ───────────────────────────────────────────────────────
-export function RetroImageError({ items, onRetry, modelLabel = "fal-ai/recraft-v3" }: { items: LoaderItem[]; onRetry: () => void; modelLabel?: string }) {
-  const errored = items.filter((it) => !!it.error);
+const shellStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  background: "var(--surface)",
+  borderRadius: "var(--r-lg)",
+  padding: "28px 30px",
+  maxWidth: 560,
+  margin: "48px auto",
+  fontFamily: "var(--font-ui)",
+  color: "var(--text)",
+};
+
+const metaStyle: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "var(--subtle)",
+};
+
+export function RetroImageLoader({
+  items,
+  modelLabel = "fal-ai/recraft-v3",
+}: {
+  items: LoaderItem[];
+  modelLabel?: string;
+}) {
+  const total = items.length;
+  const loaded = items.filter((it) => it.done).length;
+
   return (
-    <div style={{ fontFamily: "'Courier New', Courier, monospace", background: "#000", color: "#f55", border: "3px solid #f55", borderRadius: 2, padding: "32px 36px", maxWidth: 520, margin: "48px auto" }}>
-      <div style={{ borderBottom: "1px solid #f55", paddingBottom: 10, marginBottom: 18, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-        <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
-        <span>RENDER ERROR</span>
-        <span>EXIT CODE: 1</span>
+    <div style={shellStyle} aria-live="polite">
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
+        <h2 className="display display-md" style={{ margin: 0 }}>Rendering your slides</h2>
+        <span style={metaStyle}><Elapsed /></span>
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>!! IMAGE GENERATION FAILED !!</div>
-        <div style={{ fontSize: 12, color: "#c44", marginTop: 4 }}>{modelLabel} could not render the background images.</div>
-      </div>
-      <div style={{ borderTop: "1px solid #500", borderBottom: "1px solid #500", padding: "12px 0", marginBottom: 20 }}>
-        {errored.map((item, i) => (
-          <div key={i} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, letterSpacing: "0.06em" }}><span style={{ marginRight: 10 }}>✗</span>{item.label}</div>
-            <div style={{ marginLeft: 22, fontSize: 10, color: "#c44", marginTop: 3, lineHeight: 1.5 }}>{item.error}</div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+        {items.map((item, i) => (
+          <div key={i}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                  background: item.error ? "var(--error)" : item.done ? "var(--success)" : "var(--accent)",
+                  animation: item.done || item.error ? "none" : "pulse 1s ease-in-out infinite",
+                }}
+              />
+              <span style={{ flex: 1, fontSize: 14, minWidth: 0 }}>{item.label}</span>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>
+                {item.error ? "Failed" : item.done ? "Done" : "Working"}
+              </span>
+            </div>
+            {!item.done && !item.error && (
+              <div style={{ ...shimmer, height: 3, borderRadius: 2, marginTop: 8, marginLeft: 19 }} />
+            )}
+            {item.error && (
+              <div style={{ marginLeft: 19, marginTop: 6, fontSize: 12.5, color: "var(--error)", lineHeight: 1.5 }}>
+                {item.error}
+              </div>
+            )}
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-        <button onClick={onRetry} style={{ fontFamily: "'Courier New', Courier, monospace", background: "#f55", color: "#000", border: "none", padding: "8px 20px", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", cursor: "pointer" }}>[RETRY]</button>
-        <span style={{ fontSize: 10, color: "#c44" }}>Check FAL_KEY · rate limits · fal.ai status</span>
+
+      <div style={{ ...metaStyle, display: "flex", justifyContent: "space-between", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <span>{loaded} of {total} complete</span>
+        <span>{modelLabel}</span>
       </div>
     </div>
   );
 }
 
-// ─── Compact inline retro loader (used in BatchView per-item card) ─────────────
-export function MiniRetroLoader({ label = "HOOK SLIDE" }: { label?: string }) {
-  const [frame, setFrame] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 180);
-    return () => clearInterval(t);
-  }, []);
-
-  const spinner = SPINNER_FRAMES[frame];
-  const bar = "█".repeat(frame % 2 === 0 ? 8 : 12) + "░".repeat(frame % 2 === 0 ? 20 : 16);
-
+export function RetroImageError({
+  items,
+  onRetry,
+  modelLabel = "fal-ai/recraft-v3",
+}: {
+  items: LoaderItem[];
+  onRetry: () => void;
+  modelLabel?: string;
+}) {
+  const errored = items.filter((it) => !!it.error);
   return (
-    <div style={{
-      fontFamily: "'Courier New', Courier, monospace",
-      background: "#000", color: "#fff",
-      border: "2px solid #fff", borderRadius: 2,
-      padding: "16px 20px",
-      userSelect: "none",
-      position: "relative",
-      overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: `repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)` }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #333", paddingBottom: 8, marginBottom: 10, fontSize: 10, letterSpacing: "0.1em" }}>
-        <span style={{ fontWeight: 700, fontSize: 11 }}>◆ LUNIA.EXE</span>
-        <span style={{ color: "#888" }}>fal-ai/recraft-v3</span>
-        <span style={{ color: "#aaa" }}>{spinner}</span>
+    <div style={{ ...shellStyle, borderColor: "var(--error)" }} role="alert">
+      <h2 className="display display-md" style={{ margin: "0 0 8px" }}>The images didn&apos;t render</h2>
+      <p style={{ margin: "0 0 20px", fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>
+        Your copy is safe — only the backgrounds failed. Retrying usually clears it.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--border)", paddingTop: 16, marginBottom: 20 }}>
+        {errored.map((item, i) => (
+          <div key={i}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{item.label}</div>
+            <div style={{ fontSize: 12.5, color: "var(--error)", marginTop: 3, lineHeight: 1.5 }}>{item.error}</div>
+          </div>
+        ))}
       </div>
-      <div style={{ fontSize: 10, color: "#888", marginBottom: 6, letterSpacing: "0.08em" }}>RENDERING: {label}</div>
-      <div style={{ fontSize: 12, letterSpacing: 1, marginBottom: 6, color: "#fff" }}>[{bar}]</div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.08em" }}>
-        <span style={{ color: frame % 2 === 0 ? "#1ef" : "#555" }}>● GEN{frame % 2 === 0 ? "..." : ".  "}█</span>
-        <span>RECRAFT V3</span>
+
+      <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+        <button type="button" className="ui-btn ui-btn-primary" onClick={onRetry}>Try again</button>
+        <span style={{ fontSize: 12.5, color: "var(--muted)" }}>
+          If it keeps failing, check the {modelLabel} key and rate limits.
+        </span>
       </div>
+    </div>
+  );
+}
+
+/** Compact variant for a card in the batch and video grids. */
+export function MiniRetroLoader({ label = "Hook slide" }: { label?: string }) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-md)",
+        background: "var(--surface)",
+        padding: "14px 16px",
+        fontFamily: "var(--font-ui)",
+      }}
+      aria-live="polite"
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+            background: "var(--accent)", animation: "pulse 1s ease-in-out infinite",
+          }}
+        />
+        <span
+          style={{
+            fontSize: 13, color: "var(--text)", minWidth: 0,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+          title={label}
+        >
+          {label}
+        </span>
+      </div>
+      <div style={{ ...shimmer, height: 3, borderRadius: 2 }} />
     </div>
   );
 }

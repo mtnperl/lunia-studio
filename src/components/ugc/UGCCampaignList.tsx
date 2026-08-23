@@ -70,10 +70,10 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
         gap: 14,
         marginBottom: 20,
       }}>
-        <StatWidget label="Active campaigns" value={campaigns?.length ?? 0} accent="var(--mon-sky)"    loading={campaigns === null} />
-        <StatWidget label="Creators total"    value={totalCreators}         accent="var(--mon-purple)" loading={campaigns === null} />
-        <StatWidget label="Posted"            value={totalPosted}           accent="var(--mon-green)"  loading={campaigns === null} />
-        <StatWidget label="Total spend"       value={`$${totalSpend.toLocaleString()}`} accent="var(--mon-yellow)" loading={campaigns === null} />
+        <StatWidget label="Active campaigns" value={campaigns?.length ?? 0} accent="var(--border-strong)" loading={campaigns === null} />
+        <StatWidget label="Creators total"    value={totalCreators}         accent="var(--border-strong)" loading={campaigns === null} />
+        <StatWidget label="Posted"            value={totalPosted}           accent="var(--success)" loading={campaigns === null} />
+        <StatWidget label="Total spend"       value={`$${totalSpend.toLocaleString()}`} accent="var(--border-strong)" loading={campaigns === null} />
       </div>
 
       {/* Action buttons row */}
@@ -101,10 +101,10 @@ export default function UGCCampaignList({ onOpen, onOpenBriefs, onOpenOutreach }
       {error && (
         <div style={{
           marginBottom: 16, padding: "10px 14px",
-          background: "color-mix(in srgb, var(--mon-red) 10%, transparent)",
-          border: "1px solid color-mix(in srgb, var(--mon-red) 30%, transparent)",
+          background: "color-mix(in srgb, var(--error) 10%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--error) 30%, transparent)",
           borderRadius: "var(--r-md)",
-          color: "var(--mon-red)", fontSize: 13,
+          color: "var(--error)", fontSize: 13,
         }}>{error}</div>
       )}
 

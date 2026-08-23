@@ -7,6 +7,7 @@ import CarouselViewV2 from "@/components/CarouselViewV2";
 import CampaignView from "@/components/CampaignView";
 import CampaignLibraryView from "@/components/CampaignLibraryView";
 import BatchView from "@/components/BatchView";
+import { PageHeader } from "@/components/ui/PageHeader";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
 import SubjectsView from "@/components/SubjectsView";
 import HomeView from "@/components/HomeView";
@@ -34,28 +35,22 @@ const SHOW_VIDEO = false;
 type Tab = "home" | "generate" | "editor" | "library" | "carousel-v2" | "carousel-library" | "batch" | "subjects" | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library" | "ugc" | "ugc-briefs" | "assets" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 type Product = "home" | "script" | "carousel" | "ugc" | "video" | "business" | "assets";
 
-// Runtime theme tokens (override globals.css :root on mount). Source of
-// truth: DESIGN.md — Apple-Inspired Studio. Keep in lockstep with globals.css.
-const LIGHT_VARS: Record<string, string> = {
-  "--bg": "#ffffff", "--surface": "#f5f5f7", "--surface-r": "#ebebed",
-  "--surface-h": "#e3e3e8", "--text": "#1d1d1f", "--muted": "#6e6e73",
-  "--subtle": "#98989d", "--accent": "#1d1d1f", "--accent-hover": "#3a3a3c",
-  "--accent-dim": "rgba(0, 0, 0, 0.06)", "--accent-mid": "rgba(0, 0, 0, 0.16)",
-  "--border": "#d2d2d7", "--border-strong": "#bcbcc5",
-  "--success": "#1c7a3a", "--warning": "#b86040", "--error": "#c40000",
-};
-const DARK_VARS: Record<string, string> = {
-  "--bg": "#0d0c0a", "--surface": "#171512", "--surface-r": "#201e1b",
-  "--surface-h": "#252219", "--text": "#ede8df", "--muted": "#7a7268",
-  "--subtle": "#4a4640", "--accent": "#c8a96e", "--accent-hover": "#d4b87e",
-  "--accent-dim": "rgba(200, 169, 110, 0.12)", "--accent-mid": "rgba(200, 169, 110, 0.30)",
-  "--border": "#2a2723", "--border-strong": "#332f2b",
-  "--success": "#5f9e75", "--warning": "#c47a5a", "--error": "#b85c5c",
-};
+/**
+ * Theme switching.
+ *
+ * This used to be a second copy of the whole token table, written onto
+ * <html> as inline styles — with a comment asking whoever touched it to "keep
+ * in lockstep with globals.css". Inline styles beat every stylesheet rule, so
+ * the copy always won, and any token added to globals.css simply never
+ * changed between themes: it looked like it worked in light mode and silently
+ * stayed light in dark mode.
+ *
+ * globals.css already carries complete [data-theme="light"] and
+ * [data-theme="dark"] blocks. Setting the attribute is all this needs to do,
+ * and a token now only has to be declared once to work everywhere.
+ */
 function applyThemeVars(t: "dark" | "light") {
-  const vars = t === "light" ? LIGHT_VARS : DARK_VARS;
-  const el = document.documentElement;
-  Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
+  document.documentElement.setAttribute("data-theme", t);
 }
 
 const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -462,13 +457,19 @@ export default function Page() {
           <div className="lunia-topbar-title" style={{
             display: "flex", alignItems: "center", gap: 10, minWidth: 0,
           }}>
-            <h1 style={{
-              fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 600,
-              margin: 0, color: "var(--text)", letterSpacing: "-0.01em",
+            {/* Wayfinding, not a title. This used to be an 18px semibold
+                heading competing with the view's own heading directly below
+                it — two quiet titles and no display tier anywhere. It is now
+                a quiet label that earns its keep when you have scrolled past
+                the real title, and the view owns the loud one. */}
+            <span style={{
+              fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600,
+              margin: 0, color: "var(--muted)", letterSpacing: "0.08em",
+              textTransform: "uppercase",
               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             }}>
               {TAB_TITLES[tab] ?? "Studio"}
-            </h1>
+            </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
@@ -500,10 +501,11 @@ export default function Page() {
         {tab === "batch"     && <BatchView />}
         {tab === "subjects"  && <SubjectsView />}
         {tab === "carousel-library" && (
-          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 40px 80px" }}>
-            <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
-              <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Carousel Library</h1>
-            </div>
+          <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 40px 80px" }}>
+            <PageHeader
+              title="Carousel library"
+              description="Everything you have built. Open one to keep editing, or copy its caption straight to Instagram."
+            />
             <CarouselLibraryView
               onOpen={(c) => { setPendingCarousel(c); setTab("carousel-v2"); }}
               onConvertToCampaign={(c) => { setPendingCarousel(c); setTab("campaign"); }}

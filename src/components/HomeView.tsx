@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Script, SavedCarousel } from "@/lib/types";
 import { getLibrary } from "@/lib/storage";
 import { IconSparkles, IconGrid, IconArrowRight, IconPencil } from "@/components/Icons";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const DRAFT_TTL_MS = 30 * 60 * 1000;
 
@@ -117,11 +118,36 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
     return d >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   }).length;
 
+  const inReview = scripts.filter(s => s.status === "review").length;
+
   const recentScripts   = [...scripts].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
   const recentCarousels = [...carousels].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
 
+  // Resolved after mount, never during render: the server has no idea what
+  // time it is where you are, so deriving the greeting inline made the
+  // server and client render different words and broke hydration. `null`
+  // until mounted keeps the first paint deterministic.
+  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(null);
+  useEffect(() => {
+    const now = new Date();
+    const h = now.getHours();
+    setClock({
+      greeting: h < 5 ? "Still up" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening",
+      date: now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
+    });
+  }, []);
+
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 32px 64px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 32px 64px" }}>
+
+      {/* The greeting DESIGN.md always asked for: display serif, italic accent,
+          at a size where Cormorant's contrast actually reads. This screen's
+          largest type used to be an 18px board heading. */}
+      <PageHeader
+        size="xl"
+        eyebrow={clock?.date ?? "\u00A0"}
+        title={<span className="display-greeting">{clock ? `${clock.greeting}.` : "Welcome."}</span>}
+      />
 
       {/* Overview stat widgets */}
       <div style={{
@@ -130,10 +156,13 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
         gap: 14,
         marginBottom: 28,
       }}>
-        <StatWidget value={scripts.length}   label="Scripts saved"     accent="var(--mon-sky)"    loading={loading} />
-        <StatWidget value={carousels.length} label="Carousels built"   accent="var(--mon-purple)" loading={loading} />
-        <StatWidget value={thisWeekScripts}  label="Scripts this week" accent="var(--mon-green)"  loading={loading} />
-        <StatWidget value={scripts.filter(s => s.status === "review").length} label="In review" accent="var(--mon-yellow)" loading={loading} />
+        {/* The four colours here were decorative — sky, purple, green and
+            yellow assigned to metrics that have no relationship to those
+            hues. Only "In review" reports a state, so only it earns colour. */}
+        <StatWidget value={scripts.length}   label="Scripts saved"     accent="var(--border-strong)" loading={loading} />
+        <StatWidget value={carousels.length} label="Carousels built"   accent="var(--border-strong)" loading={loading} />
+        <StatWidget value={thisWeekScripts}  label="Scripts this week" accent="var(--border-strong)" loading={loading} />
+        <StatWidget value={inReview} label="In review" accent={inReview > 0 ? "var(--warning)" : "var(--border-strong)"} loading={loading} />
       </div>
 
       {/* Quick actions */}
@@ -148,21 +177,18 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
           title="New script"
           desc="Generate hooks and a full UGC script."
           onClick={onNewScript}
-          accent="var(--mon-sky)"
         />
         <QuickAction
           icon={<IconGrid size={18} />}
           title="New carousel"
           desc="Build an Instagram carousel."
           onClick={onNewCarousel}
-          accent="var(--mon-purple)"
         />
         <QuickAction
           icon={<IconPencil size={18} />}
           title="UGC briefs"
           desc="Write ad briefs for creators."
           onClick={onNewScript}
-          accent="var(--mon-green)"
         />
       </div>
 
@@ -225,8 +251,8 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
   );
 }
 
-function QuickAction({ icon, title, desc, onClick, accent }: {
-  icon: React.ReactNode; title: string; desc: string; onClick: () => void; accent: string;
+function QuickAction({ icon, title, desc, onClick }: {
+  icon: React.ReactNode; title: string; desc: string; onClick: () => void;
 }) {
   return (
     <button
@@ -244,7 +270,7 @@ function QuickAction({ icon, title, desc, onClick, accent }: {
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 36, height: 36, borderRadius: "var(--r-md)",
-        background: accent, color: "#fff",
+        background: "var(--accent-dim)", color: "var(--text)",
         flexShrink: 0,
       }}>{icon}</span>
       <span style={{ flex: 1, minWidth: 0 }}>

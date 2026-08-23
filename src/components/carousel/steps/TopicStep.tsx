@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
 
@@ -934,24 +935,9 @@ export default function TopicStep({ onNext }: Props) {
         </div>
       </div>
 
-      <button
-        disabled={!topic || topicTooLong}
-        onClick={handleNext}
-        style={{
-          background: topic && !topicTooLong ? "var(--text)" : "var(--border)",
-          color: topic && !topicTooLong ? "var(--bg)" : "var(--muted)",
-          border: "none",
-          borderRadius: 8,
-          padding: "14px 36px",
-          fontSize: 15,
-          fontWeight: 700,
-          fontFamily: "inherit",
-          cursor: topic && !topicTooLong ? "pointer" : "not-allowed",
-          letterSpacing: "-0.01em",
-        }}
-      >
+      <Button variant="primary" size="lg" disabled={!topic || topicTooLong} onClick={handleNext}>
         Generate carousel →
-      </button>
+      </Button>
     </div>
   );
 }
