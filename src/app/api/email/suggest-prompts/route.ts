@@ -1,4 +1,4 @@
-import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 30;
@@ -40,7 +40,7 @@ Return ONLY a JSON array of 3 strings, no markdown fences:
     });
 
     const raw =
-      response.content[0].type === "text" ? response.content[0].text.trim() : "[]";
+      extractText(response).trim() || "[]";
     const cleaned = raw
       .replace(/^```(?:json)?\n?/m, "")
       .replace(/\n?```$/m, "")

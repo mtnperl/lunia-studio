@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
 
@@ -77,7 +77,7 @@ Return the heading only.`;
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const raw = extractText(message).trim() || "";
     const cleaned = sanitizeHeading(raw);
 
     logExit("/api/ugc/briefs/generate-heading", "generate", start, 200);

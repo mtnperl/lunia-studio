@@ -1,4 +1,4 @@
-import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
           system: attempt === 1 ? SYSTEM_PROMPT : SYSTEM_PROMPT + "\n\nCRITICAL: Output ONLY the JSON object.",
           messages: [{ role: "user", content: userMessage }],
         });
-        const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+        const raw = extractText(message).trim() || "";
         const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
         const parsed = JSON.parse(cleaned);
         captions = parsed.captions as string[];

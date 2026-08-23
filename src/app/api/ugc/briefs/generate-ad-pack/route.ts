@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { postProcess } from "@/lib/compliance";
 import { clientIp, incrComplianceMetric, logEntry, logExit } from "@/lib/ugc-api";
@@ -119,7 +119,7 @@ Return exactly the JSON shape defined in the system prompt. Exactly 5 primary te
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const raw = extractText(message).trim() || "";
     // Strip any accidental code fences
     const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 

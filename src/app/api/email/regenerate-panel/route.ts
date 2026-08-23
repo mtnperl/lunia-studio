@@ -1,4 +1,4 @@
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -77,7 +77,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code fences):
       messages: [{ role: "user", content: prompt }],
     });
 
-    const raw = response.content[0].type === "text" ? response.content[0].text : "";
+    const raw = extractText(response) || "";
     const jsonText = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
 
     let parsed: {

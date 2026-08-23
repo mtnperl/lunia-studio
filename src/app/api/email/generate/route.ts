@@ -1,4 +1,4 @@
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { EmailAnatomy, EmailSection, StylePreset } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -137,7 +137,7 @@ Generate 3 to 5 sections. Each section must have an imagePrompt (or empty string
       messages: [{ role: "user", content: messageContent }],
     });
 
-    const raw = response.content[0].type === "text" ? response.content[0].text : "";
+    const raw = extractText(response) || "";
 
     // Parse JSON — strip any accidental markdown fences
     const jsonText = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();

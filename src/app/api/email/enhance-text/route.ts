@@ -1,4 +1,4 @@
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 import { stripDashes } from "@/lib/strip-dashes";
@@ -52,9 +52,7 @@ Return ONLY the rewritten text. No explanation, no quotes, no markdown. No em da
 
 
     const enhanced =
-      response.content[0].type === "text"
-        ? stripDashes(response.content[0].text)
-        : text;
+      stripDashes(extractText(response)) || text;
 
     return Response.json({ enhanced });
   } catch (err) {

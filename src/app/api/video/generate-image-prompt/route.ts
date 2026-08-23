@@ -1,4 +1,4 @@
-import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdSceneType } from "@/lib/types";
 
@@ -85,7 +85,7 @@ Write one Recraft V3 image prompt for this scene.`,
       ],
     });
 
-    const prompt = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
+    const prompt = extractText(msg).trim() || "";
     if (!prompt) return Response.json({ error: "Failed to generate prompt" }, { status: 500 });
 
     return Response.json({ prompt });

@@ -1,4 +1,4 @@
-import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdScene, VideoAdSceneType } from "@/lib/types";
 
@@ -54,7 +54,7 @@ Omit stat and caption if not relevant to this scene type.`;
           messages: [{ role: "user", content: userMessage }],
         });
 
-        const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+        const raw = extractText(message).trim() || "";
         const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
         const parsed = JSON.parse(cleaned) as VideoAdScene;
         const scene: VideoAdScene = {

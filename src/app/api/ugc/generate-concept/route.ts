@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { findAngle } from "@/lib/angleLibrary";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
@@ -69,7 +69,7 @@ export async function POST(req: Request): Promise<Response> {
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const raw = extractText(message).trim() || "";
     let concept: { label: string; videoHook: string; textHook: string; narrativeArc: string };
     try {
       concept = JSON.parse(raw);

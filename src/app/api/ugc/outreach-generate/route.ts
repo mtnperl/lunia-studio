@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
 
@@ -74,7 +74,7 @@ export async function POST(req: Request): Promise<Response> {
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const text = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const text = extractText(message).trim() || "";
 
     logExit("/api/ugc/outreach-generate", "generate", start, 200);
     return Response.json({ message: text });

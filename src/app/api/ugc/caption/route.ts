@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import {
   clientIp,
@@ -62,7 +62,7 @@ Write two distinct captions for this creator's UGC post. Vary the hook between t
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const text = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const text = extractText(message).trim() || "";
     const lines = text
       .split("\n")
       .map((l) => l.trim())

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { findAngle, findConcept } from "@/lib/angleLibrary";
 import { buildScriptUserPrompt, UGC_SCRIPT_SYSTEM_PROMPT } from "@/lib/ugc-prompts";
@@ -63,7 +63,7 @@ export async function POST(req: Request): Promise<Response> {
       messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const raw = extractText(message).trim() || "";
 
     let parsed_script: BriefScript;
     try {
