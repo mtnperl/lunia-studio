@@ -62,7 +62,16 @@ export function applyRedo(
 }
 
 export type PendingBlock = { block: CampaignBlock; included: boolean };
-export type SuggestionMeta = { topBanner?: string; promoBand?: string; ctaLabel?: string };
+export type SuggestionMeta = {
+  topBanner?: string;
+  promoBand?: string;
+  ctaLabel?: string;
+  /** A shape can bring its own theme. ABSENT means leave content.theme alone —
+   *  it must NOT fall through to navy, or applying a shape would quietly
+   *  reset a cream email. Because it rides SuggestionMeta it lands through the
+   *  same accept/discard diff as the blocks, rather than on pick. */
+  theme?: CampaignContent["theme"];
+};
 
 /** How an accepted suggestion combines with the blocks already on the page.
  *  "append" (the default) is the original behaviour used by Suggest layout and
@@ -98,6 +107,7 @@ export function applySuggestion(
     blocks,
     topBanner: meta.topBanner ?? content.topBanner,
     promoBand: meta.promoBand ?? content.promoBand,
+    theme: meta.theme ?? content.theme,
     cta: meta.ctaLabel ? { ...content.cta, label: meta.ctaLabel } : content.cta,
   };
 }

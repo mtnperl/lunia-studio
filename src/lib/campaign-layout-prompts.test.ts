@@ -6,6 +6,7 @@ import {
   blockToSourceText,
 } from "./campaign-layout-prompts";
 import { CAMPAIGN_BLOCK_KINDS } from "./types";
+import { getShape, CAMPAIGN_SHAPES, resolveShapeGuidance } from "./campaign-shapes";
 import type { CampaignBlock } from "./types";
 
 const block = (over: Partial<CampaignBlock> = {}): CampaignBlock => ({
@@ -164,7 +165,9 @@ describe("restructure kind variety", () => {
   it("does not inherit the subject-line flow's steer", () => {
     // KIND_SCHEMA_EXAMPLES used to end with guidance written for Suggest
     // layout, including a "2 to 5 blocks is typical" cap that quietly held
-    // restructure down.
+    // restructure down. Suggest layout is gone, so these strings no longer
+    // exist anywhere and this assertion is vacuous TODAY. It is kept
+    // deliberately, as a guard against either steer being reintroduced.
     expect(p()).not.toMatch(/subject line's angle/);
     expect(p()).not.toMatch(/2 to 5 blocks is typical/);
   });
@@ -203,7 +206,9 @@ describe("restructure kind variety", () => {
 describe("editorial (AG1-style) restructure", () => {
   const src = [{ id: "x", body: "Real source copy about sleep, long enough to pass the guard.", align: "left" as const, kind: "text" as const }];
   const plain = () => buildRestructurePrompt(src, "Subject", "");
-  const editorial = () => buildRestructurePrompt(src, "Subject", "", "editorial");
+  // Calls through the SHAPE's guidance, not a literal. The style parameter is a
+  // guidance string now, so passing "editorial" would inject the word itself.
+  const editorial = () => buildRestructurePrompt(src, "Subject", "", getShape("editorial")!.guidance);
 
   it("is opt-in: the default prompt is unchanged", () => {
     expect(plain()).not.toMatch(/EDITORIAL MODE/);

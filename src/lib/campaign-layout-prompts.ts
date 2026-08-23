@@ -12,7 +12,7 @@ const randomUUID = () => crypto.randomUUID();
  *  `GraphicSpecSchema` (src/lib/types.ts:114) — a real zod
  *  `discriminatedUnion` keyed on kind, not the flat/optional-fields shape
  *  `CampaignBlock` uses internally. This schema is the LLM output contract;
- *  `suggest-layout`'s route maps a validated result onto real `CampaignBlock`s. */
+ *  The restructure route maps a validated result onto real `CampaignBlock`s. */
 export const LayoutBlockSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), body: z.string(), align: z.enum(["left", "center"]).optional() }),
   z.object({ kind: z.literal("stat"), statValue: z.string(), statLabel: z.string() }),
@@ -131,11 +131,6 @@ const KIND_SCHEMA_EXAMPLES = `Each block in "blocks" must be ONE of these exact 
 { "kind": "ingredients", "ingredientHeading": "e.g. 'What's inside'", "ingredientItems": [{ "name": "Magnesium Glycinate", "dose": "400mg" }, { "name": "L-Theanine", "dose": "200mg" }, { "name": "Apigenin", "dose": "50mg" }], "ingredientFootnote": "e.g. 'Melatonin-free, third-party tested'" }
 `;
 
-/** Kind guidance for the SUBJECT-LINE flow (Suggest layout). Kept out of
- *  KIND_SCHEMA_EXAMPLES because the restructure flow needs the opposite steer:
- *  it has no subject-line angle to serve, it has existing copy to redistribute,
- *  and this paragraph's "2 to 5 blocks is typical" quietly caps it. */
-const SUGGEST_KIND_GUIDANCE = `Pick the kinds that actually fit the subject line's angle. A discount-announcement subject should probably use a "discount" block. A results/story subject fits "timeline" or "testimonial". Don't force every kind in — 2 to 5 blocks is typical, only go to 8 for a genuinely dense brief.`;
 
 
 /** Maps one validated LayoutBlock onto a real CampaignBlock. Only the
@@ -240,26 +235,6 @@ export function layoutBlockToCampaignBlock(b: LayoutBlock): CampaignBlock {
   }
 }
 
-export function buildLayoutSuggestionPrompt(subject: string, topic: string): string {
-  return `${LUNIA_VOICE_SPEC}
-
-Given this email's subject line, suggest a block-by-block structure for the body of a Lunia Life marketing email.
-
-Subject line: ${subject}
-${topic ? `Additional context / topic: ${topic}` : ""}
-
-${KIND_SCHEMA_EXAMPLES}
-
-${SUGGEST_KIND_GUIDANCE}
-
-Also suggest:
-- "topBanner": a short (2-8 word) uppercase-style top banner line, or omit if not needed.
-- "promoBand": a short promo strip line, or omit if this isn't a promotional email.
-- "ctaLabel": the CTA button label, e.g. "Start Sleeping Better".
-
-Return ONLY valid JSON, no markdown fences, matching:
-{ "topBanner"?: string, "promoBand"?: string, "ctaLabel"?: string, "blocks": [ ...block objects as shown above... ] }`;
-}
 
 // ─── Restructure ("Make it visual") ──────────────────────────────────────────
 
@@ -318,48 +293,23 @@ function defuseFence(text: string): string {
 }
 
 /** Prompt for "Make it visual": re-express an email's EXISTING copy as a
- *  richer set of blocks. This is deliberately not `buildLayoutSuggestionPrompt`
- *  — that one writes new copy from a subject line, this one is forbidden from
- *  writing anything. The fact-preservation rules below are load-bearing:
+ *  richer set of blocks. It is forbidden from writing anything: the copy comes
+ *  only from the source, and only the structure changes. The fact-preservation rules below are load-bearing:
  *  nothing enforces them at runtime (the code-enforced verifier was cut during
  *  the 2026-08-21 CEO review), so the prompt plus the user's before/after diff
  *  are the only checks. */
-/** How aggressively to restructure.
- *  - "default": read the copy, use whichever kinds fit.
- *  - "editorial": the dense, image-led shape the big DTC supplement brands
- *    use, rendered in Lunia's own voice and palette. Picture-first, alternating
- *    sides, almost no bare paragraphs. */
-export type RestructureStyle = "default" | "editorial";
 
-/** The editorial shape, on top of the normal rules. Describes the LAYOUT to
- *  imitate, never another brand's words: the copy still comes only from the
- *  source, and LUNIA_VOICE_SPEC still governs how it reads. */
-const EDITORIAL_STYLE_GUIDANCE = `
-EDITORIAL MODE. Build the image-led shape a premium DTC supplement brand uses,
-in Lunia's own voice. Concretely:
-
-1. OPEN with a "headerimage" block. Use headerStyle "card" when the source has
-   one strong headline, "pill" when it has a short label plus a headline.
-2. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right", then
-   "left". Two or three of them. This alternation is the single most
-   recognisable part of the look, so do not emit them all on one side.
-3. Include ONE "imagebullets" block for the strongest short list, with
-   bulletColor "aqua" or "yellow".
-4. Include ONE "grid" when the source has three or more parallel points.
-5. Use "table" only when the source already contains prices or plan numbers.
-6. Keep bare "text" blocks to AT MOST ONE. In this mode a paragraph on its own
-   is a last resort; almost everything should carry a picture.
-7. Aim for 5 to 8 blocks.
-
-Every block that can hold a picture MUST come with its own imagePrompt, and
-they must be different scenes from each other. Repeating the same scene across
-blocks is the failure mode this layout exposes most.`;
-
+/** Compose the restructure prompt.
+ *
+ *  `guidance` is an optional LAYOUT instruction naming the shape to build. It is
+ *  resolved from a shape registry by the caller and is never accepted from the
+ *  network: a client-supplied guidance string would let arbitrary caller text
+ *  into an LLM prompt. See /api/campaign/restructure, which takes a shapeId. */
 export function buildRestructurePrompt(
   blocks: CampaignBlock[],
   subject: string,
   topic: string,
-  style: RestructureStyle = "default",
+  guidance = "",
 ): string {
   const source = defuseFence(blocksToSourceText(blocks));
   return `${LUNIA_VOICE_SPEC}
@@ -457,7 +407,7 @@ If the source copy is too thin to justify a structured block, return "text" bloc
 A faithful plain result is correct; an impressive invented one is a failure.
 
 ${KIND_SCHEMA_EXAMPLES}
-${style === "editorial" ? EDITORIAL_STYLE_GUIDANCE : ""}
+${guidance ? `\n${guidance}` : ""}
 
 Also suggest, ONLY if the source supports it:
 - "topBanner": a short uppercase-style banner line drawn from the source, or omit.
