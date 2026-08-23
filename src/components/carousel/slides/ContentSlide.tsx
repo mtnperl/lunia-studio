@@ -45,7 +45,7 @@ import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 import type { SlideElement } from '@/lib/slide-elements';
-import { pickableStyle } from '@/lib/slide-elements';
+import { pickableStyle, editableProps, editingStyle } from '@/lib/slide-elements';
 
 // ─── Layout tokens (shared with the render + regression pipeline) ────────────
 import { SLIDE } from '@/lib/brand-tokens';
@@ -215,6 +215,14 @@ type Props = {
   onSelectElement?: (element: SlideElement) => void;
   /** Which element currently carries the selection ring. */
   selectedElement?: SlideElement | null;
+  /** Which element is being typed into right now. */
+  editingElement?: SlideElement | null;
+  /** Double-click on a text zone asks the editor to start editing it. */
+  onBeginEditElement?: (element: SlideElement) => void;
+  /** Blur or Enter hands the typed text back. */
+  onCommitElement?: (element: SlideElement, value: string) => void;
+  /** Escape abandons the edit. */
+  onCancelEditElement?: () => void;
 };
 
 // ─── ContentSlide ─────────────────────────────────────────────────────────────
@@ -249,6 +257,10 @@ export default function ContentSlide({
   showCitationBars = true,
   onSelectElement,
   selectedElement = null,
+  editingElement = null,
+  onBeginEditElement,
+  onCommitElement,
+  onCancelEditElement,
 }: Props) {
   // One flag rather than testing the callback at every site.
   const pickable = !!onSelectElement;
@@ -256,7 +268,15 @@ export default function ContentSlide({
     onSelectElement
       ? {
           onClick: (e: React.MouseEvent) => { e.stopPropagation(); onSelectElement(element); },
-          style: pickableStyle(element, selectedElement, true),
+          style: { ...pickableStyle(element, selectedElement, true), ...editingStyle(editingElement === element) },
+          ...(onBeginEditElement && onCommitElement && onCancelEditElement
+            ? editableProps(element, editingElement === element, {
+                onBeginEdit: onBeginEditElement,
+                onCommit: onCommitElement,
+                onCancel: onCancelEditElement,
+                multiline: element === "body",
+              })
+            : {}),
         }
       : { style: {} as React.CSSProperties };
   const isEditorial = stylePreset === "editorial-scientific";

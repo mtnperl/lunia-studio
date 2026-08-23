@@ -16,7 +16,7 @@ import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { DEFAULT_HOOK_OVERLAYS, SOFT_WHITE, type HookOverlaySettings, type BackgroundWash } from "@/components/carousel/shared/HookOverlays";
 import FeedPreview from "@/components/carousel/preview/FeedPreview";
-import { SLIDE_ELEMENT_LABEL, type SlideElement } from "@/lib/slide-elements";
+import { SLIDE_ELEMENT_LABEL, isEditable as isEditableElement, type SlideElement } from "@/lib/slide-elements";
 import { Button } from "@/components/ui/Button";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
@@ -355,6 +355,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // else — instead of six identical S/M/L/XL rows, none of which said which
   // part of the picture they moved.
   const [selectedElement, setSelectedElement] = useState<SlideElement | null>(null);
+  // Double-click puts a text zone into edit mode. Held per slide so leaving a
+  // slide can't leave an invisible edit open on the one you left.
+  const [editing, setEditing] = useState<{ slide: number; element: SlideElement } | null>(null);
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>(null);
   // v2 editor: AI-suggested icon ids for the focused content slide, held
   // un-applied so opening the icon panel never mutates the slide.
@@ -1229,6 +1232,27 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
   }
 
+  /** Double-click a text zone → type on the artwork itself. */
+  function beginEditElement(slideIndex: number, element: SlideElement) {
+    if (!isEditableElement(element)) return;
+    setFocusedSlide(slideIndex);
+    setSelectedElement(element);
+    setInspectorMode("element");
+    setEditing({ slide: slideIndex, element });
+  }
+
+  /** Blur or Enter. Writes through the same path the inspector field uses, so
+   *  both ways of editing land in one place and undo/save behave identically. */
+  function commitEditElement(slideIndex: number, element: SlideElement, value: string) {
+    setEditing(null);
+    if (!isEditableElement(element)) return;
+    const current = content.slides[slideIndex - 1];
+    if (!current) return;
+    const field = element as "headline" | "body" | "citation";
+    if ((current[field] ?? "") === value) return; // nothing typed — don't dirty the carousel
+    updateSlideField(slideIndex - 1, field, value);
+  }
+
   /** Click a part of the slide → that part's controls, and only those. */
   function selectElement(slideIndex: number, element: SlideElement) {
     if (slideIndex !== focusedSlide) {
@@ -1245,6 +1269,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setFocusedSlide(i);
     setIconSuggestions([]);
     setSelectedElement(null);
+    setEditing(null);
     setInspectorMode((cur) => {
       if (cur === null || cur === "settings") return cur;
       if (cur === "element") return null;
@@ -1932,7 +1957,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
 
       return {
         title: SLIDE_ELEMENT_LABEL[selectedElement],
-        subtitle: slideLabels[focusedSlide],
+        // Says where you are and how to skip the round trip through this panel.
+        subtitle: isEditableElement(selectedElement)
+          ? `${slideLabels[focusedSlide]} · double-click on the slide to type there`
+          : slideLabels[focusedSlide],
         body,
       };
     }
@@ -2672,7 +2700,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     ...content.slides.map((s, i) => (
       <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageShimmer={contentBgGenerating.has(i)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
         onSelectElement={(el) => selectElement(i + 1, el)}
-        selectedElement={focusedSlide === i + 1 ? selectedElement : null} />
+        selectedElement={focusedSlide === i + 1 ? selectedElement : null}
+        editingElement={editing?.slide === i + 1 ? editing.element : null}
+        onBeginEditElement={(el) => beginEditElement(i + 1, el)}
+        onCommitElement={(el, v) => commitEditElement(i + 1, el, v)}
+        onCancelEditElement={() => setEditing(null)} />
     )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]

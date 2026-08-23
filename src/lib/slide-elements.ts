@@ -73,3 +73,73 @@ export const ELEMENT_CONTROLS: Record<SlideElement, readonly string[]> = {
   citation: ["text", "size", "visibility"],
   graphic: ["type", "data", "iconSize", "regenerate"],
 };
+
+/** The elements whose content is text you can type. `graphic` is not one. */
+export const EDITABLE_ELEMENTS: readonly SlideElement[] = ["headline", "body", "citation"];
+
+export function isEditable(element: SlideElement): boolean {
+  return EDITABLE_ELEMENTS.includes(element);
+}
+
+/**
+ * Props that turn a slide's text zone into a field you type in.
+ *
+ * Single click selects, double click edits — the convention every design tool
+ * already taught the user, and it keeps a stray click from putting the
+ * artwork into an edit state.
+ *
+ * The value is deliberately UNCONTROLLED. React re-rendering a
+ * contentEditable's children while the caret is inside it resets the caret to
+ * the start on every keystroke, so the text is written once when editing
+ * begins and read back out on blur. The caller gives the node a `key` that
+ * changes when editing stops, which is what lets React take ownership again.
+ *
+ * Enter commits for a headline and a citation, which are single thoughts.
+ * The body keeps Enter for line breaks and commits on blur or Escape.
+ */
+export function editableProps(
+  element: SlideElement,
+  editing: boolean,
+  opts: {
+    onBeginEdit: (element: SlideElement) => void;
+    onCommit: (element: SlideElement, value: string) => void;
+    onCancel: () => void;
+    multiline?: boolean;
+  },
+) {
+  if (!editing) {
+    return {
+      onDoubleClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        opts.onBeginEdit(element);
+      },
+    };
+  }
+  // contentEditable inserts non-breaking spaces as you type; they survive
+  // into the export and render as visibly wrong spacing. Escaped rather
+  // than written literally so the character is visible in the source.
+  const commit = (node: HTMLElement) =>
+    opts.onCommit(element, node.innerText.replace(/\u00A0/g, " ").trim());
+  return {
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    spellCheck: true,
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onBlur: (e: React.FocusEvent<HTMLElement>) => commit(e.currentTarget),
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key === "Escape") { e.preventDefault(); opts.onCancel(); return; }
+      if (e.key === "Enter" && !opts.multiline && !e.shiftKey) {
+        e.preventDefault();
+        commit(e.currentTarget);
+      }
+    },
+  };
+}
+
+/** Visual state for a zone being typed into. Layout-neutral, like the ring. */
+export function editingStyle(editing: boolean): React.CSSProperties {
+  return editing
+    ? { outline: "2px solid var(--accent, #1D1D1F)", outlineOffset: 6, cursor: "text" }
+    : {};
+}

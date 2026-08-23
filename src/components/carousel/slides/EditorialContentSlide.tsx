@@ -11,7 +11,7 @@ import { renderGraphicSpec } from "@/components/carousel/graphics/graphicCompone
 
 import { SLIDE, BRAND_FONT_FAMILY, FONT_WEIGHT } from "@/lib/brand-tokens";
 import type { SlideElement } from '@/lib/slide-elements';
-import { pickableStyle } from '@/lib/slide-elements';
+import { pickableStyle, editableProps, editingStyle } from '@/lib/slide-elements';
 
 const SLIDE_H = SLIDE.height;
 const PAD = SLIDE.editorialPad;
@@ -45,6 +45,14 @@ type Props = {
    *  those render exactly the markup they always did. */
   onSelectElement?: (element: SlideElement) => void;
   selectedElement?: SlideElement | null;
+  /** Which element is being typed into right now. */
+  editingElement?: SlideElement | null;
+  /** Double-click on a text zone asks the editor to start editing it. */
+  onBeginEditElement?: (element: SlideElement) => void;
+  /** Blur or Enter hands the typed text back. */
+  onCommitElement?: (element: SlideElement, value: string) => void;
+  /** Escape abandons the edit. */
+  onCancelEditElement?: () => void;
   // Accepted (but visually ignored) so this component is drop-in compatible
   // with the existing ContentSlide call sites in PreviewStep:
   arrowScale?: number;
@@ -96,6 +104,10 @@ export default function EditorialContentSlide({
   showCitationBars = true,
   onSelectElement,
   selectedElement = null,
+  editingElement = null,
+  onBeginEditElement,
+  onCommitElement,
+  onCancelEditElement,
   showSlideArrows = true,
   arrowScale = 1,
 }: Props) {
@@ -103,7 +115,15 @@ export default function EditorialContentSlide({
     onSelectElement
       ? {
           onClick: (e: React.MouseEvent) => { e.stopPropagation(); onSelectElement(element); },
-          style: pickableStyle(element, selectedElement, true),
+          style: { ...pickableStyle(element, selectedElement, true), ...editingStyle(editingElement === element) },
+          ...(onBeginEditElement && onCommitElement && onCancelEditElement
+            ? editableProps(element, editingElement === element, {
+                onBeginEdit: onBeginEditElement,
+                onCommit: onCommitElement,
+                onCancel: onCancelEditElement,
+                multiline: element === "body",
+              })
+            : {}),
         }
       : { style: {} as React.CSSProperties };
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
