@@ -190,7 +190,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
       if (d.engagementSubType) setEngagementSubType(d.engagementSubType);
       if (Array.isArray(d.didYouKnowVariants)) setDidYouKnowVariants(d.didYouKnowVariants);
       if (typeof d.selectedDidYouKnow === "number") setSelectedDidYouKnow(d.selectedDidYouKnow);
-      if (typeof d.step === "number" && d.step >= 1 && d.step <= 4) setStep(d.step as Step);
+      // Deliberately ignores any stored step. It used to accept 1-4, and 2 and 3
+      // no longer render anything — a draft saved on the old Content or Hook
+      // screen restored into a blank page. The screen follows the content:
+      // something to work on means the studio, nothing means the brief.
+      const restoredContent = Array.isArray(d.variants) && d.variants.length > 0;
+      const restoredDyk = Array.isArray(d.didYouKnowVariants) && d.didYouKnowVariants.length > 0;
+      setStep(restoredContent || restoredDyk ? STUDIO : BRIEF);
       setRestoredDraft(true);
     } catch { /* ignore corrupt draft */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -376,7 +382,16 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
       // drawer — so stopping at them was asking you to visit a page to do
       // something you could already do on the next one.
       setStep(4);
-      startImages(std.variants[0], 0);
+      startImages({
+        topic: t,
+        content: std.variants[0],
+        hookIndex: 0,
+        hookTone: tone,
+        imageStyle: style ?? "realistic",
+        stylePreset: preset ?? "default",
+        contrastMode: contrast ?? "standard",
+        moodId,
+      });
     } catch {
       setError("Network error — please check your connection and try again.");
     } finally {
@@ -391,14 +406,45 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
    * also why images could not start until you had visited that screen. Now
    * generation and rendering are one continuous act.
    */
-  function startImages(c: CarouselContent, hookIndex: number) {
-    generateSlideImages(topic, c, hookIndex, imageStyle, moodId, stylePreset, contrastMode);
+  /**
+   * Begin the image pass and record a recoverable draft.
+   *
+   * EVERY VALUE IS PASSED IN, none read from state, and that is the whole
+   * point of the signature. This runs inside handleTopicNext, in the same tick
+   * as the setTopic/setImageStyle/setStylePreset calls that precede it — so
+   * the state this closure can see is the PREVIOUS render's, which on a fresh
+   * carousel means `topic` is still "". The route rejected that with "Topic
+   * required" and the run died before a single image was requested.
+   *
+   * It worked before only by accident of distance: image generation used to be
+   * triggered from the Hook screen's "Preview carousel" button, two renders and
+   * two user clicks later, by which time state had long settled. Moving it next
+   * to the setters is what exposed it.
+   */
+  function startImages(args: {
+    topic: string;
+    content: CarouselContent;
+    hookIndex: number;
+    hookTone: HookTone;
+    imageStyle: CarouselImageStyle;
+    stylePreset: CarouselStylePreset;
+    contrastMode: CarouselContrastMode;
+    moodId: string | null;
+  }) {
+    generateSlideImages(
+      args.topic, args.content, args.hookIndex,
+      args.imageStyle, args.moodId, args.stylePreset, args.contrastMode,
+    );
     try {
       const draftId = draftIdRef.current || `draft_${Date.now()}`;
       draftIdRef.current = draftId;
       const existing = JSON.parse(localStorage.getItem("lunia:drafts") ?? "[]") as Array<Record<string, unknown>>;
       const others = existing.filter((d) => d.id !== draftId);
-      others.unshift({ id: draftId, topic, hookTone, content: c, selectedHook: hookIndex, savedAt: new Date().toISOString(), _unsaved: true });
+      others.unshift({
+        id: draftId, topic: args.topic, hookTone: args.hookTone,
+        content: args.content, selectedHook: args.hookIndex,
+        savedAt: new Date().toISOString(), _unsaved: true,
+      });
       localStorage.setItem("lunia:drafts", JSON.stringify(others.slice(0, 20)));
     } catch {}
   }
