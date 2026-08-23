@@ -1,4 +1,4 @@
-import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, DRAFT_MAX_TOKENS_SHORT, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 300;
@@ -111,7 +111,10 @@ Rules (hard):
     ].filter(Boolean).join("\n");
 
     const msg = await createContentMessage({
-      model: DRAFT_MODEL,
+      // Raised a tier deliberately: a weak prompt here buys a weak IMAGE, and the
+    // image costs more than the prompt that asked for it. Generic results
+    // (a social-media block getting a calm bedroom) were the symptom.
+    model: CRAFT_MODEL,
       max_tokens: DRAFT_MAX_TOKENS_SHORT,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],

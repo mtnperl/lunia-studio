@@ -1,4 +1,4 @@
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { randomUUID } from "crypto";
 
@@ -73,7 +73,7 @@ Return ONLY valid JSON with this exact structure (no markdown):
 }`;
 
     const response = await createContentMessage({
-      model: "claude-opus-4-6",
+      model: CONTENT_MODEL,
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });

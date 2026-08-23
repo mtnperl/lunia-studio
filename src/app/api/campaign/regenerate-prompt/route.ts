@@ -1,4 +1,4 @@
-import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, DRAFT_MAX_TOKENS_SHORT, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -55,7 +55,10 @@ ${currentPrompt ? `- Write something clearly DIFFERENT from the current prompt: 
 Output ONLY the new prompt text — no quotes, no preamble, no explanation.`;
 
     const msg = await createContentMessage({
-      model: DRAFT_MODEL,
+      // Raised a tier deliberately: a weak prompt here buys a weak IMAGE, and the
+    // image costs more than the prompt that asked for it. Generic results
+    // (a social-media block getting a calm bedroom) were the symptom.
+    model: CRAFT_MODEL,
       max_tokens: DRAFT_MAX_TOKENS_SHORT,
       messages: [{ role: "user", content: instructions }],
     });

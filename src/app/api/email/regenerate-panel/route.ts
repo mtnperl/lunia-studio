@@ -1,4 +1,4 @@
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -72,7 +72,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no code fences):
 }`;
 
     const response = await createContentMessage({
-      model: "claude-opus-4-6",
+      model: CONTENT_MODEL,
       max_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });

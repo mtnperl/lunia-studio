@@ -1,4 +1,4 @@
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdSceneType } from "@/lib/types";
 
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       + (currentPrompt ? "\n- This is a regeneration — produce a distinctly different visual direction" : "");
 
     const msg = await createContentMessage({
-      model: "claude-sonnet-4-5",
+      model: CRAFT_MODEL,
       max_tokens: 200,
       system: systemPrompt,
       messages: [

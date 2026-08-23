@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { postProcess } from "@/lib/compliance";
 import { clientIp, incrComplianceMetric, logEntry, logExit } from "@/lib/ugc-api";
@@ -113,7 +113,7 @@ Return exactly the JSON shape defined in the system prompt. Exactly 5 primary te
 5 headlines, 5 descriptions, and 1 cta value from the allowed list.`;
 
     const message = await createContentMessage({
-      model: "claude-opus-4-7",
+      model: CONTENT_MODEL,
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

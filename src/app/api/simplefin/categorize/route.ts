@@ -1,12 +1,6 @@
 import { z } from "zod";
 import { kv } from "@/lib/kv";
-import {
-  createContentMessage,
-  extractText,
-  CONTENT_MODEL,
-  CONTENT_THINKING,
-  CONTENT_MAX_TOKENS_LONG,
-} from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_THINKING, DRAFT_MODEL, DRAFT_MAX_TOKENS_MED } from "@/lib/anthropic";
 import {
   EXPENSE_CATEGORIES,
   type Categorization,
@@ -243,8 +237,10 @@ async function classifyBatch(batch: IncomingTxn[]) {
     .join("\n");
 
   const message = await createContentMessage({
-    model: CONTENT_MODEL,
-    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    // Labelling transactions against a fixed category list is classification,
+    // not judgement — the clearest overspend in the app when it ran on Opus.
+    model: DRAFT_MODEL,
+    max_tokens: DRAFT_MAX_TOKENS_MED,
     thinking: CONTENT_THINKING,
     system: SYSTEM_PROMPT,
     messages: [

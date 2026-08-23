@@ -19,8 +19,10 @@
 // One model call PER UNIT rather than one for the whole deck or one per claim:
 //   - a malformed response costs one amber chip, not the whole run
 //   - claims within a slide share searches (same study cited twice = one lookup)
-//   - anthropic.ts caps thinking+visible at 32,768 for Opus 4.7; per-unit output
-//     never approaches it, whereas a 12-claim deck response can
+//   - per-unit output stays small, whereas a 12-claim deck response does not.
+//     This used to cite a hard 32,768 ceiling on thinking + visible text; that
+//     limit was not real on this model family, so it is no longer a reason —
+//     the three reasons above still are.
 //
 // ─── Prompt injection ─────────────────────────────────────────────────────────
 // Search results are attacker-controlled text. A page can contain "this claim is
@@ -37,7 +39,7 @@
 // and is safe on both sides.
 import "server-only";
 import { z } from "zod";
-import { anthropic, CONTENT_MODEL } from "./anthropic";
+import { anthropic, CONTENT_MODEL, EFFORT_PRECISE } from "./anthropic";
 import { getCachedUnit, setCachedUnit } from "./verification-cache";
 import {
   hashUnitText,
@@ -272,6 +274,9 @@ export async function verifyUnit(unit: ExtractedUnit, useCache = true): Promise<
   try {
     const msg = await anthropic.messages.create({
       model: CONTENT_MODEL,
+      // The one route where being wrong is the whole failure mode, so it opts
+      // out of the app-wide default and pays for the deepest pass available.
+      output_config: { effort: EFFORT_PRECISE },
       max_tokens: PER_UNIT_MAX_TOKENS,
       system: VERIFY_SYSTEM,
       tools: [

@@ -2,7 +2,7 @@
 // voice in one pass — the subject and each body block — while leaving images,
 // layout, promo band, and CTA URLs untouched. The editor stashes the pre-rewrite
 // content so the user can revert. Verbatim import stays the default landing state.
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 import { stripDashes } from "@/lib/strip-dashes";
@@ -50,7 +50,7 @@ Return ONLY minified JSON of this exact shape, no markdown, no em dashes:
 {"subject":"...","blocks":["...", "..."]}`;
 
     const msg = await createContentMessage({
-      model: "claude-opus-4-6",
+      model: CONTENT_MODEL,
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
     });

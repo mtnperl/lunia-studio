@@ -1,4 +1,4 @@
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdScene } from "@/lib/types";
 
@@ -89,7 +89,7 @@ ${hookInstruction}`;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const message = await createContentMessage({
-          model: "claude-sonnet-4-5",
+          model: CRAFT_MODEL,
           max_tokens: 1024,
           system: attempt === 1 ? SYSTEM_PROMPT : SYSTEM_PROMPT + "\n\nCRITICAL: Previous response was not valid JSON. Output ONLY the JSON object, nothing else.",
           messages: [{ role: "user", content: userMessage }],

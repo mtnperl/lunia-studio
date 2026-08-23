@@ -1,4 +1,4 @@
-import { createContentMessage } from "@/lib/anthropic";
+import { createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 import { stripDashes } from "@/lib/strip-dashes";
@@ -45,7 +45,7 @@ Rewrite this ${guidance} in Lunia voice. Keep the core intent. Make it sharper, 
 Return ONLY the rewritten text. No explanation, no quotes, no markdown. No em dashes.`;
 
     const response = await createContentMessage({
-      model: "claude-opus-4-6",
+      model: CONTENT_MODEL,
       max_tokens: 250,
       messages: [{ role: "user", content: prompt }],
     });

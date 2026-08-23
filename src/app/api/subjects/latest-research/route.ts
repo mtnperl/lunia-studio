@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic";
+import { anthropic, CRAFT_MODEL } from "@/lib/anthropic";
 import { getSubjects, saveSubjects } from "@/lib/kv";
 import type { Subject } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -77,7 +77,7 @@ export async function POST() {
   let raw: string;
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
+      model: CRAFT_MODEL,
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
