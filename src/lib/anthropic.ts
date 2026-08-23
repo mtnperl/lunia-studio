@@ -19,11 +19,17 @@ export const anthropic = new Anthropic({
  */
 export async function createContentMessage(params: MessageCreateParamsNonStreaming): Promise<Message> {
   const usesDraftTier = params.model === DRAFT_MODEL;
-  const withEffort: MessageCreateParamsNonStreaming =
-    usesDraftTier || params.output_config
-      ? params
-      : { ...params, output_config: { effort: EFFORT_STANDARD } };
-  return anthropic.messages.stream(withEffort).finalMessage();
+  if (usesDraftTier) return anthropic.messages.stream(params).finalMessage();
+
+  // Thinking and the visible answer share max_tokens, so a route that wants
+  // effort must also have room to think. Both are applied here together —
+  // separating them is what broke verification.
+  const tuned: MessageCreateParamsNonStreaming = {
+    ...params,
+    output_config: params.output_config ?? { effort: EFFORT_STANDARD },
+    max_tokens: Math.max(params.max_tokens, MIN_MAX_TOKENS_WITH_THINKING),
+  };
+  return anthropic.messages.stream(tuned).finalMessage();
 }
 
 // ─── Model tiers ──────────────────────────────────────────────────────────
@@ -89,6 +95,23 @@ export const CONTENT_MAX_TOKENS_LONG  = 24_000;   // full-carousel / multi-secti
 // deliberately not to the ceiling: a route that genuinely needs more should
 // say so rather than inherit it.
 export const CONTENT_MAX_TOKENS_MAX   = 64_000;
+
+/**
+ * Floor for max_tokens on any thinking-enabled call.
+ *
+ * max_tokens is the ceiling on thinking PLUS visible output, not on the answer
+ * alone. On Opus 4.7 these routes omitted `thinking`, which meant no thinking,
+ * so every one of their tokens went to the response — a 250-token budget for a
+ * one-line rewrite was correct. Opus 5 thinks by DEFAULT when `thinking` is
+ * omitted, so the same budget is now spent reasoning and the visible answer is
+ * truncated mid-sentence. The fact checker hit this first: its JSON stopped
+ * partway through an object and surfaced as "no parseable JSON".
+ *
+ * A ceiling is not a target — raising it does not make a caption longer, it
+ * only stops the model being cut off. So the floor is applied centrally rather
+ * than asking eleven routes to each remember the interaction.
+ */
+export const MIN_MAX_TOKENS_WITH_THINKING = 8_000;
 
 export const DRAFT_MAX_TOKENS_SHORT = 4_000;
 export const DRAFT_MAX_TOKENS_MED   = 8_000;
