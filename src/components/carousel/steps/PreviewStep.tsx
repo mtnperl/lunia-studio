@@ -18,6 +18,8 @@ import { DEFAULT_HOOK_OVERLAYS, SOFT_WHITE, type HookOverlaySettings, type Backg
 import FeedPreview from "@/components/carousel/preview/FeedPreview";
 import { SLIDE_ELEMENT_LABEL, isEditable as isEditableElement, type SlideElement } from "@/lib/slide-elements";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
+import { IcChevron } from "@/components/ui/icons";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
@@ -50,6 +52,8 @@ type Props = {
   hookTone: HookTone;
   onRestart: () => void;
   onChangeHook?: () => void;
+  /** Switch the hook variant without leaving the canvas. */
+  onSelectHook?: (index: number) => void;
   onContentChange: (config: CarouselConfig) => void;
   initialImageStyle?: CarouselImageStyle;
   /** Contrast chosen on the topic screen, so the chip opens on what was used. */
@@ -317,7 +321,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onContentChange, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -358,6 +362,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Double-click puts a text zone into edit mode. Held per slide so leaving a
   // slide can't leave an invisible edit open on the one you left.
   const [editing, setEditing] = useState<{ slide: number; element: SlideElement } | null>(null);
+  // The brief — topic and hook — folded into the workspace instead of living
+  // two screens back. Collapsed by default: it is what you decided, not what
+  // you are doing.
+  const [briefOpen, setBriefOpen] = useState(false);
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>(null);
   // v2 editor: AI-suggested icon ids for the focused content slide, held
   // un-applied so opening the icon panel never mutates the slide.
@@ -2830,6 +2838,78 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           )}
         </div>
       </div>
+
+      {/* ── Brief ──────────────────────────────────────────────────────────
+          Topic and hook used to be steps 1 and 3 — screens you left the
+          canvas to reach, and could not reach at all from Preview until the
+          step tabs became navigable. Switching hook is the single most common
+          thing to want back, so it happens here without going anywhere. */}
+      {onSelectHook && content.hooks.length > 1 && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: 10, marginBottom: 20, background: "var(--surface)" }}>
+          <button
+            type="button"
+            onClick={() => setBriefOpen((v) => !v)}
+            aria-expanded={briefOpen}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, width: "100%",
+              minHeight: 44, padding: "0 14px", border: "none", background: "transparent",
+              cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+              borderBottom: briefOpen ? "1px solid var(--border)" : "none",
+            }}
+          >
+            <span style={{
+              display: "inline-flex", color: "var(--muted)", transition: "transform 130ms ease",
+              transform: briefOpen ? "rotate(0deg)" : "rotate(-90deg)",
+            }}>
+              <IcChevron size={16} />
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Brief
+            </span>
+            <span style={{
+              flex: 1, minWidth: 0, fontSize: 13, color: "var(--muted)",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {hook.headline}
+            </span>
+          </button>
+          {briefOpen && (
+            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <Label kind="section">Hook</Label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {content.hooks.map((h, i) => {
+                    const active = i === selectedHook;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => onSelectHook(i)}
+                        style={{
+                          textAlign: "left", padding: "10px 12px", borderRadius: 8,
+                          border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                          background: active ? "var(--accent-dim)" : "var(--bg)",
+                          cursor: "pointer", fontFamily: "inherit", color: "var(--text)",
+                          transition: "border-color 120ms ease, background 120ms ease",
+                        }}
+                      >
+                        <div style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, lineHeight: 1.35 }}>{h.headline}</div>
+                        {h.subline && (
+                          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>{h.subline}</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Switching the hook changes the first slide&apos;s text. The image already
+                  generated for it stays — regenerate it from Refine image if you want a new one.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Fact check. Only available once saved — verification reads the carousel
           from storage by id, so there is nothing to check before a first save. */}

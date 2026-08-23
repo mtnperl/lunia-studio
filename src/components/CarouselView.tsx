@@ -616,6 +616,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               hookTone={hookTone}
               onRestart={handleRestart}
               onChangeHook={() => setStep(3)}
+              onSelectHook={setSelectedHook}
               initialImageStyle={imageStyle}
               initialContrastMode={contrastMode}
               initialMoodId={moodId}
