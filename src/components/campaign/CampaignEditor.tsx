@@ -383,6 +383,10 @@ export default function CampaignEditor({
   }, []);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Which block the preview has selected. Drives the ring on its card in the
+  // rail; the ring inside the iframe is painted by the injected script.
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const blockCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // Preview scaling — the email is hard-coded to 600px so we render the
   // iframe at the email's NATIVE width and CSS-scale it down to fit the
   // preview pane. Previously the iframe just stretched to whatever pane
@@ -591,7 +595,10 @@ export default function CampaignEditor({
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  const html = useMemo(() => renderCampaignEmail(content), [content]);
+  // `selectable` adds block ids and a click listener to the PREVIEW document
+  // only. Export, Klaviyo and the snapshot tests call the renderer with no
+  // options, so the email that actually ships is unchanged.
+  const html = useMemo(() => renderCampaignEmail(content, { selectable: true }), [content]);
 
   // Rendered before/after for a pending RESTRUCTURE. Built from the real
   // renderer, not an approximation, because this diff is the only thing
@@ -614,6 +621,20 @@ export default function CampaignEditor({
       .join("\n")
       .slice(0, 1200);
   }, [content]);
+
+  // Clicking a block in the preview selects its card in the rail and scrolls
+  // it into view. Filtered on `source` because a window message can come from
+  // anywhere; only the document we injected the script into says this.
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      const d = e.data as { source?: string; type?: string; id?: string } | null;
+      if (!d || d.source !== "lunia-preview" || d.type !== "selectBlock" || !d.id) return;
+      setSelectedBlockId(d.id);
+      blockCardRefs.current[d.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
 
   // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
   // every content change. Without this, some browsers don't re-fetch images
@@ -1834,6 +1855,14 @@ export default function CampaignEditor({
               return (
                 <div
                   key={b.id}
+                  ref={(el) => { blockCardRefs.current[b.id] = el; }}
+                  onClick={() => {
+                    setSelectedBlockId(b.id);
+                    // Paint the matching ring inside the preview so the two
+                    // halves always agree on what is selected.
+                    iframeRef.current?.contentWindow?.postMessage(
+                      { source: "lunia-editor", type: "highlightBlock", id: b.id }, "*");
+                  }}
                   draggable
                   onDragStart={() => setDraggedBlockId(b.id)}
                   onDragOver={(e) => e.preventDefault()}
@@ -1844,7 +1873,9 @@ export default function CampaignEditor({
                   }}
                   onDragEnd={() => setDraggedBlockId(null)}
                   style={{
-                    border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", overflow: "hidden",
+                    border: `1px solid ${selectedBlockId === b.id ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: 8, background: "var(--surface)", overflow: "hidden",
+                    transition: "border-color 120ms ease",
                     opacity: draggedBlockId === b.id ? 0.5 : 1,
                   }}
                 >

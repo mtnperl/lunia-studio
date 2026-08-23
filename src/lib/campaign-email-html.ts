@@ -636,7 +636,66 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: Campai
 };
 
 /** Render the full campaign email as a standalone HTML document. */
-export function renderCampaignEmail(content: CampaignContent): string {
+/**
+ * Options that exist only for the in-app preview.
+ *
+ * The default is OFF for every field, and the export, the Klaviyo push and
+ * the snapshot tests all call this with no options at all — so the HTML that
+ * actually reaches an inbox is byte-for-byte what it has always been. Anything
+ * added here must keep that property: the preview may carry extra markup, the
+ * email may not.
+ */
+/**
+ * Injected into the PREVIEW document only.
+ *
+ * Clicking a block used to be impossible: the preview is an iframe of the real
+ * email, so the only way to reach a block was to find its card in the
+ * right-hand rail — a list four levels deep with 22 identically-sized inputs.
+ * You typed in one place and watched the result change in another.
+ *
+ * Runs inside the iframe, talks to the editor by postMessage, and touches
+ * nothing else about the document. Links are suppressed on click so hitting a
+ * CTA selects it instead of navigating the preview away from the email.
+ */
+const SELECT_SCRIPT = `<script>
+(function () {
+  var last = null;
+  function paint(id) {
+    if (last) { last.style.outline = ""; last.style.outlineOffset = ""; }
+    var el = id && document.querySelector('[data-lunia-block="' + id + '"]');
+    if (el) {
+      el.style.outline = "2px solid #1D1D1F";
+      el.style.outlineOffset = "-2px";
+      last = el;
+    } else { last = null; }
+  }
+  document.addEventListener("click", function (e) {
+    var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
+    if (!row) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var id = row.getAttribute("data-lunia-block");
+    paint(id);
+    parent.postMessage({ source: "lunia-preview", type: "selectBlock", id: id }, "*");
+  }, true);
+  document.addEventListener("mouseover", function (e) {
+    var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
+    document.body.style.cursor = row ? "pointer" : "";
+  });
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.source === "lunia-editor" && e.data.type === "highlightBlock") paint(e.data.id);
+  });
+})();
+</script>`;
+
+export type RenderEmailOptions = {
+  /** Tag each block's row with its id and post clicks to the parent frame, so
+   *  the editor can select a block by clicking it in the preview. */
+  selectable?: boolean;
+};
+
+export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailOptions = {}): string {
+  const selectable = opts.selectable === true;
   // Unset resolves to navy, so a campaign saved before themes existed renders
   // byte-for-byte as it did.
   const t = resolveTheme(content.theme);
@@ -718,14 +777,20 @@ export function renderCampaignEmail(content: CampaignContent): string {
   // flow; "stat"/"discount"/"checklist" render their own structured markup.
   // An empty/unfilled structured block (e.g. a freshly-added stat with no
   // value yet) renders nothing rather than an empty styled box.
+  // Stamps the block's id onto the first <tr> it emits. Preview only — with
+  // `selectable` off this returns the string untouched, so no branch below has
+  // to know the option exists.
+  const tagRow = (rowHtml: string, id: string) =>
+    selectable && rowHtml ? rowHtml.replace("<tr", `<tr data-lunia-block="${esc(id)}"`) : rowHtml;
+
   const blockRow = (b: CampaignBlock) => {
     // Image blocks own their whole row: "bleed" must escape the 24px cell
     // padding, so they can't be nested in the shared padded text wrapper.
     if (b.kind === "image") {
-      return imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t);
+      return tagRow(imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t), b.id);
     }
     if (b.kind === "headerimage") {
-      return headerimageBlockRow(b, t);
+      return tagRow(headerimageBlockRow(b, t), b.id);
     }
     // Dispatch through a Record keyed on the kind union rather than a ternary
     // chain: TypeScript then REQUIRES an entry for every kind, so adding one to
@@ -738,9 +803,9 @@ export function renderCampaignEmail(content: CampaignContent): string {
       ?? INNER_BLOCK_RENDERERS.text;
     const inner = render(b, t);
     if (!inner) return "";
-    return `<tr><td class="h-padding" style="padding:0 24px 16px;">
+    return tagRow(`<tr><td class="h-padding" style="padding:0 24px 16px;">
        <div class="text-block" style="padding:15px;">${inner}</div>
-     </td></tr>`;
+     </td></tr>`, b.id);
   };
 
   // Secondary images — rows of 2 (stack on mobile via the secondary-cell class)
@@ -837,5 +902,5 @@ export function renderCampaignEmail(content: CampaignContent): string {
     </table>
   </td></tr>
 </table>
-</body></html>`;
+${selectable ? SELECT_SCRIPT : ""}</body></html>`;
 }
