@@ -15,6 +15,8 @@ type Props = {
   status?: "good" | "warn" | "bad";
   /** Short note under the value, colored to match status (e.g. "Healthy", "Payback >18mo"). */
   statusNote?: string;
+  /** Plain-English dollar math under the value (e.g. "$31 gross profit vs $42 to acquire"). Neutral color. */
+  detail?: string;
 };
 
 const STATUS_COLOR: Record<"good" | "warn" | "bad", string> = {
@@ -27,7 +29,7 @@ function easeOut(t: number): number {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip, unavailable = false, trend, status, statusNote }: Props) {
+export default function KPICard({ label, value, prefix = "", suffix = "", loading = false, decimals = 0, tooltip, unavailable = false, trend, status, statusNote, detail }: Props) {
   const valueColor = status ? STATUS_COLOR[status] : "var(--text)";
   const [displayValue, setDisplayValue] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -161,6 +163,18 @@ export default function KPICard({ label, value, prefix = "", suffix = "", loadin
               color: status ? STATUS_COLOR[status] : "var(--muted)",
             }}>
               {statusNote}
+            </div>
+          )}
+          {detail && (
+            <div style={{
+              marginTop: 4,
+              fontFamily: "var(--font-mono)",
+              fontVariantNumeric: "tabular-nums",
+              fontSize: 12,
+              color: "var(--muted)",
+              lineHeight: 1.5,
+            }}>
+              {detail}
             </div>
           )}
           {trend && (
