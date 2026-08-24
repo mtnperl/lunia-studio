@@ -123,6 +123,31 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
 
+/* No scrollbars inside an editor. They sit directly beside the work surface,
+   and the rule above forces the space-taking kind even on platforms that
+   would otherwise overlay them — so the bar is both clutter and 8px of stolen
+   width. Only the BAR goes: wheel, trackpad, keyboard, scrollIntoView and the
+   preview's drag-autoscroll are all untouched.
+   `html.lunia-editing` is set by page.tsx for the editor tabs only, so every
+   other screen keeps its scroll position indicator. */
+html.lunia-editing,
+html.lunia-editing * { scrollbar-width: none; }
+/* `body` is listed explicitly, and it is `display:none` rather than `width:0`,
+   because neither is incidental. The VIEWPORT scrollbar takes its pseudo from
+   body (html's `overflow` is visible), so an html-only selector leaves it at
+   8px; and `width:0` is not honoured on the viewport bar where `display:none`
+   is. `scrollbar-width` above cannot carry this on its own either — Chrome
+   ignores it entirely once `::-webkit-scrollbar` is styled, which the rule at
+   the top of this section does for the whole app. */
+html.lunia-editing::-webkit-scrollbar,
+html.lunia-editing body::-webkit-scrollbar,
+html.lunia-editing ::-webkit-scrollbar { display: none; }
+
+/* The left menu's own scrollbar flanks every editor, so it goes regardless of
+   which screen you are on — an 8px bar inside a 240px menu is pure noise. */
+.lunia-sidebar nav { scrollbar-width: none; }
+.lunia-sidebar nav::-webkit-scrollbar { display: none; }
+
 /* ── Buttons ───────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;

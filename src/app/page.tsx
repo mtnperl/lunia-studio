@@ -165,15 +165,39 @@ const NAV: { section: string; items: { key: Tab; product: Product; label: string
   },
 ];
 
+/** The two-pane editing surfaces. Entering one collapses the left menu so the
+ *  work gets the width, and hides the scrollbars flanking it; leaving one puts
+ *  both back. Libraries and dashboards are not editors — they are lists you
+ *  navigate, and navigation is what the menu is for. */
+const EDITOR_TABS = new Set<Tab>(["campaign", "carousel-v2", "editor", "video"]);
+
 export default function Page() {
   const [tab, setTab]               = useState<Tab>("home");
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const [pendingCarousel, setPendingCarousel] = useState<import("@/lib/types").SavedCarousel | null>(null);
   const [pendingCampaign, setPendingCampaign] = useState<import("@/lib/types").SavedCampaign | null>(null);
   const [pendingEmailFlow, setPendingEmailFlow] = useState<import("@/lib/types").EmailFlow | null>(null);
   const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
+
+  // Collapse the menu on ENTERING an editor and restore it on leaving.
+  // Deliberately keyed on `tab` alone: the toggle in the top bar then sticks
+  // for as long as you stay on that screen, so this sets the default rather
+  // than fighting you every render.
+  useEffect(() => {
+    setNavCollapsed(EDITOR_TABS.has(tab));
+  }, [tab]);
+
+  // Same signal, on <html>, so the CSS can drop the scrollbars for the
+  // editors and nothing else. Cleaned up on unmount so the class can't
+  // outlive the page and quietly hide scrollbars everywhere.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("lunia-editing", EDITOR_TABS.has(tab));
+    return () => root.classList.remove("lunia-editing");
+  }, [tab]);
 
   useEffect(() => {
     const saved = localStorage.getItem("lunia:theme") as "dark" | "light" | null;
@@ -250,11 +274,16 @@ export default function Page() {
           .lunia-mobile-toggle { display: flex !important; }
           .lunia-main { padding-left: 0 !important; }
           .lunia-topbar-title { padding-left: 52px !important; }
+          /* The drawer IS the menu on mobile, so a collapsed width would just
+             make it un-openable. The hamburger already owns show/hide here. */
+          .lunia-sidebar.collapsed { width: 240px !important; }
+          .lunia-nav-toggle { display: none !important; }
         }
         @media (min-width: 701px) {
           .lunia-mobile-toggle { display: none !important; }
           .lunia-mobile-overlay { display: none !important; }
         }
+        .lunia-nav-toggle:hover { background: var(--surface-h) !important; border-color: var(--border-strong) !important; color: var(--text) !important; }
         .lunia-nav-row:hover:not(.active) { background: var(--surface-h) !important; color: var(--text) !important; }
         .lunia-nav-row:hover:not(.active) .lunia-nav-icon { color: var(--text) !important; }
       `}</style>
@@ -268,13 +297,25 @@ export default function Page() {
       )}
 
       {/* ── Sidebar ── */}
-      <aside className={`lunia-sidebar${mobileNavOpen ? " open" : ""}`} style={{
-        width: 240, flexShrink: 0,
-        background: "var(--surface)", borderRight: "1px solid var(--border)",
-        display: "flex", flexDirection: "column",
-        position: "sticky", top: 0, height: "100vh",
-        overflow: "hidden",
-      }}>
+      <aside
+        className={`lunia-sidebar${mobileNavOpen ? " open" : ""}${navCollapsed ? " collapsed" : ""}`}
+        // `inert` while collapsed: a 0px-wide menu is still in the DOM, and
+        // without this its links stay tabbable and screen-reader visible —
+        // a menu you cannot see but can still land on.
+        inert={navCollapsed || undefined}
+        style={{
+          // `overflow: hidden` below is what lets this reach 0: it makes the
+          // flex item's `min-width: auto` floor resolve to zero instead of the
+          // nav's min-content width.
+          width: navCollapsed ? 0 : 240, flexShrink: 0,
+          background: "var(--surface)", borderRight: navCollapsed ? "none" : "1px solid var(--border)",
+          display: "flex", flexDirection: "column",
+          position: "sticky", top: 0, height: "100vh",
+          overflow: "hidden",
+          // Matches DESIGN.md's 220ms panel timing.
+          transition: "width 0.22s ease-out",
+        }}
+      >
         {/* Workspace header */}
         <div style={{
           padding: "14px 12px",
@@ -463,6 +504,34 @@ export default function Page() {
           <div className="lunia-topbar-title" style={{
             display: "flex", alignItems: "center", gap: 10, minWidth: 0,
           }}>
+            {/* Menu toggle. Always present, not only while collapsed: a
+                control that appears where the thing it undoes used to be is
+                one you have to hunt for. Lives in the top bar because the top
+                bar is sticky — with the menu hidden and the editor 4,000px
+                tall, an affordance anywhere else would scroll away. */}
+            <button
+              className="lunia-nav-toggle"
+              onClick={() => setNavCollapsed(v => !v)}
+              title={navCollapsed ? "Show the menu" : "Hide the menu and give the editor the width"}
+              aria-label={navCollapsed ? "Show menu" : "Hide menu"}
+              aria-expanded={!navCollapsed}
+              style={{
+                width: 28, height: 28, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", color: "var(--muted)",
+                border: "1px solid var(--border)", borderRadius: "var(--r-sm)",
+                cursor: "pointer", padding: 0,
+                transition: "background 130ms ease, border-color 130ms ease, color 130ms ease",
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"
+                   stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1.2" y="2.2" width="12.6" height="10.6" rx="2" />
+                <line x1="5.9" y1="2.2" x2="5.9" y2="12.8" />
+                {/* Chevron in the wide half, pointing the way the click goes. */}
+                <polyline points={navCollapsed ? "9,5.9 11,7.5 9,9.1" : "11,5.9 9,7.5 11,9.1"} />
+              </svg>
+            </button>
             {/* Wayfinding, not a title. This used to be an 18px semibold
                 heading competing with the view's own heading directly below
                 it — two quiet titles and no display tier anywhere. It is now
