@@ -163,6 +163,19 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
   // are narrow and specific: copy colliding with the footer, and the citation
   // line leaving a hole when it is empty. Both are locked here.
   {
+    // The preset's TARGET length, ~34 words. Pins the headline-sized type this
+    // look depends on: The Free Press's own 37-word slide sets on a 92px line
+    // pitch, and this must land in the same place. If a change makes this
+    // baseline's type smaller, the preset has quietly become a paragraph again.
+    name: "freepress-target-length",
+    props: {
+      stylePreset: "free-press",
+      headline: "",
+      body: "Blood pressure is supposed to fall 10 to 20 percent while you sleep. Losing that overnight dip is associated with higher long-term risk.\n\nHabitual mouth breathing works against it, keeping pressure elevated all night.",
+      citation: "Ohkubo T, et al. J Hypertens. 2002;20(11):2183-2189.",
+    },
+  },
+  {
     name: "freepress-two-paragraph-with-citation",
     props: {
       stylePreset: "free-press",

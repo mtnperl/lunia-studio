@@ -286,7 +286,8 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 
 - "headline": return "" for every slide. It is not rendered, and writing one wastes the words that should have gone into the body.
 - "graphic": return "" for every slide. Nothing renders it.
-- "body": this is the whole slide, so it carries the whole beat. 45 to 75 words. Write it as ONE or TWO paragraphs; separate two paragraphs with a BLANK LINE (\\n\\n) and never with a single newline. Two paragraphs is the stronger shape: state the finding, then land what it means. The blank line is real breathing room in the layout, not formatting.
+- "body": this is the whole slide, so it carries the whole beat. 30 to 55 words, and closer to 30 is the better slide. Write it as ONE or TWO paragraphs; separate two paragraphs with a BLANK LINE (\\n\\n) and never with a single newline. Two paragraphs is the stronger shape: state the finding, then land what it means. The blank line is real breathing room in the layout, not formatting.
+- WORD COUNT IS A TYPE SIZE. The slide sets the copy as large as it can and shrinks it to fit, so every word you add makes every word smaller. At 35 words the copy reads like a headline; at 70 it reads like a paragraph, which is the look this preset exists to avoid. Cut qualifiers, cut the second example, cut the wind-up. Never cut the qualifier that makes a claim true.
 - The narrative arc below still applies. Slide 1 surprises, slide 2 explains, slide 3 directs. The arc now lives entirely in the body copy because there is no headline to carry it.
 - Open each body with its strongest clause. There is no headline above it to set up the point, so the first six words ARE the headline.
 - "citation": unchanged. A real paper or "". It renders as a quiet italic line under the copy, so an empty one costs nothing and an invented one is still the worst outcome.

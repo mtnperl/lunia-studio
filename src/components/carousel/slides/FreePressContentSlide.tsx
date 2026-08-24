@@ -160,25 +160,43 @@ export default function FreePressContentSlide({
   const autoFit = fit.key === fitKey ? fit.v : 1;
   const bodySize = Math.round(naturalSize * autoFit);
 
-  const copyRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   useIsoLayoutEffect(() => {
     let cancelled = false;
+
     const measure = () => {
-      const el = copyRef.current;
-      if (!el || cancelled) return;
-      if (el.scrollHeight > el.clientHeight + 1 && autoFit > FIT_FLOOR) {
+      const box = boxRef.current;
+      const inner = innerRef.current;
+      if (!box || !inner || cancelled) return;
+      const boxH = box.clientHeight;
+      // offsetHeight of the INNER wrapper, not scrollHeight of the box. The box
+      // centres its content, and a centred flex container spills symmetrically
+      // rather than growing its scroll height, so scrollHeight === clientHeight
+      // even when the copy is far too tall. The wrapper's own layout height is
+      // the only honest read.
+      const naturalH = inner.offsetHeight;
+      if (!boxH || !naturalH) return;
+      if (naturalH > boxH + 1 && autoFit > FIT_FLOOR) {
         setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP) });
       }
     };
-    // Measuring before the webfonts land reads fallback metrics and settles on
-    // a size that is wrong once Archivo Narrow paints.
-    if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
-      document.fonts.ready.then(() => { if (!cancelled) measure(); });
+
+    // Never measure on fallback metrics. document.fonts.status reports "loaded"
+    // whenever nothing is pending, which includes the window before a face has
+    // been requested at all — so the first pass measured wide fallback glyphs,
+    // shrank, and never recovered, because the fit only ever steps down.
+    // Requesting the face explicitly closes that window.
+    if (typeof document !== "undefined" && document.fonts) {
+      Promise.all([
+        document.fonts.load(`700 ${Math.round(naturalSize)}px "Archivo Narrow"`).catch(() => {}),
+        document.fonts.ready,
+      ]).then(() => { if (!cancelled) measure(); });
     } else {
       measure();
     }
     return () => { cancelled = true; };
-  }, [fitKey, autoFit]);
+  }, [fitKey, autoFit, naturalSize]);
 
   // Same zone-props helper as EditorialContentSlide: select on click, edit on
   // double-click, and collapse to nothing on the export path where none of the
@@ -225,7 +243,7 @@ export default function FreePressContentSlide({
             font size down when it does not fit, so a long body re-wraps rather
             than shrinking into a narrow ribbon. */}
         <div
-          ref={copyRef}
+          ref={boxRef}
           style={{
             flex: 1,
             minHeight: 0,
@@ -233,10 +251,19 @@ export default function FreePressContentSlide({
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            gap: Math.round(bodySize * 0.82),
             width: "100%",
           }}
         >
+          <div
+            ref={innerRef}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: Math.round(bodySize * 0.82),
+              width: "100%",
+              flexShrink: 0,
+            }}
+          >
           {blocks.map((block, i) => {
               // Only the first block is the editable zone: the body is ONE
               // field, and hanging a second contentEditable off the same string
@@ -262,6 +289,7 @@ export default function FreePressContentSlide({
                 </div>
               );
           })}
+          </div>
         </div>
 
         {/* Footer. Source first when there is one, indicator always. */}

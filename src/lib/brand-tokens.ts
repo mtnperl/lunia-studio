@@ -98,11 +98,18 @@ export const FP_COLORS = {
   indicator: BRAND_COLORS.richNavy,
 } as const;
 
-/** Type scale for the Free Press preset (px at the 1080-wide artboard). */
+/** Type scale for the Free Press preset (px at the 1080-wide artboard).
+ *
+ *  `body` is the size SHORT copy gets; the slide's auto-fit steps it down from
+ *  here when there is more. Measured off The Free Press's own 1080x1350
+ *  slides: a 37-word slide sets on a 92px line pitch (~81px type) and a
+ *  70-word slide on a 76px pitch (~67px). The starting point was 66, which is
+ *  their FLOOR, so every slide rendered at the size they reserve for their
+ *  wordiest one and the preset never got its headline-sized copy. */
 export const FP_TYPE = {
   coverHeadline: 84,
   coverKicker: 25,
-  body: 66,
+  body: 82,
   source: 27,
   indicator: 25,
   takeawayKicker: 25,
