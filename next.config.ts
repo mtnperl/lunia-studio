@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Which commit is this bundle? Baked in at build time so a running tab can
+  // say what it is. We lost a lot of a day to "is it deployed or is my tab
+  // stale" — the deploy was green, the fix was live, and the browser was
+  // holding a bundle from between two commits. Guessing at that from the
+  // outside is impossible; showing it costs one line.
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: (process.env.VERCEL_GIT_COMMIT_SHA ?? "dev").slice(0, 7),
+  },
   transpilePackages: ["remotion", "@remotion/player", "@remotion/lambda"],
   serverExternalPackages: [
     "@remotion/renderer",

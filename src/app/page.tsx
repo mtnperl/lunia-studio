@@ -399,8 +399,14 @@ export default function Page() {
           borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
         }}>
-          <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--subtle)" }}>
-            lunia.life
+          <span
+            style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--subtle)" }}
+            title={`Build ${process.env.NEXT_PUBLIC_BUILD_SHA}`}
+          >
+            lunia.life{" "}
+            <span style={{ fontFamily: "var(--font-mono)", opacity: 0.7 }}>
+              {process.env.NEXT_PUBLIC_BUILD_SHA}
+            </span>
           </span>
           <button
             onClick={toggleTheme}
