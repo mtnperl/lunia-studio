@@ -17,7 +17,10 @@ import {
   type SavedShape,
 } from "@/lib/campaign-shapes";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
-import type { CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind } from "@/lib/types";
+import type {
+  CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind,
+  CampaignHeadingSize,
+} from "@/lib/types";
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import { autoScrollDelta, iframePointToPageY } from "@/lib/drag-autoscroll";
 import ImageSlotControl from "./ImageSlotControl";
@@ -174,6 +177,54 @@ const BLOCK_WEIGHTS: { key: BlockWeight; label: string; title: string }[] = [
   { key: "extralight", label: "200", title: "Inter ExtraLight (200)" },
   { key: "light", label: "300", title: "Inter Light (300)" },
   { key: "normal", label: "400", title: "Inter Normal (400)" },
+];
+
+// Header size. The body has been sizeable per phrase since the inline style
+// toolbar landed; the header line was a bare <input> with no control at all,
+// so a block's title could only ever be the one size the renderer chose.
+//
+// A block-level enum, not a selection token: a header is one line, and asking
+// someone to select it before they can size it is ceremony for no gain.
+const BLOCK_HEADING_SIZES: { key: CampaignHeadingSize; label: string; title: string }[] = [
+  { key: "s", label: "S", title: "Small — 80% of this header's default" },
+  { key: "m", label: "M", title: "Default header size" },
+  { key: "l", label: "L", title: "Large — 125% of this header's default" },
+  { key: "xl", label: "XL", title: "Extra large — 155% of this header's default" },
+];
+
+/** Kinds that have a header line of their own. The rest (text, checklist,
+ *  testimonial, trustgrid, imagebullets) are body-only, so they hide the
+ *  control rather than offering one that does nothing. Kept in step with the
+ *  renderer's headingPx() call sites — see campaign-email-html.ts. */
+const HEADING_KINDS = new Set<BlockKind>([
+  "stat", "discount", "timeline", "comparison", "ingredients",
+  "table", "imagetext", "grid", "image", "headerimage",
+]);
+
+/** What the header line actually IS, per kind — so the control says which
+ *  words it is about to resize instead of leaving you to find out. */
+const HEADING_FIELD_LABEL: Partial<Record<BlockKind, string>> = {
+  stat: "the big number",
+  discount: "the code",
+  timeline: "the row labels",
+  comparison: "the column labels",
+  ingredients: "the panel title",
+  table: "the column headers",
+  imagetext: "the heading",
+  grid: "the cell headings",
+  image: "the overlay headline",
+  headerimage: "the headline",
+};
+
+// Space between blocks — the gap below every body block. Presets on the 8px
+// base unit from DESIGN.md rather than a free number, so the email's vertical
+// rhythm stays on the grid.
+const BLOCK_SPACINGS: { px: number; label: string; title: string }[] = [
+  { px: 0,  label: "None",    title: "Blocks butt up against each other" },
+  { px: 8,  label: "Tight",   title: "8px between blocks" },
+  { px: 16, label: "Default", title: "16px — the spacing every campaign has had" },
+  { px: 24, label: "Roomy",   title: "24px between blocks" },
+  { px: 32, label: "Loose",   title: "32px between blocks" },
 ];
 
 const segWrap: React.CSSProperties = {
@@ -762,10 +813,20 @@ export default function CampaignEditor({
   const NATIVE_DESKTOP = 600;
   const NATIVE_MOBILE = 375;
   const nativeWidth = previewMode === "mobile" ? NATIVE_MOBILE : NATIVE_DESKTOP;
-  // Scale factor — never upscale (cap at 1), only shrink if the pane is
-  // narrower than the native width. Subtract a couple of px so the inner
-  // 1px border in mobile mode doesn't cause a clipped right edge.
-  const previewScale = Math.min(1, Math.max(0, paneWidth - 2) / nativeWidth);
+  // How far the preview may scale UP once the pane is wider than the native
+  // width. Desktop gets to fill the pane: the email is 600px and the pane is
+  // wider than that on any normal screen, so capping at 1 left the preview
+  // sitting small in the middle of a navy field with the copy too fine to
+  // read. The iframe still RENDERS at 600px, so the email's own breakpoints
+  // fire exactly where they do in a real client — only the display is scaled.
+  //
+  // Mobile stays capped at 1: a 375px frame blown up past life size stops
+  // reading as a phone, which is the entire point of that mode.
+  const MAX_DESKTOP_SCALE = 1.6;
+  const maxScale = previewMode === "mobile" ? 1 : MAX_DESKTOP_SCALE;
+  // Subtract a couple of px so the inner 1px border in mobile mode doesn't
+  // cause a clipped right edge.
+  const previewScale = Math.min(maxScale, Math.max(0, paneWidth - 2) / nativeWidth);
 
   // ── field updates ──────────────────────────────────────────────────────────
   // Every updater reads from `latestContent.current` (not the closure `content`)
@@ -1361,7 +1422,13 @@ export default function CampaignEditor({
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
       {/* ── Live preview ───────────────────────────────────────────────────── */}
-      <div style={{ flex: "1 1 520px", minWidth: 320 }}>
+      {/* The preview GROWS twice as fast as the controls rail — the email is
+          the artefact, and the rail is 300-odd px of inputs that gain nothing
+          from extra width. The basis stays at 520 on purpose: this row wraps,
+          and wrapping is decided on the un-shrunk bases, so raising it drops
+          the rail below a 4,000px email on a 1280px screen. Grow, don't
+          reserve. */}
+      <div style={{ flex: "2 1 520px", minWidth: 320 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
           {/* Desktop / Mobile preview toggle. Default = desktop. */}
@@ -1472,7 +1539,7 @@ export default function CampaignEditor({
       </div>
 
       {/* ── Controls ───────────────────────────────────────────────────────── */}
-      <div style={{ flex: "1 1 340px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ flex: "1 1 320px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
         {/* Completion indicator — text checklist, --success/--muted tokens,
             SVG check / empty ring (no emoji). */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, fontWeight: 500 }}>
@@ -1651,6 +1718,27 @@ export default function CampaignEditor({
               choice is kept and returns if you switch back.
             </div>
           )}
+        </div>
+        {/* Space between blocks. Document-level, next to the theme, because
+            the gap is a property of the email's rhythm rather than of any one
+            block — set it once and the whole email breathes the same way. */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={fieldLabel}>Space between blocks</label>
+          <div style={segWrap}>
+            {BLOCK_SPACINGS.map((sp, si) => (
+              <SegButton
+                key={sp.px}
+                active={(content.blockSpacing ?? 16) === sp.px}
+                onClick={() => patch({ blockSpacing: sp.px })}
+                title={sp.title}
+                last={si === BLOCK_SPACINGS.length - 1}
+              >{sp.label}</SegButton>
+            ))}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+            The gap below every body block. The hero, promo band and CTA keep
+            their own spacing.
+          </div>
         </div>
         {/* Shapes — one door for what used to be three: "Make it visual",
             "AG1 style" and the Templates dropdown all did the same job, laying
@@ -2002,6 +2090,32 @@ export default function CampaignEditor({
                       <IconButton onClick={() => removeBlock(b.id)} title="Delete block" danger><IcTrash /></IconButton>
                     </div>
                   </div>
+
+                  {/* Header size. Sits above the kind-specific fields rather
+                      than inside each one: every kind that has a header gets
+                      the same control in the same place, and a kind with no
+                      header of its own simply doesn't render it. */}
+                  {HEADING_KINDS.has(kind) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px 0" }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>
+                        Header size
+                      </span>
+                      <div style={segWrap}>
+                        {BLOCK_HEADING_SIZES.map((hs, hi) => (
+                          <SegButton
+                            key={hs.key}
+                            active={(b.headingSize ?? "m") === hs.key}
+                            onClick={() => updateBlock(b.id, { headingSize: hs.key })}
+                            title={`${hs.title} — sizes ${HEADING_FIELD_LABEL[kind] ?? "the header"}`}
+                            last={hi === BLOCK_HEADING_SIZES.length - 1}
+                          >{hs.label}</SegButton>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {HEADING_FIELD_LABEL[kind] ?? "the header"}
+                      </span>
+                    </div>
+                  )}
 
                   {kind === "text" && (
                     <>

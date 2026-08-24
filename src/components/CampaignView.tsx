@@ -223,7 +223,9 @@ export default function CampaignView({
   }
 
   return (
-    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 40px 80px" }}>
+    // Wider than the app's usual 1280 shell: this screen is a two-pane
+    // editor, and every px of it goes to the email preview.
+    <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px 40px 80px" }}>
       <PageHeader
         title="Campaign builder"
         description="Write a Lunia Life email — subject, copy and images — then export the HTML."

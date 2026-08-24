@@ -10,7 +10,9 @@
 // split), which is how an image escapes the half-width 2-up grid.
 // Mobile-responsive: media queries stack the 2-up image rows and tighten
 // paddings / font sizes on narrow viewports.
-import type { CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind } from "./types";
+import type {
+  CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind, CampaignHeadingSize,
+} from "./types";
 import { resolveTheme, resolveCta, resolveBrandColor, type CampaignTheme } from "./campaign-theme";
 import { parseMods, isEmptyMods, modsToCss } from "./campaign-inline-style";
 import { clampHeroCta } from "./campaign-editor-state";
@@ -22,6 +24,44 @@ function esc(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Multiplier applied to a block header's default px. "m" is exactly 1, and
+ *  `headingPx` rounds, so an unset headingSize reproduces the original literal
+ *  byte-for-byte — that is what keeps every already-saved campaign unchanged. */
+const HEADING_SCALES: Record<CampaignHeadingSize, number> = { s: 0.8, m: 1, l: 1.25, xl: 1.55 };
+
+/** A block header's size in px, after the block's own headingSize. Whole
+ *  pixels only, per DESIGN.md's type-scale rule. */
+function headingPx(b: CampaignBlock, basePx: number): number {
+  return Math.round(basePx * (HEADING_SCALES[b.headingSize ?? "m"] ?? 1));
+}
+
+/** Extra class for headers that a mobile media query re-sizes with
+ *  `!important`. A stylesheet `!important` beats a plain inline size, so those
+ *  headers need a per-size class rather than just a scaled inline value.
+ *
+ *  Returns "" for the default so a campaign that never touched the control
+ *  emits exactly the markup it always did. */
+function headingSizeClass(b: CampaignBlock): string {
+  const size = b.headingSize;
+  return !size || size === "m" ? "" : ` hs-${size}`;
+}
+
+/** The same thing as a whole ` class="…"` attribute, for a header cell that
+ *  carries no class of its own. Empty at the default size, so the markup is
+ *  byte-identical to what it has always been. */
+function headingClassAttr(b: CampaignBlock): string {
+  const cls = headingSizeClass(b).trim();
+  return cls ? ` class="${cls}"` : "";
+}
+
+/** The gap below each body block, in px. Unset is the 16px every campaign has
+ *  always had; a corrupt or hand-edited value is clamped rather than trusted. */
+const DEFAULT_BLOCK_SPACING = 16;
+function resolveBlockSpacing(v: number | undefined): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return DEFAULT_BLOCK_SPACING;
+  return Math.max(0, Math.min(48, Math.round(v)));
 }
 
 /** Render `**bold**` and `[text](url)` inline markup within a paragraph.
@@ -92,7 +132,7 @@ function statBlock(b: CampaignBlock, t: CampaignTheme): string {
   const value = b.statValue?.trim();
   if (!value) return "";
   return `<div style="text-align:center;padding:4px 0;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:36px;font-weight:300;color:${t.inkAccent};line-height:1.15;">${esc(value)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 36)}px;font-weight:300;color:${t.inkAccent};line-height:1.15;">${esc(value)}</div>
     ${b.statLabel?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};opacity:0.75;margin-top:6px;">${esc(b.statLabel)}</div>`
       : ""}
@@ -111,7 +151,7 @@ function discountBlock(b: CampaignBlock, t: CampaignTheme): string {
   if (!code && !originalPrice) return "";
   return `<div style="border:1.5px dashed ${t.accentBorder};border-radius:8px;padding:16px;text-align:center;">
     ${code
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;letter-spacing:0.08em;color:${t.inkAccent};">${esc(code)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 22)}px;font-weight:700;letter-spacing:0.08em;color:${t.inkAccent};">${esc(code)}</div>`
       : ""}
     ${originalPrice
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;${code ? "margin-top:8px;" : ""}">
@@ -147,7 +187,7 @@ function timelineBlock(b: CampaignBlock, t: CampaignTheme): string {
   return rows
     .map(
       (r, i) => `<div style="padding:${i === 0 ? "0" : "12px"} 0 12px;${i > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">
-        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};margin-bottom:4px;">${esc(r.label ?? "")}</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};margin-bottom:4px;">${esc(r.label ?? "")}</div>
         <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${esc(r.text ?? "")}</div>
       </div>`,
     )
@@ -189,7 +229,7 @@ function comparisonBlock(b: CampaignBlock, t: CampaignTheme): string {
   if (!leftLabel || !rightLabel) return "";
   const card = (label: string, price?: string, perk?: string, emphasized = false) => `
     <td width="48.91%" style="width:48.91%;vertical-align:top;background:${emphasized ? t.panelBg : "transparent"};border:1px solid ${emphasized ? t.accentBorder : t.accentBorderSoft};border-radius:8px;padding:14px;">
-      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? t.inkOnPanel : t.inkAccent};margin-bottom:6px;">${esc(label)}</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 11)}px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? t.inkOnPanel : t.inkAccent};margin-bottom:6px;">${esc(label)}</div>
       ${price?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${emphasized ? t.inkOnPanel : t.text};margin-bottom:4px;">${esc(price)}</div>` : ""}
       ${perk?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:${emphasized ? t.inkOnPanel : t.text};line-height:1.4;">${esc(perk)}</div>` : ""}
     </td>`;
@@ -223,7 +263,7 @@ function ingredientsBlock(b: CampaignBlock, t: CampaignTheme): string {
     })
     .join("");
   return `<div style="background:${t.panelBg};border-radius:8px;padding:20px 22px;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${t.inkOnPanel};padding-bottom:12px;border-bottom:2px solid ${t.inkOnPanel};margin-bottom:12px;">${esc(heading)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${t.inkOnPanel};padding-bottom:12px;border-bottom:2px solid ${t.inkOnPanel};margin-bottom:12px;">${esc(heading)}</div>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:auto;">${rows}</table>
     ${footnote ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:${t.mutedOnPanel};text-align:center;margin-top:16px;letter-spacing:0.02em;">${esc(footnote)}</div>` : ""}
   </div>`;
@@ -320,7 +360,7 @@ function overlayHtml(b: CampaignBlock, radius: string, t: CampaignTheme): string
     ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
     : "";
   const headlineHtml = headline
-    ? `<div class="img-overlay-headline" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:26px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+    ? `<div class="img-overlay-headline${headingSizeClass(b)}" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 26)}px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
     : "";
   return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, ${t.scrimFrom} 0%, ${t.scrimTo} 100%);border-radius:${radius};">
       ${eyebrowHtml}${headlineHtml}
@@ -338,7 +378,7 @@ function overlayMsoFallback(b: CampaignBlock, t: CampaignTheme): string {
       ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
       : "",
     headline
-      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:24px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 24)}px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
       : "",
   ].join("");
   return `<!--[if mso]><div style="padding:16px 0 0;">${parts}</div><![endif]-->`;
@@ -363,7 +403,7 @@ function imagePlaceholder(aspect: string, radius: string, t: CampaignTheme): str
  * Returns a complete <tr>, not an inner fragment: bleed has to escape the
  * standard 24px cell padding, so these can't go through the shared padded
  * wrapper the text/callout blocks use. */
-function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t: CampaignTheme): string {
+function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t: CampaignTheme, gap: number): string {
   const layout = b.imageLayout ?? "column";
   const url = slot?.url;
   const aspect = slot?.aspect ?? (layout === "split" ? "1:1" : "16:9");
@@ -380,7 +420,7 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
       text ? paragraphs(t, text, "left", !!b.italic, b.weight ?? "light") : "&nbsp;"
     }</td>`;
     const spacer = '<td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>';
-    return `<tr><td class="h-padding" style="padding:0 24px 16px;">
+    return `<tr><td class="h-padding" style="padding:0 24px ${gap}px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr>${imageOnRight ? textCell + spacer + imgCell : imgCell + spacer + textCell}</tr>
       </table>
@@ -393,7 +433,7 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
   const inner = url
     ? `<img src="${esc(url)}" width="${width}" style="display:block;width:100%;height:auto;border-radius:${radius};" alt="">`
     : imagePlaceholder(aspect, radius, t);
-  const padding = bleed ? "0 0 16px" : "0 24px 16px";
+  const padding = bleed ? `0 0 ${gap}px` : `0 24px ${gap}px`;
   const cellClass = bleed ? "" : ' class="h-padding"';
   return `<tr><td${cellClass} style="padding:${padding};">
       <div style="position:relative;">
@@ -432,12 +472,17 @@ function tableBlock(b: CampaignBlock, t: CampaignTheme): string {
 
   const cols = Math.min(Math.max(headers.length, 2), 4);
   const width = `${(100 / cols).toFixed(2)}%`;
-  const size = cols <= 2 ? "14px" : "13px";
+  const sizePx = cols <= 2 ? 14 : 13;
+  const size = `${sizePx}px`;
   const align = (i: number) => (i === 0 ? "left" : "right");
   const cellBase = `padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:${size};line-height:1.4;word-break:break-word;`;
+  // The header row is the block's header, so it takes headingSize. It also
+  // needs the class: the mobile rule that shrinks every table cell to 11px is
+  // `!important`, which a plain inline size would lose to.
+  const headerBase = `padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, sizePx)}px;line-height:1.4;word-break:break-word;`;
 
   const headerCells = Array.from({ length: cols }, (_, i) =>
-    `<td width="${width}" align="${align(i)}" style="${cellBase}width:${width};font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};border-bottom:2px solid ${t.accentBorder};">${renderInline(headers[i] ?? "", t)}</td>`,
+    `<td width="${width}" align="${align(i)}"${headingClassAttr(b)} style="${headerBase}width:${width};font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.inkAccent};border-bottom:2px solid ${t.accentBorder};">${renderInline(headers[i] ?? "", t)}</td>`,
   ).join("");
 
   const bodyRows = rows
@@ -484,7 +529,7 @@ function hasHeaderContent(b: CampaignBlock): boolean {
  *  drops entirely and would leave the headline sitting on top of the picture.
  *  NOTE: the degradation is reasoned, not measured — this repo has no
  *  real-client test rig, so verify by sending yourself one before relying on it. */
-function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
+function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): string {
   if (!hasHeaderContent(b)) return "";
   const url = b.imageUrl?.trim();
   const headline = b.headerHeadline?.trim();
@@ -499,9 +544,9 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
       ? `<div style="margin-bottom:6px;"><span style="display:inline-block;background:${t.highlight};color:${t.highlightText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.04em;padding:3px 10px;border-radius:3px;">${esc(b.headerPillText)}</span></div>`
       : "";
     const head = headline
-      ? `<div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:30px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline, t)}</div>`
+      ? `<div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 30)}px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline, t)}</div>`
       : "";
-    return `<tr><td style="padding:0 0 16px;">
+    return `<tr><td style="padding:0 0 ${gap}px;">
       ${pill || head ? `<div style="padding:0 24px 14px;text-align:center;">${pill}${head}</div>` : ""}
       ${image}
     </td></tr>`;
@@ -511,7 +556,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
   const card = headline
     ? `<div style="margin:-28px 24px 0;position:relative;">
          <div style="background:${t.panelBg};border-radius:10px;padding:18px 20px;">
-           <div class="headerimage-h" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:28px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline, t)}</div>
+           <div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 28)}px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline, t)}</div>
          </div>
        </div>`
     : "";
@@ -523,7 +568,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme): string {
          <span style="display:inline-block;background:${t.panelBg};border-radius:10px;padding:12px 16px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:300;color:${t.inkOnPanel};line-height:1.2;">${renderInline(b.headerSubcard, t)}</span>
        </div>`
     : "";
-  return `<tr><td style="padding:0 0 16px;">${image}${card}${subcard}</td></tr>`;
+  return `<tr><td style="padding:0 0 ${gap}px;">${image}${card}${subcard}</td></tr>`;
 }
 
 /** Shared skeleton for the two "picture beside content" kinds. Both cells carry
@@ -555,7 +600,7 @@ function imagetextBlock(b: CampaignBlock, t: CampaignTheme): string {
   const body = b.body?.trim();
   if (!heading && !body && !b.imageUrl?.trim()) return "";
   const headingHtml = heading
-    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:17px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading, t)}</div>`
+    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 17)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading, t)}</div>`
     : "";
   const bodyHtml = body ? paragraphs(t, body, "left", !!b.italic, b.weight ?? "light") : "";
   const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${headingHtml}${bodyHtml}</td>`;
@@ -598,7 +643,7 @@ function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
       ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
       : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
     const heading = c.heading?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading, t)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 15)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading, t)}</div>`
       : "";
     const caption = c.caption?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.45;">${renderInline(c.caption, t)}</div>`
@@ -860,14 +905,18 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   const tagRow = (rowHtml: string, id: string) =>
     selectable && rowHtml ? rowHtml.replace("<tr", `<tr data-lunia-block="${esc(id)}"`) : rowHtml;
 
+  // One resolved gap for every block row, read once rather than per block:
+  // "space between blocks" is a property of the email, not of a block.
+  const blockGap = resolveBlockSpacing(content.blockSpacing);
+
   const blockRow = (b: CampaignBlock) => {
     // Image blocks own their whole row: "bleed" must escape the 24px cell
     // padding, so they can't be nested in the shared padded text wrapper.
     if (b.kind === "image") {
-      return tagRow(imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t), b.id);
+      return tagRow(imageBlockRow(b, b.imageSlotId ? slotById.get(b.imageSlotId) : undefined, t, blockGap), b.id);
     }
     if (b.kind === "headerimage") {
-      return tagRow(headerimageBlockRow(b, t), b.id);
+      return tagRow(headerimageBlockRow(b, t, blockGap), b.id);
     }
     // Dispatch through a Record keyed on the kind union rather than a ternary
     // chain: TypeScript then REQUIRES an entry for every kind, so adding one to
@@ -880,7 +929,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
       ?? INNER_BLOCK_RENDERERS.text;
     const inner = render(b, t);
     if (!inner) return "";
-    return tagRow(`<tr><td class="h-padding" style="padding:0 24px 16px;">
+    return tagRow(`<tr><td class="h-padding" style="padding:0 24px ${blockGap}px;">
        <div class="text-block" style="padding:15px;">${inner}</div>
      </td></tr>`, b.id);
   };
@@ -945,6 +994,15 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -959,6 +1017,9 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>

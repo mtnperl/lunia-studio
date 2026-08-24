@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderCampaignEmail } from "./campaign-email-html";
 import { EMAIL_FIXTURES } from "../../tests/visual/fixtures/campaign-emails";
 import { CAMPAIGN_BLOCK_KINDS } from "./types";
-import type { CampaignBlock, CampaignContent } from "./types";
+import type { CampaignBlock, CampaignContent, CampaignHeadingSize } from "./types";
 
 // Byte-identity tripwire for the theme/palette refactor.
 //
@@ -199,5 +199,143 @@ describe("hero CTA positioning", () => {
   it("still lets the whole hero be tappable, the Outlook fallback", () => {
     const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
     expect(html).toContain('<a href="https://www.lunialife.com" target="_blank"');
+  });
+});
+
+// ─── Header size ────────────────────────────────────────────────────────────
+// The body has been sizeable per phrase since the inline style toolbar; the
+// header line had no control at all. `headingSize` is that control, and the
+// property that matters most is the one at the bottom of this block: unset
+// renders byte-for-byte what it always did.
+describe("headingSize", () => {
+  /** One filled block per kind that HAS a header, with the header's default
+   *  px and the words the control is meant to resize. Kept in step with the
+   *  renderer's headingPx() call sites by the coverage test below. */
+  const HEADED: { kind: CampaignBlock["kind"]; basePx: number; block: Partial<CampaignBlock> }[] = [
+    { kind: "stat", basePx: 36, block: { statValue: "558 reviews", statLabel: "91% five-star" } },
+    { kind: "discount", basePx: 22, block: { discountCode: "SLEEP20", discountDescription: "20% off" } },
+    { kind: "timeline", basePx: 12, block: { timelineRows: [{ label: "30 DAYS", text: "more energy" }] } },
+    {
+      kind: "comparison", basePx: 11,
+      block: { comparisonLeftLabel: "One-time", comparisonRightLabel: "Subscribe" },
+    },
+    {
+      kind: "ingredients", basePx: 12,
+      block: { ingredientHeading: "What's inside", ingredientItems: [{ name: "Magnesium", dose: "200mg" }] },
+    },
+    {
+      kind: "table", basePx: 14,
+      block: { tableHeaders: ["Plan", "Price"], tableRows: [{ cells: ["Monthly", "$29"] }] },
+    },
+    { kind: "imagetext", basePx: 17, block: { imageHeading: "Why it works", body: "Because." } },
+    { kind: "grid", basePx: 15, block: { gridCells: [{ heading: "One", caption: "First" }] } },
+    { kind: "image", basePx: 26, block: { imageOverlayHeadline: "Over the photo" } },
+    { kind: "headerimage", basePx: 28, block: { headerHeadline: "Top of the email", headerStyle: "card" } },
+  ];
+
+  /** Same ladder as the renderer's HEADING_SCALES. */
+  const SCALES = { s: 0.8, m: 1, l: 1.25, xl: 1.55 } as const;
+
+  const render = (over: Partial<CampaignBlock>) =>
+    renderCampaignEmail(baseContent([{ id: "x", body: "", align: "left", ...over } as CampaignBlock]));
+
+  for (const { kind, basePx, block } of HEADED) {
+    it(`"${kind}": every size lands its own px on the header`, () => {
+      for (const [size, scale] of Object.entries(SCALES)) {
+        const html = render({ ...block, kind, headingSize: size as CampaignHeadingSize });
+        expect(html).toContain(`font-size:${Math.round(basePx * scale)}px`);
+      }
+    });
+
+    it(`"${kind}": an unset headingSize renders byte-for-byte what "m" does`, () => {
+      expect(render({ ...block, kind })).toBe(render({ ...block, kind, headingSize: "m" }));
+    });
+  }
+
+  // The three headers a mobile media query re-sizes with !important. An inline
+  // font-size loses to that, so those blocks have to carry the size as a class
+  // — and the stylesheet has to have a rule for it. A missing rule is silent:
+  // desktop looks right and the phone quietly ignores the setting.
+  const MOBILE_OVERRIDDEN: { sel: string; block: Partial<CampaignBlock> }[] = [
+    { sel: ".headerimage-h", block: { kind: "headerimage", headerHeadline: "Top", headerStyle: "card" } },
+    { sel: ".img-overlay-headline", block: { kind: "image", imageOverlayHeadline: "Over" } },
+    { sel: ".email-table td", block: { kind: "table", tableHeaders: ["Plan", "Price"], tableRows: [{ cells: ["M", "$1"] }] } },
+  ];
+
+  for (const { sel, block } of MOBILE_OVERRIDDEN) {
+    it(`"${sel}" carries a mobile rule for every non-default size`, () => {
+      for (const size of ["s", "l", "xl"] as const) {
+        const html = render({ ...block, headingSize: size });
+        expect(html).toContain(`hs-${size}`);
+        expect(html).toContain(`${sel}.hs-${size}{font-size:`);
+      }
+    });
+
+    it(`"${sel}" emits no class at the default size`, () => {
+      // The rules themselves always live in the <style> block; what must stay
+      // clean is the markup, so a campaign that never touched the control
+      // emits exactly the element it always did.
+      const html = render(block);
+      expect(html.slice(html.indexOf("<body"))).not.toContain("hs-");
+    });
+  }
+
+  it("covers every kind: a kind is either headed here or body-only", () => {
+    // A new kind with a header that nobody wired to headingSize would ship a
+    // control that does nothing. Listing the body-only kinds explicitly means
+    // adding a kind forces a decision about which list it belongs in.
+    const BODY_ONLY = ["text", "checklist", "testimonial", "trustgrid", "imagebullets"];
+    const headed = HEADED.map((h) => h.kind);
+    expect([...headed, ...BODY_ONLY].sort()).toEqual([...CAMPAIGN_BLOCK_KINDS].sort());
+  });
+});
+
+// ─── Space between blocks ───────────────────────────────────────────────────
+describe("blockSpacing", () => {
+  const twoBlocks: CampaignBlock[] = [
+    { id: "a", body: "First.", align: "left", kind: "text" },
+    { id: "b", body: "Second.", align: "left", kind: "text" },
+  ];
+
+  const withSpacing = (blockSpacing?: number) =>
+    renderCampaignEmail({ ...baseContent(twoBlocks), blockSpacing });
+
+  it("unset renders byte-for-byte what 16 does — the gap every campaign has had", () => {
+    expect(withSpacing(undefined)).toBe(withSpacing(16));
+  });
+
+  it("drives the gap below each block row", () => {
+    expect(withSpacing(32)).toContain("padding:0 24px 32px;");
+    expect(withSpacing(0)).toContain("padding:0 24px 0px;");
+  });
+
+  it("reaches the full-row kinds too, which own their own padding", () => {
+    const html = renderCampaignEmail({
+      ...baseContent([
+        { id: "h", body: "", align: "left", kind: "headerimage", headerHeadline: "Top" },
+        { id: "i", body: "", align: "left", kind: "image", imageLayout: "bleed" },
+      ]),
+      blockSpacing: 24,
+    });
+    expect(html).toContain("padding:0 0 24px;");
+  });
+
+  it("clamps a corrupt or hand-edited value rather than trusting it", () => {
+    expect(withSpacing(-40)).toBe(withSpacing(0));
+    expect(withSpacing(9999)).toBe(withSpacing(48));
+    expect(withSpacing(NaN)).toBe(withSpacing(16));
+  });
+
+  it("leaves the hero, promo band and CTA on their own rhythm", () => {
+    const content = {
+      ...baseContent(twoBlocks),
+      promoBand: "MEMORIAL DAY WEEKEND SALE",
+      blockSpacing: 40,
+    };
+    const html = renderCampaignEmail(content);
+    // The promo band keeps its 16px; only the blocks moved.
+    expect(html).toContain("padding:0 24px 16px;");
+    expect(html).toContain("padding:0 24px 40px;");
+    expect(html).toContain("padding:0 24px 24px;"); // the CTA
   });
 });

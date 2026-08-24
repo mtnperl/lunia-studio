@@ -36,6 +36,15 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -50,6 +59,9 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -252,6 +264,15 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -266,6 +287,9 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -468,6 +492,15 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -482,6 +515,9 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -553,6 +589,15 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -567,6 +612,9 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -635,6 +683,15 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -649,6 +706,9 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -747,6 +807,15 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -761,6 +830,9 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>
@@ -833,6 +905,15 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
        and that is the tradeoff the layout is making on purpose. */
     .email-table td{font-size:11px !important;padding:8px 5px !important;}
     .headerimage-h{font-size:22px !important;}
+    /* headingSize, mobile. These three headers are re-sized above with
+       !important, which an inline font-size loses to, so the block's choice
+       has to arrive as a class. HEADING_SCALES applied to the mobile base. */
+    .email-table td.hs-s{font-size:9px !important;}
+    .email-table td.hs-l{font-size:14px !important;}
+    .email-table td.hs-xl{font-size:17px !important;}
+    .headerimage-h.hs-s{font-size:18px !important;}
+    .headerimage-h.hs-l{font-size:28px !important;}
+    .headerimage-h.hs-xl{font-size:34px !important;}
     /* Tighten new top header + hero overlay on narrow viewports. */
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
@@ -847,6 +928,9 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
     .img-overlay-headline{font-size:19px !important;}
+    .img-overlay-headline.hs-s{font-size:15px !important;}
+    .img-overlay-headline.hs-l{font-size:24px !important;}
+    .img-overlay-headline.hs-xl{font-size:29px !important;}
   }
 </style>
 </head>

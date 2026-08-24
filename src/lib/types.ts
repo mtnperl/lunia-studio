@@ -774,6 +774,16 @@ export type FullRowBlockKind = (typeof FULL_ROW_BLOCK_KINDS)[number];
 /** Kinds whose renderer returns an inner fragment for the padded wrapper. */
 export type InnerBlockKind = Exclude<CampaignBlockKind, FullRowBlockKind>;
 
+/** Relative type size for a block's HEADING — the block's own title line, as
+ *  distinct from its body copy (which is sized per phrase by the inline style
+ *  toolbar). A closed set rather than a free px value so a header can't be set
+ *  to 9px or 90px, the same reason `weight` is an enum.
+ *
+ *  Unset is "m", which resolves to a scale of exactly 1, so every campaign
+ *  saved before this control existed renders byte-for-byte unchanged. */
+export const CAMPAIGN_HEADING_SIZES = ["s", "m", "l", "xl"] as const;
+export type CampaignHeadingSize = (typeof CAMPAIGN_HEADING_SIZES)[number];
+
 export type CampaignBlock = {
   id: string;
   /** For kind "text" (or unset): the paragraph body — may contain inline
@@ -789,6 +799,16 @@ export type CampaignBlock = {
    *  Inter 100. Unset is treated as "light" so campaigns saved before this
    *  control render identically. */
   weight?: "thin" | "extralight" | "light" | "normal";
+  /** Size of this block's HEADER line, relative to that header's default.
+   *  Which line counts as the header depends on the kind — the stat's number,
+   *  the discount code, the ingredients panel title, the table's column
+   *  headers, the imagetext/grid headings, the image overlay headline, the
+   *  headerimage headline, the timeline row labels, the comparison column
+   *  labels. Kinds with no header of their own (text, checklist, testimonial,
+   *  trustgrid, imagebullets) ignore it and hide the control.
+   *
+   *  Unset is "m" — the size that header has always rendered at. */
+  headingSize?: CampaignHeadingSize;
   /** Block content type. Unset/"text" = the original free-prose paragraph
    *  (back-compat: every block saved before this field existed renders
    *  identically). All other kinds are structured callouts — see the
@@ -947,6 +967,13 @@ export type CampaignContent = {
    *  before this field existed. */
   theme?: "navy" | "cream";
   blocks: CampaignBlock[];       // ordered body text blocks
+  /** Vertical gap BELOW each body block, in px — the whitespace between one
+   *  block and the next. Unset is 16, the gap every campaign has always had,
+   *  so old saves render byte-for-byte unchanged. Clamped to 0–48 at render
+   *  time so a corrupt or hand-edited value can't blow the email apart.
+   *  Scoped to blocks: the hero, promo band, image grid and CTA keep their own
+   *  fixed rhythm, which is not "space between blocks". */
+  blockSpacing?: number;
   /** style: "cream" (default, unset = cream) is the cream-pill/navy-text
    *  button used since launch. "navy" inverts it to a solid navy button
    *  with white text. `style` controls the bottom CTA button.
