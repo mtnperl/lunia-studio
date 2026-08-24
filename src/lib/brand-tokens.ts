@@ -110,7 +110,11 @@ export const FP_TYPE = {
   coverHeadline: 84,
   coverKicker: 25,
   body: 82,
-  source: 27,
+  // 24, not 27. The Free Press's attribution is a byline and always sets on one
+  // line; a real academic citation runs to three, and every line of it comes
+  // straight out of the copy's height budget. Smaller keeps most references to
+  // two lines and hands the room back to the type that matters.
+  source: 24,
   indicator: 25,
   takeawayKicker: 25,
   takeawayPoint: 54,

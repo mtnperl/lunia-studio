@@ -228,14 +228,19 @@ export default function FreePressContentSlide({
         style={{
           position: "absolute",
           inset: 0,
-          padding: `${reels ? 190 : 150}px ${SLIDE.pad.x + 4}px ${reels ? 150 : 110}px`,
+          // Side padding measured against The Free Press's own slides: their
+          // widest line runs 941px on a 1080 artboard, so the column has to be
+          // ~948 and the padding ~66. The vertical padding is tight for the
+          // same reason the footer is small — every pixel spent here is one the
+          // copy does not get, and the copy is the whole design.
+          padding: `${reels ? 180 : 140}px 66px ${reels ? 110 : 76}px`,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
           // The copy zone and the footer must never touch. Without this gap a
           // long body fills its box exactly and the last line sits flush
           // against the citation, which reads as one run-on block rather than
-          // copy plus a source. FitBox shrinks the copy to absorb the gap.
+          // copy plus a source.
           gap: reels ? 76 : 56,
         }}
       >
@@ -259,7 +264,10 @@ export default function FreePressContentSlide({
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: Math.round(bodySize * 0.82),
+              // One full line pitch. The Free Press separates two paragraphs by
+              // exactly two pitches (183px against a 92px line), which reads as
+              // a real blank line rather than a slightly wider leading.
+              gap: Math.round(bodySize * 1.13),
               width: "100%",
               flexShrink: 0,
             }}

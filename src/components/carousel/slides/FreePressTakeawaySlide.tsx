@@ -75,7 +75,9 @@ export default function FreePressTakeawaySlide({
         style={{
           position: "absolute",
           inset: 0,
-          padding: `${reels ? 190 : 150}px ${SLIDE.pad.x + 4}px ${reels ? 150 : 110}px`,
+          // Same column as the content slides. A closer set on a narrower
+          // measure than the four slides before it reads as a different deck.
+          padding: `${reels ? 180 : 140}px 66px ${reels ? 110 : 76}px`,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
