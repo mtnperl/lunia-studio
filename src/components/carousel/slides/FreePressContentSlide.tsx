@@ -53,7 +53,11 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 //
 // Reducing the font size instead lets the text re-wrap at the full column
 // width, which is what an editor would do: same measure, smaller type.
-const FIT_STEP = 0.94;
+// 0.97, not 0.94. The steps are multiplicative and the block's height jumps
+// whenever a line disappears, so a coarse step walks straight past the largest
+// size that fits: this body cleared its box at 68px, overshot to 64px, and
+// then sat 118px short of filling it.
+const FIT_STEP = 0.97;
 // 0.5 of 66px is 33px on a 1080px artboard — still large. The floor exists so a
 // pathological body cannot shrink to nothing, not to hold a minimum aesthetic,
 // so it sits low enough that clipping is unreachable for any body the generator
@@ -233,7 +237,9 @@ export default function FreePressContentSlide({
           // ~948 and the padding ~66. The vertical padding is tight for the
           // same reason the footer is small — every pixel spent here is one the
           // copy does not get, and the copy is the whole design.
-          padding: `${reels ? 180 : 140}px 66px ${reels ? 110 : 76}px`,
+          // Top padding clears the mark (top:62, ~48 tall) and no more. Every
+          // pixel above the copy is one the copy does not get.
+          padding: `${reels ? 164 : 128}px 66px ${reels ? 110 : 76}px`,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
@@ -264,10 +270,11 @@ export default function FreePressContentSlide({
             style={{
               display: "flex",
               flexDirection: "column",
-              // One full line pitch. The Free Press separates two paragraphs by
-              // exactly two pitches (183px against a 92px line), which reads as
-              // a real blank line rather than a slightly wider leading.
-              gap: Math.round(bodySize * 1.13),
+              // Two thirds of a line, not a full one. A whole blank line is
+              // the single most expensive object on the slide — it costs the
+              // same height as a line of copy while carrying no words — and
+              // the copy is the design. Still unmistakably a paragraph break.
+              gap: Math.round(bodySize * 0.68),
               width: "100%",
               flexShrink: 0,
             }}
@@ -286,7 +293,12 @@ export default function FreePressContentSlide({
                     fontFamily: FP_SANS,
                     fontWeight: 700,
                     fontSize: bodySize,
-                    lineHeight: 1.13,
+                    // Tighter than the 1.13 this used to set. Leading is the
+                    // only lever that shortens the block without shrinking the
+                    // type — dropping the font size re-wraps the copy into
+                    // more lines and gives most of the height straight back —
+                    // so this is what buys the size back.
+                    lineHeight: 1.06,
                     letterSpacing: "-0.005em",
                     color: ink,
                     textAlign: "center",

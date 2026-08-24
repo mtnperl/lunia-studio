@@ -59,19 +59,40 @@ export const FONT_WEIGHT = {
  *  renders and caused synthesized-metric drift. Use 300.) */
 export const INTER_WEIGHTS = [300, 400, 500, 600, 700] as const;
 
-export const GOOGLE_FONTS_CSS_URL =
-  "https://fonts.googleapis.com/css2" +
+// ONE family list for the whole app. It used to be two — this constant for the
+// headless capture, and a pair of `@import url(...)` lines at the top of
+// globals.css for everything else — with a comment asking whoever touched
+// either to keep them in lockstep.
+//
+// They were not in lockstep. They were not even both loading. Tailwind v4's
+// bundler drops remote `@import`s, so the shipped CSS carried no @import, no
+// @font-face and no mention of gstatic: every webfont in the app silently fell
+// back to a system face, while the capture path — which uses a <link> and so
+// was unaffected — rendered the real ones. The preview and the export had
+// quietly disagreed about metrics the whole time.
+//
+// A <link> in the root layout is what the render page already does, so both
+// surfaces now load fonts the same way, from the same list, and there is
+// nothing left to keep in step by hand.
+const GOOGLE_FONTS_FAMILIES =
   "?family=Inter:wght@300;400;500;600;700" +
   "&family=Jost:wght@400;500" +
-  "&family=Cormorant+Garamond:ital,wght@0,400;1,400" +
+  "&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600" +
+  "&family=Fira+Code:wght@400;500" +
   "&family=Outfit:wght@500;700" +
-  // Free Press preset. Must stay in lockstep with the @import in globals.css:
-  // the in-app preview reads that one and the headless capture reads this one,
-  // so a face present in only one place renders at different metrics in the
-  // preview than in the exported PNG.
+  // Free Press preset.
   "&family=Archivo+Narrow:wght@600;700" +
-  "&family=Playfair+Display:ital,wght@0,700;0,800;1,400" +
-  "&display=block"; // block: never paint fallback metrics in a render target
+  "&family=Playfair+Display:ital,wght@0,700;0,800;1,400";
+
+/** Render target. `display=block` so fallback metrics can never paint into a
+ *  capture — a PNG exported mid-swap is wrong forever. */
+export const GOOGLE_FONTS_CSS_URL =
+  "https://fonts.googleapis.com/css2" + GOOGLE_FONTS_FAMILIES + "&display=block";
+
+/** App UI. Same faces, same metrics; `swap` because a dashboard that blanks
+ *  its own text for up to three seconds is worse than one brief reflow. */
+export const GOOGLE_FONTS_CSS_URL_UI =
+  "https://fonts.googleapis.com/css2" + GOOGLE_FONTS_FAMILIES + "&display=swap";
 
 // ─── Free Press preset tokens ───────────────────────────────────────────────
 // A text-led editorial look: the body slide carries no image and no graphic,

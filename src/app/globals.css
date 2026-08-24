@@ -1,8 +1,14 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
-/* Free Press carousel preset. Mirrors GOOGLE_FONTS_CSS_URL in brand-tokens.ts —
-   the preview reads this, the headless capture reads that, and they must
-   carry the same faces or the export will not match what you approved. */
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@600;700&family=Playfair+Display:ital,wght@0,700;0,800;1,400&display=swap");
+/* Fonts are NOT loaded here. Two `@import url(...)` lines used to sit above
+   this one and neither of them ever reached a browser: Tailwind v4's bundler
+   drops remote @imports, so the shipped CSS contained no @import, no
+   @font-face and no reference to gstatic at all. Every face in DESIGN.md —
+   Inter, Cormorant, Fira Code, and the Free Press preset's Archivo Narrow —
+   fell back to a system font, in the app and on every share page, while the
+   headless capture rendered the real ones because it uses a <link>.
+
+   The <link> now lives in app/layout.tsx, fed by the same family list the
+   capture uses (GOOGLE_FONTS_CSS_URL* in brand-tokens.ts). Do not move it
+   back here. */
 @import "tailwindcss";
 
 /* ── Apple-Inspired Studio — Light (default) ──────────────────────────────
