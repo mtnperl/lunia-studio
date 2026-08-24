@@ -5,7 +5,7 @@ import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle, CarouselStylePreset, HookHeadlineWeight } from '@/lib/types';
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
-import { FP_SERIF, FP_SANS, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
+import { BRAND_FONT_FAMILY, FP_SANS, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -141,12 +141,19 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           bottom: reels ? 220 : 92,
           display: 'flex', flexDirection: 'column', gap: 34,
         }}>
+          {/* Inter, not the display serif. The serif was the closest match to
+              The Free Press's own masthead face, but this is a Lunia cover and
+              Inter is the brand face — the cover is where a reader decides
+              whose post this is. Uppercase is applied here rather than trusted
+              to the copy: hook headlines arrive uppercase from the generator,
+              but a hand-edited one would otherwise break the treatment. */}
           <div style={{
-            fontFamily: FP_SERIF,
-            fontWeight: 800,
+            fontFamily: BRAND_FONT_FAMILY,
+            fontWeight: 700,
             fontSize: reels ? Math.round(FP_TYPE.coverHeadline * 1.08) : FP_TYPE.coverHeadline,
-            lineHeight: 1.04,
-            letterSpacing: '-0.01em',
+            lineHeight: 1.08,
+            letterSpacing: '-0.015em',
+            textTransform: 'uppercase',
             color: FP_COLORS.paper,
             textAlign: 'center',
           }}>
