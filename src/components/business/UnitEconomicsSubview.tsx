@@ -3,8 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import DateRangePicker, { type DateRange } from "../dashboard/DateRangePicker";
 import RefreshButton from "../dashboard/RefreshButton";
 import KPICard from "../dashboard/KPICard";
+import UnitEconomicsDerivation from "./UnitEconomicsDerivation";
 import SubscriptionCockpit from "./SubscriptionCockpit";
 import type { CustomerCohort, PnL } from "@/lib/business-types";
+
+function money(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
 
 function defaultRange(): DateRange {
   const now = new Date();
@@ -298,12 +303,16 @@ export default function UnitEconomicsSubview() {
         const payback = ue?.paybackMonths ?? 0;
         const haveRatio = isReal && (ue?.cac ?? 0) > 0 && ratio > 0;
         // Plain-English dollar math behind each ratio, so the badge isn't the only signal.
+        const qualifiedCustomers = ue?.cohort?.qualifiedCustomers ?? 0;
+        const newInRange = ue?.cohort?.newCustomersInRange ?? 0;
+        const grossLtv = ue?.blendedLtv ?? 0;
+        const qualifiedRevenue = grossLtv * qualifiedCustomers;
+        const marginPct = pnl?.grossMarginPct ?? 0;
         const cacDollars = ue?.cac ?? 0;
         const contribution = ue?.contributionLtv ?? 0;
         const monthlyContribution = contribution / 12;
-        const money = (n: number) => `$${n.toFixed(2)}`;
-        const ratioDetail = `${money(contribution)} gross profit per customer vs ${money(cacDollars)} to acquire`;
-        const paybackDetail = `${money(monthlyContribution)} contribution per month vs ${money(cacDollars)} to acquire`;
+        const ratioDetail = `LTV ${money(grossLtv)} × ${marginPct.toFixed(1)}% margin = ${money(contribution)} gross profit vs ${money(cacDollars)} to acquire`;
+        const paybackDetail = `LTV ${money(grossLtv)} × ${marginPct.toFixed(1)}% ÷ 12 mo = ${money(monthlyContribution)} per month vs ${money(cacDollars)} to acquire`;
         const ratioStatus = ratio >= 3 ? "good" : ratio >= 1 ? "warn" : "bad";
         const ratioNote = ratio >= 3 ? "Healthy — room to scale"
           : ratio >= 1 ? "Watch — margin is thin"
@@ -313,6 +322,7 @@ export default function UnitEconomicsSubview() {
           : payback <= 18 ? "12–18 months — watch cash"
           : "Over 18 months — too slow";
         return (
+          <>
           <div className="ue-grid-2" style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
@@ -344,6 +354,28 @@ export default function UnitEconomicsSubview() {
               tooltip="Estimated months to recover CAC = 12 ÷ (LTV:CAC). Assumes contribution accrues evenly across the 365-day window — the cohort view shows the real reorder curve."
             />
           </div>
+
+          {haveRatio && pnl && (
+            <UnitEconomicsDerivation
+              pnl={pnl}
+              range={range}
+              cac={cacDollars}
+              grossLtv={grossLtv}
+              qualifiedRevenue={qualifiedRevenue}
+              qualifiedCustomers={qualifiedCustomers}
+              newInRange={newInRange}
+              minOrderValue={cohort?.minOrderValueForLtv ?? 5}
+              marginPct={marginPct}
+              contribution={contribution}
+              monthlyContribution={monthlyContribution}
+              ratio={ratio}
+              ratioStatus={ratioStatus}
+              payback={payback}
+              paybackStatus={paybackStatus}
+              tightBottom={!cohort}
+            />
+          )}
+          </>
         );
       })()}
 
