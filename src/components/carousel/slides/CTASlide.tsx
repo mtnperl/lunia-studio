@@ -1,6 +1,6 @@
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
-import { BrandStyle } from "@/lib/types";
+import { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isDarkColor, INK_LIGHT, INK_DARK } from "@/lib/color";
 import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
 
@@ -19,7 +19,7 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;

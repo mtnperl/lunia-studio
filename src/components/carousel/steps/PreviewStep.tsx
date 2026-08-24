@@ -4,6 +4,9 @@ import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
+import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
+import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
+import { FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
@@ -395,12 +398,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Free-form dominant slide background. When set, slides use this color and auto-derive
   // ink (text/arrows/watermark/logo) from luminance — overrides the Classic/Match-hook toggle.
   const isEditorial = stylePreset === "editorial-scientific";
+  const isFreePress = stylePreset === "free-press";
   // Editorial Scientific renders content slides with a bespoke layout —
   // logo top, big editorial headline + rule, body, optional icon-stat rows,
   // optional product photo. Drop-in compatible with ContentSlide's props.
-  const ContentSlideComponent = isEditorial ? EditorialContentSlide : ContentSlide;
+  const ContentSlideComponent = isFreePress
+    ? FreePressContentSlide
+    : isEditorial
+      ? EditorialContentSlide
+      : ContentSlide;
+  const TakeawaySlideComponent = isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
   // Editorial Scientific: default the slide bg to Soft Ivory if no saved color.
-  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isEditorial ? "#EFEFF4" : undefined));
+  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isFreePress ? FP_COLORS.paper : isEditorial ? "#EFEFF4" : undefined));
   // Decoration toggles — default true to preserve every existing carousel's look.
   const [showSlideArrows, setShowSlideArrows] = useState(initialShowSlideArrows ?? true);
   const [showSlideNumbers, setShowSlideNumbers] = useState(initialShowSlideNumbers ?? true);
@@ -429,7 +438,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(initialShowLuniaLifeWatermark ?? true);
   // Editorial preset defaults: citation = M (26), headline = L (1.15).
   // Other presets keep the previous defaults (citation L = 36, headline M = 1).
-  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isEditorial ? 26 : 36));
+  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isFreePress ? FP_TYPE.source : isEditorial ? 26 : 36));
   const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? (isEditorial ? 1.15 : 1));
   const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1.2); // default "L"
   const [iconScale, setIconScale] = useState(initialIconScale ?? 1); // icon-layout graphic size, default "M"
@@ -2718,7 +2727,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         onCancelEditElement={() => setEditing(null)} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
       : [carouselFormat === "engagement" && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />]),
@@ -2734,7 +2743,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlide key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
       : [carouselFormat === "engagement" && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />]),

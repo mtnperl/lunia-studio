@@ -3,7 +3,7 @@ import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGE
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
-import { CarouselContent, CarouselFormat, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
+import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export const maxDuration = 300;
@@ -209,10 +209,11 @@ export async function POST(req: Request) {
 
     // Editorial Scientific preset overrides any inferred / template brandStyle
     // with the Lunia April-2026 palette so every slide reads on-brand.
-    const { EDITORIAL_BRAND_STYLE } = await import("@/lib/carousel-style-presets");
-    const resolvedBrandStyle = stylePreset === "editorial-scientific"
-      ? EDITORIAL_BRAND_STYLE
-      : (template?.brandStyle ?? null);
+    const { getStylePresetBrandStyle } = await import("@/lib/carousel-style-presets");
+    const resolvedBrandStyle =
+      getStylePresetBrandStyle(stylePreset as CarouselStylePreset | undefined) ??
+      template?.brandStyle ??
+      null;
 
     return Response.json({
       variants,

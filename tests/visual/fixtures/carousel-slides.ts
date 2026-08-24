@@ -157,4 +157,43 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       } }),
     },
   },
+
+  // ─── Free Press preset ────────────────────────────────────────────────────
+  // The body slide is one block of copy and nothing else, so the failure modes
+  // are narrow and specific: copy colliding with the footer, and the citation
+  // line leaving a hole when it is empty. Both are locked here.
+  {
+    name: "freepress-two-paragraph-with-citation",
+    props: {
+      stylePreset: "free-press",
+      // Deliberately non-empty: the preset must NOT render it. If a headline
+      // ever appears in this baseline, the layout contract has broken.
+      headline: "THIS HEADLINE MUST NOT RENDER",
+      body: "Core body temperature drops about one degree Celsius before sleep onset, and that fall is one of the strongest cues the brain uses to start the night.\n\nA bedroom held near 18 degrees supports that drop instead of fighting it.",
+      citation: "Harding EC, Franks NP, Wisden W. Front Neurosci. 2019;13:336",
+    },
+  },
+  {
+    // An empty citation is a legitimate value. The footer must close up rather
+    // than leave a gap where a source would have been.
+    name: "freepress-no-citation",
+    props: {
+      stylePreset: "free-press",
+      headline: "",
+      body: "Most people blame the wake-up on stress. The more ordinary explanation is that the second half of the night is lighter sleep by design.",
+      citation: "",
+    },
+  },
+  {
+    // ~120 words, well past the 45-75 the prompt asks for. Caught a real bug:
+    // the copy zone and the footer had no gap, so the last line sat flush
+    // against the citation and the two read as one run-on block.
+    name: "freepress-overlong-body",
+    props: {
+      stylePreset: "free-press",
+      headline: "",
+      body: "Sleep onset is governed by a thermoregulatory cascade that begins well before you feel tired, and the distal skin vessels in your hands and feet dilate to dump heat from the core outward. That heat loss is what drives the roughly one degree Celsius fall in core temperature associated with falling asleep faster.\n\nA bedroom held near 18 degrees supports that drop instead of fighting it, which is why a room that feels slightly too cool when you get into bed is usually the right room, and why heavy bedding can undo the whole mechanism you were trying to help.",
+      citation: "Harding EC, Franks NP, Wisden W. The Temperature Dependence of Sleep. Front Neurosci. 2019;13:336",
+    },
+  },
 ];

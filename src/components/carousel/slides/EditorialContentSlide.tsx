@@ -4,7 +4,7 @@ import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import FitBox from "@/components/carousel/shared/FitBox";
-import { BrandStyle } from "@/lib/types";
+import { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
 import { parseGraphicSpec } from "@/lib/carousel-utils";
 import { renderGraphicSpec } from "@/components/carousel/graphics/graphicComponentMap";
@@ -60,7 +60,7 @@ type Props = {
   slideBgColor?: string;
   bgImageShimmer?: boolean;
   bgImageOverlayOpacity?: number;
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
 };
 
 type IconRowPosition = "hug-body" | "between";

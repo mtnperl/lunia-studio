@@ -65,7 +65,49 @@ export const GOOGLE_FONTS_CSS_URL =
   "&family=Jost:wght@400;500" +
   "&family=Cormorant+Garamond:ital,wght@0,400;1,400" +
   "&family=Outfit:wght@500;700" +
+  // Free Press preset. Must stay in lockstep with the @import in globals.css:
+  // the in-app preview reads that one and the headless capture reads this one,
+  // so a face present in only one place renders at different metrics in the
+  // preview than in the exported PNG.
+  "&family=Archivo+Narrow:wght@600;700" +
+  "&family=Playfair+Display:ital,wght@0,700;0,800;1,400" +
   "&display=block"; // block: never paint fallback metrics in a render target
+
+// ─── Free Press preset tokens ───────────────────────────────────────────────
+// A text-led editorial look: the body slide carries no image and no graphic,
+// just one large centred block of copy. Modelled on The Free Press's carousel
+// grammar, rendered in Lunia's palette and mark.
+//
+// Two faces, each doing one job:
+//   FP_SERIF  display only. Covers and the italic source line.
+//   FP_SANS   every word of body copy. Condensed and heavy so a 60-word
+//             paragraph still sets at 66px without wrapping into a wall.
+export const FP_SERIF = "'Playfair Display', 'Cormorant Garamond', Georgia, serif";
+export const FP_SANS = "'Archivo Narrow', 'Inter', system-ui, sans-serif";
+
+export const FP_COLORS = {
+  /** Slide ground. brand softIvory, not FP's own cream. */
+  paper: BRAND_COLORS.softIvory,
+  /** Body ink. Deliberately a warm near-black rather than a navy: the
+   *  indicator below it is navy, and navy-on-navy would erase the one
+   *  accent the layout has. */
+  ink: "#171612",
+  inkMuted: "rgba(23,22,18,0.50)",
+  inkHairline: "rgba(23,22,18,0.13)",
+  /** The single accent. Replaces The Free Press's red with Lunia's navy. */
+  indicator: BRAND_COLORS.richNavy,
+} as const;
+
+/** Type scale for the Free Press preset (px at the 1080-wide artboard). */
+export const FP_TYPE = {
+  coverHeadline: 84,
+  coverKicker: 25,
+  body: 66,
+  source: 27,
+  indicator: 25,
+  takeawayKicker: 25,
+  takeawayPoint: 54,
+} as const;
 
 // ─── Carousel slide geometry ────────────────────────────────────────────────
 export const SLIDE = {

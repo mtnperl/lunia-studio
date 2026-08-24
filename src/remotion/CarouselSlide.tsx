@@ -6,7 +6,7 @@ import { loadFont as loadCormorant } from "@remotion/google-fonts/CormorantGaram
 import { loadFont as loadOutfit } from "@remotion/google-fonts/Outfit";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
-import type { BrandStyle } from "@/lib/types";
+import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
 
 // Register the fonts ContentSlide + its graphics use so headless Chromium has
 // them before the still is painted. loadFont() wires delayRender internally.
@@ -32,7 +32,7 @@ export type CarouselSlideProps = {
   bodyScale?: number;
   logoScale?: number;
   arrowScale?: number;
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;

@@ -23,9 +23,21 @@ interface LuniaLogoProps {
   variant?: 'light' | 'dark';
   /** Multiplier on the base 100px width. Default 1.0. */
   sizeScale?: number;
+  /** Where the mark sits on the slide. 'bottom-left' is the long-standing
+   *  placement and stays the default so no existing slide moves; the Free
+   *  Press preset puts the mark in the masthead position instead. */
+  placement?: 'bottom-left' | 'top-left';
+  /** Opacity override. The 0.5 default is a watermark weight, which is right
+   *  for a footer mark and too faint for one carrying the top of the slide. */
+  opacity?: number;
 }
 
-export default function LuniaLogo({ variant = 'light', sizeScale = 1 }: LuniaLogoProps) {
+export default function LuniaLogo({
+  variant = 'light',
+  sizeScale = 1,
+  placement = 'bottom-left',
+  opacity = 0.5,
+}: LuniaLogoProps) {
   const r    = 44;
   const vGap = r * 2;  // 88 — vertically-stacked tips touch (vGap = 2r)
 
@@ -59,9 +71,13 @@ export default function LuniaLogo({ variant = 'light', sizeScale = 1 }: LuniaLog
       width={w}
       height={h}
       viewBox={`0 0 ${vbW} ${vbH}`}
-      style={{ position: 'absolute', bottom: 58, left: 60 }}
+      style={
+        placement === 'top-left'
+          ? { position: 'absolute', top: 62, left: 66 }
+          : { position: 'absolute', bottom: 58, left: 60 }
+      }
     >
-      <g fill={variant === 'dark' ? '#0d2137' : 'white'} fillOpacity={0.5}>
+      <g fill={variant === 'dark' ? '#0d2137' : 'white'} fillOpacity={opacity}>
         {stars.map((s, i) => (
           <path key={i} d={sparkle(s.cx, s.cy, r)} />
         ))}

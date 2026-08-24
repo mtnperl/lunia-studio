@@ -968,6 +968,7 @@ function BatchViewInner() {
             {([
               { val: "default" as CarouselStylePreset, label: "Default", desc: "Current v2 styling" },
               { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
+              { val: "free-press" as CarouselStylePreset, label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
             ]).map((opt) => {
               const sel = stylePreset === opt.val;
               return (

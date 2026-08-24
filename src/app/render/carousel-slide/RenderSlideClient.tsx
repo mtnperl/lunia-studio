@@ -18,8 +18,10 @@
 import { useEffect, useRef, useState } from "react";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
+import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
+import { FP_COLORS } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
-import type { BrandStyle } from "@/lib/types";
+import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
 
 export type RenderSlideProps = {
   headline: string;
@@ -37,7 +39,7 @@ export type RenderSlideProps = {
   bodyScale?: number;
   logoScale?: number;
   arrowScale?: number;
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
@@ -179,10 +181,14 @@ export default function RenderSlideClient(props: RenderSlideProps) {
         width: SLIDE.width,
         height: slideH,
         overflow: "hidden",
-        background: props.slideBgColor ?? "#01253f",
+        background:
+          props.slideBgColor ??
+          (props.stylePreset === "free-press" ? FP_COLORS.paper : "#01253f"),
       }}
     >
-      {props.stylePreset === "editorial-scientific" ? (
+      {props.stylePreset === "free-press" ? (
+        <FreePressContentSlide {...scaled} scale={1} />
+      ) : props.stylePreset === "editorial-scientific" ? (
         <EditorialContentSlide {...scaled} scale={1} />
       ) : (
         <ContentSlide {...scaled} scale={1} />

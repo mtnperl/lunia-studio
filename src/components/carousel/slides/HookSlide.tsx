@@ -3,8 +3,9 @@
 import ArrowIcons from '@/components/carousel/shared/ArrowIcons';
 import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
-import { BrandStyle, HookHeadlineWeight } from '@/lib/types';
+import { BrandStyle, CarouselStylePreset, HookHeadlineWeight } from '@/lib/types';
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
+import { FP_SERIF, FP_SANS, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -30,8 +31,10 @@ type Props = {
   /** v2: layered overlays applied on top of the background image (frame, vignette, color grade, grain). */
   overlays?: HookOverlaySettings;
   reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
-  /** Carousel-wide style preset — "editorial-scientific" swaps typography to Inter and tones down hook treatment. */
-  stylePreset?: "default" | "editorial-scientific";
+  /** Carousel-wide style preset. "editorial-scientific" swaps typography to
+   *  Inter and tones down the hook treatment; "free-press" replaces the text
+   *  overlay entirely with a masthead cover. */
+  stylePreset?: CarouselStylePreset;
   /** Decoration toggles (default true) — let the user hide the swipe-cue arrows, the slide-number badge, or the source-note rail. */
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
@@ -50,6 +53,7 @@ const HEADLINE_WEIGHTS = {
 
 export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
+  const isFreePress = stylePreset === "free-press";
   const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
   const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
   const py = reels ? 220 : SLIDE_PADDING.y;
@@ -83,7 +87,15 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           {/* Background wash. When configured, the user controls dark/light/none;
               otherwise legacy scrim: lighter (0.45) for fal images to show more
               drama, heavier (0.82) for template images. */}
-          {overlays?.backgroundWash ? (
+          {isFreePress ? (
+            /* Masthead scrim. A flat wash would either wash out the photo or
+               leave the headline unreadable; the gradient darkens only the two
+               bands that carry type. */
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(15,14,12,0.58) 0%, rgba(15,14,12,0.12) 30%, rgba(15,14,12,0.70) 76%, rgba(15,14,12,0.90) 100%)',
+            }} />
+          ) : overlays?.backgroundWash ? (
             <BackgroundWashOverlay darkColor={bg} wash={overlays.backgroundWash} />
           ) : (
             <div style={{
@@ -119,7 +131,42 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         avoid duplicated text. If the image is still generating or failed, we
         fall through to the HTML overlay so the editor preview isn't empty.
       */}
-      {!(isEditorial && backgroundImageUrl) && (
+      {isFreePress ? (
+        /* Cover type. Headline low and centred, kicker beneath it — the whole
+           frame above is the photograph. No subline: the FP cover carries one
+           line of argument, not two. */
+        <div style={{
+          position: 'absolute',
+          left: SLIDE_PADDING.x + 4, right: SLIDE_PADDING.x + 4,
+          bottom: reels ? 220 : 92,
+          display: 'flex', flexDirection: 'column', gap: 34,
+        }}>
+          <div style={{
+            fontFamily: FP_SERIF,
+            fontWeight: 800,
+            fontSize: reels ? Math.round(FP_TYPE.coverHeadline * 1.08) : FP_TYPE.coverHeadline,
+            lineHeight: 1.04,
+            letterSpacing: '-0.01em',
+            color: FP_COLORS.paper,
+            textAlign: 'center',
+          }}>
+            {headline}
+          </div>
+          {showCitationBars && sourceNote && (
+            <div style={{
+              fontFamily: FP_SANS,
+              fontWeight: 600,
+              fontSize: FP_TYPE.coverKicker,
+              letterSpacing: '0.19em',
+              textTransform: 'uppercase',
+              color: 'rgba(247,244,239,0.68)',
+              textAlign: 'center',
+            }}>
+              {sourceNote}
+            </div>
+          )}
+        </div>
+      ) : !(isEditorial && backgroundImageUrl) && (
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
@@ -208,7 +255,12 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo variant="light" sizeScale={logoScale} />
+      <LuniaLogo
+        variant="light"
+        sizeScale={logoScale}
+        placement={isFreePress ? 'top-left' : 'bottom-left'}
+        opacity={isFreePress ? 0.85 : 0.5}
+      />
     </SlideWrapper>
   );
 }

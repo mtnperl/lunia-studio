@@ -239,6 +239,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
   includeSeoFooter: boolean = true,
 ) => {
   const isEditorial = stylePreset === "editorial-scientific";
+  const isFreePress = stylePreset === "free-press";
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
@@ -275,7 +276,22 @@ Return ONLY valid JSON in this exact format, no other text:
     "overlay": "OPTIONAL short tagline (≤ 6 words) baked into the image as an editorial accent above the headline. Omit field if nothing meaningful adds."
   }` : ""}
 }
-${v2Mode ? `
+${isFreePress ? `
+FREE PRESS PRESET — THIS OVERRIDES THE SLIDE HEADLINE RULES BELOW.
+
+The body slides in this preset render ONE centred block of copy and NOTHING else. No headline is drawn, no graphic is drawn, no image is drawn. Write accordingly:
+
+- "headline": return "" for every slide. It is not rendered, and writing one wastes the words that should have gone into the body.
+- "graphic": return "" for every slide. Nothing renders it.
+- "body": this is the whole slide, so it carries the whole beat. 45 to 75 words. Write it as ONE or TWO paragraphs; separate two paragraphs with a BLANK LINE (\\n\\n) and never with a single newline. Two paragraphs is the stronger shape: state the finding, then land what it means. The blank line is real breathing room in the layout, not formatting.
+- The narrative arc below still applies. Slide 1 surprises, slide 2 explains, slide 3 directs. The arc now lives entirely in the body copy because there is no headline to carry it.
+- Open each body with its strongest clause. There is no headline above it to set up the point, so the first six words ARE the headline.
+- "citation": unchanged. A real paper or "". It renders as a quiet italic line under the copy, so an empty one costs nothing and an invented one is still the worst outcome.
+
+CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
+
+The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
+` : ""}${v2Mode ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE

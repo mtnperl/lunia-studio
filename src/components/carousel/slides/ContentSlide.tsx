@@ -41,7 +41,7 @@ import { ConceptFlowGraphic } from '@/components/carousel/graphics/ConceptFlowGr
 import { IconGraphic } from '@/components/carousel/graphics/IconGraphic';
 import { IconLayout } from '@/components/carousel/graphics/IconLayout';
 import { isRetiredGraphic } from '@/lib/graphic-types';
-import { BrandStyle, GraphicSpec, GraphicStyle } from '@/lib/types';
+import { BrandStyle, GraphicSpec, GraphicStyle, CarouselStylePreset} from '@/lib/types';
 import { extractGraphicData, parseGraphicSpec } from '@/lib/carousel-utils';
 import { isDarkColor, INK_LIGHT, INK_DARK } from '@/lib/color';
 import type { SlideElement } from '@/lib/slide-elements';
@@ -204,7 +204,7 @@ type Props = {
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
   bodyScale?: number;               // multiplier on the auto-sized body (default 1)
   iconScale?: number;               // multiplier on rendered icon size for icon-layout graphics (default 1)
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;

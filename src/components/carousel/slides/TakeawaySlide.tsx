@@ -1,7 +1,7 @@
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
-import { BrandStyle } from "@/lib/types";
+import { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isDarkColor, INK_LIGHT, INK_DARK } from "@/lib/color";
 
 type Interaction = { type: "save" | "send" | "comment"; label: string };
@@ -23,7 +23,7 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;
   reels?: boolean;                  // 9:16 Reels format (1920px height)
-  stylePreset?: "default" | "editorial-scientific";
+  stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   /** Follow prompt merged in from the (now-dropped) CTA slide — this is the
    *  true last slide of the deck, so it carries the growth ask too. */
