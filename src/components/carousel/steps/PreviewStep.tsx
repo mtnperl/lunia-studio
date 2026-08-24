@@ -951,7 +951,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       : staleUnitIds.length > 0
         ? `${staleUnitIds.length} unit${staleUnitIds.length > 1 ? "s" : ""} edited since the last check.`
         : verificationStatus === "amber"
-          ? "Some claims could not be verified."
+          ? "Part of this carousel could not be checked."
           : undefined;
 
   async function downloadAll() {

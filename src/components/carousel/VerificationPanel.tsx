@@ -15,9 +15,13 @@
 //   1. Needs a decision — sources contradict it. Open, with the evidence and a
 //      rewrite already drafted, because this is the only group that can stop a
 //      post going out.
-//   2. Worth a look — a specific claim with no source behind it. One row each,
-//      a fix on request.
+//   2. Not checked — the run errored on this unit, so nothing is known about it.
 //   3. Clean — folded into a single line. Reassurance, not work.
+//
+// Only contradictions are raised. "No source found" is the ordinary outcome for
+// most true sentences, and promoting it to a finding turned the panel into a
+// list of things that were fine. Those claims are still checked and still
+// readable behind the per-unit fold, they just do not ask anything of you.
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -34,6 +38,7 @@ import {
   groupUnitsByTriage,
   actionableClaims,
   hasContradiction,
+  isMajorFinding,
 } from "@/lib/verification-status";
 import { createFrameDecoder } from "@/lib/verification-stream";
 import { effectiveVerdict } from "@/lib/types";
@@ -64,6 +69,22 @@ type Props = {
 };
 
 type Suggestion = { rationale: string; fields: UnitFields };
+
+/**
+ * What the second research pass found before it proposed anything.
+ *
+ * "supports" is the outcome worth having: the first-pass checker flagged the
+ * line, the deeper search vindicated it, and no edit is proposed at all.
+ */
+type Research = {
+  finding: "supports" | "contradicts" | "none";
+  summary: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  supportingQuote?: string;
+};
+
+type DraftedFix = { current: UnitFields; suggestions: Suggestion[]; research?: Research };
 
 /**
  * Live progress of a streaming run.
@@ -112,8 +133,8 @@ const STATUS_COLOR: Record<VerificationStatus, string> = {
 // accusation against copy where nothing had failed — 13 claims simply wanted a
 // look.
 const STATUS_LABEL: Record<VerificationStatus, string> = {
-  green: "All sourced",
-  amber: "Needs review",
+  green: "Nothing contradicted",
+  amber: "Partly unchecked",
   red: "Contradictions found",
 };
 
@@ -186,19 +207,19 @@ function verdictStatus(claim: VerifiedClaim): VerificationStatus {
  * advice as deficiencies made every unit look broken.
  */
 function summarizeUnit(unit: VerifiedUnit): string {
-  const fail = unit.claims.filter((c) => effectiveVerdict(c) === "fail").length;
+  const fail = unit.claims.filter(isMajorFinding).length;
   if (fail > 0) return `${fail} claim${fail > 1 ? "s" : ""} contradicted by sources`;
 
   const { high, low, resolved, framing } = partitionFindings(unit);
-  if (high.length > 0) {
-    return high.length > 1 ? `${high.length} claims need a source` : "1 claim needs a source";
-  }
+  const unsourced = high.length + low.length;
   if (resolved.length > 0) {
-    return low.length > 0
-      ? `${resolved.length} sourced, ${low.length} minor unsourced`
+    return unsourced > 0
+      ? `${resolved.length} sourced, ${unsourced} unsourced`
       : `${resolved.length} claim${resolved.length > 1 ? "s" : ""} sourced`;
   }
-  if (low.length > 0) return `${low.length} minor claim${low.length > 1 ? "s" : ""}, nothing notable`;
+  if (unsourced > 0) {
+    return `${unsourced} claim${unsourced > 1 ? "s" : ""} checked, nothing contradicted`;
+  }
   if (framing.length > 0) return "Framing only, nothing to check";
   return "Nothing to check";
 }
@@ -220,7 +241,9 @@ export default function VerificationPanel({
   const [openUnits, setOpenUnits] = useState<string[]>([]);
   const [draftingUnits, setDraftingUnits] = useState<string[]>([]);
   const [pendingOverride, setPendingOverride] = useState<string | null>(null);
-  const [fixes, setFixes] = useState<Record<string, { current: UnitFields; suggestions: Suggestion[] }>>({});
+  const [fixes, setFixes] = useState<Record<string, DraftedFix>>({});
+  /** `${unitId}::${suggestionIndex}` for every fix written into the carousel. */
+  const [appliedFixes, setAppliedFixes] = useState<string[]>([]);
   const [quietOpen, setQuietOpen] = useState<string | null>(null);
   const [appliedCount, setAppliedCount] = useState(0);
 
@@ -292,6 +315,42 @@ export default function VerificationPanel({
     );
   }
 
+  /** What the second research pass concluded, above whatever it proposes. */
+  function renderResearch(research: Research) {
+    const backed = research.finding === "supports";
+    return (
+      <div
+        style={{
+          borderLeft: `2px solid ${backed ? "var(--success)" : "var(--border)"}`,
+          paddingLeft: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+          {backed
+            ? "Research backs this as written"
+            : research.finding === "contradicts"
+              ? "Research confirms the contradiction"
+              : "No supporting research found"}
+        </div>
+        <div style={subtleStyle}>{research.summary}</div>
+        {research.supportingQuote && (
+          <div style={quoteStyle}>
+            <span style={{ fontStyle: "normal", color: "var(--subtle, var(--muted))" }}>
+              source says:{" "}
+            </span>
+            &ldquo;{research.supportingQuote}&rdquo;
+          </div>
+        )}
+        {research.sourceUrl && (
+          <a href={research.sourceUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+            {research.sourceTitle || research.sourceUrl}
+          </a>
+        )}
+      </div>
+    );
+  }
+
   /** The drafted rewrite for a unit: what changes, and the button that applies it. */
   function renderFixBox(unit: VerifiedUnit) {
     const drafted = fixes[unit.id];
@@ -304,11 +363,11 @@ export default function VerificationPanel({
           <div style={{ ...subtleStyle, marginBottom: 8 }}>
             {stale
               ? "Save your edits first — the drafter reads the saved version of this carousel, not what is on screen."
-              : `Rewrite this ${unit.kind} against what the sources actually say.`}
+              : `Search the literature for this ${unit.kind} first, and rewrite it only if nothing backs it.`}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Button onClick={() => suggestFix(unit.id)} disabled={drafting || busy || stale}>
-              {drafting ? "Drafting…" : "Suggest a fix"}
+              {drafting ? "Researching…" : "Look this up"}
             </Button>
             {drafting && <Spinner size={12} />}
           </div>
@@ -318,44 +377,79 @@ export default function VerificationPanel({
 
     return (
       <div style={fixBoxStyle}>
-        {drafted.suggestions.map((s, si) => (
-          <div key={si} style={{ marginBottom: si === drafted.suggestions.length - 1 ? 0 : 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-              {si === 0 ? "Minimal change" : "Stronger rewrite"}
-            </div>
-            <div style={{ ...subtleStyle, marginBottom: 8 }}>{s.rationale}</div>
+        {drafted.research && renderResearch(drafted.research)}
 
-            {Object.entries(s.fields).map(([key, val]) => {
-              const before = drafted.current[key];
-              const fmt = (v: string | string[] | undefined) =>
-                Array.isArray(v) ? v.join(" · ") : (v ?? "");
-              if (fmt(before) === fmt(val)) return null;
-              return (
-                <div key={key} style={{ marginBottom: 8 }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      color: "var(--subtle, var(--muted))",
-                      marginBottom: 3,
-                    }}
-                  >
-                    {FIELD_LABEL[key] ?? key}
-                  </div>
-                  <div style={beforeStyle}>{fmt(before) || <em>(empty)</em>}</div>
-                  <div style={afterStyle}>{fmt(val) || <em>(empty)</em>}</div>
-                </div>
-              );
-            })}
-
-            <Button variant="primary" onClick={() => applyFix(unit.id, s.fields)} disabled={busy}>
-              Apply this fix
-            </Button>
+        {/* Vindicated and nothing to change: the whole point of researching
+            first is that this branch exists and proposes no edit. */}
+        {drafted.suggestions.length === 0 && (
+          <div style={subtleStyle}>
+            {drafted.research?.finding === "supports"
+              ? "Nothing to change. Mark the claim verified if you agree with the source above."
+              : "No rewrite drafted. The line may still be fine as written, the search just could not settle it."}
           </div>
-        ))}
+        )}
+
+        {drafted.suggestions.map((s, si) => {
+          const key = `${unit.id}::${si}`;
+          const applied = appliedFixes.includes(key);
+          return (
+            <div key={si} style={{ marginBottom: si === drafted.suggestions.length - 1 ? 0 : 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                {drafted.suggestions.length === 1
+                  ? "Suggested change"
+                  : si === 0
+                    ? "Minimal change"
+                    : "Stronger rewrite"}
+              </div>
+              <div style={{ ...subtleStyle, marginBottom: 8 }}>{s.rationale}</div>
+
+              {Object.entries(s.fields).map(([fieldKey, val]) => {
+                const before = drafted.current[fieldKey];
+                const fmt = (v: string | string[] | undefined) =>
+                  Array.isArray(v) ? v.join(" · ") : (v ?? "");
+                if (fmt(before) === fmt(val)) return null;
+                return (
+                  <div key={fieldKey} style={{ marginBottom: 8 }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        color: "var(--subtle, var(--muted))",
+                        marginBottom: 3,
+                      }}
+                    >
+                      {FIELD_LABEL[fieldKey] ?? fieldKey}
+                    </div>
+                    <div style={beforeStyle}>{fmt(before) || <em>(empty)</em>}</div>
+                    <div style={afterStyle}>{fmt(val) || <em>(empty)</em>}</div>
+                  </div>
+                );
+              })}
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <Button
+                  variant={applied ? "selected" : "primary"}
+                  onClick={() => applyFix(unit.id, si, s.fields, drafted.current)}
+                  disabled={busy}
+                >
+                  {applied ? "Applied — apply again" : "Apply this fix"}
+                </Button>
+                {applied && (
+                  <span style={{ ...subtleStyle, color: "var(--success)" }}>
+                    Written into the {unit.kind}. Save the carousel to keep it.
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
         <button
-          onClick={() => setFixes((f) => { const n = { ...f }; delete n[unit.id]; return n; })}
+          onClick={() => {
+            setFixes((f) => { const n = { ...f }; delete n[unit.id]; return n; });
+            setAppliedFixes((a) => a.filter((k) => !k.startsWith(`${unit.id}::`)));
+          }}
           style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", padding: "8px 0 0", fontFamily: "inherit" }}
         >
           Discard these drafts
@@ -367,7 +461,13 @@ export default function VerificationPanel({
   /** The quiet claims a unit recorded but does not raise. */
   function renderQuietToggle(unit: VerifiedUnit) {
     const p = partitionFindings(unit);
-    const hidden = [...p.low, ...p.resolved.filter((c) => effectiveVerdict(c) === "pass")];
+    // Everything that was checked and not contradicted: sourced claims and
+    // unsourced ones alike. None of it is raised, all of it is readable.
+    const hidden = [
+      ...p.resolved.filter((c) => effectiveVerdict(c) === "pass"),
+      ...p.high.filter((c) => !isMajorFinding(c)),
+      ...p.low,
+    ];
     if (hidden.length === 0) return null;
     const showQuiet = quietOpen === unit.id;
     return (
@@ -376,7 +476,7 @@ export default function VerificationPanel({
           onClick={() => setQuietOpen(showQuiet ? null : unit.id)}
           style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", fontFamily: "inherit" }}
         >
-          {showQuiet ? "Hide" : "Show"} {hidden.length} low-risk claim{hidden.length > 1 ? "s" : ""} checked
+          {showQuiet ? "Hide" : "Show"} the {hidden.length} other claim{hidden.length > 1 ? "s" : ""} checked here
           {p.framing.length > 0 &&
             ` (${p.framing.length} framing line${p.framing.length > 1 ? "s" : ""} not checked)`}
         </button>
@@ -411,7 +511,9 @@ export default function VerificationPanel({
         </div>
       );
     }
-    const showFix = unit.claims.some((c) => effectiveVerdict(c) !== "pass") && !!onApplyFix;
+    // A rewrite is only offered against a contradiction. An unsourced claim is
+    // usually correct as written, and rewriting one is churn, not a fix.
+    const showFix = unit.claims.some(isMajorFinding) && !!onApplyFix;
     return (
       <>
         {actionableClaims(unit).map((c) => renderClaim(unit.id, c))}
@@ -436,23 +538,31 @@ export default function VerificationPanel({
       if (!res.ok) {
         // A failed auto-draft must never take over the panel. The manual
         // "Suggest a fix" button is still there, and that is the recovery.
-        if (!opts?.silent) setError(data.error ?? `Could not draft a fix (${res.status})`);
+        if (!opts?.silent) setError(data.error ?? `Could not research this claim (${res.status})`);
         return;
       }
-      setFixes((f) => ({ ...f, [unitId]: { current: data.current, suggestions: data.suggestions } }));
+      setFixes((f) => ({
+        ...f,
+        [unitId]: {
+          current: data.current,
+          suggestions: data.suggestions ?? [],
+          research: data.research,
+        },
+      }));
     } catch {
-      if (!opts?.silent) setError("Could not reach the fix drafter.");
+      if (!opts?.silent) setError("Could not reach the research pass.");
     } finally {
       setDraftingUnits((u) => u.filter((x) => x !== unitId));
     }
   }
 
   /**
-   * Draft fixes for contradicted units as soon as a run lands.
+   * Research contradicted units as soon as a run lands.
    *
-   * Red only. A contradiction is the one verdict that should stop a post, so
-   * having the rewrite ready is worth the call; an unsourced claim is often
-   * fine as written and gets a fix on request instead.
+   * Red only, which is now the only thing the panel raises at all. The second
+   * pass often comes back "supports" and proposes no edit — that outcome is
+   * worth having ready, because it is the difference between the panel telling
+   * you to change a true line and telling you it checked again and it stands.
    */
   async function autoDraftFixes(rec: VerificationRecord) {
     if (!onApplyFix) return;
@@ -502,6 +612,7 @@ export default function VerificationPanel({
     setVerifying(true);
     setError(null);
     setFixes({});
+    setAppliedFixes([]);
     setProgress({
       order: pendingUnitLabels.map((label, i) => ({ id: `planned-${i}`, label })),
       done: {},
@@ -578,16 +689,31 @@ export default function VerificationPanel({
     }
   }
 
-  function applyFix(unitId: string, fields: UnitFields) {
-    onApplyFix?.(unitId, fields);
+  /**
+   * Write one drafted suggestion into the carousel.
+   *
+   * Two things here used to be wrong, and together they read as "apply does
+   * nothing":
+   *
+   *   1. The drafts for the unit were deleted on apply. Since applying also
+   *      makes the unit stale, and a stale unit cannot be re-drafted until the
+   *      carousel is saved, the entire fix box vanished the instant you clicked
+   *      it — including the other option you had not chosen yet. The drafts now
+   *      stay, and the button that was used says so.
+   *   2. Only the suggestion's own fields were written. A second suggestion that
+   *      omitted a field would inherit whatever the first one had left there.
+   *      Both suggestions are written against `current`, so applying either one
+   *      is a full replacement of the unit, not a patch on top of the last click.
+   */
+  function applyFix(unitId: string, index: number, fields: UnitFields, current: UnitFields) {
+    onApplyFix?.(unitId, { ...current, ...fields });
     setAppliedCount((n) => n + 1);
-    // Clear the drafts for this unit — they describe text that no longer
-    // exists. The unit will show as stale until it is re-checked, which is
-    // correct: a fix is an edit, and an edit invalidates the verdict.
-    setFixes((f) => {
-      const next = { ...f };
-      delete next[unitId];
-      return next;
+    setAppliedFixes((a) => {
+      const key = `${unitId}::${index}`;
+      // Only one suggestion per unit is in force at a time — applying the other
+      // overwrites it, so it must not read as though both landed.
+      const kept = a.filter((k) => !k.startsWith(`${unitId}::`));
+      return [...kept, key];
     });
   }
 
@@ -809,7 +935,7 @@ export default function VerificationPanel({
                 </span>
                 {draftingUnits.includes(unit.id) && (
                   <span style={{ ...subtleStyle, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Spinner size={11} /> drafting a fix
+                    <Spinner size={11} /> looking up the research
                   </span>
                 )}
               </div>
@@ -826,10 +952,10 @@ export default function VerificationPanel({
         <div style={groupStyle}>
           <div style={groupHeader}>
             <Label kind="section" style={{ color: "var(--warning)", marginBottom: 0 }}>
-              Worth a look
+              Not checked
             </Label>
             <span style={subtleStyle}>
-              {groups.look.length} unit{groups.look.length > 1 ? "s" : ""} with an unsourced claim
+              {groups.look.length} unit{groups.look.length > 1 ? "s" : ""} the run could not read
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -859,7 +985,9 @@ export default function VerificationPanel({
         {redAction === "block" || amberAction === "block"
           ? `${redAction === "block" ? "Contradicted" : "Unresolved"} claims block download.`
           : "Advisory only. Nothing here blocks your download, the call is yours."}
-        {groups.decide.length > 0 && " Contradicted claims are worth a look before this goes out."}
+        {groups.decide.length > 0
+          ? " Contradicted claims are worth a look before this goes out."
+          : " Only claims the sources actively contradict are raised here."}
       </div>
 
       {error && <div style={errorStyle}>{error}</div>}

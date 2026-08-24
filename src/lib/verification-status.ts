@@ -246,6 +246,30 @@ export function getUnitFields(
 }
 
 /**
+ * Coerce a model-supplied field value to the shape the content actually holds.
+ *
+ * `points` is a string[] in the carousel, and applyUnitFields ignores anything
+ * else — so a drafter that returned "One. Two. Three" as a single string
+ * produced a fix that rendered a diff, accepted the click, and silently changed
+ * nothing. That was the "apply does not work" bug on the takeaway unit. Coerce
+ * at the boundary, where the current shape is known, rather than loosening
+ * applyUnitFields and letting a string reach a field the renderer maps over.
+ */
+export function coerceToCurrentShape(
+  value: string | string[],
+  current: string | string[] | undefined,
+): string | string[] {
+  if (Array.isArray(current) && !Array.isArray(value)) {
+    return value
+      .split(/\r?\n|(?<=[.!?])\s+(?=[A-Z])/)
+      .map((p) => p.replace(/^\s*[-•*\d.)]+\s*/, "").trim())
+      .filter((p) => p.length > 0);
+  }
+  if (!Array.isArray(current) && Array.isArray(value)) return value.join(" ");
+  return value;
+}
+
+/**
  * Return a new CarouselContent with `fields` written into `unitId`.
  *
  * Never mutates the input: the editor holds the previous content for undo, and
@@ -344,27 +368,38 @@ export function complianceClaims(unit: ExtractedUnit): VerifiedClaim[] {
 // ─── Status derivation (pure) ─────────────────────────────────────────────────
 
 /**
+ * Claims the panel RAISES, as opposed to merely records.
+ *
+ * Only a contradiction qualifies: the sources say something incompatible with
+ * what the copy says. That includes banned-term compliance hits, which are
+ * decided locally and are always "fail".
+ *
+ * "No source found" is deliberately NOT a finding. It is the single most common
+ * outcome of a real run — most true, uncontroversial sentences have no paper
+ * attached to them — and raising it turned the panel into a list of things that
+ * were fine. Those claims are still checked, still stored, and still visible
+ * behind the quiet fold; they just do not ask anything of the reader.
+ */
+export function isMajorFinding(claim: VerifiedClaim): boolean {
+  return effectiveVerdict(claim) === "fail";
+}
+
+/**
  * A unit's status from its claims.
  *
- *   red    any effective verdict is "fail"
- *   amber  any "unverifiable", or the unit errored
- *   green  everything checkable passed
+ *   red    the sources contradict something in it
+ *   amber  the check did not complete for this unit
+ *   green  nothing was contradicted
  *
- * A unit with no claims at all is green: there was nothing to check. The UI
- * must label that case explicitly rather than showing a bare tick, or green
- * silently comes to mean two different things.
+ * Note what amber is NOT: an unsourced claim. Amber means "we do not know",
+ * which is true of an errored unit and untrue of a unit we checked and found
+ * nothing against. A unit with no claims at all is green — there was nothing to
+ * check. The UI must label that case explicitly rather than showing a bare tick,
+ * or green silently comes to mean two different things.
  */
 export function deriveUnitStatus(unit: VerifiedUnit): VerificationStatus {
-  // A contradiction is high-consequence by definition, whatever its risk score.
-  if (unit.claims.some((c) => effectiveVerdict(c) === "fail")) return "red";
+  if (unit.claims.some(isMajorFinding)) return "red";
   if (unit.error) return "amber";
-
-  // Only HIGH-risk unresolved claims move the dot. Previously any unresolved
-  // claim did, so a slide whose sole gap was "keep the room cool and dark"
-  // read the same as one citing a journal that may not exist. That made amber
-  // meaningless and the whole panel ignorable.
-  const { high } = partitionFindings(unit);
-  if (high.length > 0) return "amber";
   return "green";
 }
 
@@ -401,10 +436,10 @@ export function summarize(record: VerificationRecord): VerificationSummary {
     overridden += u.claims.filter((c) => c.overriddenTo).length;
 
     const p = partitionFindings(u);
-    // Findings = things worth acting on: contradictions at any risk level,
-    // plus high-risk unresolved claims. Everything else is recorded, not raised.
-    findings += p.high.length + u.claims.filter((c) => effectiveVerdict(c) === "fail").length;
-    quiet += p.low.length;
+    // Findings = contradictions, and only contradictions. Unsourced claims are
+    // counted as quiet: recorded and readable, never raised.
+    findings += u.claims.filter(isMajorFinding).length;
+    quiet += p.high.filter((c) => !isMajorFinding(c)).length + p.low.length;
   }
   return { green, amber, red, total: record.units.length, overridden, findings, quiet };
 }
@@ -453,8 +488,8 @@ export type UnitTriage = "decide" | "look" | "clean";
 /**
  * What a unit demands of the reader.
  *   • decide — a claim the sources contradict. Someone has to change it or own it.
- *   • look   — a high-risk claim with no source behind it, or a unit that errored.
- *   • clean  — sourced, or nothing checkable in it.
+ *   • look   — the check did not complete, so this unit is simply unknown.
+ *   • clean  — checked, nothing contradicted.
  *
  * A stale unit keeps its verdict's triage: the text moved on, but the last thing
  * we knew about it is still the most useful thing to show.
@@ -472,14 +507,12 @@ export function groupUnitsByTriage(record: VerificationRecord): Record<UnitTriag
   return groups;
 }
 
-/** Claims the reader must act on: contradictions first, then high-risk gaps. */
+/** Claims the reader must act on. Contradictions only — see isMajorFinding. */
 export function actionableClaims(unit: VerifiedUnit): VerifiedClaim[] {
-  const fails = unit.claims.filter((c) => effectiveVerdict(c) === "fail");
-  const gaps = partitionFindings(unit).high.filter((c) => effectiveVerdict(c) !== "fail");
-  return [...fails, ...gaps];
+  return unit.claims.filter(isMajorFinding);
 }
 
 /** True when the sources actively contradict something in this unit. */
 export function hasContradiction(unit: VerifiedUnit): boolean {
-  return unit.claims.some((c) => effectiveVerdict(c) === "fail");
+  return unit.claims.some(isMajorFinding);
 }

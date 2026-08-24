@@ -24,6 +24,8 @@ import {
   extractJsonFromToolResponse,
   getUnitFields,
   applyUnitFields,
+  coerceToCurrentShape,
+  isMajorFinding,
   hashUnitText,
   extractCarouselUnits,
   extractEmailUnits,
@@ -185,6 +187,54 @@ describe("extractScriptUnits", () => {
 // ─── unit ↔ field mapping ─────────────────────────────────────────────────────
 // A bug here silently corrupts slide content, so both directions are pinned.
 
+describe("coerceToCurrentShape", () => {
+  // The takeaway "apply did nothing" bug: the drafter returned points as one
+  // string, applyUnitFields ignored anything that was not an array, and the
+  // click silently no-opped after showing a diff.
+  it("splits a string into points when the field holds an array", () => {
+    expect(coerceToCurrentShape("One thing. Two things.", ["a", "b"])).toEqual([
+      "One thing.",
+      "Two things.",
+    ]);
+  });
+
+  it("splits on newlines and strips bullet markers", () => {
+    expect(coerceToCurrentShape("- first\n- second", ["a"])).toEqual(["first", "second"]);
+  });
+
+  it("joins an array back down when the field holds a string", () => {
+    expect(coerceToCurrentShape(["a", "b"], "current")).toBe("a b");
+  });
+
+  it("leaves a matching shape untouched", () => {
+    expect(coerceToCurrentShape("plain", "current")).toBe("plain");
+    expect(coerceToCurrentShape(["x"], ["y"])).toEqual(["x"]);
+  });
+
+  it("survives a takeaway round trip into the content", () => {
+    const base = {
+      hooks: [], slides: [],
+      takeaway: { headline: "TK", points: ["old one", "old two"] },
+    } as never as Parameters<typeof applyUnitFields>[0];
+    const coerced = coerceToCurrentShape("New one. New two.", ["old one", "old two"]);
+    const out = applyUnitFields(base, "takeaway", { points: coerced });
+    expect(out.takeaway?.points).toEqual(["New one.", "New two."]);
+  });
+});
+
+describe("isMajorFinding", () => {
+  it("raises a contradiction and nothing else", () => {
+    expect(isMajorFinding(claim({ verdict: "fail" }))).toBe(true);
+    expect(isMajorFinding(claim({ verdict: "unverifiable" }))).toBe(false);
+    expect(isMajorFinding(claim({ verdict: "pass" }))).toBe(false);
+  });
+
+  it("follows a human override in both directions", () => {
+    expect(isMajorFinding(claim({ verdict: "fail", overriddenTo: "pass" }))).toBe(false);
+    expect(isMajorFinding(claim({ verdict: "unverifiable", overriddenTo: "fail" }))).toBe(true);
+  });
+});
+
 describe("getUnitFields / applyUnitFields", () => {
   const base = {
     hooks: [{ headline: "H", subline: "S", sourceNote: "Based on X, 2019" }],
@@ -290,8 +340,10 @@ describe("deriveUnitStatus", () => {
     expect(deriveUnitStatus(unit({ claims: [claim(), claim({ id: "c2", verdict: "fail" })] }))).toBe("red");
   });
 
-  it("is amber on any unverifiable", () => {
-    expect(deriveUnitStatus(unit({ claims: [claim({ verdict: "unverifiable" })] }))).toBe("amber");
+  it("stays green on an unverifiable claim — only a contradiction is raised", () => {
+    // "No source found" is the ordinary outcome for a true sentence. Amber is
+    // reserved for "we could not check", which is a different thing entirely.
+    expect(deriveUnitStatus(unit({ claims: [claim({ verdict: "unverifiable" })] }))).toBe("green");
   });
 
   it("red beats amber", () => {
@@ -390,11 +442,15 @@ describe("deriveUnitStatus with risk", () => {
     expect(deriveUnitStatus(u)).toBe("green");
   });
 
-  it("goes amber on a high-risk gap", () => {
+  it("stays green on a high-risk gap — unsourced is not contradicted", () => {
     const u = unit({
       claims: [claim({ verdict: "unverifiable", text: "cuts onset by 17 minutes", risk: "high" })],
     });
-    expect(deriveUnitStatus(u)).toBe("amber");
+    expect(deriveUnitStatus(u)).toBe("green");
+  });
+
+  it("is amber only when the check itself did not complete", () => {
+    expect(deriveUnitStatus(unit({ claims: [], error: "timed out" }))).toBe("amber");
   });
 
   it("stays green when every claim is framing", () => {
@@ -429,10 +485,10 @@ describe("summarize reports findings, not raw counts", () => {
       ],
     });
     const s = summarize(r);
-    expect(s.findings).toBe(1); // only the numeric gap
-    expect(s.quiet).toBe(1);    // the cool-room claim
-    expect(s.green).toBe(1);
-    expect(s.amber).toBe(1);
+    expect(s.findings).toBe(0); // nothing is contradicted, so nothing is raised
+    expect(s.quiet).toBe(2);    // the cool-room claim and the numeric gap
+    expect(s.green).toBe(2);
+    expect(s.amber).toBe(0);
   });
 });
 
@@ -503,7 +559,7 @@ describe("summarize", () => {
       ],
     });
     expect(summarize(r)).toEqual({
-      green: 2, amber: 1, red: 0, total: 3, overridden: 1, findings: 1, quiet: 0,
+      green: 3, amber: 0, red: 0, total: 3, overridden: 1, findings: 0, quiet: 1,
     });
   });
 });
@@ -582,7 +638,10 @@ describe("verifyUnit", () => {
     const out = await verifyUnit(u, false);
     expect(out.claims[0].verdict).toBe("unverifiable");
     expect(out.claims[0].reasoning).toMatch(/no source/i);
-    expect(deriveUnitStatus(out)).toBe("amber");
+    // Downgraded to unverifiable, which is recorded and not raised. The point
+    // of the downgrade is that the claim never reads as sourced, not that it
+    // turns the unit amber.
+    expect(deriveUnitStatus(out)).toBe("green");
   });
 
   it("downgrades a pass that has a URL but no supporting quote", async () => {
@@ -776,6 +835,7 @@ describe("triage grouping", () => {
     label: "Slide 3",
     claims: [claim({ id: "y", verdict: "unverifiable", text: "melatonin peaks at 2am" })],
   });
+  const unchecked = unit({ id: "slide-7", label: "Slide 8", claims: [], error: "timed out" });
   const sourced = unit({
     id: "slide-0",
     label: "Slide 1",
@@ -784,15 +844,19 @@ describe("triage grouping", () => {
 
   it("sorts a unit by what it demands of the reader", () => {
     expect(triageUnit(contradicted)).toBe("decide");
-    expect(triageUnit(unsourced)).toBe("look");
+    // Unsourced is clean now: it was checked and nothing contradicted it.
+    expect(triageUnit(unsourced)).toBe("clean");
+    expect(triageUnit(unchecked)).toBe("look");
     expect(triageUnit(sourced)).toBe("clean");
   });
 
   it("groups a mixed record and preserves order within a group", () => {
-    const groups = groupUnitsByTriage(record({ units: [sourced, contradicted, unsourced] }));
+    const groups = groupUnitsByTriage(
+      record({ units: [sourced, contradicted, unsourced, unchecked] }),
+    );
     expect(groups.decide.map((u) => u.id)).toEqual(["caption"]);
-    expect(groups.look.map((u) => u.id)).toEqual(["slide-2"]);
-    expect(groups.clean.map((u) => u.id)).toEqual(["slide-0"]);
+    expect(groups.look.map((u) => u.id)).toEqual(["slide-7"]);
+    expect(groups.clean.map((u) => u.id)).toEqual(["slide-0", "slide-2"]);
   });
 
   it("leaves the decide group empty when nothing is contradicted", () => {
@@ -814,7 +878,7 @@ describe("triage grouping", () => {
     expect(triageUnit(overridden)).toBe("clean");
   });
 
-  it("puts contradictions before unsourced gaps in the actionable list", () => {
+  it("raises contradictions only, leaving unsourced gaps out of the list", () => {
     const mixed = unit({
       claims: [
         claim({ id: "gap", verdict: "unverifiable", text: "a specific 40% figure" }),
@@ -822,7 +886,7 @@ describe("triage grouping", () => {
         claim({ id: "ok", verdict: "pass" }),
       ],
     });
-    expect(actionableClaims(mixed).map((c) => c.id)).toEqual(["bad", "gap"]);
+    expect(actionableClaims(mixed).map((c) => c.id)).toEqual(["bad"]);
   });
 
   it("omits framing lines from the actionable list", () => {
