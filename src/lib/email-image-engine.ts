@@ -1,12 +1,16 @@
-// Email-review image generation — locked to OpenAI GPT Image 2 via fal.
+// Email image generation via fal. Carousel has its own engine
+// (carousel-image-engine.ts).
 //
-// Carousel pipeline still uses Recraft/Ideogram/Flux2 (see carousel-image-engine.ts).
-// Emails use only gpt-image-2 because:
-//   1. Best photorealism for product/lifestyle hero shots
-//   2. Pixel-perfect text rendering (matters when an image carries a tagline)
-//   3. Accepts multiple reference images on the /edit endpoint, so Lunia's
-//      product shot can be passed in for brand consistency (the logo is
-//      deliberately never passed — see api/email-review/generate-image)
+// gpt-image-2 is the DEFAULT, not the only option — see MODEL_SPECS below.
+// It keeps the default because it is the only one wired here that accepts
+// reference images, which is how Lunia's real product silhouette gets into a
+// frame instead of a hallucinated bottle (the logo is deliberately never
+// passed — see api/email-review/generate-image), and because it renders text
+// cleanly when an image has to carry a tagline.
+//
+// What it is NOT best at is looking like a photograph. It has a house look —
+// clean, evenly lit, faintly retouched — that prompt wording cannot fully
+// escape, which is why the model is selectable per block.
 //
 // SIZE HANDLING (the root cause of the old "ragged email layout" bug):
 // GPT Image models only output three native sizes — 1024×1024, 1024×1536,
@@ -30,6 +34,65 @@ export type EmailImageQuality = "low" | "medium" | "high";
 const DEFAULT_QUALITY: EmailImageQuality = "medium";
 
 type Size = { width: number; height: number };
+
+// ─── Image models ───────────────────────────────────────────────────────────
+//
+// This engine was locked to gpt-image-2. That model has a recognisable house
+// look — clean, evenly lit, faintly retouched — which no amount of prompt
+// wording fully escapes, so the choice is exposed rather than hard-coded.
+//
+// Only endpoints VERIFIED against a live call are listed. The carousel engine
+// carries `fal-ai/flux-2/flex`, which returns 404 (see FAL_ENDPOINTS in
+// carousel-image-engine.ts) — a reminder that a slug in a constant is not
+// evidence the endpoint exists.
+export const EMAIL_IMAGE_MODELS = ["gpt-image-2", "flux-2", "seedream-5"] as const;
+export type EmailImageModel = (typeof EMAIL_IMAGE_MODELS)[number];
+
+export const DEFAULT_EMAIL_IMAGE_MODEL: EmailImageModel = "gpt-image-2";
+
+type ModelSpec = {
+  slug: string;
+  /** Endpoint that accepts reference images. Absent means this model cannot be
+   *  conditioned on references here, and a call supplying them falls back to
+   *  gpt-image-2 rather than silently dropping the references — losing the
+   *  brand's real product silhouette is worse than ignoring a model pick. */
+  editSlug?: string;
+  /** gpt-image-2 outputs only three sizes, so it generates at the nearest
+   *  CONTAINING one and the crop below trims. The others accept the exact
+   *  email size, so they are asked for it directly and the crop is a no-op
+   *  re-encode. */
+  sizeFor: (aspect: EmailImageAspect) => Size;
+  /** Only gpt-image-2 takes `quality`; the others reject the unknown field. */
+  usesQuality: boolean;
+};
+
+const MODEL_SPECS: Record<EmailImageModel, ModelSpec> = {
+  "gpt-image-2": {
+    slug: "openai/gpt-image-2",
+    editSlug: "openai/gpt-image-2/edit",
+    sizeFor: nativeSizeFor,
+    usesQuality: true,
+  },
+  "flux-2": {
+    slug: "fal-ai/flux-2",
+    sizeFor: targetSize,
+    usesQuality: false,
+  },
+  "seedream-5": {
+    slug: "fal-ai/bytedance/seedream/v5/lite/text-to-image",
+    sizeFor: targetSize,
+    usesQuality: false,
+  },
+};
+
+/** Unknown / absent model names fall back rather than throwing: the value is
+ *  persisted on a campaign block, and a build that drops a model must not make
+ *  an existing block un-generatable. */
+export function resolveEmailImageModel(v: unknown): EmailImageModel {
+  return typeof v === "string" && (EMAIL_IMAGE_MODELS as readonly string[]).includes(v)
+    ? (v as EmailImageModel)
+    : DEFAULT_EMAIL_IMAGE_MODEL;
+}
 
 /** Exact pixel target for each aspect — single source of truth in brand-tokens. */
 export function targetSize(aspect: EmailImageAspect): Size {
@@ -57,6 +120,8 @@ type GenerateOpts = {
    */
   referenceImageUrls?: string[];
   quality?: EmailImageQuality;
+  /** Which model draws it. Unset = gpt-image-2, what this engine always used. */
+  model?: EmailImageModel;
 };
 
 /**
@@ -70,16 +135,23 @@ export async function generateEmailImage(opts: GenerateOpts): Promise<string> {
   const { prompt, aspect, referenceImageUrls, quality = DEFAULT_QUALITY } = opts;
   const refs = (referenceImageUrls ?? []).filter(Boolean);
 
-  // fal model slug — text-to-image vs edit (with refs)
-  const endpoint = refs.length > 0
-    ? "openai/gpt-image-2/edit"
-    : "openai/gpt-image-2";
+  let model = resolveEmailImageModel(opts.model);
+  // References outrank the model pick. They exist to lock Lunia's real product
+  // silhouette into the frame, and a model with no edit endpoint here would
+  // have to drop them — which produces a hallucinated bottle, the exact
+  // failure the references were added to prevent.
+  if (refs.length > 0 && !MODEL_SPECS[model].editSlug) {
+    console.warn(`[email-image-engine] ${model} has no edit endpoint; using gpt-image-2 for ${refs.length} reference(s)`);
+    model = "gpt-image-2";
+  }
+  const spec = MODEL_SPECS[model];
+  const endpoint = refs.length > 0 && spec.editSlug ? spec.editSlug : spec.slug;
 
   const input: Record<string, unknown> = {
     prompt,
-    image_size: nativeSizeFor(aspect),
-    quality,
+    image_size: spec.sizeFor(aspect),
   };
+  if (spec.usesQuality) input.quality = quality;
   if (refs.length > 0) {
     // GPT Image 2 edit caps refs around ~10; trim defensively.
     input.image_urls = refs.slice(0, 10);

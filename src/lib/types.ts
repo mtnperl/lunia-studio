@@ -895,6 +895,11 @@ export type CampaignBlock = {
    *  "no people", "show the product in use". Persisted on the block, so it
    *  survives a reorder and travels with the block into a snippet. */
   promptInstructions?: string;
+  /** Which model DRAWS this block's picture — distinct from `promptModel`,
+   *  which only picks who writes the words. A bare string rather than the
+   *  engine's union: types.ts is imported by client components and the engine
+   *  is server-only. Validated by resolveEmailImageModel at the route. */
+  imageModel?: string;
   /** kinds "imagetext" / "imagebullets": which side the picture sits on.
    *  Unset is "left". On mobile both stack, image first. */
   imagePosition?: "left" | "right";

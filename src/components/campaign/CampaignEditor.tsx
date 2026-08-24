@@ -2266,6 +2266,7 @@ export default function CampaignEditor({
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
+                        imageModel={b.imageModel}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2315,6 +2316,7 @@ export default function CampaignEditor({
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
+                        imageModel={b.imageModel}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2355,6 +2357,7 @@ export default function CampaignEditor({
                               // the controls four times over.
                               promptModel={b.promptModel}
                               promptInstructions={b.promptInstructions}
+                              imageModel={b.imageModel}
                             />
                           </div>
                         ))}
@@ -2406,6 +2409,7 @@ export default function CampaignEditor({
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
+                        imageModel={b.imageModel}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>

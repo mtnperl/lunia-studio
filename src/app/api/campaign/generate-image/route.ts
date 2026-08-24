@@ -1,6 +1,6 @@
 import { checkRateLimit } from "@/lib/kv";
 import { generateCampaignSlotImage } from "@/lib/campaign-image";
-import type { EmailImageAspect } from "@/lib/email-image-engine";
+import { resolveEmailImageModel, type EmailImageAspect } from "@/lib/email-image-engine";
 
 export const maxDuration = 240;
 
@@ -36,6 +36,10 @@ export async function POST(req: Request) {
       mood: typeof body.mood === "string" ? body.mood : undefined,
       topic: typeof body.topic === "string" ? body.topic.trim() : "",
       role: body.role === "hero" ? "hero" : "secondary",
+      // Unknown names resolve to the default rather than 400ing: the value is
+      // persisted on a block, and a build that drops a model must not make an
+      // existing block un-generatable.
+      model: resolveEmailImageModel(body.imageModel),
     });
 
     return Response.json({ url });

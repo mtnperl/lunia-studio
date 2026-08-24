@@ -3,7 +3,9 @@
 // the three content-tied images at campaign creation (api/campaign/generate).
 import "server-only";
 import { randomUUID } from "crypto";
-import { generateEmailImage, type EmailImageAspect } from "@/lib/email-image-engine";
+import {
+  generateEmailImage, type EmailImageAspect, type EmailImageModel,
+} from "@/lib/email-image-engine";
 import { getMoodById } from "@/lib/carousel-visual-moods";
 import { saveAssetIfNew } from "@/lib/kv";
 import type { AssetMetadata } from "@/lib/types";
@@ -60,6 +62,8 @@ export type CampaignSlotImageOpts = {
   /** For asset-library registration naming only. */
   topic?: string;
   role?: "hero" | "secondary";
+  /** Which model draws it. Unset = the engine's default (gpt-image-2). */
+  model?: EmailImageModel;
 };
 
 /**
@@ -68,7 +72,7 @@ export type CampaignSlotImageOpts = {
  * image in the asset library (fire-and-forget) so the picker can reuse it.
  */
 export async function generateCampaignSlotImage(opts: CampaignSlotImageOpts): Promise<string> {
-  const { prompt, aspect, mood, topic = "", role = "secondary" } = opts;
+  const { prompt, aspect, mood, topic = "", role = "secondary", model } = opts;
 
   const moodBlock = getMoodById(mood)?.styleBlock;
   const moodSuffix = moodBlock ? ` ${moodBlock}.` : "";
@@ -86,6 +90,7 @@ export async function generateCampaignSlotImage(opts: CampaignSlotImageOpts): Pr
     prompt: prompt + moodSuffix + variationBlock + CAMPAIGN_IMAGE_SAFETY_SUFFIX,
     aspect,
     quality: "medium",
+    model,
   });
 
   if (url) {
