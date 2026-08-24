@@ -70,9 +70,26 @@ Email content:
 ${emailContext || topic || "better sleep, calm nights"}`}
 
 Rules:
-- ONE photorealistic lifestyle / atmosphere scene that clearly RELATES to the copy above (a moment, benefit, or feeling it describes). Real people, spaces, and light — editorial, premium DTC-wellness mood.
+- ONE lifestyle / atmosphere scene that clearly RELATES to the copy above (a moment, benefit, or feeling it describes). Real people, spaces, and light.
 - Absolutely NO text, words, signage, logos, product packaging, or supplement bottles in the scene.
-- Two or three vivid sentences: scene, light, palette, mood.
+- Two or three sentences: what is happening, the light, the space.
+
+Write it as a photograph somebody TOOK, not as an image to be rendered. That
+distinction is the whole job here:
+- Describe a specific, ordinary, slightly awkward moment — someone half out of
+  frame, mid-gesture, looking away, caught between two things. Not a pose.
+- Put real life in the room: worn surfaces, a crumpled sheet, a used mug, cables,
+  laundry, the mess of an actual home. An immaculate room reads as a render.
+- Light comes from a nameable source and is uneven — one window, one lamp,
+  a screen, an overcast sky. Let some of the frame fall dark.
+- NEVER use these words. They are the vocabulary of 3D renders and stock, and
+  they are what makes an image look AI-generated: photorealistic, hyperrealistic,
+  ultra-realistic, 8K, 4K, HDR, ultra-detailed, highly detailed, sharp focus,
+  crystal clear, flawless, perfect, pristine, immaculate, stunning, breathtaking,
+  masterpiece, award-winning, professional photography, cinematic lighting,
+  studio lighting, bokeh, golden hour.
+- Do not specify a camera, lens, film stock or grain — that is appended
+  afterwards, and saying it twice makes the model over-apply it.
 - ${role === "hero" ? "This is the HERO image — the strongest, most evocative scene for the email's core message." : "This is a SECONDARY supporting image — a smaller, complementary moment or detail tied to the content."}
 ${currentPrompt ? `- Write something clearly DIFFERENT from the current prompt: ${currentPrompt}` : ""}
 ${userInstructions

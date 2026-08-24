@@ -8,10 +8,40 @@ import { getMoodById } from "@/lib/carousel-visual-moods";
 import { saveAssetIfNew } from "@/lib/kv";
 import type { AssetMetadata } from "@/lib/types";
 
-// No text, no product, no logo — keeps generated lifestyle images sharp and
-// on-brief. Bottle / logo imagery always comes from uploaded assets instead.
-export const CAMPAIGN_IMAGE_SAFETY_SUFFIX =
-  " Editorial wellness lifestyle photography, photorealistic, natural light, calm and warm. No text, no words, no signage, no logos, no product packaging, no supplement bottles. Sharp focus, high detail.";
+// Appended to every campaign image prompt. Two jobs, and they are different:
+// the LOOK, and the hard constraints.
+//
+// The look block is written in CAPTURE language — a camera, a lens, a film
+// stock, and the imperfections a real frame has. It used to say
+// "photorealistic ... Sharp focus, high detail", which is the single biggest
+// reason these images read as AI. Those words sit on 3D renders and
+// over-processed stock in training data, so asking for them pulls the model
+// toward the plastic, over-rendered look rather than away from it. A real
+// photograph is the opposite: shallow and SELECTIVE focus, grain, skin you can
+// see the texture of, light that is uneven because nobody fixed it.
+//
+// Note the offline prompt writer already had a test asserting it never says
+// "photorealistic" (campaign-image-prompt.test.ts). This constant appended it
+// to every image afterwards, so that test was guarding a door with no wall.
+//
+// The constraints are structural, not stylistic: text and packaging render
+// badly at email sizes, and bottle / logo imagery always comes from uploaded
+// assets instead.
+export const CAMPAIGN_IMAGE_LOOK =
+  " Shot on a 35mm full-frame camera with a 50mm lens at f/2, available light only." +
+  " Fine 35mm film grain, natural skin texture with visible pores and stray hair," +
+  " slight lens vignetting, mixed and slightly uneven colour temperature." +
+  " Candid and unposed, caught mid-moment rather than arranged for the camera;" +
+  " imperfect composition, subject off-centre, ordinary lived-in surroundings" +
+  " with real clutter. Shallow depth of field, focus falling off naturally" +
+  " outside the subject. Muted natural colour, no colour grading, no retouching.";
+
+export const CAMPAIGN_IMAGE_CONSTRAINTS =
+  " No text, no words, no signage, no logos, no product packaging, no supplement bottles.";
+
+/** What every generated campaign image gets. Kept as one exported string so
+ *  the A/B harness and the callers below cannot drift apart. */
+export const CAMPAIGN_IMAGE_SAFETY_SUFFIX = CAMPAIGN_IMAGE_LOOK + CAMPAIGN_IMAGE_CONSTRAINTS;
 
 const VARIATION_ANGLES = [
   "fresh framing this take, the subject slightly rotated and negative space rebalanced",
