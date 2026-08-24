@@ -149,6 +149,7 @@ const RATE_LIMITS: Record<string, number> = {
   verify: 40,     // fact verification — each run is a burst of grounded Opus calls
   "verify-fix": 60,      // one Opus call per drafted rewrite, no web searches
   "verify-override": 200, // a human overruling the checker: a Redis write, zero model spend
+  "choose-asset": 120,   // picking a library image per block — cheap, and clicked per block
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -342,6 +343,19 @@ export async function saveAssetIfNew(asset: AssetMetadata): Promise<boolean> {
   const all = await getAssets();
   if (all.some((a) => a.url === asset.url)) return false;
   all.unshift(asset);
+  await writeCollection(ASSETS_KEY, all);
+  return true;
+}
+
+/** Attach a caption to an asset already in the library. Used by the backfill
+ *  over images uploaded before captioning existed; a missing id is a no-op
+ *  rather than an error, since the library can be edited under a long-running
+ *  backfill. Returns whether anything changed. */
+export async function setAssetDescription(id: string, description: string): Promise<boolean> {
+  const all = await getAssets();
+  const target = all.find((a) => a.id === id);
+  if (!target) return false;
+  target.description = description;
   await writeCollection(ASSETS_KEY, all);
   return true;
 }

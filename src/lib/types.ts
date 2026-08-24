@@ -687,6 +687,13 @@ export type AssetMetadata = {
   type: string;        // MIME type
   assetType: AssetType; // usage classification
   uploadedAt: string;
+  /** What is actually IN the picture, written by a vision call at upload.
+   *  This is the only thing the model reads when it picks an image for a
+   *  block: a filename like IMG_4821.jpg says nothing, so an asset without a
+   *  description is effectively invisible to `/api/campaign/choose-asset`.
+   *  Optional because captioning is best-effort — a failed or skipped caption
+   *  (SVG, no API key) must never cost you the upload. */
+  description?: string;
   /** Optional provenance — set on auto-registered carousel images so the
    *  picker can show context (topic + slide role). */
   source?: {

@@ -48,7 +48,10 @@ export default function AssetPicker({
                 <button
                   key={a.id}
                   onClick={() => onPick(a)}
-                  title={`${a.name} · ${a.assetType}`}
+                  // The description is what the model reads when it picks for
+                  // you; showing it here means the two of you are choosing
+                  // from the same information.
+                  title={[`${a.name} · ${a.assetType}`, a.description].filter(Boolean).join("\n\n")}
                   style={{
                     padding: 3, borderRadius: 6, cursor: "pointer",
                     border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`,

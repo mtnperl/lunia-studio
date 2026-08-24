@@ -380,9 +380,24 @@ export default function AssetsView() {
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>
                   {a.name}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: a.description ? 6 : 10 }}>
                   {formatDate(a.uploadedAt)}
                 </div>
+                {/* What the model reads when it picks an image for an email
+                    block. Shown so the library is legible to you too: a photo
+                    the chooser keeps ignoring usually has a caption that
+                    describes something other than what you see. */}
+                {a.description && (
+                  <div
+                    title={a.description}
+                    style={{
+                      fontSize: 11, color: "var(--subtle)", lineHeight: 1.45, marginBottom: 10,
+                      display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+                    }}
+                  >
+                    {a.description}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 6 }}>
                   <a
                     href={a.url}

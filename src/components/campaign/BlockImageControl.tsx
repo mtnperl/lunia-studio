@@ -80,6 +80,11 @@ export default function BlockImageControl({
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [rewriting, setRewriting] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  /** Why the model picked (or declined to pick) the last library image.
+   *  Shown once, under the buttons — a choice you cannot see the reasoning
+   *  for is just an image appearing by itself. */
+  const [choiceNote, setChoiceNote] = useState<string | null>(null);
 
   /** Ask the model for a scene that actually depicts this block's copy. The
    *  offline writer composes from the copy verbatim, which keeps it tied to
@@ -115,6 +120,49 @@ export default function BlockImageControl({
       setRewriting(false);
     }
   }
+
+  /** Ask the model to pick a picture you already own rather than draw a new
+   *  one. Same tier as the rewrite — a block set to Best gets Best for both,
+   *  which is the setting the user already reasoned about. Generation is
+   *  untouched and sits one button along; this only ever sets the image URL.
+   */
+  async function chooseFromLibrary() {
+    if (choosing) return;
+    setChoosing(true);
+    setError(null);
+    setChoiceNote(null);
+    try {
+      const res = await fetch("/api/campaign/choose-asset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          focus: blockText ?? suggestPrompt(),
+          emailContext,
+          model: promptModel,
+          instructions: promptInstructions,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not choose an image");
+        return;
+      }
+      if (!data.url) {
+        // Not an error: the model looked and declined. Say so plainly so the
+        // user knows the click did something and can generate instead.
+        setChoiceNote(data.reason ? `No fit — ${data.reason}` : "Nothing in the library fits this block.");
+        return;
+      }
+      onChange({ imageUrl: data.url as string });
+      setChoiceNote(data.reason ? `Picked — ${data.reason}` : null);
+    } catch {
+      setError("Network error, please try again");
+    } finally {
+      setChoosing(false);
+    }
+  }
+
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -317,6 +365,16 @@ export default function BlockImageControl({
         </button>
         <button
           type="button"
+          onClick={chooseFromLibrary}
+          disabled={choosing}
+          style={{ ...btn, opacity: choosing ? 0.5 : 1, cursor: choosing ? "wait" : "pointer" }}
+          title="Let the model pick an image from your library that matches this block, instead of generating a new one"
+        >
+          {choosing && <Spinner size={9} color="var(--text)" />}
+          {choosing ? "Choosing…" : "✨ Choose from library"}
+        </button>
+        <button
+          type="button"
           onClick={generate}
           disabled={busy || !effectivePrompt}
           style={btn}
@@ -332,6 +390,7 @@ export default function BlockImageControl({
         )}
       </div>
       {error && <div style={{ fontSize: 11, color: "var(--error)" }}>{error}</div>}
+      {choiceNote && <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.45 }}>{choiceNote}</div>}
       {pickerOpen && (
         <AssetPicker
           onPick={(asset) => {

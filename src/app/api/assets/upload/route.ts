@@ -1,7 +1,12 @@
 import { put } from "@vercel/blob";
 import { saveAsset } from "@/lib/kv";
 import { AssetType } from "@/lib/types";
+import { describeAsset } from "@/lib/asset-caption";
 import { randomUUID } from "crypto";
+
+// The caption call adds a few seconds to an upload that used to be a single
+// blob write, which is comfortably past the default function ceiling.
+export const maxDuration = 60;
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
@@ -43,6 +48,14 @@ export async function POST(req: Request) {
       access: "public",
     });
 
+    // Caption it now, while we are already paying for a round trip, so the
+    // library is searchable by the model from the moment it lands. Awaited
+    // rather than fired-and-forgotten: this runs in a serverless function,
+    // which stops executing once the response is returned, so a floating
+    // promise here would be killed roughly whenever it felt like it. The
+    // helper swallows its own failures, so this cannot fail the upload.
+    const description = await describeAsset({ url: blob.url, type: file.type, name: file.name });
+
     const id = randomUUID();
     await saveAsset({
       id,
@@ -51,9 +64,10 @@ export async function POST(req: Request) {
       type: file.type,
       assetType,
       uploadedAt: new Date().toISOString(),
+      ...(description ? { description } : {}),
     });
 
-    return Response.json({ id, url: blob.url, assetType });
+    return Response.json({ id, url: blob.url, assetType, description });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[api/assets/upload]", message);
