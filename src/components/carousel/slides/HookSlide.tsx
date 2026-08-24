@@ -5,7 +5,7 @@ import LuniaLogo from '@/components/carousel/shared/LuniaLogo';
 import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle, CarouselStylePreset, HookHeadlineWeight } from '@/lib/types';
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
-import { BRAND_FONT_FAMILY, FP_SANS, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
+import { BRAND_FONT_FAMILY, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -147,22 +147,35 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
               whose post this is. Uppercase is applied here rather than trusted
               to the copy: hook headlines arrive uppercase from the generator,
               but a hand-edited one would otherwise break the treatment. */}
+          {/* Weight 300, which is Inter LIGHT and the thinnest cut actually
+              loaded. Inter's true Thin (100) and ExtraLight (200) are not in
+              INTER_WEIGHTS on purpose: brand-tokens records that 200 was pulled
+              because it was never fetched for headless renders, so the browser
+              synthesised it and the preview stopped matching the export. Asking
+              for 100 here would reintroduce exactly that drift.
+
+              Light uppercase needs air, so the tracking goes positive. At 700
+              it was -0.015em to stop bold caps crowding; at 300 the opposite
+              problem applies and tight tracking reads as a smudge. */}
           <div style={{
             fontFamily: BRAND_FONT_FAMILY,
-            fontWeight: 700,
+            fontWeight: 300,
             fontSize: reels ? Math.round(FP_TYPE.coverHeadline * 1.08) : FP_TYPE.coverHeadline,
-            lineHeight: 1.08,
-            letterSpacing: '-0.015em',
+            lineHeight: 1.12,
+            letterSpacing: '0.01em',
             textTransform: 'uppercase',
             color: FP_COLORS.paper,
             textAlign: 'center',
           }}>
             {headline}
           </div>
+          {/* The kicker is Inter too. "Only the hook slide in Inter" means the
+              whole slide, and a 600-weight Archivo kicker under a 300-weight
+              Inter headline would outweigh the thing it sits beneath. */}
           {showCitationBars && sourceNote && (
             <div style={{
-              fontFamily: FP_SANS,
-              fontWeight: 600,
+              fontFamily: BRAND_FONT_FAMILY,
+              fontWeight: 400,
               fontSize: FP_TYPE.coverKicker,
               letterSpacing: '0.19em',
               textTransform: 'uppercase',
