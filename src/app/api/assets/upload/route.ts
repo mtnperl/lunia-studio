@@ -10,7 +10,7 @@ export const maxDuration = 60;
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
-const VALID_ASSET_TYPES: AssetType[] = ["logo", "carousel-style", "product-image", "other"];
+const VALID_ASSET_TYPES: AssetType[] = ["logo", "carousel-style", "product-image", "lifestyle", "gen-z", "other"];
 
 export async function POST(req: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {

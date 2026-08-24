@@ -668,6 +668,15 @@ export type AssetType =
   | "logo"
   | "carousel-style"
   | "product-image"
+  /** Hand-picked lifestyle photography — people, rooms, light, moments. The
+   *  everyday stock the email chooser reaches for when a block is about a
+   *  feeling or a routine rather than the product itself. */
+  | "lifestyle"
+  /** Younger-skewing imagery: phone-first framing, street and social settings,
+   *  bolder colour. Separated from `lifestyle` because the two are rarely
+   *  interchangeable in one email — a campaign is pitched at one audience or
+   *  the other, and mixing them reads as a stock-photo grab bag. */
+  | "gen-z"
   | "other"
   /** Auto-registered when a carousel is saved. Carries lifestyle / editorial
    *  images that the carousel produced (hooks + content backgrounds), so the

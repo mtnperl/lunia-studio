@@ -13,6 +13,7 @@
 import { useRef, useState } from "react";
 import { Spinner } from "./Loaders";
 import AssetPicker from "./AssetPicker";
+import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 
 /** Model tiers offered per block. Tiers rather than raw ids — see the
  *  `promptModel` note on CampaignBlock for why the id must not be persisted. */
@@ -172,9 +173,29 @@ export default function BlockImageControl({
   async function uploadFile(file: File) {
     setUploading(true);
     setError(null);
+    setChoiceNote(null);
     try {
+      // A photo straight off a phone is usually past the limit, and the
+      // failure it used to produce ("File too large") asked you to go and
+      // resize it yourself for a picture that ends up a few hundred pixels
+      // wide in an email. Shrink it here instead.
+      let upload: Blob = file;
+      let filename = file.name;
+      if (needsShrinking(file)) {
+        const shrunk = await shrinkForUpload(file);
+        if (shrunk.blob.size < file.size) {
+          upload = shrunk.blob;
+          filename = shrunk.name;
+          setChoiceNote(`${fmtSize(file.size)} photo resized to ${fmtSize(shrunk.blob.size)} before upload.`);
+        }
+        if (upload.size > MAX_UPLOAD_BYTES) {
+          setError(`Could not get this under ${fmtSize(MAX_UPLOAD_BYTES)} (best was ${fmtSize(upload.size)}). Try exporting it smaller.`);
+          return;
+        }
+      }
+
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", upload, filename);
       const res = await fetch("/api/campaign/upload-temp-image", { method: "POST", body });
       const data = await res.json();
       if (!res.ok || !data.url) {

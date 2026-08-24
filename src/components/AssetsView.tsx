@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
+import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 
 const LOADER_LINES = [
   "UPLOADING SLIDE IMAGES",
@@ -72,15 +73,46 @@ function RetroLoader({ tick }: { tick: number }) {
   );
 }
 
-const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string }[] = [
-  { value: "logo",                label: "Logo",              description: "Brand logo or wordmark",            color: "#1e7a8a" },
-  { value: "carousel-style",      label: "Carousel Style",    description: "Reference layout for generation",   color: "#7c3aed" },
-  { value: "product-image",       label: "Product Image",     description: "Product photos",                    color: "#b45309" },
-  { value: "other",               label: "Other",             description: "General brand asset",               color: "#4a5568" },
+// `uploadable: false` marks the categories nothing can be uploaded INTO —
+// they are stamped by the app when a generated image registers itself. They
+// still need a label and a colour, because the library groups by category and
+// an unnamed section reads as a bug.
+const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string; uploadable: boolean }[] = [
+  { value: "lifestyle",           label: "Lifestyle",         description: "People, rooms, light, moments",     color: "#3f6f52", uploadable: true },
+  { value: "gen-z",               label: "Gen Z",             description: "Phone-first, social, bolder",       color: "#9d4670", uploadable: true },
+  { value: "product-image",       label: "Product Image",     description: "Product photos",                    color: "#b45309", uploadable: true },
+  { value: "logo",                label: "Logo",              description: "Brand logo or wordmark",            color: "#1e7a8a", uploadable: true },
+  { value: "carousel-style",      label: "Carousel Style",    description: "Reference layout for generation",   color: "#7c3aed", uploadable: true },
+  { value: "other",               label: "Other",             description: "General brand asset",               color: "#4a5568", uploadable: true },
+  { value: "email-generated",     label: "From emails",       description: "Generated in the email editor",     color: "#4a5568", uploadable: false },
+  { value: "carousel-generated",  label: "From carousels",    description: "Generated for a carousel",          color: "#4a5568", uploadable: false },
+]
+
+const UPLOADABLE_TYPES = ASSET_TYPES.filter((t) => t.uploadable)
+
+/** The library's shelves, in the order they read. Uploaded categories first —
+ *  those are the ones you curated — then the generated pools, which are
+ *  larger and less interesting to browse. The final catch-all exists so an
+ *  asset with an unrecognised type (an older record, a future category) is
+ *  still shown rather than silently dropped from the page. */
+const ASSET_SECTIONS: { key: string; label: string; color: string; match: (t: AssetType | undefined) => boolean }[] = [
+  ...ASSET_TYPES.map((t) => ({
+    key: t.value,
+    label: t.label,
+    color: t.color,
+    match: (v: AssetType | undefined) => v === t.value,
+  })),
+  {
+    key: "uncategorised",
+    label: "Uncategorised",
+    color: "#4a5568",
+    match: (v: AssetType | undefined) => !ASSET_TYPES.some((t) => t.value === v),
+  },
 ];
 
 function TypeBadge({ assetType }: { assetType?: AssetType }) {
-  const t = ASSET_TYPES.find((a) => a.value === assetType) ?? ASSET_TYPES[3];
+  const t = ASSET_TYPES.find((a) => a.value === assetType)
+    ?? ASSET_TYPES.find((a) => a.value === "other")!;
   return (
     <span style={{
       display: "inline-block",
@@ -104,6 +136,9 @@ export default function AssetsView() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /** Set when a file was too big and got re-encoded, so the size in the
+   *  library not matching the file on disk is explained rather than mysterious. */
+  const [uploadNote, setUploadNote] = useState<string | null>(null);
   const [pendingType, setPendingType] = useState<AssetType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -168,8 +203,32 @@ export default function AssetsView() {
   async function doUpload(file: File, assetType: AssetType) {
     setUploading(true);
     setUploadError(null);
+    setUploadNote(null);
     const formData = new FormData();
-    formData.append("file", file);
+
+    // A camera-resolution photo is routinely 8–12 MB, which used to come back
+    // as a flat "File too large. Maximum size is 5 MB." and leave you to find
+    // an image editor. Shrink it here instead — the ceiling that actually
+    // bites is Vercel's 4.5 MB request body, below our own 5 MB check, so a
+    // file between the two would fail at the platform before the route ever
+    // saw it.
+    let upload: Blob = file;
+    let filename = file.name;
+    if (needsShrinking(file)) {
+      const shrunk = await shrinkForUpload(file);
+      if (shrunk.blob.size < file.size) {
+        upload = shrunk.blob;
+        filename = shrunk.name;
+        setUploadNote(`${file.name} was ${fmtSize(file.size)} — resized to ${fmtSize(shrunk.blob.size)} before upload.`);
+      }
+      if (upload.size > MAX_UPLOAD_BYTES) {
+        setUploadError(`Could not get ${file.name} under ${fmtSize(MAX_UPLOAD_BYTES)} (best was ${fmtSize(upload.size)}). Try exporting it smaller.`);
+        setUploading(false);
+        return;
+      }
+    }
+
+    formData.append("file", upload, filename);
     formData.append("assetType", assetType);
     try {
       const res = await fetch("/api/assets/upload", { method: "POST", body: formData });
@@ -296,8 +355,8 @@ export default function AssetsView() {
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
           Upload as
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-          {ASSET_TYPES.map((t) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
+          {UPLOADABLE_TYPES.map((t) => (
             <button
               key={t.value}
               onClick={() => selectType(t.value)}
@@ -339,6 +398,12 @@ export default function AssetsView() {
         </div>
       )}
 
+      {uploadNote && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--muted)" }}>
+          {uploadNote}
+        </div>
+      )}
+
       {/* Carousel style notice */}
       {styleCount > 0 && (
         <div style={{ background: "#f5f0ff", border: "1px solid #c4b5fd", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#5b21b6" }}>
@@ -355,8 +420,23 @@ export default function AssetsView() {
           <div style={{ fontSize: 13 }}>Upload tagged images to use as references during carousel generation.</div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
-          {assets.map((a) => (
+        // Grouped by category rather than one flat wall of images. With
+        // Lifestyle and Gen Z as separate shelves the library is browsable by
+        // the thing you are actually looking for; a mixed grid made you read
+        // every badge. Empty categories render nothing at all.
+        ASSET_SECTIONS.map((section) => {
+          const group = assets.filter((a) => section.match(a.assetType));
+          if (group.length === 0) return null;
+          return (
+            <div key={section.key} style={{ marginBottom: 34 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: section.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {section.label}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--subtle)" }}>{group.length}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
+          {group.map((a) => (
             <div
               key={a.id}
               style={{
@@ -417,7 +497,10 @@ export default function AssetsView() {
               </div>
             </div>
           ))}
-        </div>
+              </div>
+            </div>
+          );
+        })
       )}
 
       {/* ─── Carousel Templates ─────────────────────────────────────────────── */}
