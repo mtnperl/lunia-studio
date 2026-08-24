@@ -886,6 +886,15 @@ export type CampaignBlock = {
   /** The prompt that produced `imageUrl`, kept so regenerating is one click
    *  and so the user can edit it rather than retyping. */
   imagePrompt?: string;
+  /** Which model tier rewrites this block's image prompt. Tiers, not raw model
+   *  ids: the ids move, and a campaign lives in an un-migratable blob, so a
+   *  saved id would eventually name a model that no longer exists.
+   *  Unset = "craft", the tier the endpoint has always used. */
+  promptModel?: "draft" | "craft" | "content";
+  /** Standing instructions for this block's prompt rewrites — "shot on film",
+   *  "no people", "show the product in use". Persisted on the block, so it
+   *  survives a reorder and travels with the block into a snippet. */
+  promptInstructions?: string;
   /** kinds "imagetext" / "imagebullets": which side the picture sits on.
    *  Unset is "left". On mobile both stack, image first. */
   imagePosition?: "left" | "right";
@@ -987,6 +996,16 @@ export type CampaignContent = {
     url: string;
     style?: "cream" | "navy";
     heroStyle?: "cream" | "navy";
+    /** Explicit CTA colour, as a brand ROLE. Overrides `style`/`heroStyle` and
+     *  applies on BOTH themes — the cream theme forces navy when this is
+     *  unset, which is why the colour could not always be changed. The label
+     *  ink is derived from the chosen ground by measured contrast, so no role
+     *  can produce an unreadable button.
+     *
+     *  `heroBgRole` falls back to `bgRole`, which falls back to the old
+     *  style-based behaviour, so unset renders exactly as before. */
+    bgRole?: BrandColorRole;
+    heroBgRole?: BrandColorRole;
     showOnHero?: boolean;
     /** Position of the CTA pill over the hero image, as percentages of the
      *  hero. BOTH unset means "the original bottom-centre placement", and the

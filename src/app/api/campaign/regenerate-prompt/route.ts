@@ -1,7 +1,27 @@
-import { createContentMessage, extractText, DRAFT_MAX_TOKENS_SHORT, CRAFT_MODEL } from "@/lib/anthropic";
+import {
+  createContentMessage, extractText, DRAFT_MAX_TOKENS_SHORT,
+  CRAFT_MODEL, DRAFT_MODEL, CONTENT_MODEL,
+} from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
+
+/** Tier -> model. The client sends a TIER, never a model id: ids move, and the
+ *  tier a block was set to is stored in a campaign blob that has no migration
+ *  path. An unknown or absent tier falls back to craft, which is what this
+ *  endpoint used before the chooser existed. */
+const MODEL_TIERS = {
+  draft: DRAFT_MODEL,
+  craft: CRAFT_MODEL,
+  content: CONTENT_MODEL,
+} as const;
+type ModelTier = keyof typeof MODEL_TIERS;
+
+function resolveModel(tier: unknown): string {
+  return typeof tier === "string" && tier in MODEL_TIERS
+    ? MODEL_TIERS[tier as ModelTier]
+    : CRAFT_MODEL;
+}
 
 /** Writes one fresh gpt-image-2 prompt for a campaign image slot. Lifestyle
  *  scene only — text / logo / bottle are excluded so the result stays sharp. */
@@ -27,6 +47,10 @@ export async function POST(req: Request) {
     // outranks the email-wide context: an image next to "we publish research
     // on Instagram" should show a phone, not the brand's default bedroom.
     const focus: string = (body.focus ?? "").slice(0, 600);
+    // Standing instructions the user set on this block. Capped like every
+    // other free-text field here so a paste cannot blow out the request.
+    const userInstructions: string = (body.instructions ?? "").slice(0, 600).trim();
+    const model = resolveModel(body.model);
 
     const instructions = `You write a single image-generation prompt for ONE image in a Lunia Life (sleep-wellness DTC) marketing email.
 
@@ -51,14 +75,23 @@ Rules:
 - Two or three vivid sentences: scene, light, palette, mood.
 - ${role === "hero" ? "This is the HERO image — the strongest, most evocative scene for the email's core message." : "This is a SECONDARY supporting image — a smaller, complementary moment or detail tied to the content."}
 ${currentPrompt ? `- Write something clearly DIFFERENT from the current prompt: ${currentPrompt}` : ""}
+${userInstructions
+  ? `
+The user has standing instructions for this image. Follow them wherever they
+do not contradict the rules above — the "no text, words, logos or packaging"
+rule is the one thing they cannot override, because that constraint exists to
+keep the render sharp rather than to express a preference:
+${userInstructions}`
+  : ""}
 
 Output ONLY the new prompt text — no quotes, no preamble, no explanation.`;
 
     const msg = await createContentMessage({
-      // Raised a tier deliberately: a weak prompt here buys a weak IMAGE, and the
-    // image costs more than the prompt that asked for it. Generic results
-    // (a social-media block getting a calm bedroom) were the symptom.
-    model: CRAFT_MODEL,
+      // Defaults a tier above draft deliberately: a weak prompt here buys a
+      // weak IMAGE, and the image costs more than the prompt that asked for
+      // it. Generic results (a social-media block getting a calm bedroom)
+      // were the symptom. The block can raise or lower it per block.
+      model,
       max_tokens: DRAFT_MAX_TOKENS_SHORT,
       messages: [{ role: "user", content: instructions }],
     });

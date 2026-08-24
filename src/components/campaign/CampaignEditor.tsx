@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
-import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS } from "@/lib/campaign-theme";
+import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS, BRAND_ROLE_HEX } from "@/lib/campaign-theme";
 import BlockImageControl from "./BlockImageControl";
 import InlineStyleToolbar from "./InlineStyleToolbar";
 import { useAssets, pickSampleImageUrl } from "./useAssets";
@@ -2264,6 +2264,9 @@ export default function CampaignEditor({
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
+                        promptModel={b.promptModel}
+                        promptInstructions={b.promptInstructions}
+                        onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
                   )}
@@ -2310,6 +2313,9 @@ export default function CampaignEditor({
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
+                        promptModel={b.promptModel}
+                        promptInstructions={b.promptInstructions}
+                        onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
                   )}
@@ -2343,6 +2349,12 @@ export default function CampaignEditor({
                               blockText={blockOwnText({ kind: "grid", gridCells: [c] })}
                               emailContext={emailImageContext(content).copy?.join(" ")}
                               onChange={(patch) => setCell(i, patch)}
+                              // Inherits, but does not own: no onSettingsChange,
+                              // so the cell honours the block's model and
+                              // instructions without rendering its own copy of
+                              // the controls four times over.
+                              promptModel={b.promptModel}
+                              promptInstructions={b.promptInstructions}
                             />
                           </div>
                         ))}
@@ -2392,6 +2404,9 @@ export default function CampaignEditor({
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
                         onChange={(patch) => updateBlock(b.id, patch)}
+                        promptModel={b.promptModel}
+                        promptInstructions={b.promptInstructions}
+                        onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
                   )}
@@ -2767,22 +2782,72 @@ export default function CampaignEditor({
           <input type="text" value={content.cta.url}
             onChange={(e) => patch({ cta: { ...latestContent.current.cta, url: e.target.value } })}
             style={{ ...input, marginBottom: 8 }} />
-          {/* Bottom button and hero overlay styled independently.
-              On the cream theme both collapse to the handbook treatment
-              (ivory on Rich Navy), because a cream pill on an ivory ground is
-              invisible. The controls are disabled and say why rather than
-              silently ignoring the pick, and cta.style is left untouched so
-              switching back to Navy restores the choice. */}
-          {content.theme === "cream" && (
+          {/* Colour. An explicit brand role always wins, on BOTH themes —
+              this is the control that used to be disabled on cream, where the
+              CTA was forced navy, so picking a colour and watching nothing
+              happen was the documented behaviour rather than a bug.
+              "Theme" clears the role and restores exactly that old behaviour,
+              so nothing already saved moved. The label ink is derived from the
+              chosen ground by measured contrast, which is why every role can
+              be offered without any of them being unreadable. */}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 10 }}>
+            {([
+              { key: "bgRole" as const, label: "Button colour", fallback: undefined },
+              { key: "heroBgRole" as const, label: "Hero overlay colour", fallback: content.cta.bgRole },
+            ]).map(({ key, label, fallback }) => {
+              const active = content.cta[key];
+              return (
+                <div key={key}>
+                  <label style={fieldLabel}>{label}</label>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => patch({ cta: { ...latestContent.current.cta, [key]: undefined } })}
+                      title={
+                        key === "heroBgRole" && fallback
+                          ? "Follow the button colour above"
+                          : "Follow the email theme, as it always has"
+                      }
+                      style={{
+                        ...miniBtn(!active), fontSize: 11, padding: "3px 8px",
+                        letterSpacing: 0, textTransform: "none",
+                      }}
+                    >{key === "heroBgRole" && fallback ? "Match button" : "Theme"}</button>
+                    {BRAND_COLOR_ROLES.map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => patch({ cta: { ...latestContent.current.cta, [key]: role } })}
+                        title={BRAND_ROLE_LABELS[role]}
+                        aria-label={BRAND_ROLE_LABELS[role]}
+                        aria-pressed={active === role}
+                        style={{
+                          width: 22, height: 22, padding: 0, borderRadius: 5, cursor: "pointer",
+                          background: BRAND_ROLE_HEX[role],
+                          border: active === role ? "2px solid var(--accent)" : "1px solid var(--border)",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* The cream/navy pair below still drives the button whenever no
+              colour role is set, which is every campaign saved before the
+              roles existed. Once a role IS set it is what renders, so the pair
+              says so rather than sitting there looking live. */}
+          {(content.cta.bgRole || content.cta.heroBgRole) && (
             <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
-              On the cream theme the CTA is always navy, for contrast. Your saved
-              choice is kept and comes back if you switch to Navy.
+              A colour is set above, so it is what renders. The Cream/Navy pair
+              below applies only where the colour is left on Theme.
             </div>
           )}
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", opacity: content.theme === "cream" ? 0.45 : 1 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", opacity: content.cta.bgRole ? 0.45 : 1 }}>
             <div>
               <label style={fieldLabel}>Bottom button</label>
-              <div style={{ ...segWrap, pointerEvents: content.theme === "cream" ? "none" : "auto" }}>
+              <div style={{ ...segWrap, pointerEvents: content.cta.bgRole ? "none" : "auto" }}>
                 <SegButton
                   active={(content.cta.style ?? "cream") === "cream"}
                   onClick={() => patch({ cta: { ...latestContent.current.cta, style: "cream" } })}
@@ -2798,7 +2863,7 @@ export default function CampaignEditor({
             </div>
             <div>
               <label style={fieldLabel}>Hero overlay</label>
-              <div style={{ ...segWrap, opacity: content.cta.showOnHero === false ? 0.4 : 1, pointerEvents: content.theme === "cream" ? "none" : "auto" }}>
+              <div style={{ ...segWrap, opacity: content.cta.showOnHero === false ? 0.4 : 1, pointerEvents: (content.cta.heroBgRole ?? content.cta.bgRole) ? "none" : "auto" }}>
                 <SegButton
                   active={(content.cta.heroStyle ?? content.cta.style ?? "cream") === "cream"}
                   onClick={() => patch({ cta: { ...latestContent.current.cta, heroStyle: "cream" } })}

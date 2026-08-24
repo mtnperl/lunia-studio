@@ -138,11 +138,35 @@ export function resolveTheme(id: CampaignContent["theme"]): CampaignTheme {
 export function resolveCta(
   style: "cream" | "navy" | undefined,
   theme: CampaignTheme,
+  bgRole?: BrandColorRole,
 ): { bg: string; fg: string } {
+  // An explicit role wins, on BOTH themes. That is the whole point of it: the
+  // cream theme used to force navy and the editor disabled the control, so a
+  // CTA colour was something you could pick and then watch be ignored.
+  //
+  // No legibility substitution here, unlike resolveBrandColor: the ink is
+  // chosen to suit the ground rather than the ground being overridden, so
+  // every role stays available and none of them can be unreadable.
+  if (bgRole && bgRole in BRAND_ROLE_HEX) {
+    const bg = BRAND_ROLE_HEX[bgRole];
+    return { bg, fg: ctaInkFor(bg) };
+  }
+  // Unset: byte-for-byte the original behaviour, so every campaign saved
+  // before roles existed renders exactly as it did.
   if (theme.id === "cream") return { bg: "#01253F", fg: "#F7F4EF" };
   return style === "navy"
     ? { bg: theme.shell, fg: theme.text }
     : { bg: theme.panelBg, fg: theme.inkOnPanel };
+}
+
+/** The two brand inks a CTA label can use. */
+const CTA_INKS = ["#F7F4EF", "#01253F"] as const;
+
+/** Whichever brand ink reads better on `bg`. The CTA is the one element in the
+ *  email that must never be hard to read, so this picks by measured contrast
+ *  rather than by a per-role lookup somebody has to keep in step. */
+export function ctaInkFor(bg: string): string {
+  return contrast(CTA_INKS[0], bg) >= contrast(CTA_INKS[1], bg) ? CTA_INKS[0] : CTA_INKS[1];
 }
 
 // ─── Brand colour roles (user-choosable accents) ────────────────────────────
@@ -159,8 +183,10 @@ export function resolveCta(
 export const BRAND_COLOR_ROLES = ["ivory", "aqua", "yellow", "navy", "slate", "muted"] as const;
 export type BrandColorRole = (typeof BRAND_COLOR_ROLES)[number];
 
-/** Role → hex. Theme-independent; legibility is handled by the resolver. */
-const BRAND_ROLE_HEX: Record<BrandColorRole, string> = {
+/** Role → hex. Theme-independent; legibility is handled by the resolver.
+ *  Exported so the editor's swatches are the same values the email renders —
+ *  a second copy in the editor is a palette that can drift. */
+export const BRAND_ROLE_HEX: Record<BrandColorRole, string> = {
   ivory: "#F7F4EF",
   aqua: "#BFFBF8",
   yellow: "#FFD800",

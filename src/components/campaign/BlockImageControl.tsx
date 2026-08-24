@@ -14,6 +14,14 @@ import { useRef, useState } from "react";
 import { Spinner } from "./Loaders";
 import AssetPicker from "./AssetPicker";
 
+/** Model tiers offered per block. Tiers rather than raw ids — see the
+ *  `promptModel` note on CampaignBlock for why the id must not be persisted. */
+const PROMPT_MODELS: { key: "draft" | "craft" | "content"; label: string; title: string }[] = [
+  { key: "draft",   label: "Fast",  title: "Haiku — quickest and cheapest. Fine when the copy already says exactly what the picture should show." },
+  { key: "craft",   label: "Craft", title: "Sonnet — the default, and what this button used before the chooser existed." },
+  { key: "content", label: "Best",  title: "Opus — slowest and dearest. Worth it when the block's idea is abstract and the other tiers keep returning the brand's default bedroom." },
+];
+
 export default function BlockImageControl({
   imageUrl,
   imagePrompt,
@@ -24,6 +32,9 @@ export default function BlockImageControl({
   compact = false,
   blockText,
   emailContext,
+  promptModel,
+  promptInstructions,
+  onSettingsChange,
 }: {
   imageUrl?: string;
   imagePrompt?: string;
@@ -39,6 +50,15 @@ export default function BlockImageControl({
   blockText?: string;
   /** The rest of the email, for context only. */
   emailContext?: string;
+  /** Which model tier rewrites the prompt. Unset = "craft". */
+  promptModel?: "draft" | "craft" | "content";
+  /** Standing instructions fed into every rewrite for this block. */
+  promptInstructions?: string;
+  /** Persist the two settings above onto the block. Omitted by the grid
+   *  cells, which share their parent block's settings rather than each
+   *  carrying their own — four cells with four model choosers is a control
+   *  panel, not an editor. */
+  onSettingsChange?: (patch: { promptModel?: "draft" | "craft" | "content"; promptInstructions?: string }) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -63,6 +83,8 @@ export default function BlockImageControl({
           focus: blockText ?? suggestPrompt(),
           emailContext,
           currentPrompt: imagePrompt ?? "",
+          model: promptModel,
+          instructions: promptInstructions,
         }),
       });
       const data = await res.json();
@@ -166,6 +188,48 @@ export default function BlockImageControl({
           title="Written from this email's copy. Edit it, then press Generate."
           style={{ ...input, resize: "vertical", lineHeight: 1.45 }}
         />
+      )}
+      {/* How the rewrite is done, not what the picture is. Sits directly above
+          the button it changes, and only where the block owns the setting —
+          the grid cells share their parent block's, so they render nothing
+          here rather than four copies of the same two controls. */}
+      {!compact && onSettingsChange && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Model
+            </span>
+            <div style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 5, overflow: "hidden", background: "var(--bg)" }}>
+              {PROMPT_MODELS.map((m, i) => {
+                const active = (promptModel ?? "craft") === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => onSettingsChange({ promptModel: m.key })}
+                    title={m.title}
+                    aria-pressed={active}
+                    style={{
+                      padding: "3px 9px", fontSize: 11, fontWeight: 600, fontFamily: "inherit",
+                      border: "none", borderRight: i === PROMPT_MODELS.length - 1 ? "none" : "1px solid var(--border)",
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--text)" : "var(--muted)",
+                      cursor: "pointer", lineHeight: 1.6,
+                    }}
+                  >{m.label}</button>
+                );
+              })}
+            </div>
+          </div>
+          <textarea
+            value={promptInstructions ?? ""}
+            onChange={(e) => onSettingsChange({ promptInstructions: e.target.value })}
+            rows={2}
+            placeholder="Instructions for the rewrite — e.g. shot on film, no people, show the product in use"
+            title="Kept on the block and applied every time you press Rewrite prompt. Does not change the prompt you have now — press Rewrite to use it."
+            style={{ ...input, resize: "vertical", lineHeight: 1.45 }}
+          />
+        </div>
       )}
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         <button

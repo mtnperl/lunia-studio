@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderCampaignEmail } from "./campaign-email-html";
+import { resolveCta, resolveTheme, contrast, BRAND_ROLE_HEX, BRAND_COLOR_ROLES } from "./campaign-theme";
 import { EMAIL_FIXTURES } from "../../tests/visual/fixtures/campaign-emails";
 import { CAMPAIGN_BLOCK_KINDS } from "./types";
 import type { CampaignBlock, CampaignContent, CampaignHeadingSize } from "./types";
@@ -337,5 +338,72 @@ describe("blockSpacing", () => {
     expect(html).toContain("padding:0 24px 16px;");
     expect(html).toContain("padding:0 24px 40px;");
     expect(html).toContain("padding:0 24px 24px;"); // the CTA
+  });
+});
+
+// ─── CTA colour ─────────────────────────────────────────────────────────────
+// The colour used to be unchangeable on the cream theme: resolveCta ignored
+// `style` there and the editor disabled the control. A role now always wins.
+describe("CTA colour role", () => {
+  const withCta = (cta: Partial<CampaignContent["cta"]>, theme?: "navy" | "cream") =>
+    renderCampaignEmail({
+      ...baseContent([{ id: "x", body: "Body.", align: "left", kind: "text" }]),
+      theme,
+      cta: { label: "Go", url: "https://www.lunialife.com", ...cta },
+    });
+
+  it("unset renders byte-for-byte what it always did, on both themes", () => {
+    for (const theme of [undefined, "navy", "cream"] as const) {
+      expect(withCta({ style: "cream" }, theme)).toBe(withCta({ style: "cream" }, theme));
+    }
+    // The cream theme still forces navy when no role is set — the old rule,
+    // deliberately preserved so saved campaigns do not move.
+    expect(withCta({ style: "cream" }, "cream")).toContain("background:#01253F");
+  });
+
+  it("a role applies on the cream theme, which used to ignore the pick", () => {
+    const forced = withCta({ style: "cream" }, "cream");
+    const chosen = withCta({ style: "cream", bgRole: "yellow" }, "cream");
+    expect(forced).not.toBe(chosen);
+    expect(chosen).toContain(`background:${BRAND_ROLE_HEX.yellow}`);
+  });
+
+  it("a role applies on the navy theme too", () => {
+    expect(withCta({ bgRole: "aqua" })).toContain(`background:${BRAND_ROLE_HEX.aqua}`);
+  });
+
+  it("every role produces a legible label — no unreadable button is reachable", () => {
+    for (const role of BRAND_COLOR_ROLES) {
+      const { bg, fg } = resolveCta(undefined, resolveTheme("navy"), role);
+      expect(bg).toBe(BRAND_ROLE_HEX[role]);
+      // WCAG AA for the large, bold type a CTA label is set in.
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("the hero overlay follows the button's role until given its own", () => {
+    // The overlay only renders when there IS a hero, so this fixture supplies
+    // one — without it the assertion would pass for the wrong reason.
+    const withHero = (cta: Partial<CampaignContent["cta"]>) =>
+      renderCampaignEmail({
+        ...baseContent([{ id: "x", body: "Body.", align: "left", kind: "text" }]),
+        images: [{ id: "h", role: "hero", source: "upload", aspect: "4:5", url: "https://example.com/h.jpg" }],
+        cta: { label: "Go", url: "https://www.lunialife.com", ...cta },
+      });
+
+    // One role colours both the button and the overlay.
+    const shared = withHero({ bgRole: "yellow" });
+    expect(shared).toContain(`background:${BRAND_ROLE_HEX.yellow}`);
+    expect(shared).not.toContain(`background:${BRAND_ROLE_HEX.aqua}`);
+
+    // Until the overlay is given one of its own.
+    const split = withHero({ bgRole: "yellow", heroBgRole: "aqua" });
+    expect(split).toContain(`background:${BRAND_ROLE_HEX.yellow}`);
+    expect(split).toContain(`background:${BRAND_ROLE_HEX.aqua}`);
+  });
+
+  it("ignores a corrupt role rather than emitting an empty background", () => {
+    const bogus = withCta({ bgRole: "chartreuse" as never });
+    expect(bogus).toBe(withCta({}));
   });
 });

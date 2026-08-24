@@ -855,8 +855,12 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   // fallback. Don't try to make this pixel-perfect in Outlook.
   // Bottom button and hero overlay carry independent styles. heroStyle
   // falls back to style for saves made before the two were split.
-  const { bg: ctaBg, fg: ctaFg } = resolveCta(content.cta.style, t);
-  const { bg: heroBg, fg: heroFg } = resolveCta(content.cta.heroStyle ?? content.cta.style, t);
+  const { bg: ctaBg, fg: ctaFg } = resolveCta(content.cta.style, t, content.cta.bgRole);
+  // The hero overlay falls back to the bottom button's role the same way it
+  // already falls back to its style, so setting one colour colours both.
+  const { bg: heroBg, fg: heroFg } = resolveCta(
+    content.cta.heroStyle ?? content.cta.style, t, content.cta.heroBgRole ?? content.cta.bgRole,
+  );
   const heroCtaLabel = content.cta.label?.trim();
   const showOnHero = content.cta.showOnHero !== false;
   // Byte-identity: with no position set, emit the exact string this always
