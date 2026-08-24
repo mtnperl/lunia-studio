@@ -347,6 +347,21 @@ export async function saveAssetIfNew(asset: AssetMetadata): Promise<boolean> {
   return true;
 }
 
+/** Append several assets in ONE write.
+ *
+ *  Bulk upload used to mean N calls to saveAsset, and each of those is a
+ *  read-modify-write of the single Redis key holding the entire library: with
+ *  any two of them in flight together the second overwrites whatever the first
+ *  added, and nothing anywhere reports it. One write per batch removes that
+ *  window inside a batch, and the caller keeps batches sequential to close it
+ *  between them. */
+export async function saveAssets(assets: AssetMetadata[]): Promise<void> {
+  if (assets.length === 0) return;
+  const all = await getAssets();
+  all.unshift(...assets);
+  await writeCollection(ASSETS_KEY, all);
+}
+
 /** Attach a caption to an asset already in the library. Used by the backfill
  *  over images uploaded before captioning existed; a missing id is a no-op
  *  rather than an error, since the library can be edited under a long-running

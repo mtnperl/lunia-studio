@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
+import { chunkForUpload } from "@/lib/upload-batching";
 
 const LOADER_LINES = [
   "UPLOADING SLIDE IMAGES",
@@ -139,6 +140,9 @@ export default function AssetsView() {
   /** Set when a file was too big and got re-encoded, so the size in the
    *  library not matching the file on disk is explained rather than mysterious. */
   const [uploadNote, setUploadNote] = useState<string | null>(null);
+  /** Files finished / files chosen, while a batch is in flight. Null when
+   *  nothing is uploading. */
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [pendingType, setPendingType] = useState<AssetType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,55 +197,89 @@ export default function AssetsView() {
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file || !pendingType) return;
-    await doUpload(file, pendingType);
+    if (files.length === 0 || !pendingType) return;
+    await doUpload(files, pendingType);
     setPendingType(null);
   }
 
-  async function doUpload(file: File, assetType: AssetType) {
+  async function doUpload(files: File[], assetType: AssetType) {
     setUploading(true);
     setUploadError(null);
     setUploadNote(null);
-    const formData = new FormData();
+    setProgress({ done: 0, total: files.length });
 
+    // Shrink first, sequentially: each pass decodes a full-resolution image
+    // onto a canvas, and doing forty of those at once is how a browser tab
+    // runs out of memory.
+    //
     // A camera-resolution photo is routinely 8–12 MB, which used to come back
     // as a flat "File too large. Maximum size is 5 MB." and leave you to find
-    // an image editor. Shrink it here instead — the ceiling that actually
-    // bites is Vercel's 4.5 MB request body, below our own 5 MB check, so a
-    // file between the two would fail at the platform before the route ever
-    // saw it.
-    let upload: Blob = file;
-    let filename = file.name;
-    if (needsShrinking(file)) {
+    // an image editor. The ceiling that actually bites is Vercel's 4.5 MB
+    // request body, below our own 5 MB check, so a file between the two would
+    // fail at the platform before the route ever saw it.
+    const prepared: { blob: Blob; name: string }[] = [];
+    const problems: string[] = [];
+    let resizedCount = 0;
+    let savedBytes = 0;
+
+    for (const file of files) {
+      if (!needsShrinking(file)) {
+        prepared.push({ blob: file, name: file.name });
+        continue;
+      }
       const shrunk = await shrinkForUpload(file);
+      if (shrunk.blob.size > MAX_UPLOAD_BYTES) {
+        problems.push(`${file.name}: still ${fmtSize(shrunk.blob.size)} after resizing — export it smaller.`);
+        continue;
+      }
       if (shrunk.blob.size < file.size) {
-        upload = shrunk.blob;
-        filename = shrunk.name;
-        setUploadNote(`${file.name} was ${fmtSize(file.size)} — resized to ${fmtSize(shrunk.blob.size)} before upload.`);
+        resizedCount += 1;
+        savedBytes += file.size - shrunk.blob.size;
       }
-      if (upload.size > MAX_UPLOAD_BYTES) {
-        setUploadError(`Could not get ${file.name} under ${fmtSize(MAX_UPLOAD_BYTES)} (best was ${fmtSize(upload.size)}). Try exporting it smaller.`);
-        setUploading(false);
-        return;
-      }
+      prepared.push(shrunk.blob.size < file.size ? shrunk : { blob: file, name: file.name });
     }
 
-    formData.append("file", upload, filename);
-    formData.append("assetType", assetType);
+    // Chunks go one after another, never in parallel. Each request appends to
+    // the single Redis key holding the whole library, and two of those in
+    // flight together would lose one batch's entries with no error anywhere.
+    let uploadedCount = 0;
     try {
-      const res = await fetch("/api/assets/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setUploadError((data as { error?: string }).error ?? "Upload failed");
-        return;
+      for (const group of chunkForUpload(prepared)) {
+        const formData = new FormData();
+        for (const f of group) formData.append("file", f.blob, f.name);
+        formData.append("assetType", assetType);
+
+        try {
+          const res = await fetch("/api/assets/upload", { method: "POST", body: formData });
+          const data = await res.json();
+          if (!res.ok) {
+            problems.push((data as { error?: string }).error ?? `Upload failed (${res.status})`);
+          } else {
+            uploadedCount += (data.uploaded as unknown[] | undefined)?.length ?? 0;
+            for (const f of (data.failed as { name: string; error: string }[] | undefined) ?? []) {
+              problems.push(`${f.name}: ${f.error}`);
+            }
+          }
+        } catch {
+          problems.push(`Network error while uploading ${group.length} file${group.length > 1 ? "s" : ""}.`);
+        }
+        setProgress((p) => (p ? { done: Math.min(p.total, p.done + group.length), total: p.total } : p));
       }
+
       await loadAssets();
-    } catch {
-      setUploadError("Network error — please try again.");
+
+      const notes: string[] = [];
+      if (uploadedCount > 0) notes.push(`${uploadedCount} image${uploadedCount > 1 ? "s" : ""} added and described.`);
+      if (resizedCount > 0) notes.push(`${resizedCount} resized before upload, saving ${fmtSize(savedBytes)}.`);
+      setUploadNote(notes.length > 0 ? notes.join(" ") : null);
+      // Every failure is listed rather than counted: in a drop of forty, "3
+      // failed" tells you nothing about which three to try again.
+      setUploadError(problems.length > 0 ? problems.join("\n") : null);
     } finally {
       setUploading(false);
+      setProgress(null);
     }
   }
 
@@ -353,7 +391,7 @@ export default function AssetsView() {
       {/* Upload type picker */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-          Upload as
+          Upload as — pick as many files as you like
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 10 }}>
           {UPLOADABLE_TYPES.map((t) => (
@@ -376,7 +414,11 @@ export default function AssetsView() {
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg)"; }}
             >
               <div style={{ fontWeight: 700, fontSize: 13, color: t.color, marginBottom: 3 }}>
-                {uploading && pendingType === t.value ? "Uploading..." : `+ ${t.label}`}
+                {uploading && pendingType === t.value
+                  ? progress && progress.total > 1
+                    ? `Uploading ${progress.done}/${progress.total}…`
+                    : "Uploading..."
+                  : `+ ${t.label}`}
               </div>
               <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>{t.description}</div>
             </button>
@@ -387,13 +429,14 @@ export default function AssetsView() {
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
 
       {uploadError && (
-        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#9b1c1c" }}>
+        <div style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#9b1c1c", whiteSpace: "pre-line", lineHeight: 1.5 }}>
           {uploadError}
         </div>
       )}
