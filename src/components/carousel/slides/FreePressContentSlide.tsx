@@ -32,12 +32,29 @@
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
-import FitBox from "@/components/carousel/shared/FitBox";
 import { BrandStyle } from "@/lib/types";
 import { SLIDE, FP_SERIF, FP_SANS, FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
 import type { SlideElement } from "@/lib/slide-elements";
 import { pickableStyle, editableProps, editingStyle } from "@/lib/slide-elements";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+
+// useLayoutEffect warns during SSR. The slides are client-rendered and also
+// rendered in headless Chromium, so prefer layout timing in the browser.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+// Auto-fit steps down the FONT SIZE, not a transform.
+//
+// The first version wrapped the copy in FitBox, which fits by scaling the
+// whole block with a CSS transform. That shrinks width and height together,
+// so a long body rendered as a tall NARROW column occupying about half the
+// slide — the copy got smaller without ever using the space beside it. On a
+// layout whose only element is the copy, that is the whole design gone.
+//
+// Reducing the font size instead lets the text re-wrap at the full column
+// width, which is what an editor would do: same measure, smaller type.
+const FIT_STEP = 0.94;
+const FIT_FLOOR = 0.62;
 
 const SLIDE_H = SLIDE.height;
 
@@ -122,9 +139,36 @@ export default function FreePressContentSlide({
   const indicator = brandStyle?.accent ?? FP_COLORS.indicator;
 
   const blocks = splitBodyBlocks(body);
-  const bodySize = Math.round(FP_TYPE.body * bodyScale * (reels ? 1.08 : 1));
+  const naturalSize = FP_TYPE.body * bodyScale * (reels ? 1.08 : 1);
   const sourceSize = citationFontSize ?? FP_TYPE.source;
   const hasCitation = !!(citation && citation.trim());
+
+  // Keyed on the inputs that change how much room the copy needs, so a shorter
+  // body resets to full size instead of inheriting the previous shrink.
+  const fitKey = `${body}|${naturalSize}|${reels}`;
+  const [fit, setFit] = useState({ key: fitKey, v: 1 });
+  const autoFit = fit.key === fitKey ? fit.v : 1;
+  const bodySize = Math.round(naturalSize * autoFit);
+
+  const copyRef = useRef<HTMLDivElement>(null);
+  useIsoLayoutEffect(() => {
+    let cancelled = false;
+    const measure = () => {
+      const el = copyRef.current;
+      if (!el || cancelled) return;
+      if (el.scrollHeight > el.clientHeight + 1 && autoFit > FIT_FLOOR) {
+        setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP) });
+      }
+    };
+    // Measuring before the webfonts land reads fallback metrics and settles on
+    // a size that is wrong once Archivo Narrow paints.
+    if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
+      document.fonts.ready.then(() => { if (!cancelled) measure(); });
+    } else {
+      measure();
+    }
+    return () => { cancelled = true; };
+  }, [fitKey, autoFit]);
 
   // Same zone-props helper as EditorialContentSlide: select on click, edit on
   // double-click, and collapse to nothing on the export path where none of the
@@ -167,21 +211,23 @@ export default function FreePressContentSlide({
           gap: reels ? 76 : 56,
         }}
       >
-        {/* The copy. FitBox scales it down rather than letting a long body
-            overflow the artboard, which is the one failure this layout cannot
-            absorb: there is nothing else on the slide to crop into. */}
-        <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-          <FitBox align="center" maxScale={1}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: Math.round(bodySize * 0.82),
-              width: "100%",
-            }}
-          >
-            {blocks.map((block, i) => {
+        {/* The copy. Full column width always; the auto-fit above steps the
+            font size down when it does not fit, so a long body re-wraps rather
+            than shrinking into a narrow ribbon. */}
+        <div
+          ref={copyRef}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: Math.round(bodySize * 0.82),
+            width: "100%",
+          }}
+        >
+          {blocks.map((block, i) => {
               // Only the first block is the editable zone: the body is ONE
               // field, and hanging a second contentEditable off the same string
               // would let two edits race to write it.
@@ -205,9 +251,7 @@ export default function FreePressContentSlide({
                   {block}
                 </div>
               );
-            })}
-          </div>
-          </FitBox>
+          })}
         </div>
 
         {/* Footer. Source first when there is one, indicator always. */}

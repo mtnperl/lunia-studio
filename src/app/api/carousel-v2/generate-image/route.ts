@@ -52,6 +52,7 @@ export async function POST(req: Request) {
     // Editorial Scientific preset locks the mood to the Lunia editorial look.
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
     const isEditorial = stylePreset === 'editorial-scientific';
+    const isFreePress = stylePreset === 'free-press';
 
     // Editorial extras: interpretive lane + paper tone. Both only meaningful
     // when isEditorial. Defaults preserve the previous behavior:
@@ -215,6 +216,12 @@ export async function POST(req: Request) {
           subline:  hookSubline,
           overlay:  hookImageSpec?.overlay,
           headlineWeight,
+        })
+      : slideIndex === 0 && isFreePress
+      ? buildFreePressHookPrompt({
+          concept: hookImageSpec?.concept,
+          topic,
+          userPrompt: imagePrompt,
         })
       : useEditorialHookFramework
       ? buildEditorialHookPrompt({
@@ -461,6 +468,58 @@ function buildHeadlineWeightEditPrompt(args: {
  */
 function isContentPolicyRejection(detail: string): boolean {
   return /content_policy_violation|flagged by a content checker|safety system/i.test(detail);
+}
+
+/**
+ * Cover-photograph prompt for the Free Press preset.
+ *
+ * Why this exists rather than reusing either neighbour:
+ *
+ *   • buildPrompt()'s deriveHookSubject() is a KEYWORD LOOKUP. Any topic
+ *     containing "sleep" returns the same pristine-linens hotel bedroom, so a
+ *     carousel about pregnancy, shift work or menopause got a stock bedroom
+ *     with nothing to do with its subject. That is the bug this fixes.
+ *   • buildEditorialHookPrompt bakes the headline INTO the pixels. The Free
+ *     Press cover draws its headline in HTML over the photo, so any baked text
+ *     would double up.
+ *
+ * So: Claude's per-topic concept drives the subject, and the prompt is
+ * explicit that the frame contains no text at all.
+ */
+function buildFreePressHookPrompt(args: {
+  concept?: string;
+  topic?: string;
+  userPrompt?: string;
+}): string {
+  const { concept, topic, userPrompt } = args;
+
+  // The live "CURRENT PROMPT" textarea wins, then Claude's concept, then the
+  // topic itself. The topic is a far better last resort than a keyword table:
+  // it is at least about the right thing.
+  const subject =
+    userPrompt?.trim() ||
+    concept?.trim() ||
+    topic?.trim() ||
+    'the science of sleep and overnight recovery';
+
+  return [
+    'Editorial documentary photograph for the cover of a sleep-science article.',
+    '',
+    `SUBJECT — photograph this, and nothing else: ${subject}`,
+    '',
+    'The subject above is the whole brief. Do not substitute a generic bedroom, an empty bed, or a person sleeping unless the subject actually calls for one.',
+    '',
+    'TREATMENT',
+    '- Real photography. Natural light, honest colour, documentary rather than staged stock.',
+    '- Muted, desaturated palette. No teal-and-orange grade, no neon, no heavy vignette.',
+    '- Leave the CENTRE of the frame comparatively simple. A headline is composited over the lower third and a small mark sits top left, so keep those bands free of busy detail.',
+    '- Portrait orientation, shallow depth of field, a single clear focal point.',
+    '',
+    'HARD CONSTRAINTS',
+    '- NO text, letters, numbers, words, captions, watermarks, logos or signage anywhere in the image. The headline is added afterwards in HTML and any baked text would collide with it.',
+    '- NO supplement bottles, pill jars, capsules or packaging.',
+    '- NO collage, no split screens, no borders, no frames, no UI, no charts.',
+  ].join('\n');
 }
 
 function buildEditorialHookPrompt(args: {

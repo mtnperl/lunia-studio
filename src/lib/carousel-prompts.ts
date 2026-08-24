@@ -274,6 +274,9 @@ Return ONLY valid JSON in this exact format, no other text:
   "hookImageSpec": {
     "concept": "ONE sentence (max 30 words) capturing the science / concept this hook is about. Do NOT prescribe scene details, props, camera angles, lighting, or composition — we give only the concept and the exact text to the image engine and let it interpret freely.",
     "overlay": "OPTIONAL short tagline (≤ 6 words) baked into the image as an editorial accent above the headline. Omit field if nothing meaningful adds."
+  }` : isFreePress ? `,
+  "hookImageSpec": {
+    "concept": "ONE sentence (max 30 words) naming what the cover PHOTOGRAPH shows, and it must be specific to THIS topic. The generic fallback for any sleep topic is an empty bed in morning light, and that is exactly what to avoid: if the topic is pregnancy sleep, shift work, menopause, altitude, or anything else with a subject of its own, the photograph must show THAT. Name a subject and a setting. Do NOT prescribe camera angles, lighting or palette. NO text of any kind appears in this image."
   }` : ""}
 }
 ${isFreePress ? `
