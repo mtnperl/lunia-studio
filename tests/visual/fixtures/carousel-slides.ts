@@ -196,4 +196,17 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       citation: "Harding EC, Franks NP, Wisden W. The Temperature Dependence of Sleep. Front Neurosci. 2019;13:336",
     },
   },
+  {
+    // The preset asks the generator for an empty headline and the whole beat in
+    // `body`. This is the inverted case. It used to render as blank paper with
+    // a citation under it, so the fallback that draws the headline instead is
+    // pinned here.
+    name: "freepress-body-empty-headline-fallback",
+    props: {
+      stylePreset: "free-press",
+      headline: "Deep sleep is where the rebuilding is scheduled. Growth hormone pulses hardest during slow wave sleep, and one week at five hours lowered daytime testosterone.",
+      body: "",
+      citation: "Leproult R, Van Cauter E. JAMA. 2011;305(21):2173-2174.",
+    },
+  },
 ];

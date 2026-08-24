@@ -54,7 +54,11 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
 // Reducing the font size instead lets the text re-wrap at the full column
 // width, which is what an editor would do: same measure, smaller type.
 const FIT_STEP = 0.94;
-const FIT_FLOOR = 0.62;
+// 0.5 of 66px is 33px on a 1080px artboard — still large. The floor exists so a
+// pathological body cannot shrink to nothing, not to hold a minimum aesthetic,
+// so it sits low enough that clipping is unreachable for any body the generator
+// actually writes (75 words fits at ~0.85; 130 words at ~0.70).
+const FIT_FLOOR = 0.5;
 
 const SLIDE_H = SLIDE.height;
 
@@ -115,6 +119,7 @@ export function splitBodyBlocks(body: string): string[] {
 }
 
 export default function FreePressContentSlide({
+  headline,
   body,
   citation,
   scale = 1,
@@ -138,14 +143,19 @@ export default function FreePressContentSlide({
   const ink = brandStyle?.body ?? FP_COLORS.ink;
   const indicator = brandStyle?.accent ?? FP_COLORS.indicator;
 
-  const blocks = splitBodyBlocks(body);
+  // `body` is the whole slide on this preset and `headline` is asked to come
+  // back empty. If that ever inverts — the model puts the beat in the headline
+  // and leaves the body blank — falling back is the difference between a slide
+  // that reads and a sheet of blank paper with a citation on it.
+  const bodyBlocks = splitBodyBlocks(body);
+  const blocks = bodyBlocks.length > 0 ? bodyBlocks : splitBodyBlocks(headline);
   const naturalSize = FP_TYPE.body * bodyScale * (reels ? 1.08 : 1);
   const sourceSize = citationFontSize ?? FP_TYPE.source;
   const hasCitation = !!(citation && citation.trim());
 
   // Keyed on the inputs that change how much room the copy needs, so a shorter
   // body resets to full size instead of inheriting the previous shrink.
-  const fitKey = `${body}|${naturalSize}|${reels}`;
+  const fitKey = `${blocks.join("|")}|${naturalSize}|${reels}`;
   const [fit, setFit] = useState({ key: fitKey, v: 1 });
   const autoFit = fit.key === fitKey ? fit.v : 1;
   const bodySize = Math.round(naturalSize * autoFit);
