@@ -106,6 +106,29 @@ export const LayoutSuggestionSchema = z.object({
   blocks: z.array(LayoutBlockSchema).min(1).max(8),
 });
 
+/** The envelope, with the blocks left UNVALIDATED so each can be checked on
+ *  its own.
+ *
+ *  Validating the array atomically means one malformed block discards the
+ *  other seven. The model occasionally returns a `kind` that is not in the
+ *  union — `image` is a real CampaignBlockKind that this schema deliberately
+ *  omits, because an image block needs a slot id that a restructure cannot
+ *  mint — and the whole restructure was lost to it, after a thirty second
+ *  wait, behind the message "Restructure failed, please try again."
+ *
+ *  Dropping the offending block and keeping the rest is the same trade the
+ *  token-balance filter downstream already makes. */
+export const LayoutEnvelopeSchema = z.object({
+  topBanner: z.string().optional(),
+  promoBand: z.string().optional(),
+  ctaLabel: z.string().optional(),
+  blocks: z.array(z.unknown()).min(1),
+});
+
+/** The most blocks a restructure may return. Enforced by truncation rather
+ *  than by rejection, for the same reason as above. */
+export const MAX_LAYOUT_BLOCKS = 8;
+
 export type LayoutBlock = z.infer<typeof LayoutBlockSchema>;
 export type LayoutSuggestion = z.infer<typeof LayoutSuggestionSchema>;
 

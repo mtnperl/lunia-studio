@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   LayoutBlockSchema,
+  LayoutEnvelopeSchema,
+  MAX_LAYOUT_BLOCKS,
   buildRestructurePrompt,
   blocksToSourceText,
   blockToSourceText,
@@ -263,5 +265,48 @@ describe("image prompts must depict the block, not the brand", () => {
 
   it("still bars text, packaging and bottles", () => {
     expect(p()).toMatch(/Never describe text, words,\s+signage, packaging, logos, or a supplement bottle/);
+  });
+});
+
+// ─── Per-block validation ───────────────────────────────────────────────────
+// The restructure route used to validate the blocks array atomically, so ONE
+// block with an unrecognised `kind` discarded the other seven — thirty seconds
+// of model time thrown away behind the message "Restructure failed, please try
+// again." These pin the shape that made that possible.
+describe("LayoutEnvelopeSchema", () => {
+  const good = { kind: "text", body: "A real block.", align: "left" };
+
+  it("accepts the envelope without judging the blocks", () => {
+    // `image` is a real CampaignBlockKind that LayoutBlockSchema deliberately
+    // omits: an image block needs a slot id a restructure cannot mint. The
+    // envelope must still parse, so the block can be dropped on its own.
+    const r = LayoutEnvelopeSchema.safeParse({ blocks: [good, { kind: "image" }] });
+    expect(r.success).toBe(true);
+  });
+
+  it("still rejects an envelope with no blocks at all", () => {
+    expect(LayoutEnvelopeSchema.safeParse({ blocks: [] }).success).toBe(false);
+    expect(LayoutEnvelopeSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("no longer rejects on count — the cap is a truncation, not a failure", () => {
+    const many = Array.from({ length: 12 }, () => good);
+    expect(LayoutEnvelopeSchema.safeParse({ blocks: many }).success).toBe(true);
+    expect(many.slice(0, MAX_LAYOUT_BLOCKS)).toHaveLength(8);
+  });
+
+  it("keeps the good blocks when one is unusable", () => {
+    // The filter the route runs, asserted here rather than in the route so it
+    // is covered without a live model call.
+    const blocks = [good, { kind: "image" }, { kind: "stat", statValue: "558", statLabel: "reviews" }];
+    const valid = blocks.filter((b) => LayoutBlockSchema.safeParse(b).success);
+    expect(valid).toHaveLength(2);
+    expect(valid.map((b) => (b as { kind: string }).kind)).toEqual(["text", "stat"]);
+  });
+
+  it("a block missing `kind` entirely is dropped, not fatal", () => {
+    const blocks = [good, { body: "no kind here" }];
+    expect(LayoutEnvelopeSchema.safeParse({ blocks }).success).toBe(true);
+    expect(blocks.filter((b) => LayoutBlockSchema.safeParse(b).success)).toHaveLength(1);
   });
 });

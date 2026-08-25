@@ -17,7 +17,9 @@ import { checkRateLimit } from "@/lib/kv";
 import {
   buildRestructurePrompt,
   blocksToSourceText,
-  LayoutSuggestionSchema,
+  LayoutBlockSchema,
+  LayoutEnvelopeSchema,
+  MAX_LAYOUT_BLOCKS,
   layoutBlockToCampaignBlock,
 } from "@/lib/campaign-layout-prompts";
 import type { CampaignBlock } from "@/lib/types";
@@ -109,13 +111,31 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
     }
 
-    const result = LayoutSuggestionSchema.safeParse(parsedJson);
-    if (!result.success) {
-      console.error("[api/campaign/restructure] schema validation failed:", result.error.message);
+    const envelope = LayoutEnvelopeSchema.safeParse(parsedJson);
+    if (!envelope.success) {
+      console.error("[api/campaign/restructure] envelope validation failed:", envelope.error.message);
       return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
     }
 
-    const mapped = result.data.blocks.map(layoutBlockToCampaignBlock);
+    // Per block, not all-or-nothing. One block with an unrecognised `kind`
+    // used to discard the whole restructure — thirty seconds of work and every
+    // good block with it — and the user was told only to try again.
+    const rejectedKinds: unknown[] = [];
+    const valid = envelope.data.blocks.flatMap((b) => {
+      const parsed = LayoutBlockSchema.safeParse(b);
+      if (parsed.success) return [parsed.data];
+      rejectedKinds.push((b as { kind?: unknown })?.kind ?? "(no kind)");
+      return [];
+    });
+    if (rejectedKinds.length > 0) {
+      // The KINDS, not just zod's message: "no matching discriminator at
+      // blocks.1.kind" never said which kind it was, which was the one fact
+      // needed to act on it.
+      console.warn(`[api/campaign/restructure] dropped ${rejectedKinds.length} block(s) with an unusable shape:`, JSON.stringify(rejectedKinds));
+    }
+    const droppedForSchema = rejectedKinds.length;
+
+    const mapped = valid.slice(0, MAX_LAYOUT_BLOCKS).map(layoutBlockToCampaignBlock);
 
     // The prompt asks the model to keep an inline-styling token pair inside one
     // block; this is the check. A split pair would leave an unterminated opener
@@ -134,10 +154,11 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     return Response.json({
+      droppedForSchema,
       droppedForTokens,
-      topBanner: result.data.topBanner ? stripDashes(result.data.topBanner) : undefined,
-      promoBand: result.data.promoBand ? stripDashes(result.data.promoBand) : undefined,
-      ctaLabel: result.data.ctaLabel ? stripDashes(result.data.ctaLabel) : undefined,
+      topBanner: envelope.data.topBanner ? stripDashes(envelope.data.topBanner) : undefined,
+      promoBand: envelope.data.promoBand ? stripDashes(envelope.data.promoBand) : undefined,
+      ctaLabel: envelope.data.ctaLabel ? stripDashes(envelope.data.ctaLabel) : undefined,
       blocks: restructured,
       sourceBlockCount: blocks.length,
     });

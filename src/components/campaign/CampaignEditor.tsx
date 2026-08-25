@@ -381,6 +381,10 @@ export default function CampaignEditor({
   const [savedShapes, setSavedShapes] = useState<SavedShape[]>([]);
   const [savingShape, setSavingShape] = useState(false);
   const [restructureError, setRestructureError] = useState<string | null>(null);
+  // Blocks the server threw away. It has always returned a count and nothing
+  // has ever read it, so a drop was silent in exactly the place the route's
+  // own comment claimed it would be visible.
+  const [restructureDropped, setRestructureDropped] = useState<string | null>(null);
   const [regenBusyId, setRegenBusyId] = useState<string | null>(null);
   const [regenError, setRegenError] = useState<string | null>(null);
   const [regenAlternates, setRegenAlternates] = useState<{ blockId: string; alternates: CampaignBlock[] } | null>(null);
@@ -1198,6 +1202,7 @@ export default function CampaignEditor({
 
     setShapeBusyId(shape.id);
     setRestructureError(null);
+    setRestructureDropped(null);
     try {
       const subject = c.subjectLines[c.selectedSubject] ?? c.subjectLines[0] ?? "";
       const res = await fetch("/api/campaign/restructure", {
@@ -1219,6 +1224,12 @@ export default function CampaignEditor({
       setPendingMeta({ topBanner: data.topBanner ?? meta.topBanner, promoBand: data.promoBand ?? meta.promoBand, ctaLabel: data.ctaLabel ?? meta.ctaLabel, theme: shape.theme });
       setPendingMode("replace");
       setShapeGalleryOpen(false);
+      const dropped = (Number(data.droppedForSchema) || 0) + (Number(data.droppedForTokens) || 0);
+      setRestructureDropped(
+        dropped > 0
+          ? `${dropped} block${dropped === 1 ? "" : "s"} came back unusable and ${dropped === 1 ? "was" : "were"} dropped. The rest is below.`
+          : null,
+      );
     } catch (err) {
       setRestructureError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -1769,6 +1780,9 @@ export default function CampaignEditor({
               )}
               {restructureError && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
+              )}
+              {restructureDropped && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>{restructureDropped}</div>
               )}
               {shapeGalleryOpen && (
                 <ShapeGallery
