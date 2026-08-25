@@ -77,7 +77,12 @@ export async function POST(req: Request) {
     // library of a few thousand images cannot all go in. A small library is
     // returned untouched, so today this is a no-op.
     const all = candidates(await getAssets());
-    const pool = shortlistByOverlap(all, (a) => a.description ?? "", `${focus} ${emailContext} ${topic}`);
+    // Grouped by assetType so a bulk upload of one kind cannot crowd the
+    // others out of the shortlist — see asset-shortlist for the failure this
+    // prevents.
+    const pool = shortlistByOverlap(
+      all, (a) => a.description ?? "", `${focus} ${emailContext} ${topic}`, 250, (a) => a.assetType,
+    );
     if (pool.length === 0) {
       return Response.json({
         url: null,

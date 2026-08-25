@@ -45,15 +45,36 @@ function bag(text: string): Set<string> {
  *
  * Below `limit` nothing is dropped and the original order is preserved — the
  * common case must not be reordered for no reason. Above it, candidates are
- * ranked by how many meaningful words their description shares with the copy,
- * ties broken by original position (which is newest-first), so a library where
- * nothing matches still returns the most recent images rather than nothing.
+ * taken round-robin across `groupOf`, each group internally best-match-first.
+ *
+ * Two earlier versions of this got it wrong in the same direction.
+ *
+ * The first ranked purely by score and broke ties by recency, reasoning that a
+ * library where nothing matches should still return its newest images. That
+ * holds until one bulk upload owns the recent window: a library of 726 whose
+ * newest 250 were all product shots shortlisted to 250 product shots for a
+ * block about cortisol and REM sleep, cutting all 251 of its lifestyle
+ * photographs before the model saw the list. The model answered honestly —
+ * "All options are product bottle shots" — about what it had been shown.
+ *
+ * The second kept merit first and only diversified the leftover slots. That
+ * never ran: on this library 314 candidates scored above zero, and 312 of them
+ * scored exactly ONE, on the single word "sleep" — which is in nearly every
+ * caption a sleep brand owns. A score of 1 on a word the whole library shares
+ * is noise, so "merit" collapsed back to recency and the bulk upload won again.
+ *
+ * Hence round-robin unconditionally. Scores still order each group internally,
+ * where they mean something relative to their peers; they are not trusted to
+ * rank across groups, where one ubiquitous word can outvote everything. This
+ * cannot fix a library that genuinely has no suitable picture, but it stops the
+ * shortlist from manufacturing one.
  */
 export function shortlistByOverlap<T>(
   items: T[],
   describe: (item: T) => string,
   copy: string,
   limit = 250,
+  groupOf?: (item: T) => string,
 ): T[] {
   if (items.length <= limit) return items;
 
@@ -64,6 +85,29 @@ export function shortlistByOverlap<T>(
     return { item, index, score };
   });
 
-  scored.sort((a, b) => (b.score - a.score) || (a.index - b.index));
-  return scored.slice(0, limit).map((s) => s.item);
+  // One queue per group, best match first, recency breaking ties. With no
+  // grouping accessor this is a single queue and the behaviour is the original
+  // score-then-recency ranking.
+  const buckets = new Map<string, typeof scored>();
+  for (const s of scored) {
+    const key = groupOf ? groupOf(s.item) : "";
+    const b = buckets.get(key);
+    if (b) b.push(s); else buckets.set(key, [s]);
+  }
+  for (const b of buckets.values()) {
+    b.sort((a, c) => (c.score - a.score) || (a.index - c.index));
+  }
+
+  // One from each queue per pass. A queue that runs dry drops out and its
+  // remaining share goes to the groups that still have images.
+  const queues = [...buckets.values()];
+  const out: T[] = [];
+  let cursor = 0;
+  while (out.length < limit && queues.some((q) => q.length > 0)) {
+    const q = queues[cursor % queues.length]!;
+    const next = q.shift();
+    if (next) out.push(next.item);
+    cursor += 1;
+  }
+  return out;
 }

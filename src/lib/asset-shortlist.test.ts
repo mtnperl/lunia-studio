@@ -40,3 +40,77 @@ describe("shortlistByOverlap", () => {
     expect(out.map((a) => a.id)).toEqual([0, 1]);
   });
 });
+
+// ─── One bulk upload must not own the shortlist ─────────────────────────────
+// A real 726-image library whose newest 250 were all product shots shortlisted
+// to 250 product shots for a block about cortisol and REM sleep. Every one of
+// its 251 lifestyle photographs was cut before the model saw the list, and the
+// model answered honestly: "All options are product bottle shots."
+describe("shortlistByOverlap — group diversity", () => {
+  type A = { kind: string; desc: string };
+  const desc = (a: A) => a.desc;
+  const kind = (a: A) => a.kind;
+
+  /** Newest-first, exactly as getAssets returns: a fresh bulk upload of one
+   *  kind sitting on top of a varied back catalogue. */
+  const library: A[] = [
+    ...Array.from({ length: 300 }, (_, i) => ({ kind: "product-image", desc: `bottle on ivory ${i}` })),
+    ...Array.from({ length: 200 }, (_, i) => ({ kind: "lifestyle", desc: `woman asleep at dawn ${i}` })),
+    ...Array.from({ length: 100 }, (_, i) => ({ kind: "gen-z", desc: `phone screen at night ${i}` })),
+  ];
+
+  it("used to return one kind only, and no longer does", () => {
+    // Copy that matches nothing in any caption — the case that produced the bug.
+    const out = shortlistByOverlap(library, desc, "cortisol brain science REM research", 250, kind);
+    const kinds = new Set(out.map(kind));
+    expect(kinds).toEqual(new Set(["product-image", "lifestyle", "gen-z"]));
+    expect(out).toHaveLength(250);
+  });
+
+  it("gives each kind a real share, not a token one", () => {
+    const out = shortlistByOverlap(library, desc, "nothing matches this at all", 250, kind);
+    const counts = out.reduce<Record<string, number>>((acc, a) => {
+      acc[a.kind] = (acc[a.kind] ?? 0) + 1;
+      return acc;
+    }, {});
+    // Round-robin across three buckets: roughly even until one runs dry.
+    for (const k of ["product-image", "lifestyle", "gen-z"]) {
+      expect(counts[k]).toBeGreaterThan(60);
+    }
+  });
+
+  it("orders WITHIN a group by match, so each group leads with its best", () => {
+    const mixed: A[] = [
+      { kind: "lifestyle", desc: "a stack of firewood" },
+      { kind: "lifestyle", desc: "woman asleep at dawn" },
+      ...Array.from({ length: 400 }, (_, i) => ({ kind: "product-image", desc: `bottle ${i}` })),
+    ];
+    const out = shortlistByOverlap(mixed, desc, "woman asleep at dawn", 250, kind);
+    const lifestyle = out.filter((a) => a.kind === "lifestyle");
+    // The matching one comes first among its peers, despite being second in
+    // the source order.
+    expect(lifestyle[0]!.desc).toBe("woman asleep at dawn");
+  });
+
+  it("does not let one group take the whole list even when only it matches", () => {
+    // The case the second attempt got wrong: when a score clears the limit on
+    // its own, ranking by score alone hands everything back to one group. On
+    // the real library 312 of 314 "matches" scored 1, on the single word
+    // "sleep" — which every caption in a sleep brand's library contains.
+    const out = shortlistByOverlap(library, desc, "bottle ivory", 250, kind);
+    const kinds = new Set(out.map(kind));
+    expect(kinds.size).toBeGreaterThan(1);
+    expect(out.filter((a) => a.kind === "lifestyle").length).toBeGreaterThan(30);
+  });
+
+  it("without a grouping accessor it behaves as one bucket, still newest-first", () => {
+    const out = shortlistByOverlap(library, desc, "no overlap whatsoever", 10);
+    expect(out).toHaveLength(10);
+    expect(out.every((a) => a.kind === "product-image")).toBe(true);
+  });
+
+  it("never returns a duplicate", () => {
+    const out = shortlistByOverlap(library, desc, "bottle asleep phone", 250, kind);
+    expect(new Set(out).size).toBe(out.length);
+  });
+});
