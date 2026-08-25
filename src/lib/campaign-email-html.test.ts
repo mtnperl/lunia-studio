@@ -407,3 +407,42 @@ describe("CTA colour role", () => {
     expect(bogus).toBe(withCta({}));
   });
 });
+
+// ─── Image slots are reachable from the preview ─────────────────────────────
+// Blocks have been clickable in the preview for a while; the hero and the 2-up
+// grid were not. They are IMAGE SLOTS — they live in content.images, so they
+// survive a restructure that replaces every block, and the section that owns
+// them auto-collapses as soon as a hero exists. The result was an image you
+// could see, could not click, and could not find the control for.
+describe("preview slot tagging", () => {
+  const withImages = (opts?: { selectable?: boolean }) =>
+    renderCampaignEmail(
+      {
+        ...baseContent([{ id: "b", body: "Body copy.", align: "left", kind: "text" }]),
+        images: [
+          { id: "hero-1", role: "hero", source: "upload", aspect: "4:5", url: "https://example.com/hero.jpg" },
+          { id: "sec-1", role: "secondary", source: "upload", aspect: "1:1", url: "https://example.com/a.jpg" },
+          { id: "sec-2", role: "secondary", source: "upload", aspect: "1:1", url: "https://example.com/b.jpg" },
+        ],
+      },
+      opts,
+    );
+
+  it("tags the hero and every secondary when the preview asks for it", () => {
+    const html = withImages({ selectable: true });
+    for (const id of ["hero-1", "sec-1", "sec-2"]) {
+      expect(html).toContain(`data-lunia-slot="${id}"`);
+    }
+  });
+
+  it("emits nothing at all on the export path", () => {
+    // The same rule tagRow follows: the preview may carry extra markup, the
+    // email may not. This is the assertion that keeps it true.
+    expect(withImages()).not.toContain("data-lunia-slot");
+    expect(withImages({ selectable: false })).not.toContain("data-lunia-slot");
+  });
+
+  it("leaves the exported email byte-identical to the untagged render", () => {
+    expect(withImages({ selectable: false })).toBe(withImages());
+  });
+});

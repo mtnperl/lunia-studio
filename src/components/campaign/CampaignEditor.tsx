@@ -443,6 +443,14 @@ export default function CampaignEditor({
   // rail; the ring inside the iframe is painted by the injected script.
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const blockCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Same idea for image SLOTS, so clicking the hero or a 2-up cell in the
+  // preview can land on the control that owns it.
+  const slotCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  // Bumped to force the Images section open. It auto-collapses as soon as a
+  // hero exists, which is exactly when someone clicks the hero to change it.
+  const [imagesOpenSignal, setImagesOpenSignal] = useState(0);
+  const pendingSlotScroll = useRef<string | null>(null);
   // Auto-scroll while dragging inside the preview. `y` is the pointer in the
   // iframe's own unscaled coordinates; the rAF loop converts it to a page
   // position and nudges the window when the pointer nears an edge.
@@ -694,7 +702,20 @@ export default function CampaignEditor({
 
       if (d.type === "selectBlock" && d.id) {
         setSelectedBlockId(d.id);
+        setSelectedSlotId(null);
         blockCardRefs.current[d.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
+      // An image slot. Opening the section and scrolling cannot happen in the
+      // same breath: while it is collapsed its children are unmounted, so
+      // there is no element to scroll to yet. Record the target and let the
+      // effect below do it once React has committed the expanded section.
+      if (d.type === "selectSlot" && d.id) {
+        setSelectedBlockId(null);
+        setSelectedSlotId(d.id);
+        pendingSlotScroll.current = d.id;
+        setImagesOpenSignal((v) => v + 1);
         return;
       }
 
@@ -721,6 +742,27 @@ export default function CampaignEditor({
     return () => { window.removeEventListener("message", onMessage); stopDragAutoScroll(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Scroll to a slot control once, whichever way it becomes reachable.
+   *
+   *  Two paths, because the section may or may not already be open. If it was
+   *  collapsed, its children are unmounted and the ref is null through the
+   *  commit that bumps the signal — Section opens on an effect of its own, a
+   *  commit LATER — so the ref callback below is what fires. If it was already
+   *  open, nothing mounts and the effect is what fires. Whichever gets there
+   *  first clears the request, so it never happens twice. */
+  const scrollToSlot = (id: string) => {
+    if (pendingSlotScroll.current !== id) return;
+    pendingSlotScroll.current = null;
+    slotCardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // The already-open case. Keyed on the signal, not the id, so clicking the
+  // SAME image twice scrolls back to it rather than doing nothing.
+  useEffect(() => {
+    const id = pendingSlotScroll.current;
+    if (id && slotCardRefs.current[id]) scrollToSlot(id);
+  }, [imagesOpenSignal]);
 
   // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
   // every content change. Without this, some browsers don't re-fetch images
@@ -2760,7 +2802,7 @@ export default function CampaignEditor({
         </div>
         </Section>
 
-        <Section title="Images" defaultCollapsed={imagesDefaultCollapsed}>
+        <Section title="Images" defaultCollapsed={imagesDefaultCollapsed} openSignal={imagesOpenSignal}>
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={sectionLabel}>Images</span>
@@ -2772,8 +2814,26 @@ export default function CampaignEditor({
                 ? "Hero image"
                 : `Image ${secondaryImages.indexOf(img) + 2}`;
               return (
-                <ImageSlotControl
+                <div
                   key={img.id}
+                  ref={(el) => {
+                    slotCardRefs.current[img.id] = el;
+                    // The just-mounted case: the section was collapsed when
+                    // the preview asked for this slot, so this is the first
+                    // moment there is anything to scroll to.
+                    if (el) scrollToSlot(img.id);
+                  }}
+                  style={{
+                    // The ring the preview click lands on, so the jump is
+                    // visible rather than just a scroll. Same treatment a
+                    // selected block card gets.
+                    border: `1px solid ${selectedSlotId === img.id ? "var(--accent)" : "transparent"}`,
+                    borderRadius: 8,
+                    padding: selectedSlotId === img.id ? 8 : 0,
+                    transition: "border-color 120ms ease",
+                  }}
+                >
+                <ImageSlotControl
                   slot={img}
                   label={label}
                   topic={topic}
@@ -2784,6 +2844,7 @@ export default function CampaignEditor({
                   // so it can't be silently dropped from the email.
                   onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}
                 />
+                </div>
               );
             })}
           </div>

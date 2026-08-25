@@ -444,12 +444,12 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
     </td></tr>`;
 }
 
-function imageCell(url: string | null | undefined, width: string, t: CampaignTheme): string {
+function imageCell(url: string | null | undefined, width: string, t: CampaignTheme, slotAttr = ""): string {
   // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
-    return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;"></div></td>`;
+    return `<td class="secondary-cell"${slotAttr} width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;"></div></td>`;
   }
-  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
+  return `<td class="secondary-cell"${slotAttr} width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
     url,
   )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
 }
@@ -728,6 +728,14 @@ const SELECT_SCRIPT = `<script>
     } else { last = null; }
   }
   document.addEventListener("click", function (e) {
+    var slot = e.target && e.target.closest && e.target.closest("[data-lunia-slot]");
+    if (slot) {
+      e.preventDefault();
+      e.stopPropagation();
+      paint(null);
+      parent.postMessage({ source: "lunia-preview", type: "selectSlot", id: slot.getAttribute("data-lunia-slot") }, "*");
+      return;
+    }
     var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
     if (!row) return;
     e.preventDefault();
@@ -738,7 +746,10 @@ const SELECT_SCRIPT = `<script>
   }, true);
   document.addEventListener("mouseover", function (e) {
     var row = e.target && e.target.closest && e.target.closest("[data-lunia-block]");
-    document.body.style.cursor = row ? "grab" : "";
+    if (row) { document.body.style.cursor = "grab"; return; }
+    // Slots are clickable but not draggable — a pointer, not a grab hand.
+    var slot = e.target && e.target.closest && e.target.closest("[data-lunia-slot]");
+    document.body.style.cursor = slot ? "pointer" : "";
   });
   window.addEventListener("message", function (e) {
     if (e.data && e.data.source === "lunia-editor" && e.data.type === "highlightBlock") paint(e.data.id);
@@ -818,6 +829,15 @@ export type RenderEmailOptions = {
 
 export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailOptions = {}): string {
   const selectable = opts.selectable === true;
+  // The hero and the 2-up grid are IMAGE SLOTS, not blocks: they live in
+  // content.images and survive a restructure that replaces every block. Until
+  // now they were the only things in the preview you could not click, so after
+  // a restructure the picture you wanted to change was the one picture with no
+  // way to reach it — and the Images section that owns it auto-collapses
+  // precisely when a hero exists. Same preview-only rule as tagRow: with
+  // `selectable` off this adds nothing and the email is untouched.
+  const slotAttr = (id: string | undefined) =>
+    selectable && id ? ` data-lunia-slot="${esc(id)}"` : "";
   // Unset resolves to navy, so a campaign saved before themes existed renders
   // byte-for-byte as it did.
   const t = resolveTheme(content.theme);
@@ -880,7 +900,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
        </div>`
     : "";
   const heroHtml = hero?.url
-    ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
+    ? `<tr${slotAttr(hero.id)}><td class="h-padding" style="padding:0 24px 16px;">
          <a href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;">
            <div style="position:relative;">
              <img src="${esc(hero.url)}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
@@ -908,6 +928,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   // to know the option exists.
   const tagRow = (rowHtml: string, id: string) =>
     selectable && rowHtml ? rowHtml.replace("<tr", `<tr data-lunia-block="${esc(id)}"`) : rowHtml;
+
 
   // One resolved gap for every block row, read once rather than per block:
   // "space between blocks" is a property of the email, not of a block.
@@ -946,9 +967,9 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     secondaryHtml += `<tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr>
-          ${imageCell(left?.url, "48.91%", t)}
+          ${imageCell(left?.url, "48.91%", t, slotAttr(left?.id))}
           <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
-          ${right ? imageCell(right.url, "48.91%", t) : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
+          ${right ? imageCell(right.url, "48.91%", t, slotAttr(right.id)) : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
         </tr>
       </table>
     </td></tr>`;

@@ -7,12 +7,28 @@ import { IcChevron } from "./icons";
  *  re-collapse under an in-progress edit. No `overflow:hidden` on the outer
  *  box — several children (dropdown menus) render outside its bounds — so
  *  corner rounding is applied per-element. */
-export function Section({ title, defaultCollapsed, children }: {
+export function Section({ title, defaultCollapsed, openSignal, children }: {
   title: string;
   defaultCollapsed: boolean;
+  /** Bump to force the section open — for a jump that lands INSIDE it, where
+   *  scrolling to a control hidden behind a collapsed header would look like
+   *  nothing happened. A counter rather than a boolean so a second jump to an
+   *  already-open section still works, and so this never fights a manual
+   *  collapse: it opens on change, and does nothing in between. */
+  openSignal?: number;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // Adjusted DURING render, not in an effect. An effect would open the section
+  // a commit late, so anything jumping to a control inside it would run while
+  // that control was still unmounted and find nothing to scroll to. React
+  // re-runs this pass immediately, before children commit, so the section and
+  // its contents arrive together.
+  const [seenSignal, setSeenSignal] = useState(openSignal);
+  if (openSignal !== seenSignal) {
+    setSeenSignal(openSignal);
+    if (openSignal) setCollapsed(false);
+  }
   return (
     <div style={{ border: "1px solid var(--border)", borderRadius: 8 }}>
       <button
