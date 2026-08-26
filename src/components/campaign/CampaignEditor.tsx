@@ -185,6 +185,18 @@ const BLOCK_WEIGHTS: { key: BlockWeight; label: string; title: string }[] = [
 //
 // A block-level enum, not a selection token: a header is one line, and asking
 // someone to select it before they can size it is ceremony for no gain.
+type HeadingAlign = NonNullable<CampaignBlock["headingAlign"]>;
+
+/** Alignment for a block's header line. Unset leaves the kind's own design
+ *  alone, so the control shows what the block actually does rather than
+ *  pretending "left" is a universal default — a stat's number and a pill
+ *  header are centred by their layout. */
+const BLOCK_HEADING_ALIGNS: { key: HeadingAlign; label: string; title: string }[] = [
+  { key: "left", label: "L", title: "Align the header left" },
+  { key: "center", label: "C", title: "Centre the header" },
+  { key: "right", label: "R", title: "Align the header right" },
+];
+
 const BLOCK_HEADING_SIZES: { key: CampaignHeadingSize; label: string; title: string }[] = [
   { key: "s", label: "S", title: "Small — 80% of this header's default" },
   { key: "m", label: "M", title: "Default header size" },
@@ -2200,6 +2212,26 @@ export default function CampaignEditor({
                           >{hs.label}</SegButton>
                         ))}
                       </div>
+                      {/* Alignment. Exempt for "table": its column headers
+                          take their alignment from the columns, so overriding
+                          it would peel the headers off the numbers under
+                          them. */}
+                      {kind !== "table" && (
+                        <div style={segWrap}>
+                          {BLOCK_HEADING_ALIGNS.map((ha, hi) => (
+                            <SegButton
+                              key={ha.key}
+                              active={b.headingAlign === ha.key}
+                              // Clicking the active one clears back to the
+                              // kind's own alignment, so the layout's default
+                              // stays reachable once you have overridden it.
+                              onClick={() => updateBlock(b.id, { headingAlign: b.headingAlign === ha.key ? undefined : ha.key })}
+                              title={`${ha.title}${b.headingAlign === ha.key ? " (click again for this block's default)" : ""}`}
+                              last={hi === BLOCK_HEADING_ALIGNS.length - 1}
+                            >{ha.label}</SegButton>
+                          ))}
+                        </div>
+                      )}
                       <span style={{ fontSize: 11, color: "var(--muted)" }}>
                         {HEADING_FIELD_LABEL[kind] ?? "the header"}
                       </span>

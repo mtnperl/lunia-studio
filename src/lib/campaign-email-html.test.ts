@@ -500,3 +500,61 @@ describe("promo band colour", () => {
     expect(withBand("navy", "chartreuse" as never)).toBe(withBand("navy"));
   });
 });
+
+// ─── Header alignment ───────────────────────────────────────────────────────
+describe("headingAlign", () => {
+  const render = (over: Partial<CampaignBlock>) =>
+    renderCampaignEmail(baseContent([{ id: "x", body: "", align: "left", ...over } as CampaignBlock]));
+  const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
+  /** One filled block per kind that has a header, minus `table` — its column
+   *  headers take their alignment from the columns. */
+  const HEADED: { kind: CampaignBlock["kind"]; block: Partial<CampaignBlock> }[] = [
+    { kind: "stat", block: { statValue: "558 reviews", statLabel: "91% five-star" } },
+    { kind: "discount", block: { discountCode: "SLEEP20", discountDescription: "20% off" } },
+    { kind: "timeline", block: { timelineRows: [{ label: "30 DAYS", text: "more energy" }] } },
+    { kind: "comparison", block: { comparisonLeftLabel: "One-time", comparisonRightLabel: "Subscribe" } },
+    { kind: "ingredients", block: { ingredientHeading: "What's inside", ingredientItems: [{ name: "Mg", dose: "200mg" }] } },
+    { kind: "imagetext", block: { imageHeading: "Why it works", body: "Because." } },
+    { kind: "grid", block: { gridCells: [{ heading: "One", caption: "First" }] } },
+    { kind: "image", block: { imageOverlayHeadline: "Over the photo" } },
+    { kind: "headerimage", block: { headerHeadline: "Top of the email", headerStyle: "card" } },
+    { kind: "headerimage", block: { headerHeadline: "Top of the email", headerStyle: "pill" } },
+  ];
+
+  for (const { kind, block } of HEADED) {
+    const name = `${kind}${block.headerStyle ? `/${block.headerStyle}` : ""}`;
+
+    it(`"${name}": each alignment reaches the header`, () => {
+      // Counted, not `toContain`. The document already carries
+      // `text-align:center` in several places — the pill wrapper, the promo
+      // band, the CTA — so a containment check passes even when the header
+      // never receives the alignment at all. Only the COUNT going up proves
+      // the header got one.
+      for (const align of ["left", "center", "right"] as const) {
+        const before = count(render({ ...block, kind }), `text-align:${align};`);
+        const after = count(render({ ...block, kind, headingAlign: align }), `text-align:${align};`);
+        expect(after).toBeGreaterThan(before);
+      }
+    });
+
+    it(`"${name}": unset renders byte-for-byte what it always did`, () => {
+      // The kind keeps the alignment it was designed with until asked
+      // otherwise — a stat's number and a pill header are centred by their
+      // layout, and "left" is not a universal default.
+      const before = render({ ...block, kind });
+      expect(before).toBe(render({ ...block, kind, headingAlign: undefined }));
+    });
+  }
+
+  it("leaves a table's column headers to their columns", () => {
+    // Overriding these would peel the headers off the numbers underneath.
+    const table = { kind: "table" as const, tableHeaders: ["Plan", "Price"], tableRows: [{ cells: ["Monthly", "$29"] }] };
+    expect(render({ ...table, headingAlign: "right" })).toBe(render(table));
+  });
+
+  it("ignores a corrupt value rather than emitting broken CSS", () => {
+    const block = { kind: "imagetext" as const, imageHeading: "Why it works", body: "Because." };
+    expect(render({ ...block, headingAlign: "diagonal" as never })).toBe(render(block));
+  });
+});

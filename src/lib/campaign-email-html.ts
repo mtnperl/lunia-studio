@@ -48,6 +48,14 @@ function headingSizeClass(b: CampaignBlock): string {
   return !size || size === "m" ? "" : ` hs-${size}`;
 }
 
+/** `text-align` for a block's header, or "" when it has not been set — so a
+ *  block that never touched the control emits exactly the CSS it always did,
+ *  and each kind keeps the alignment it was designed with. */
+function headingAlignCss(b: CampaignBlock): string {
+  const a = b.headingAlign;
+  return a === "left" || a === "center" || a === "right" ? `text-align:${a};` : "";
+}
+
 /** The same thing as a whole ` class="…"` attribute, for a header cell that
  *  carries no class of its own. Empty at the default size, so the markup is
  *  byte-identical to what it has always been. */
@@ -132,7 +140,7 @@ function statBlock(b: CampaignBlock, t: CampaignTheme): string {
   const value = b.statValue?.trim();
   if (!value) return "";
   return `<div style="text-align:center;padding:4px 0;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 36)}px;font-weight:300;color:${t.inkAccent};line-height:1.15;">${esc(value)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 36)}px;font-weight:300;color:${t.inkAccent};line-height:1.15;${headingAlignCss(b)}">${esc(value)}</div>
     ${b.statLabel?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};opacity:0.75;margin-top:6px;">${esc(b.statLabel)}</div>`
       : ""}
@@ -151,7 +159,7 @@ function discountBlock(b: CampaignBlock, t: CampaignTheme): string {
   if (!code && !originalPrice) return "";
   return `<div style="border:1.5px dashed ${t.accentBorder};border-radius:8px;padding:16px;text-align:center;">
     ${code
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 22)}px;font-weight:700;letter-spacing:0.08em;color:${t.inkAccent};">${esc(code)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 22)}px;font-weight:700;letter-spacing:0.08em;color:${t.inkAccent};${headingAlignCss(b)}">${esc(code)}</div>`
       : ""}
     ${originalPrice
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;${code ? "margin-top:8px;" : ""}">
@@ -187,7 +195,7 @@ function timelineBlock(b: CampaignBlock, t: CampaignTheme): string {
   return rows
     .map(
       (r, i) => `<div style="padding:${i === 0 ? "0" : "12px"} 0 12px;${i > 0 ? `border-top:1px solid ${t.ruleOnShell};` : ""}">
-        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};margin-bottom:4px;">${esc(r.label ?? "")}</div>
+        <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${t.inkAccent};margin-bottom:4px;${headingAlignCss(b)}">${esc(r.label ?? "")}</div>
         <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:300;color:${t.text};line-height:1.5;">${esc(r.text ?? "")}</div>
       </div>`,
     )
@@ -229,7 +237,7 @@ function comparisonBlock(b: CampaignBlock, t: CampaignTheme): string {
   if (!leftLabel || !rightLabel) return "";
   const card = (label: string, price?: string, perk?: string, emphasized = false) => `
     <td width="48.91%" style="width:48.91%;vertical-align:top;background:${emphasized ? t.panelBg : "transparent"};border:1px solid ${emphasized ? t.accentBorder : t.accentBorderSoft};border-radius:8px;padding:14px;">
-      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 11)}px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? t.inkOnPanel : t.inkAccent};margin-bottom:6px;">${esc(label)}</div>
+      <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 11)}px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${emphasized ? t.inkOnPanel : t.inkAccent};margin-bottom:6px;${headingAlignCss(b)}">${esc(label)}</div>
       ${price?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:${emphasized ? t.inkOnPanel : t.text};margin-bottom:4px;">${esc(price)}</div>` : ""}
       ${perk?.trim() ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:300;color:${emphasized ? t.inkOnPanel : t.text};line-height:1.4;">${esc(perk)}</div>` : ""}
     </td>`;
@@ -263,7 +271,7 @@ function ingredientsBlock(b: CampaignBlock, t: CampaignTheme): string {
     })
     .join("");
   return `<div style="background:${t.panelBg};border-radius:8px;padding:20px 22px;">
-    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${t.inkOnPanel};padding-bottom:12px;border-bottom:2px solid ${t.inkOnPanel};margin-bottom:12px;">${esc(heading)}</div>
+    <div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 12)}px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${t.inkOnPanel};padding-bottom:12px;border-bottom:2px solid ${t.inkOnPanel};margin-bottom:12px;${headingAlignCss(b)}">${esc(heading)}</div>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:auto;">${rows}</table>
     ${footnote ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:${t.mutedOnPanel};text-align:center;margin-top:16px;letter-spacing:0.02em;">${esc(footnote)}</div>` : ""}
   </div>`;
@@ -360,7 +368,7 @@ function overlayHtml(b: CampaignBlock, radius: string, t: CampaignTheme): string
     ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
     : "";
   const headlineHtml = headline
-    ? `<div class="img-overlay-headline${headingSizeClass(b)}" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 26)}px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+    ? `<div class="img-overlay-headline${headingSizeClass(b)}" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 26)}px;font-weight:300;line-height:1.25;${headingAlignCss(b)}">${esc(headline)}</div>`
     : "";
   return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, ${t.scrimFrom} 0%, ${t.scrimTo} 100%);border-radius:${radius};">
       ${eyebrowHtml}${headlineHtml}
@@ -378,7 +386,7 @@ function overlayMsoFallback(b: CampaignBlock, t: CampaignTheme): string {
       ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
       : "",
     headline
-      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 24)}px;font-weight:300;line-height:1.25;">${esc(headline)}</div>`
+      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 24)}px;font-weight:300;line-height:1.25;${headingAlignCss(b)}">${esc(headline)}</div>`
       : "",
   ].join("");
   return `<!--[if mso]><div style="padding:16px 0 0;">${parts}</div><![endif]-->`;
@@ -544,7 +552,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): s
       ? `<div style="margin-bottom:6px;"><span style="display:inline-block;background:${t.highlight};color:${t.highlightText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;letter-spacing:0.04em;padding:3px 10px;border-radius:3px;">${esc(b.headerPillText)}</span></div>`
       : "";
     const head = headline
-      ? `<div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 30)}px;font-weight:300;color:${t.text};line-height:1.15;">${renderInline(headline, t)}</div>`
+      ? `<div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 30)}px;font-weight:300;color:${t.text};line-height:1.15;${headingAlignCss(b)}">${renderInline(headline, t)}</div>`
       : "";
     return `<tr><td style="padding:0 0 ${gap}px;">
       ${pill || head ? `<div style="padding:0 24px 14px;text-align:center;">${pill}${head}</div>` : ""}
@@ -556,7 +564,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): s
   const card = headline
     ? `<div style="margin:-28px 24px 0;position:relative;">
          <div style="background:${t.panelBg};border-radius:10px;padding:18px 20px;">
-           <div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 28)}px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;">${renderInline(headline, t)}</div>
+           <div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 28)}px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;${headingAlignCss(b)}">${renderInline(headline, t)}</div>
          </div>
        </div>`
     : "";
@@ -600,7 +608,7 @@ function imagetextBlock(b: CampaignBlock, t: CampaignTheme): string {
   const body = b.body?.trim();
   if (!heading && !body && !b.imageUrl?.trim()) return "";
   const headingHtml = heading
-    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 17)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;">${renderInline(heading, t)}</div>`
+    ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 17)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;${headingAlignCss(b)}">${renderInline(heading, t)}</div>`
     : "";
   const bodyHtml = body ? paragraphs(t, body, "left", !!b.italic, b.weight ?? "light") : "";
   const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${headingHtml}${bodyHtml}</td>`;
@@ -643,7 +651,7 @@ function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
       ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
       : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
     const heading = c.heading?.trim()
-      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 15)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;">${renderInline(c.heading, t)}</div>`
+      ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 15)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;${headingAlignCss(b)}">${renderInline(c.heading, t)}</div>`
       : "";
     const caption = c.caption?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.45;">${renderInline(c.caption, t)}</div>`

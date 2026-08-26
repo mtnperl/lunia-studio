@@ -831,6 +831,15 @@ export type CampaignBlock = {
    *
    *  Unset is "m" — the size that header has always rendered at. */
   headingSize?: CampaignHeadingSize;
+  /** Which way this block's HEADER line sits. Applies to the same line
+   *  `headingSize` does, and like it, unset renders byte-for-byte what the
+   *  block always did — each kind keeps whatever alignment it was designed
+   *  with until you say otherwise.
+   *
+   *  The `table` kind is deliberately exempt: its column headers take their
+   *  alignment from the columns, so overriding it would peel the headers off
+   *  the numbers underneath them. */
+  headingAlign?: "left" | "center" | "right";
   /** Block content type. Unset/"text" = the original free-prose paragraph
    *  (back-compat: every block saved before this field existed renders
    *  identically). All other kinds are structured callouts — see the
