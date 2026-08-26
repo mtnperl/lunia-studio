@@ -446,3 +446,57 @@ describe("preview slot tagging", () => {
     expect(withImages({ selectable: false })).toBe(withImages());
   });
 });
+
+// ─── Promo band colour ──────────────────────────────────────────────────────
+// The band used the PANEL tokens, which on cream are #ffffff on a #F7F4EF
+// shell — a contrast ratio of about 1.04. Switching to cream did change the
+// band; it changed it to something you could not see.
+describe("promo band colour", () => {
+  const withBand = (theme?: "navy" | "cream", promoRole?: CampaignContent["promoRole"]) =>
+    renderCampaignEmail({
+      ...baseContent([{ id: "b", body: "Body.", align: "left", kind: "text" }]),
+      theme, promoRole, promoBand: "NO MELATONIN. NO NEXT-DAY FOG.",
+    });
+
+  const band = (html: string) => {
+    const m = html.match(/<div style="background:([^;]+);color:([^;]+);text-align:center;[^"]*">NO MELATONIN/);
+    return m ? { bg: m[1]!, fg: m[2]! } : null;
+  };
+
+  it("navy is untouched — its band already had presence", () => {
+    // Byte-identity for the default theme: nothing already saved on navy moves.
+    expect(band(withBand())).toEqual({ bg: "#f5f5e9", fg: "#01253f" });
+    expect(withBand("navy")).toBe(withBand());
+  });
+
+  it("inverts on cream instead of vanishing into it", () => {
+    const b = band(withBand("cream"))!;
+    expect(b.bg).not.toBe("#ffffff");
+    // The band has to read as a band on the ivory shell.
+    expect(contrast(b.bg, "#F7F4EF")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(b.fg, b.bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("actually differs between the two themes", () => {
+    // The literal complaint: switching theme should change the band.
+    expect(band(withBand("navy"))).not.toEqual(band(withBand("cream")));
+  });
+
+  it("an explicit role wins on both themes", () => {
+    for (const theme of ["navy", "cream"] as const) {
+      expect(band(withBand(theme, "yellow"))!.bg).toBe(BRAND_ROLE_HEX.yellow);
+    }
+  });
+
+  it("every role produces a legible band — no unreadable pick is reachable", () => {
+    for (const role of BRAND_COLOR_ROLES) {
+      const b = band(withBand("navy", role))!;
+      expect(b.bg).toBe(BRAND_ROLE_HEX[role]);
+      expect(contrast(b.fg, b.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("ignores a corrupt role rather than emitting an empty background", () => {
+    expect(withBand("navy", "chartreuse" as never)).toBe(withBand("navy"));
+  });
+});

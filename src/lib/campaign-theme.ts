@@ -159,6 +159,32 @@ export function resolveCta(
     : { bg: theme.panelBg, fg: theme.inkOnPanel };
 }
 
+/**
+ * The promo band's ground and ink.
+ *
+ * The band is a loud accent strip, not a card, and it was using the panel
+ * tokens — which on cream are #ffffff on a #F7F4EF shell, a contrast ratio of
+ * about 1.04. The band was invisible on that theme, which is what "change the
+ * colour of the band when I change the theme" was describing: it did change,
+ * to something you could not see.
+ *
+ * So it inverts on cream, the way resolveCta already does, and takes an
+ * explicit brand role when one is set. Navy is untouched — its cream-on-navy
+ * band already had the presence the band is for.
+ */
+export function resolvePromoBand(
+  theme: CampaignTheme,
+  role?: BrandColorRole,
+): { bg: string; fg: string } {
+  if (role && role in BRAND_ROLE_HEX) {
+    const bg = BRAND_ROLE_HEX[role];
+    return { bg, fg: ctaInkFor(bg) };
+  }
+  // Cream: a white strip on an ivory ground is not a strip. Invert it.
+  if (theme.id === "cream") return { bg: "#01253F", fg: "#F7F4EF" };
+  return { bg: theme.panelBg, fg: theme.inkOnPanel };
+}
+
 /** The two brand inks a CTA label can use. */
 const CTA_INKS = ["#F7F4EF", "#01253F"] as const;
 

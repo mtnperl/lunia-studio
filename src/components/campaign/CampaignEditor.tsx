@@ -1736,6 +1736,39 @@ export default function CampaignEditor({
           <input type="text" value={content.promoBand ?? ""}
             placeholder="e.g. MEMORIAL DAY WEEKEND SALE"
             onChange={(e) => patch({ promoBand: e.target.value || undefined })} style={input} />
+          {/* Band colour. "Theme" follows the email — cream on navy, navy on
+              cream — which is what it does when nothing is picked. The ink is
+              derived from whichever ground you choose by measured contrast, so
+              every role is offered and none of them can be unreadable. */}
+          {content.promoBand?.trim() && (
+            <div style={{ marginTop: 6 }}>
+              <label style={fieldLabel}>Band colour</label>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => patch({ promoRole: undefined })}
+                  title="Follow the email theme"
+                  style={{ ...miniBtn(!content.promoRole), fontSize: 11, padding: "3px 8px", letterSpacing: 0, textTransform: "none" }}
+                >Theme</button>
+                {BRAND_COLOR_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => patch({ promoRole: role })}
+                    title={BRAND_ROLE_LABELS[role]}
+                    aria-label={BRAND_ROLE_LABELS[role]}
+                    aria-pressed={content.promoRole === role}
+                    style={{
+                      width: 22, height: 22, padding: 0, borderRadius: 5, cursor: "pointer",
+                      background: BRAND_ROLE_HEX[role],
+                      border: content.promoRole === role ? "2px solid var(--accent)" : "1px solid var(--border)",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
         </div>
         </Section>

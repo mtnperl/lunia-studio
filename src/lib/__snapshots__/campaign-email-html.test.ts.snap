@@ -90,7 +90,7 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
          </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <div style="background:#ffffff;color:#01253F;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">ALL KINDS RENDERED</div>
+         <div style="background:#01253F;color:#F7F4EF;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">ALL KINDS RENDERED</div>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
        <div class="text-block" style="padding:15px;"><p style="margin:0 0 16px;color:#102635;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">A plain paragraph with <strong>bold</strong> and a <a href="https://www.lunialife.com" style="color:inherit;text-decoration:underline;">link</a>, plus a {{ first_name }} token.</p></div>

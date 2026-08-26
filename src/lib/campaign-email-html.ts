@@ -13,7 +13,7 @@
 import type {
   CampaignBlock, CampaignContent, CampaignImageSlot, InnerBlockKind, CampaignHeadingSize,
 } from "./types";
-import { resolveTheme, resolveCta, resolveBrandColor, type CampaignTheme } from "./campaign-theme";
+import { resolveTheme, resolveCta, resolvePromoBand, resolveBrandColor, type CampaignTheme } from "./campaign-theme";
 import { parseMods, isEmptyMods, modsToCss } from "./campaign-inline-style";
 import { clampHeroCta } from "./campaign-editor-state";
 
@@ -911,9 +911,10 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     : "";
 
   // Promo band
+  const promo = resolvePromoBand(t, content.promoRole);
   const promoHtml = content.promoBand?.trim()
     ? `<tr><td class="h-padding" style="padding:0 24px 16px;">
-         <div style="background:${t.panelBg};color:${t.inkOnPanel};text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">${esc(
+         <div style="background:${promo.bg};color:${promo.fg};text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">${esc(
            content.promoBand,
          )}</div>
        </td></tr>`

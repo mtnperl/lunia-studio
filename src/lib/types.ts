@@ -1015,6 +1015,11 @@ export type CampaignContent = {
    *  Unset/true = shown (back-compatible with saves that predate the toggle). */
   showLogo?: boolean;
   promoBand?: string;            // crisp HTML band text, e.g. "MEMORIAL DAY WEEKEND SALE"
+  /** The band's colour, as a brand ROLE. Unset follows the theme — cream on
+   *  navy, and navy on cream, because a white strip on an ivory ground is not
+   *  a strip. The label ink is derived from the chosen ground by measured
+   *  contrast, so no role can produce an unreadable band. */
+  promoRole?: BrandColorRole;
   /** Whole-email colour theme. Unset/"navy" is the original navy shell with
    *  white copy; "cream" is the handbook's Soft Ivory ground with dark ink.
    *  Back-compat: unset renders byte-identically to every campaign saved
