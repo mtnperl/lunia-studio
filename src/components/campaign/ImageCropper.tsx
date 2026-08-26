@@ -12,7 +12,9 @@
 // and already allowlists both hosts.
 import { useEffect, useRef, useState } from "react";
 import {
-  centreCrop, clampCrop, zoomCrop, cropToPixels, outputSize, type AspectRatio,
+  centreCrop, clampCrop, cropToPixels, outputSize,
+  zoomTo, zoomLevelOf, clampZoom, MIN_ZOOM, MAX_ZOOM,
+  anchorCrop, activeAnchor, ANCHORS, type AspectRatio,
 } from "@/lib/image-crop";
 import type { ImageCrop } from "@/lib/types";
 import { Spinner } from "./Loaders";
@@ -60,6 +62,10 @@ export async function renderCrop(sourceUrl: string, crop: ImageCrop, aspect: Asp
   return data.url as string;
 }
 
+/** One press of − or +. A quarter of a step is fine enough to frame with and
+ *  coarse enough that reaching 5x does not take twenty clicks. */
+const ZOOM_STEP = 0.25;
+
 export default function ImageCropper({
   sourceUrl,
   aspect,
@@ -77,6 +83,11 @@ export default function ImageCropper({
   const [crop, setCrop] = useState<ImageCrop | null>(initialCrop ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The largest region of the right aspect that fits — what you see before
+   *  touching anything, and the yardstick the zoom level is measured against. */
+  const base = img ? centreCrop(img.naturalWidth, img.naturalHeight, aspect) : null;
+  const level = base && crop ? zoomLevelOf(base, crop) : MIN_ZOOM;
+  const anchor = crop ? activeAnchor(crop) : null;
   const frameRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; crop: ImageCrop } | null>(null);
 
@@ -165,7 +176,7 @@ export default function ImageCropper({
           </div>
         )}
 
-        {img && crop && (
+        {img && crop && base && (
           <>
             <div
               ref={frameRef}
@@ -184,31 +195,84 @@ export default function ImageCropper({
               <img src={proxied(sourceUrl)} alt="" draggable={false} style={inner} />
             </div>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)" }}>
-              Zoom
+            {/* Zoom is a LEVEL against the base region, not the region's own
+                size. Reading min(w,h) meant a 1024x1536 source opened at 33 of
+                100 with the bottom third unreachable, and every drag into it
+                snapped the thumb back out from under the cursor. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)" }}>
+              <span>Zoom</span>
+              <button
+                type="button"
+                style={{ ...btn, minWidth: 26, padding: "3px 0", fontSize: 13, lineHeight: 1 }}
+                onClick={() => setCrop(zoomTo(base, crop, level - ZOOM_STEP))}
+                disabled={level <= MIN_ZOOM + 1e-6}
+                title="Zoom out"
+                aria-label="Zoom out"
+              >−</button>
               <input
                 type="range"
-                min={0}
-                max={100}
-                // The slider is a POSITION, not a delta: it maps to how much of
-                // the source is kept, so dragging it back and forth is stable
-                // rather than drifting the way repeated multiplication does.
-                value={Math.round((1 - Math.min(crop.w, crop.h)) * 100)}
-                onChange={(e) => {
-                  const want = 1 - Number(e.target.value) / 100;
-                  const now = Math.min(crop.w, crop.h);
-                  if (now <= 0) return;
-                  setCrop(zoomCrop(crop, Math.max(0.05, want) / now));
-                }}
+                min={MIN_ZOOM * 100}
+                max={MAX_ZOOM * 100}
+                value={Math.round(level * 100)}
+                onChange={(e) => setCrop(zoomTo(base, crop, Number(e.target.value) / 100))}
                 style={{ flex: 1, accentColor: "var(--accent)", cursor: "pointer" }}
+                aria-label="Zoom"
               />
               <button
                 type="button"
+                style={{ ...btn, minWidth: 26, padding: "3px 0", fontSize: 13, lineHeight: 1 }}
+                onClick={() => setCrop(zoomTo(base, crop, level + ZOOM_STEP))}
+                disabled={level >= MAX_ZOOM - 1e-6}
+                title="Zoom in"
+                aria-label="Zoom in"
+              >+</button>
+              <span style={{ fontVariantNumeric: "tabular-nums", minWidth: 32, textAlign: "right" }}>
+                {level.toFixed(1)}×
+              </span>
+              <button
+                type="button"
                 style={btn}
-                onClick={() => setCrop(centreCrop(img.naturalWidth, img.naturalHeight, aspect))}
+                onClick={() => setCrop(base)}
                 title="Back to the full centred crop"
               >Reset</button>
-            </label>
+            </div>
+
+            {/* Which part of the picture ends up in the middle. Dragging does
+                this too, but on an axis with no slack — a portrait cropped
+                square has no horizontal play — dragging silently does nothing,
+                and "the subject is at the top" is a thing you know before you
+                start nudging. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>Focus</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 22px)", gridTemplateRows: "repeat(3, 22px)", gap: 2 }}>
+                {ANCHORS.map((a) => {
+                  const on = !!anchor && anchor.x === a.x && anchor.y === a.y;
+                  return (
+                    <button
+                      key={a.label}
+                      type="button"
+                      onClick={() => setCrop(anchorCrop(crop, a.x, a.y))}
+                      title={a.label}
+                      aria-label={a.label}
+                      aria-pressed={on}
+                      style={{
+                        padding: 0, borderRadius: 4, cursor: "pointer",
+                        border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                        background: on ? "var(--accent-dim)" : "var(--bg)",
+                      }}
+                    >
+                      <span style={{
+                        display: "block", width: 5, height: 5, borderRadius: 1, margin: "0 auto",
+                        background: on ? "var(--accent)" : "var(--subtle)",
+                      }} />
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+                or drag the picture
+              </span>
+            </div>
 
             <div style={{ display: "flex", gap: 6 }}>
               <button type="button" onClick={apply} disabled={busy}
