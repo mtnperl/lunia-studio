@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
+import { ASSET_TYPES, UPLOADABLE_TYPES, ASSET_SECTIONS } from "@/lib/asset-shelves";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 import { chunkForUpload } from "@/lib/upload-batching";
 
@@ -75,42 +76,6 @@ function RetroLoader({ tick }: { tick: number }) {
 }
 
 // `uploadable: false` marks the categories nothing can be uploaded INTO —
-// they are stamped by the app when a generated image registers itself. They
-// still need a label and a colour, because the library groups by category and
-// an unnamed section reads as a bug.
-const ASSET_TYPES: { value: AssetType; label: string; description: string; color: string; uploadable: boolean }[] = [
-  { value: "lifestyle",           label: "Lifestyle",         description: "People, rooms, light, moments",     color: "#3f6f52", uploadable: true },
-  { value: "gen-z",               label: "Gen Z",             description: "Phone-first, social, bolder",       color: "#9d4670", uploadable: true },
-  { value: "product-image",       label: "Product Image",     description: "Product photos",                    color: "#b45309", uploadable: true },
-  { value: "logo",                label: "Logo",              description: "Brand logo or wordmark",            color: "#1e7a8a", uploadable: true },
-  { value: "carousel-style",      label: "Carousel Style",    description: "Reference layout for generation",   color: "#7c3aed", uploadable: true },
-  { value: "other",               label: "Other",             description: "General brand asset",               color: "#4a5568", uploadable: true },
-  { value: "email-generated",     label: "From emails",       description: "Generated in the email editor",     color: "#4a5568", uploadable: false },
-  { value: "carousel-generated",  label: "From carousels",    description: "Generated for a carousel",          color: "#4a5568", uploadable: false },
-]
-
-const UPLOADABLE_TYPES = ASSET_TYPES.filter((t) => t.uploadable)
-
-/** The library's shelves, in the order they read. Uploaded categories first —
- *  those are the ones you curated — then the generated pools, which are
- *  larger and less interesting to browse. The final catch-all exists so an
- *  asset with an unrecognised type (an older record, a future category) is
- *  still shown rather than silently dropped from the page. */
-const ASSET_SECTIONS: { key: string; label: string; color: string; match: (t: AssetType | undefined) => boolean }[] = [
-  ...ASSET_TYPES.map((t) => ({
-    key: t.value,
-    label: t.label,
-    color: t.color,
-    match: (v: AssetType | undefined) => v === t.value,
-  })),
-  {
-    key: "uncategorised",
-    label: "Uncategorised",
-    color: "#4a5568",
-    match: (v: AssetType | undefined) => !ASSET_TYPES.some((t) => t.value === v),
-  },
-];
-
 function TypeBadge({ assetType }: { assetType?: AssetType }) {
   const t = ASSET_TYPES.find((a) => a.value === assetType)
     ?? ASSET_TYPES.find((a) => a.value === "other")!;
