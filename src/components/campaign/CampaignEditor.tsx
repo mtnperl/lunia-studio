@@ -2323,6 +2323,8 @@ export default function CampaignEditor({
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
                         imageModel={b.imageModel}
+                        imageSourceUrl={b.imageSourceUrl}
+                        imageCrop={b.imageCrop}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2373,6 +2375,8 @@ export default function CampaignEditor({
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
                         imageModel={b.imageModel}
+                        imageSourceUrl={b.imageSourceUrl}
+                        imageCrop={b.imageCrop}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>
@@ -2407,6 +2411,8 @@ export default function CampaignEditor({
                               blockText={blockOwnText({ kind: "grid", gridCells: [c] })}
                               emailContext={emailImageContext(content).copy?.join(" ")}
                               onChange={(patch) => setCell(i, patch)}
+                              imageSourceUrl={c.imageSourceUrl}
+                              imageCrop={c.imageCrop}
                               // Inherits, but does not own: no onSettingsChange,
                               // so the cell honours the block's model and
                               // instructions without rendering its own copy of
@@ -2466,6 +2472,8 @@ export default function CampaignEditor({
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
                         imageModel={b.imageModel}
+                        imageSourceUrl={b.imageSourceUrl}
+                        imageCrop={b.imageCrop}
                         onSettingsChange={(patch) => updateBlock(b.id, patch)}
                       />
                     </div>

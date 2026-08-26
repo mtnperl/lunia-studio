@@ -800,6 +800,12 @@ export type InnerBlockKind = Exclude<CampaignBlockKind, FullRowBlockKind>;
 export const CAMPAIGN_HEADING_SIZES = ["s", "m", "l", "xl"] as const;
 export type CampaignHeadingSize = (typeof CAMPAIGN_HEADING_SIZES)[number];
 
+/** A crop, in FRACTIONS of the source image rather than pixels, so it survives
+ *  the source being re-encoded at another size. `x`/`y` are the top-left of the
+ *  kept region, `w`/`h` its size. The aspect the region must satisfy comes from
+ *  the block kind, not from here. */
+export type ImageCrop = { x: number; y: number; w: number; h: number };
+
 export type CampaignBlock = {
   id: string;
   /** For kind "text" (or unset): the paragraph body — may contain inline
@@ -911,6 +917,19 @@ export type CampaignBlock = {
    *  "no people", "show the product in use". Persisted on the block, so it
    *  survives a reorder and travels with the block into a snippet. */
   promptInstructions?: string;
+  /** Where `imageUrl` was cropped FROM, and how.
+   *
+   *  Email HTML cannot crop — `height:auto` renders whatever shape the source
+   *  is, which is how a square and a tall portrait ended up side by side in
+   *  one grid row with the captions unable to line up. So the crop is baked
+   *  into a new image and `imageUrl` points at that. These two keep the crop
+   *  EDITABLE rather than baked-and-lost: the original to re-crop from, and
+   *  the rect that produced the current one.
+   *
+   *  Unset means the image was never cropped (pasted, generated, or saved
+   *  before this existed), which is exactly the case "Edit crop" exists for. */
+  imageSourceUrl?: string;
+  imageCrop?: ImageCrop;
   /** Which model DRAWS this block's picture — distinct from `promptModel`,
    *  which only picks who writes the words. A bare string rather than the
    *  engine's union: types.ts is imported by client components and the engine
@@ -931,7 +950,12 @@ export type CampaignBlock = {
   bulletColor?: BrandColorRole;
   /** kind "grid": 2-column cells of picture + heading + caption. Each cell can
    *  generate its own image from its own text. */
-  gridCells?: { imageUrl?: string; imagePrompt?: string; heading?: string; caption?: string }[];
+  gridCells?: {
+    imageUrl?: string; imagePrompt?: string; heading?: string; caption?: string;
+    /** Per cell, because each cell owns its own picture — and two cells with
+     *  different source shapes is exactly the row that would not line up. */
+    imageSourceUrl?: string; imageCrop?: ImageCrop;
+  }[];
   /** kind "headerimage": "card" puts the headline in a panel overlapping the
    *  top of a full-bleed image; "pill" puts a highlighted eyebrow and headline
    *  above it. Unset is "card". */

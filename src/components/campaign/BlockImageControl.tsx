@@ -13,6 +13,9 @@
 import { useRef, useState } from "react";
 import { Spinner } from "./Loaders";
 import AssetPicker from "./AssetPicker";
+import ImageCropper, { renderCrop, proxied } from "./ImageCropper";
+import { aspectRatioFor, centreCrop } from "@/lib/image-crop";
+import type { ImageCrop } from "@/lib/types";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 
 /** Model tiers offered per block. Tiers rather than raw ids — see the
@@ -49,6 +52,8 @@ export default function BlockImageControl({
   promptModel,
   promptInstructions,
   imageModel,
+  imageSourceUrl,
+  imageCrop,
   onSettingsChange,
 }: {
   imageUrl?: string;
@@ -58,7 +63,7 @@ export default function BlockImageControl({
   /** Text from the block used to seed the prompt when it is empty, so the
    *  button is useful before the user has written a prompt themselves. */
   suggestPrompt: () => string;
-  onChange: (patch: { imageUrl?: string; imagePrompt?: string }) => void;
+  onChange: (patch: { imageUrl?: string; imagePrompt?: string; imageSourceUrl?: string; imageCrop?: ImageCrop }) => void;
   compact?: boolean;
   /** The copy this picture sits beside. Sent as the FOCUS when rewriting, so
    *  the scene is about this block rather than about the brand. */
@@ -71,6 +76,9 @@ export default function BlockImageControl({
   promptInstructions?: string;
   /** Which model draws the picture. Unset = gpt-image-2. */
   imageModel?: string;
+  /** Where the current image was cropped from, and how — see CampaignBlock. */
+  imageSourceUrl?: string;
+  imageCrop?: ImageCrop;
   /** Persist the two settings above onto the block. Omitted by the grid
    *  cells, which share their parent block's settings rather than each
    *  carrying their own — four cells with four model choosers is a control
@@ -80,6 +88,11 @@ export default function BlockImageControl({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const i0 = (img: HTMLImageElement) => ({ w: img.naturalWidth, h: img.naturalHeight });
+  const [cropping, setCropping] = useState(false);
+  // The shape a picked image is cropped to — the same one Generate uses.
+  const cropAspect = aspectRatioFor(aspect);
   const [rewriting, setRewriting] = useState(false);
   const [choosing, setChoosing] = useState(false);
   /** Why the model picked (or declined to pick) the last library image.
@@ -202,11 +215,49 @@ export default function BlockImageControl({
         setError(data.error ?? "Upload failed");
         return;
       }
-      onChange({ imageUrl: data.url as string });
+      await cropAndSet(data.url as string);
     } catch {
       setError("Network error, please try again");
     } finally {
       setUploading(false);
+    }
+  }
+
+  /** Crop a newly chosen image to this slot's shape before it lands.
+   *
+   *  The renderer sets `height:auto` and shows whatever shape the source is,
+   *  so an uncropped pick is how a square photo ends up beside a tall portrait
+   *  in one grid row. Centre crop by default; the source and the rect are kept
+   *  so "Edit crop" can reopen it rather than the crop being baked and lost.
+   *
+   *  A failure here is NOT fatal: the image still lands, uncropped, and the
+   *  Edit crop button is right there. Losing the picture you just chose
+   *  because a canvas step failed would be the worse outcome. */
+  async function cropAndSet(url: string) {
+    setCropping(true);
+    setError(null);
+    try {
+      const probe = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.crossOrigin = "anonymous";
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("load failed"));
+        i.src = proxied(url);
+      });
+      const crop = centreCrop(i0(probe).w, i0(probe).h, cropAspect);
+      // Already the right shape: nothing to crop, and re-encoding it would
+      // only cost quality and a blob.
+      if (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1) {
+        onChange({ imageUrl: url, imageSourceUrl: url, imageCrop: crop });
+        return;
+      }
+      const cropped = await renderCrop(url, crop, cropAspect);
+      onChange({ imageUrl: cropped, imageSourceUrl: url, imageCrop: crop });
+    } catch {
+      setError("Could not crop that image automatically — use Edit crop to set it.");
+      onChange({ imageUrl: url, imageSourceUrl: url });
+    } finally {
+      setCropping(false);
     }
   }
 
@@ -405,18 +456,48 @@ export default function BlockImageControl({
           {busy ? "Generating…" : imageUrl?.trim() ? "Regenerate" : "Generate image"}
         </button>
         {imageUrl?.trim() && (
-          <button type="button" onClick={() => onChange({ imageUrl: "" })} style={{ ...btn, opacity: 1, cursor: "pointer" }} title="Remove the image">
+          <button
+            type="button"
+            onClick={() => setCropOpen((v) => !v)}
+            style={{ ...btn, opacity: 1, cursor: "pointer" }}
+            // Offered even when the image was never cropped — that is exactly
+            // the case it exists for: pictures already in a campaign, pasted
+            // URLs, and anything from before cropping existed.
+            title="Reframe this image to the shape this block needs"
+          >{cropOpen ? "Close crop" : "Edit crop"}</button>
+        )}
+        {imageUrl?.trim() && (
+          <button type="button" onClick={() => onChange({ imageUrl: "", imageSourceUrl: undefined, imageCrop: undefined })} style={{ ...btn, opacity: 1, cursor: "pointer" }} title="Remove the image">
             Clear
           </button>
         )}
+        {cropping && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)" }}>
+            <Spinner size={9} /> Cropping…
+          </span>
+        )}
       </div>
       {error && <div style={{ fontSize: 11, color: "var(--error)" }}>{error}</div>}
+      {cropOpen && imageUrl?.trim() && (
+        <ImageCropper
+          // Re-crop from the ORIGINAL where we still have it. Cropping a crop
+          // would compound the trim and lose the pixels you might want back.
+          sourceUrl={imageSourceUrl?.trim() || imageUrl}
+          aspect={cropAspect}
+          initialCrop={imageSourceUrl?.trim() ? imageCrop : undefined}
+          onCancel={() => setCropOpen(false)}
+          onApply={({ url, crop, sourceUrl }) => {
+            onChange({ imageUrl: url, imageSourceUrl: sourceUrl, imageCrop: crop });
+            setCropOpen(false);
+          }}
+        />
+      )}
       {choiceNote && <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.45 }}>{choiceNote}</div>}
       {pickerOpen && (
         <AssetPicker
           onPick={(asset) => {
-            onChange({ imageUrl: asset.url });
             setPickerOpen(false);
+            void cropAndSet(asset.url);
           }}
           onClose={() => setPickerOpen(false)}
         />
