@@ -25,11 +25,12 @@ export type StyleState = {
   headlineSize: "S" | "M" | "L" | "XL";
   bodySize: "S" | "M" | "L" | "XL";
   citationSize: "S" | "M" | "L" | "XL";
+  bgDim: number;
 };
 export const DEFAULT_STYLE: StyleState = {
   format: "4:5", preset: "editorial", contrast: "standard", imageStyle: "realistic", logo: "L", arrows: "L", watermark: true,
   showArrows: true, showNumbers: false, showCitationBars: true, slidesBg: "light", customBg: "#F7F4EF", hookWeight: "Default",
-  headlineSize: "M", bodySize: "M", citationSize: "M",
+  headlineSize: "M", bodySize: "M", citationSize: "M", bgDim: 0.3,
 };
 export const HOOK_WEIGHT_PX = { Default: 300, Medium: 400, Bold: 600, Black: 800 } as const;
 const SIZES = ["S", "M", "L", "XL"] as const;
@@ -52,8 +53,6 @@ export function HookSlidePanel({ slide, patch, regen, onRegenerate, style, setSt
         <Field label="Eyebrow">{(p) => <Input {...p} value={slide.eyebrow ?? ""} onChange={(e) => patch({ eyebrow: e.target.value }, "eyebrow")} />}</Field>
         <Field label="Headline" hint={`${slide.headline.length} characters`}>{(p) => <Textarea {...p} rows={2} value={slide.headline} onChange={(e) => patch({ headline: e.target.value }, "headline")} />}</Field>
         <Field label="Subline">{(p) => <Input {...p} value={slide.body ?? ""} onChange={(e) => patch({ body: e.target.value }, "body")} />}</Field>
-        <Seg label="Headline weight" value={style.hookWeight} onChange={(v) => setStyle({ hookWeight: v })} options={(["Default", "Medium", "Bold", "Black"] as const).map((w) => ({ value: w, label: w }))} />
-        <Note>Weights the image was pre-rendered at swap instantly. Others need a new image.</Note>
         <PanelSectionTitle>Hook variants</PanelSectionTitle>
         <div role="radiogroup" aria-label="Hook variant" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {HOOK_OPTIONS.map((h, i) => (
@@ -186,8 +185,7 @@ export function ContentSlidePanel({ slide, patch, regen, onRegenerate, style, se
           <Button size="sm" onClick={() => onRegenerate("background")} icon={<IcRefresh size={12} />}>{slide.bgImageUrl ? "Regen background" : "AI background"}</Button>
           {slide.bgImageUrl && <Button size="sm" variant="ghost" onClick={() => patch({ bgImageUrl: undefined })}>Clear</Button>}
         </Row>
-        {slide.bgImageUrl && <Field label="Dim">{(p) => <Slider id={p.id} value={slide.bgDim ?? 0.3} onChange={(v) => patch({ bgDim: v })} min={0} max={0.9} step={0.05} format={(x) => x.toFixed(2)} />}</Field>}
-        <Note>Atmospheric image at low opacity behind the copy. Slides 1 to 3 only.</Note>
+        <Note>Atmospheric image at low opacity behind the copy. Slides 1 to 3 only. Dim it from Style, Text and content.</Note>
       </Panel>
 
       <Panel title="Export this slide" collapsible defaultCollapsed>
@@ -247,6 +245,11 @@ export function StyleTab({ style, setStyle }: { style: StyleState; setStyle: (p:
         <Seg value={style.slidesBg} onChange={(v) => setStyle({ slidesBg: v })} options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }, { value: "custom", label: "Custom" }]} />
         {style.slidesBg === "custom" && <Row gap={8}><input type="color" value={style.customBg} onChange={(e) => setStyle({ customBg: e.target.value })} aria-label="Custom background" style={{ width: 28, height: 28, padding: 0, border: "1px solid var(--ui-border-strong)", borderRadius: 4, background: "none" }} /><Note>Ink is derived from the background&apos;s luminance.</Note><Button size="sm" variant="ghost" onClick={() => setStyle({ slidesBg: "light" })}>Clear</Button></Row>}
         <Note>Applies to content, takeaway and CTA slides. Editorial content slides stay ivory.</Note>
+      </Panel>
+      <Panel title="Text and content">
+        <Seg label="Hook weight" value={style.hookWeight} onChange={(v) => setStyle({ hookWeight: v })} options={(["Default", "Medium", "Bold", "Black"] as const).map((w) => ({ value: w, label: w }))} />
+        <Note>Weights the hook image was pre-rendered at swap instantly. Others need a new image.</Note>
+        <Field label="Background dim" hint="Only when a slide has an AI background">{(p) => <Slider id={p.id} value={style.bgDim} onChange={(v) => setStyle({ bgDim: v })} min={0} max={0.9} step={0.05} format={(x) => x.toFixed(2)} />}</Field>
       </Panel>
       <Panel title="Palette" collapsible defaultCollapsed>
         <Row>{["--lunia-deep-navy", "--lunia-rich-navy", "--lunia-slate-blue", "--lunia-soft-ivory", "--lunia-aqua", "--lunia-signal-yellow"].map((c) => <span key={c} title={c} style={{ width: 24, height: 24, borderRadius: 4, background: `var(${c})`, border: "1px solid var(--ui-border)" }} />)}</Row>

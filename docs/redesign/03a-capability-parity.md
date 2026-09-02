@@ -93,8 +93,8 @@ export menu.
 | Logo size S/M/L/XL, arrows size, watermark on/off | Style tab, Branding | Keep |
 | Format 4:5 / 9:16 | Style tab, Format | Keep |
 | Arrows, numbers, citations bar show/hide | Style tab, Decoration | Keep |
-| Slides bg Dark / Light / custom picker / clear, bg dim | Style tab, Slide background; dim moves next to the AI background it dims | Keep |
-| Hook weight Default / Medium / Bold / Black with instant swap and regenerate warning | Hook slide, Copy panel | Move |
+| Slides bg Dark / Light / custom picker / clear, bg dim | Style tab, Slide background and Text and content, as today | Keep |
+| Hook weight Default / Medium / Bold / Black with instant swap and regenerate warning | Style tab, Text and content, as today | Keep |
 
 ### A6. Fact check
 
@@ -182,16 +182,15 @@ export menu.
 ## Suggested removals and edits, for your call
 
 1. **Try sample subject.** A demo affordance. Remove from the editor.
-2. **Hook tone recommendation banner.** Keep the recommender, drop the banner: mark the top pick in the select and pre-select it.
+2. **Hook tone recommendation banner.** Keep the recommender, drop the banner: mark the top pick in the select and pre-select it. **Approved 2026-09-02.**
 3. **Start over.** Gone. The brief is always editable and Discard lives in the export menu with undo.
 4. **Restored draft banner.** Gone. Autosave to the server and URLs make it unnecessary.
 5. **Separate Edit text panel and element inspector.** Merged into one Copy panel with sizes under each field. Same fields, one place.
-6. **Hook weight in Settings.** Moved next to the hook copy it belongs to, with the same instant swap.
-7. **Bg dim in Settings.** Moved next to the AI background it dims.
+6. Hook weight and bg dim: proposed a move, **rejected 2026-09-02**, they stay in the Style tab.
 8. **Section auto-collapse rules in the email editor.** Replaced by tabs.
-9. **Inline style toolbar as a floating bar.** Pinned under the text field instead. If you prefer floating, it is a one-line change.
-10. **CTA nudge pad.** Keep for keyboard users, but dragging the CTA on the hero is the primary way.
-11. **Legacy HookStep and ContentStep.** Already unreachable. Delete the files in slice 3.
-12. **Off-palette colours in slide renderers.** `#EFEFF4`, `#1E6B8C`, `#9ab0b8` and others become the closed palette during slice 3. Visual change is small; flagged because the brief says the palette is closed.
+9. **Inline style toolbar as a floating bar.** Pinned under the text field instead. **Approved 2026-09-02.**
+10. **CTA nudge pad.** Keep for keyboard users, but dragging the CTA on the hero is the primary way. **Approved 2026-09-02.**
+11. **Legacy HookStep and ContentStep.** Already unreachable. Delete the files in slice 3. **Approved 2026-09-02.**
+12. **Off-palette colours in slide renderers.** `#EFEFF4`, `#1E6B8C`, `#9ab0b8` and others become the closed palette during slice 3. Under discussion: a palette aligner (snap to nearest palette colour, with a lint) rather than hand edits.
 
 Nothing else is proposed for removal.
