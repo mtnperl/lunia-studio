@@ -1,4 +1,5 @@
 "use client";
+import { useConfirm } from "@/components/ui";
 import { useEffect, useState } from "react";
 
 type ReviewSummary = {
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) {
+  const confirm = useConfirm();
   const [reviews, setReviews] = useState<ReviewSummary[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
   }, []);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this saved review? This cannot be undone.")) return;
+    if (!(await confirm({ title: "Delete this saved review?", description: "This cannot be undone.", confirmLabel: "Delete", tone: "danger" }))) return;
     setDeleting(id);
     try {
       await fetch(`/api/email-review/${id}`, { method: "DELETE" });

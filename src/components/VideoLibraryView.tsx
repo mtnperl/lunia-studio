@@ -1,11 +1,13 @@
 "use client";
 
+import { useConfirm } from "@/components/ui";
 import { useState, useEffect } from "react";
 import { SavedVideoAd } from "@/lib/types";
 
 type RenderingKey = `${string}:${"mp4" | "gif"}`;
 
 export default function VideoLibraryView() {
+  const confirm = useConfirm();
   const [videos, setVideos] = useState<SavedVideoAd[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function VideoLibraryView() {
   }, []);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this video ad?")) return;
+    if (!(await confirm({ title: "Delete this video ad?", confirmLabel: "Delete", tone: "danger" }))) return;
     try {
       await fetch(`/api/video/${id}`, { method: "DELETE" });
       setVideos((prev) => prev.filter((v) => v.id !== id));

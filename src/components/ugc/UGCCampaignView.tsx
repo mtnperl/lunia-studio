@@ -1,4 +1,5 @@
 "use client";
+import { useConfirm } from "@/components/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   UGCBrief,
@@ -22,6 +23,7 @@ type Props = {
 type Dirty = Record<string, Partial<UGCCreator>>;
 
 export default function UGCCampaignView({ campaignId, onBack }: Props) {
+  const confirm = useConfirm();
   const [campaign, setCampaign] = useState<UGCCampaign | null>(null);
   const [briefs, setBriefs] = useState<UGCBrief[]>([]);
   const [dirty, setDirty] = useState<Dirty>({});
@@ -117,7 +119,7 @@ export default function UGCCampaignView({ campaignId, onBack }: Props) {
   }
 
   async function deleteCreator(cid: string) {
-    if (!confirm("Delete this creator?")) return;
+    if (!(await confirm({ title: "Delete this creator?", confirmLabel: "Delete", tone: "danger" }))) return;
     await fetch(`/api/ugc/campaign/${encodeURIComponent(campaignId)}/creator/${encodeURIComponent(cid)}`, {
       method: "DELETE",
     });

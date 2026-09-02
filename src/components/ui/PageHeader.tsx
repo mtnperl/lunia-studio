@@ -31,7 +31,7 @@ export function PageHeader({
   size?: "xl" | "lg" | "md";
 }) {
   return (
-    <header style={{ marginBottom: 32 }}>
+    <header style={{ marginBottom: 28 }}>
       <div
         style={{
           display: "flex",
@@ -45,19 +45,25 @@ export function PageHeader({
           {eyebrow && (
             <div
               style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: "0.14em",
+                fontFamily: "var(--ui-font)",
+                fontSize: "var(--ui-text-11)",
+                fontWeight: 600,
+                letterSpacing: "var(--ui-tracking-caps)",
                 textTransform: "uppercase",
-                color: "var(--subtle)",
-                marginBottom: 12,
+                color: "var(--ui-text-3)",
+                marginBottom: 8,
               }}
             >
               {eyebrow}
             </div>
           )}
-          <h1 className={`display display-${size}`}>{title}</h1>
+          <h1 style={{
+            margin: 0,
+            fontFamily: "var(--ui-font)",
+            fontSize: size === "xl" ? "var(--ui-text-30)" : size === "lg" ? "var(--ui-text-24)" : "var(--ui-text-20)",
+            lineHeight: size === "xl" ? "var(--ui-lh-30)" : size === "lg" ? "var(--ui-lh-24)" : "var(--ui-lh-20)",
+            fontWeight: 600, letterSpacing: "var(--ui-tracking-tight)", color: "var(--ui-text)", textWrap: "balance",
+          }}>{title}</h1>
         </div>
         {actions && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -68,10 +74,10 @@ export function PageHeader({
       {description && (
         <p
           style={{
-            margin: "14px 0 0",
-            color: "var(--muted)",
-            fontSize: 15,
-            lineHeight: 1.55,
+            margin: "8px 0 0",
+            color: "var(--ui-text-2)",
+            fontSize: "var(--ui-text-14)",
+            lineHeight: "var(--ui-lh-14)",
             maxWidth: "62ch",
           }}
         >

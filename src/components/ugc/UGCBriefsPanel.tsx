@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui";
 import { useState, useEffect, useCallback } from "react";
 import { ANGLE_LIBRARY } from "@/lib/angleLibrary";
 import type { UGCBrief, BriefScript, BriefComplianceFlag, UGCBriefDoc, BriefAdPack, MetaCtaType } from "@/lib/types";
@@ -127,6 +128,7 @@ function DocField({ label, value, onChange, rows = 4, hint }: {
 
 // --- Main Panel ---
 export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
+  const confirm = useConfirm();
   const [view, setView] = useState<PanelView>("list");
   const [briefs, setBriefs] = useState<UGCBrief[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +180,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   }
 
   async function deleteBrief(id: string) {
-    if (!confirm("Delete this brief permanently?")) return;
+    if (!(await confirm({ title: "Delete this brief?", description: "This is permanent.", confirmLabel: "Delete", tone: "danger" }))) return;
     await fetch(`/api/ugc/briefs/${id}`, { method: "DELETE" });
     await loadBriefs();
   }
@@ -200,7 +202,7 @@ export default function UGCBriefsPanel({ onBack }: { onBack: () => void }) {
   }
 
   async function revokeBrief(id: string) {
-    if (!confirm("Revoke this share link? The creator will see an access revoked page.")) return;
+    if (!(await confirm({ title: "Revoke this share link?", description: "The creator will see an access revoked page.", confirmLabel: "Revoke", tone: "danger" }))) return;
     await fetch(`/api/ugc/briefs/${id}/revoke`, { method: "POST" });
     await loadBriefs();
   }

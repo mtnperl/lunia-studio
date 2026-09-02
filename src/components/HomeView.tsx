@@ -1,100 +1,42 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Script, SavedCarousel } from "@/lib/types";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import type { Script, SavedCarousel, SavedCampaign } from "@/lib/types";
 import { getLibrary } from "@/lib/storage";
-import { IconSparkles, IconGrid, IconArrowRight, IconPencil } from "@/components/Icons";
+import { IconArrowRight } from "@/components/Icons";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button, Badge, Skeleton, EmptyState, IcPlus } from "@/components/ui";
 
 const DRAFT_TTL_MS = 30 * 60 * 1000;
 
 type Props = {
   onNewScript: () => void;
   onNewCarousel: () => void;
+  onNewEmail: () => void;
   onOpenScript: (s: Script) => void;
   onOpenCarousel: (c?: SavedCarousel & { _unsaved?: boolean }) => void;
+  onOpenCampaign: (c: SavedCampaign) => void;
 };
 
-function StatWidget({ value, label, accent, loading }: { value: number | string; label: string; accent: string; loading: boolean }) {
-  return (
-    <div className="card" style={{
-      position: "relative",
-      padding: "18px 18px 16px",
-      overflow: "hidden",
-    }}>
-      <span style={{
-        position: "absolute", left: 0, top: 0, bottom: 0,
-        width: 3, background: accent,
-      }} />
-      <div style={{
-        fontSize: 11, fontWeight: 600,
-        color: "var(--muted)",
-        letterSpacing: "0.04em",
-        marginBottom: 8,
-      }}>{label}</div>
-      <div style={{
-        fontFamily: "var(--font-ui)",
-        fontSize: 28, fontWeight: 700,
-        color: "var(--text)", lineHeight: 1,
-        letterSpacing: "-0.02em",
-        fontVariantNumeric: "tabular-nums",
-      }}>
-        {loading ? <span style={{ color: "var(--subtle)" }}>—</span> : value}
-      </div>
-    </div>
-  );
-}
-
-function statusChipClass(status?: string) {
-  if (status === "review") return "chip chip-review";
-  if (status === "locked") return "chip chip-locked";
-  return "chip chip-draft";
-}
-function statusLabel(status?: string) {
-  if (status === "review") return "Review";
-  if (status === "locked") return "Locked";
-  return "Draft";
-}
-
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-function BoardRow({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 110px 90px 24px",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 14px",
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
-        cursor: onClick ? "pointer" : "default",
-        transition: "background 0.12s",
-        fontSize: 13,
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface-h)"; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "var(--surface)"; }}
-    >
-      {children}
-    </div>
-  );
-}
-
-export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onOpenCarousel }: Props) {
-  const [scripts, setScripts]   = useState<Script[]>([]);
-  const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
-  const [loading, setLoading]   = useState(true);
+/** Home is the library. The two things you make come first, with their
+ *  artwork; scripts and stats sit below. */
+export default function HomeView({ onNewScript, onNewCarousel, onNewEmail, onOpenScript, onOpenCarousel, onOpenCampaign }: Props) {
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [carousels, setCarousels] = useState<(SavedCarousel & { _unsaved?: boolean })[]>([]);
+  const [emails, setEmails] = useState<SavedCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       getLibrary().catch(() => [] as Script[]),
-      fetch("/api/carousel/library").then(r => r.json()).catch(() => [] as SavedCarousel[]),
-    ]).then(([s, c]) => {
+      fetch("/api/carousel/library").then((r) => r.json()).catch(() => [] as SavedCarousel[]),
+      fetch("/api/campaign/library").then((r) => r.json()).catch(() => [] as SavedCampaign[]),
+    ]).then(([s, c, e]) => {
       setScripts(Array.isArray(s) ? s : []);
-      const saved: SavedCarousel[] = Array.isArray(c) ? c : [];
+      const saved: (SavedCarousel & { _unsaved?: boolean })[] = Array.isArray(c) ? c : [];
       try {
         const now = Date.now();
         const rawDrafts = localStorage.getItem("lunia:drafts");
@@ -102,235 +44,134 @@ export default function HomeView({ onNewScript, onNewCarousel, onOpenScript, onO
         const freshDrafts = drafts.filter((d) => {
           const age = now - new Date(d.savedAt).getTime();
           if (age > DRAFT_TTL_MS) return false;
-          return !saved.some(sc => sc.topic === d.topic && Math.abs(new Date(sc.savedAt).getTime() - new Date(d.savedAt).getTime()) < 10_000);
+          return !saved.some((sc) => sc.topic === d.topic && Math.abs(new Date(sc.savedAt).getTime() - new Date(d.savedAt).getTime()) < 10_000);
         });
         saved.unshift(...freshDrafts);
-        const stillFresh = drafts.filter((d) => now - new Date(d.savedAt).getTime() <= DRAFT_TTL_MS);
-        localStorage.setItem("lunia:drafts", JSON.stringify(stillFresh));
+        localStorage.setItem("lunia:drafts", JSON.stringify(drafts.filter((d) => now - new Date(d.savedAt).getTime() <= DRAFT_TTL_MS)));
       } catch {}
       setCarousels(saved);
+      setEmails(Array.isArray(e) ? e : []);
       setLoading(false);
     });
   }, []);
 
-  const thisWeekScripts = scripts.filter(s => {
-    const d = new Date(s.savedAt);
-    return d >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  }).length;
+  const recentCarousels = [...carousels].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 8);
+  const recentEmails = [...emails].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
+  const recentScripts = [...scripts].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
+  const inReview = scripts.filter((s) => s.status === "review").length;
 
-  const inReview = scripts.filter(s => s.status === "review").length;
-
-  const recentScripts   = [...scripts].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
-  const recentCarousels = [...carousels].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).slice(0, 5);
-
-  // Resolved after mount, never during render: the server has no idea what
-  // time it is where you are, so deriving the greeting inline made the
-  // server and client render different words and broke hydration. `null`
-  // until mounted keeps the first paint deterministic.
-  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(null);
-  useEffect(() => {
-    const now = new Date();
-    const h = now.getHours();
-    setClock({
-      greeting: h < 5 ? "Still up" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening",
-      date: now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }),
-    });
-  }, []);
+  // Client-only: the server does not know the reader's date.
+  const date = useSyncExternalStore(() => () => {}, () => new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }), () => " ");
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 32px 64px" }}>
-
-      {/* The greeting DESIGN.md always asked for: display serif, italic accent,
-          at a size where Cormorant's contrast actually reads. This screen's
-          largest type used to be an 18px board heading. */}
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 32px 64px" }}>
       <PageHeader
-        size="xl"
-        eyebrow={clock?.date ?? "\u00A0"}
-        title={<span className="display-greeting">{clock ? `${clock.greeting}.` : "Welcome."}</span>}
+        size="lg"
+        eyebrow={date}
+        title="Studio"
+        description="Pick up where you left off, or start something new."
+        actions={<><Button variant="primary" size="md" icon={<IcPlus size={14} />} onClick={onNewCarousel}>New carousel</Button><Button size="md" onClick={onNewEmail}>New email</Button><Button size="md" variant="ghost" onClick={onNewScript}>New script</Button></>}
       />
 
-      {/* Overview stat widgets */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: 14,
-        marginBottom: 28,
-      }}>
-        {/* The four colours here were decorative — sky, purple, green and
-            yellow assigned to metrics that have no relationship to those
-            hues. Only "In review" reports a state, so only it earns colour. */}
-        <StatWidget value={scripts.length}   label="Scripts saved"     accent="var(--border-strong)" loading={loading} />
-        <StatWidget value={carousels.length} label="Carousels built"   accent="var(--border-strong)" loading={loading} />
-        <StatWidget value={thisWeekScripts}  label="Scripts this week" accent="var(--border-strong)" loading={loading} />
-        <StatWidget value={inReview} label="In review" accent={inReview > 0 ? "var(--warning)" : "var(--border-strong)"} loading={loading} />
-      </div>
-
-      {/* Quick actions */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        gap: 12,
-        marginBottom: 32,
-      }}>
-        <QuickAction
-          icon={<IconSparkles size={18} />}
-          title="New script"
-          desc="Generate hooks and a full UGC script."
-          onClick={onNewScript}
-        />
-        <QuickAction
-          icon={<IconGrid size={18} />}
-          title="New carousel"
-          desc="Build an Instagram carousel."
-          onClick={onNewCarousel}
-        />
-        <QuickAction
-          icon={<IconPencil size={18} />}
-          title="UGC briefs"
-          desc="Write ad briefs for creators."
-          onClick={onNewScript}
-        />
-      </div>
-
-      {/* Boards */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(440px, 1fr))",
-        gap: 20,
-      }}>
-        <Board
-          title="Recent scripts"
-          actionLabel="View all"
-          onAction={onNewScript}
-          loading={loading}
-          empty={recentScripts.length === 0 ? "No scripts yet." : null}
-          columns={["Title", "Status", "Saved", ""]}
-        >
-          {recentScripts.map(s => (
-            <BoardRow key={s.id} onClick={() => onOpenScript(s)}>
-              <div style={{
-                fontWeight: 500, color: "var(--text)",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>{s.title}</div>
-              <div><span className={statusChipClass(s.status)}>{statusLabel(s.status)}</span></div>
-              <div style={{ fontSize: 12, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{formatDate(s.savedAt)}</div>
-              <IconArrowRight size={14} />
-            </BoardRow>
-          ))}
-        </Board>
-
-        <Board
-          title="Recent carousels"
-          actionLabel="View all"
-          onAction={() => onOpenCarousel()}
-          loading={loading}
-          empty={recentCarousels.length === 0 ? "No carousels yet." : null}
-          columns={["Topic", "Tone", "Saved", ""]}
-        >
-          {recentCarousels.map(c => {
-            const isUnsaved = (c as { _unsaved?: boolean })._unsaved;
-            return (
-              <BoardRow key={c.id} onClick={() => onOpenCarousel(c as SavedCarousel & { _unsaved?: boolean })}>
-                <div style={{
-                  fontWeight: 500, color: "var(--text)",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  display: "flex", alignItems: "center", gap: 8,
-                }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{c.topic}</span>
-                  {isUnsaved && <span className="chip chip-working" style={{ flexShrink: 0 }}>Unsaved</span>}
+      <Section title="Carousels" count={carousels.length} onAll={() => onOpenCarousel()} allLabel="Open the builder">
+        {loading ? <CardSkeletons /> : recentCarousels.length === 0 ? (
+          <EmptyState title="No carousels yet" description="Start from a subject in your library or paste a topic. A first draft takes about two minutes." actions={<Button variant="primary" onClick={onNewCarousel}>New carousel</Button>} />
+        ) : (
+          <div className="home-grid">
+            {recentCarousels.map((c) => (
+              <button key={c.id} type="button" className="home-card" onClick={() => onOpenCarousel(c)}>
+                <div className="home-card__art" style={{ aspectRatio: "4 / 5" }}>
+                  {c.hookImageUrl ? <img src={c.hookImageUrl} alt="" loading="lazy" /> : <div className="home-card__blank">{c.content?.hooks?.[c.selectedHook]?.headline ?? c.topic}</div>}
                 </div>
-                <div><span className="chip chip-plan">{c.hookTone}</span></div>
-                <div style={{ fontSize: 12, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{formatDate(c.savedAt)}</div>
+                <div className="home-card__meta">
+                  <span className="home-card__title">{c.topic}</span>
+                  <span className="home-card__sub">{formatDate(c.savedAt)} · {c.hookTone}{c._unsaved && <> · <Badge tone="warning">Unsaved</Badge></>}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Emails" count={emails.length} onAll={onNewEmail} allLabel="Open the builder">
+        {loading ? <CardSkeletons /> : recentEmails.length === 0 ? (
+          <EmptyState title="No emails yet" description="Pick a subject or an offer. Subject lines arrive first, then the blocks fill in." actions={<Button variant="primary" onClick={onNewEmail}>New email</Button>} />
+        ) : (
+          <div className="home-grid">
+            {recentEmails.map((e) => {
+              const hero = e.content.images?.find((i) => i.role === "hero");
+              const subject = e.content.subjectLines?.[e.content.selectedSubject] ?? e.content.subjectLines?.[0] ?? e.topic;
+              return (
+                <button key={e.id} type="button" className="home-card" onClick={() => onOpenCampaign(e)}>
+                  <div className="home-card__art" style={{ aspectRatio: "4 / 3", background: "var(--lunia-rich-navy)" }}>
+                    {hero?.url ? <img src={hero.url} alt="" loading="lazy" /> : <div className="home-card__blank" style={{ color: "var(--lunia-soft-ivory)" }}>{subject}</div>}
+                  </div>
+                  <div className="home-card__meta">
+                    <span className="home-card__title">{subject}</span>
+                    <span className="home-card__sub">{formatDate(e.createdAt)}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Scripts" count={scripts.length} onAll={onNewScript} allLabel="Generate a script" note={inReview > 0 ? `${inReview} in review` : undefined}>
+        {loading ? <Skeleton height={40} /> : recentScripts.length === 0 ? (
+          <EmptyState title="No scripts yet" description="Generate hooks and a full UGC script from a topic." actions={<Button onClick={onNewScript}>New script</Button>} />
+        ) : (
+          <div className="home-list">
+            {recentScripts.map((s) => (
+              <button key={s.id} type="button" className="home-row" onClick={() => onOpenScript(s)}>
+                <span className="home-row__title">{s.title}</span>
+                <Badge tone={s.status === "review" ? "warning" : s.status === "locked" ? "success" : "neutral"}>{s.status === "review" ? "Review" : s.status === "locked" ? "Locked" : "Draft"}</Badge>
+                <span className="home-row__date">{formatDate(s.savedAt)}</span>
                 <IconArrowRight size={14} />
-              </BoardRow>
-            );
-          })}
-        </Board>
-      </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <style>{`
+        .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+        .home-card { display: flex; flex-direction: column; gap: 8px; padding: 0; background: none; border: none; text-align: left; cursor: pointer; color: var(--ui-text); font: inherit; border-radius: var(--ui-radius-3); }
+        .home-card:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+        .home-card__art { width: 100%; overflow: hidden; border-radius: var(--ui-radius-3); border: 1px solid var(--ui-border); background: var(--ui-surface-2); position: relative; transition: border-color var(--ui-dur-1) var(--ui-ease-out); }
+        .home-card:hover .home-card__art { border-color: var(--ui-border-strong); }
+        .home-card__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .home-card__blank { position: absolute; inset: 0; padding: 14px; font-size: 13px; line-height: 1.3; font-weight: 500; color: var(--lunia-deep-navy); background: var(--lunia-soft-ivory); display: flex; align-items: flex-end; }
+        .home-card__meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .home-card__title { font-size: 13px; font-weight: 500; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .home-card__sub { font-size: 11px; color: var(--ui-text-3); display: inline-flex; align-items: center; gap: 4px; }
+        .home-list { display: flex; flex-direction: column; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-3); overflow: hidden; }
+        .home-row { display: grid; grid-template-columns: 1fr auto 60px 16px; align-items: center; gap: 12px; padding: 10px 14px; background: var(--ui-bg); border: none; border-bottom: 1px solid var(--ui-border); text-align: left; cursor: pointer; color: var(--ui-text); font: inherit; font-size: 13px; }
+        .home-row:last-child { border-bottom: none; }
+        .home-row:hover { background: var(--ui-surface); }
+        .home-row:focus-visible { outline: none; box-shadow: inset var(--ui-focus-ring); }
+        .home-row__title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .home-row__date { font-size: 12px; color: var(--ui-text-3); font-variant-numeric: tabular-nums; }
+      `}</style>
     </div>
   );
 }
 
-function QuickAction({ icon, title, desc, onClick }: {
-  icon: React.ReactNode; title: string; desc: string; onClick: () => void;
-}) {
+function Section({ title, count, onAll, allLabel, note, children }: { title: string; count: number; onAll: () => void; allLabel: string; note?: string; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className="card"
-      style={{
-        display: "flex", alignItems: "flex-start", gap: 12,
-        padding: "16px 18px",
-        textAlign: "left",
-        cursor: "pointer",
-        background: "var(--surface)",
-        fontFamily: "var(--font-ui)",
-      }}
-    >
-      <span style={{
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, borderRadius: "var(--r-md)",
-        background: "var(--accent-dim)", color: "var(--text)",
-        flexShrink: 0,
-      }}>{icon}</span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{title}</span>
-        <span style={{ display: "block", fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>{desc}</span>
-      </span>
-    </button>
+    <section style={{ marginBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontSize: "var(--ui-text-16)", fontWeight: 600, letterSpacing: "var(--ui-tracking-tight)" }}>{title}</h2>
+        <span style={{ fontSize: 12, color: "var(--ui-text-3)", fontFamily: "var(--ui-font-mono)" }}>{count}</span>
+        {note && <Badge tone="warning">{note}</Badge>}
+        <span style={{ flex: 1 }} />
+        <Button variant="ghost" size="sm" onClick={onAll}>{allLabel}</Button>
+      </div>
+      {children}
+    </section>
   );
 }
 
-function Board({ title, actionLabel, onAction, loading, empty, columns, children }: {
-  title: string; actionLabel: string; onAction: () => void;
-  loading: boolean; empty: string | null;
-  columns: string[];
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{
-      background: "var(--surface)",
-      border: "1px solid var(--border)",
-      borderRadius: "var(--r-md)",
-      overflow: "hidden",
-      boxShadow: "var(--shadow-sm)",
-    }}>
-      <div style={{
-        padding: "12px 14px",
-        borderBottom: "1px solid var(--border)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--text)" }}>{title}</h2>
-        <button
-          onClick={onAction}
-          style={{
-            background: "none", border: "none",
-            color: "var(--accent)", fontSize: 12, fontWeight: 600,
-            cursor: "pointer", padding: "4px 6px",
-            display: "inline-flex", alignItems: "center", gap: 4,
-          }}
-        >
-          {actionLabel} <IconArrowRight size={13} />
-        </button>
-      </div>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 110px 90px 24px",
-        gap: 12,
-        padding: "8px 14px",
-        background: "var(--surface-r)",
-        borderBottom: "1px solid var(--border)",
-        fontSize: 10, fontWeight: 600,
-        color: "var(--subtle)",
-        textTransform: "uppercase", letterSpacing: "0.06em",
-      }}>
-        {columns.map((c, i) => <div key={i}>{c}</div>)}
-      </div>
-      {loading ? (
-        <div style={{ padding: 24, fontSize: 13, color: "var(--subtle)" }}>Loading…</div>
-      ) : empty ? (
-        <div style={{ padding: 24, fontSize: 13, color: "var(--subtle)" }}>{empty}</div>
-      ) : children}
-    </div>
-  );
+function CardSkeletons() {
+  return <div className="home-grid" aria-busy="true">{Array.from({ length: 4 }).map((_, i) => <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}><Skeleton height={0} style={{ aspectRatio: "4 / 5", height: "auto", borderRadius: 8 }} /><Skeleton width="80%" /><Skeleton width="40%" /></div>)}</div>;
 }

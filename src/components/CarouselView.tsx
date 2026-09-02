@@ -86,7 +86,7 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView({ initialCarousel, onCarouselLoaded, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; version?: "v1" | "v2" }) {
+export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; version?: "v1" | "v2" }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -599,6 +599,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, versio
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={initialCarousel?.id ?? null}
+              onSaved={onSaved}
               initialVerification={initialCarousel?.verification}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}

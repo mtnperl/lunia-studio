@@ -1,4 +1,5 @@
 "use client";
+import { useConfirm } from "@/components/ui";
 import { useEffect, useState } from "react";
 import type { SavedCampaign } from "@/lib/types";
 import { SkeletonTile } from "@/components/campaign/Loaders";
@@ -9,6 +10,7 @@ export default function CampaignLibraryView({
 }: {
   onOpen: (campaign: SavedCampaign) => void;
 }) {
+  const confirm = useConfirm();
   const [campaigns, setCampaigns] = useState<SavedCampaign[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +28,7 @@ export default function CampaignLibraryView({
 
   async function remove(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this campaign?")) return;
+    if (!(await confirm({ title: "Delete this email?", description: "It is removed from the library.", confirmLabel: "Delete", tone: "danger" }))) return;
     await fetch(`/api/campaign/${id}`, { method: "DELETE" });
     setCampaigns((prev) => (prev ? prev.filter((c) => c.id !== id) : prev));
   }

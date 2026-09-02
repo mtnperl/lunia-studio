@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui";
 import { useState, useEffect, useRef } from "react";
 import { VideoAssetMetadata, VideoAssetType } from "@/lib/types";
 
@@ -11,6 +12,7 @@ const ASSET_TYPE_LABELS: Record<VideoAssetType, string> = {
 };
 
 export default function VideoAssetsView() {
+  const confirm = useConfirm();
   const [assets, setAssets] = useState<VideoAssetMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -58,7 +60,7 @@ export default function VideoAssetsView() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this asset?")) return;
+    if (!(await confirm({ title: "Delete this asset?", confirmLabel: "Delete", tone: "danger" }))) return;
     try {
       await fetch(`/api/video-assets/${id}`, { method: "DELETE" });
       setAssets((prev) => prev.filter((a) => a.id !== id));

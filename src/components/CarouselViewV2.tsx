@@ -3,10 +3,10 @@ import CarouselView from "@/components/CarouselView";
 import { CarouselApiProvider } from "@/components/carousel/api-context";
 import type { SavedCarousel } from "@/lib/types";
 
-export default function CarouselViewV2({ initialCarousel, onCarouselLoaded }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void }) {
+export default function CarouselViewV2({ initialCarousel, onCarouselLoaded, onSaved }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void }) {
   return (
     <CarouselApiProvider apiBase="/api/carousel-v2">
-      <CarouselView initialCarousel={initialCarousel} onCarouselLoaded={onCarouselLoaded} version="v2" />
+      <CarouselView initialCarousel={initialCarousel} onCarouselLoaded={onCarouselLoaded} onSaved={onSaved} version="v2" />
     </CarouselApiProvider>
   );
 }
