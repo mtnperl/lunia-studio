@@ -1,0 +1,240 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Lunia Studio design tokens. One source of truth for the application chrome.
+
+   Two token families live here and they must never be mixed:
+
+   1. `--ui-*`     Application chrome. Cool neutral grays, light and dark.
+                   Nothing in this family is a Lunia brand colour. The tool is
+                   recessive so the content on the canvas carries the colour.
+
+   2. `--lunia-*`  Canvas content. The closed Lunia Life output palette. Used
+                   only when rendering carousel slides, email blocks, and their
+                   previews. Never used for sidebars, panels, buttons, or text
+                   in the chrome.
+
+   The legacy aliases at the bottom (`--bg`, `--surface`, `--muted`, ...) keep
+   every existing inline style working. New code reads `--ui-*` directly.
+
+   Contrast (WCAG 2.1 AA, checked numerically, see docs/redesign/02-design-system.md):
+     text   on any surface   >= 14:1
+     text-2 on any surface   >= 4.9:1
+     text-3 on bg / surface  >= 4.5:1   (do not put text-3 on surface-2 or below)
+     border-strong on bg     >= 3:1     (control edges)
+     focus ring on bg        >= 4.6:1
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Chrome palette: light ─────────────────────────────────────────────── */
+  --ui-bg:             #ffffff;   /* page ground */
+  --ui-bg-sunken:      #f3f4f7;   /* canvas backdrop, behind the artwork */
+  --ui-surface:        #f7f8fa;   /* rails, panels, cards */
+  --ui-surface-2:      #eef0f4;   /* raised: popovers, menus, inputs */
+  --ui-surface-3:      #e4e7ed;   /* hover on interactive surfaces */
+  --ui-border:         #dcdfe6;   /* dividers, card edges */
+  --ui-border-strong:  #8e95a3;   /* control edges (3:1 on bg) */
+  --ui-text:           #14161b;
+  --ui-text-2:         #5b6270;   /* secondary, labels */
+  --ui-text-3:         #656d7e;   /* tertiary, timestamps (bg and surface only) */
+  --ui-ink:            #14161b;   /* primary action fill */
+  --ui-ink-hover:      #2a2e37;
+  --ui-on-ink:         #ffffff;
+  --ui-focus:          #2f6fe4;   /* focus ring, selection outline, links */
+  --ui-focus-tint:     rgba(47, 111, 228, 0.12);
+  --ui-selection-tint: rgba(20, 22, 27, 0.06);
+  --ui-selection-tint-2: rgba(20, 22, 27, 0.10);
+  --ui-success:        #1b7f43;
+  --ui-warning:        #9a5b00;
+  --ui-danger:         #c0262d;
+  --ui-success-tint:   rgba(27, 127, 67, 0.10);
+  --ui-warning-tint:   rgba(154, 91, 0, 0.10);
+  --ui-danger-tint:    rgba(192, 38, 45, 0.10);
+  --ui-scrim:          rgba(20, 22, 27, 0.40);
+
+  /* ── Elevation: shadows only on floating layers ─────────────────────────
+     Cards and rails get no shadow; a 1px border and a surface step do the
+     work. Popovers, menus, dialogs, and toasts float, so they cast one. */
+  --ui-elev-1: 0 1px 2px rgba(20, 22, 27, 0.06), 0 4px 12px rgba(20, 22, 27, 0.08);
+  --ui-elev-2: 0 2px 4px rgba(20, 22, 27, 0.08), 0 12px 32px rgba(20, 22, 27, 0.14);
+  --ui-elev-3: 0 4px 8px rgba(20, 22, 27, 0.10), 0 24px 48px rgba(20, 22, 27, 0.18);
+
+  /* ── Type ──────────────────────────────────────────────────────────────── */
+  --ui-font:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  --ui-font-mono: 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Whole pixels only. Line heights are unitless and pair with the size. */
+  --ui-text-11: 11px;  --ui-lh-11: 1.45;   /* badges, kbd, tertiary meta */
+  --ui-text-12: 12px;  --ui-lh-12: 1.45;   /* labels, dense table cells */
+  --ui-text-13: 13px;  --ui-lh-13: 1.5;    /* controls, rail body */
+  --ui-text-14: 14px;  --ui-lh-14: 1.5;    /* body default */
+  --ui-text-16: 16px;  --ui-lh-16: 1.5;    /* lead, dialog body */
+  --ui-text-18: 18px;  --ui-lh-18: 1.4;    /* panel titles */
+  --ui-text-20: 20px;  --ui-lh-20: 1.35;   /* document title */
+  --ui-text-24: 24px;  --ui-lh-24: 1.3;    /* page title */
+  --ui-text-30: 30px;  --ui-lh-30: 1.2;    /* empty state, onboarding */
+  --ui-text-36: 36px;  --ui-lh-36: 1.15;   /* hero moments only */
+
+  --ui-weight-regular: 400;
+  --ui-weight-medium:  500;
+  --ui-weight-semibold: 600;
+
+  --ui-tracking-tight: -0.01em;   /* 20px and up */
+  --ui-tracking-caps:  0.06em;    /* uppercase labels, 11 to 12px only */
+
+  /* ── Space: 8px rhythm with a 2/4/6 fine grain ─────────────────────────── */
+  --ui-space-1: 2px;
+  --ui-space-2: 4px;
+  --ui-space-3: 6px;
+  --ui-space-4: 8px;
+  --ui-space-5: 12px;
+  --ui-space-6: 16px;
+  --ui-space-7: 20px;
+  --ui-space-8: 24px;
+  --ui-space-9: 32px;
+  --ui-space-10: 40px;
+  --ui-space-11: 48px;
+  --ui-space-12: 64px;
+
+  /* ── Radii ─────────────────────────────────────────────────────────────── */
+  --ui-radius-1: 4px;     /* chips, kbd, small controls */
+  --ui-radius-2: 6px;     /* buttons, inputs */
+  --ui-radius-3: 8px;     /* cards, panels, popovers */
+  --ui-radius-4: 12px;    /* dialogs, toasts */
+  --ui-radius-full: 9999px;
+
+  /* ── Control geometry ──────────────────────────────────────────────────── */
+  --ui-control-sm: 28px;
+  --ui-control-md: 32px;
+  --ui-control-lg: 40px;
+  --ui-rail-width: 280px;
+  --ui-nav-width: 240px;
+  --ui-topbar-height: 48px;
+
+  /* ── Motion ────────────────────────────────────────────────────────────── */
+  --ui-dur-1: 80ms;    /* micro: hover, press */
+  --ui-dur-2: 150ms;   /* short: toggles, tooltips */
+  --ui-dur-3: 220ms;   /* medium: panels, popovers, dialogs */
+  --ui-dur-4: 350ms;   /* long: page-level, drawers */
+  --ui-ease-out:    cubic-bezier(0.2, 0, 0, 1);      /* enter */
+  --ui-ease-in:     cubic-bezier(0.4, 0, 1, 1);      /* exit */
+  --ui-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);    /* move */
+
+  /* ── Focus ─────────────────────────────────────────────────────────────── */
+  --ui-focus-ring: 0 0 0 2px var(--ui-bg), 0 0 0 4px var(--ui-focus);
+
+  /* ── Layers ────────────────────────────────────────────────────────────── */
+  --ui-z-rail: 10;
+  --ui-z-sticky: 20;
+  --ui-z-popover: 100;
+  --ui-z-dialog: 200;
+  --ui-z-toast: 300;
+  --ui-z-tooltip: 400;
+
+  /* ── Canvas content palette (closed set, Lunia Life) ───────────────────
+     Mirrors BRAND_COLORS in src/lib/brand-tokens.ts. Only these six colours
+     may appear in output artwork. No gradients. The two navies are never
+     placed adjacent in the same module. */
+  --lunia-deep-navy:     #102635;
+  --lunia-rich-navy:     #01253f;
+  --lunia-slate-blue:    #2c3f51;
+  --lunia-soft-ivory:    #f7f4ef;
+  --lunia-aqua:          #bffbf8;
+  --lunia-signal-yellow: #ffd800;
+  --lunia-font:          'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Chrome palette: dark ──────────────────────────────────────────────────
+   Cool near-black, not warm. Sits comfortably next to navy artwork on the
+   canvas without competing with it. */
+[data-theme="dark"] {
+  --ui-bg:             #0f1116;
+  --ui-bg-sunken:      #0a0c10;
+  --ui-surface:        #161920;
+  --ui-surface-2:      #1d2129;
+  --ui-surface-3:      #262b35;
+  --ui-border:         #2a2f3a;
+  --ui-border-strong:  #5a6273;
+  --ui-text:           #e8eaef;
+  --ui-text-2:         #a3a9b6;
+  --ui-text-3:         #8a919f;
+  --ui-ink:            #e8eaef;
+  --ui-ink-hover:      #ffffff;
+  --ui-on-ink:         #0f1116;
+  --ui-focus:          #6ea2ff;
+  --ui-focus-tint:     rgba(110, 162, 255, 0.16);
+  --ui-selection-tint: rgba(232, 234, 239, 0.08);
+  --ui-selection-tint-2: rgba(232, 234, 239, 0.14);
+  --ui-success:        #4cc27a;
+  --ui-warning:        #e0a93a;
+  --ui-danger:         #f26b6b;
+  --ui-success-tint:   rgba(76, 194, 122, 0.14);
+  --ui-warning-tint:   rgba(224, 169, 58, 0.14);
+  --ui-danger-tint:    rgba(242, 107, 107, 0.14);
+  --ui-scrim:          rgba(0, 0, 0, 0.60);
+
+  --ui-elev-1: 0 1px 2px rgba(0, 0, 0, 0.40), 0 4px 12px rgba(0, 0, 0, 0.40);
+  --ui-elev-2: 0 2px 4px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.50);
+  --ui-elev-3: 0 4px 8px rgba(0, 0, 0, 0.50), 0 24px 48px rgba(0, 0, 0, 0.60);
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────
+   Durations collapse to zero so every transition and animation that reads a
+   token becomes an instant state change. Keyframe animations that do not
+   read a token are switched off below. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ui-dur-1: 0ms;
+    --ui-dur-2: 0ms;
+    --ui-dur-3: 0ms;
+    --ui-dur-4: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Legacy aliases ────────────────────────────────────────────────────────
+   Every pre-existing inline style reads these names. They now resolve to the
+   neutral system above, so the whole app re-themes without touching the 3,500
+   inline style objects. Do not add new consumers; read `--ui-*` instead. */
+:root, [data-theme="light"], [data-theme="dark"] {
+  --bg:            var(--ui-bg);
+  --surface:       var(--ui-surface);
+  --surface-r:     var(--ui-surface-2);
+  --surface-h:     var(--ui-surface-3);
+  --text:          var(--ui-text);
+  --muted:         var(--ui-text-2);
+  --subtle:        var(--ui-text-3);
+  --accent:        var(--ui-ink);
+  --accent-hover:  var(--ui-ink-hover);
+  --accent-dim:    var(--ui-selection-tint);
+  --accent-mid:    var(--ui-selection-tint-2);
+  --border:        var(--ui-border);
+  --border-strong: var(--ui-border-strong);
+  --success:       var(--ui-success);
+  --warning:       var(--ui-warning);
+  --error:         var(--ui-danger);
+  --chip-bg:       var(--ui-selection-tint);
+  --chip-fg:       var(--ui-text);
+  --chip-bg-firm:  var(--ui-selection-tint-2);
+
+  --font-ui:    var(--ui-font);
+  --font-mono:  var(--ui-font-mono);
+  /* The serif display face stays loaded until the shell slice replaces the
+     page headers. New chrome does not use it. */
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+
+  --r-sm: var(--ui-radius-1);
+  --r-md: var(--ui-radius-2);
+  --r-lg: var(--ui-radius-3);
+  --r-xl: var(--ui-radius-4);
+
+  --shadow-sm: none;
+  --shadow-md: var(--ui-elev-1);
+  --shadow-lg: var(--ui-elev-2);
+
+  --black: #000;
+  --white: #fff;
+}

@@ -11,103 +11,13 @@
    back here. */
 @import "tailwindcss";
 
-/* ── Apple-Inspired Studio — Light (default) ──────────────────────────────
-   Source of truth: DESIGN.md. White #FFFFFF, near-black #1D1D1F accent,
-   no shadows (elevation = background shift), Inter/Cormorant/Fira. */
-:root {
-  --bg:            #ffffff;
-  --surface:       #f5f5f7;
-  --surface-r:     #ebebed;
-  --surface-h:     #e3e3e8;
-  --text:          #1d1d1f;
-  --muted:         #6e6e73;
-  --subtle:        #98989d;
-  --accent:        #1d1d1f;
-  --accent-hover:  #3a3a3c;
-  --accent-dim:    rgba(0, 0, 0, 0.06);
-  --accent-mid:    rgba(0, 0, 0, 0.16);
-  --border:        #d2d2d7;
-  --border-strong: #bcbcc5;
-
-  /* Chip fills. DESIGN.md light mode carries no colour accent, so a chip
-     earns colour only when it reports a STATE (--success/--warning/--error).
-     Everything else — categories, tones, counts — is ink on a wash, told
-     apart by its word rather than its hue. Replaces a borrowed Monday.com
-     palette whose purple and sky read as generic SaaS and fought the gold
-     in dark mode. */
-  --chip-bg:      rgba(0,0,0,0.06);
-  --chip-fg:      #1d1d1f;
-  --chip-bg-firm: rgba(0,0,0,0.10);
-
-  --success: #1c7a3a;
-  --warning: #b86040;
-  --error:   #c40000;
-
-  /* Typography — DESIGN.md */
-  --font-ui:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-mono:  'Fira Code', 'SF Mono', Menlo, monospace;
-
-  /* Radii */
-  --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 12px;
-  --r-xl: 16px;
-
-  /* Shadows — DESIGN.md forbids box-shadows (elevation = bg shift + border).
-     Kept as tokens set to none so any consumer resolves cleanly. */
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-
-  /* Legacy aliases */
-  --black: #000;
-  --white: #fff;
-}
-
-[data-theme="light"] {
-  --bg:            #ffffff;
-  --surface:       #f5f5f7;
-  --surface-r:     #ebebed;
-  --surface-h:     #e3e3e8;
-  --text:          #1d1d1f;
-  --muted:         #6e6e73;
-  --subtle:        #98989d;
-  --accent:        #1d1d1f;
-  --accent-hover:  #3a3a3c;
-  --accent-dim:    rgba(0, 0, 0, 0.06);
-  --accent-mid:    rgba(0, 0, 0, 0.16);
-  --border:        #d2d2d7;
-  --border-strong: #bcbcc5;
-  --success: #1c7a3a;
-  --warning: #b86040;
-  --error:   #c40000;
-}
-
-/* ── Apple-Inspired Studio — Dark (warm atelier) ──────────────────────────
-   DESIGN.md dark: warm near-black #0D0C0A, gold #C8A96E accent. */
-[data-theme="dark"] {
-  --bg:            #0d0c0a;
-  --surface:       #171512;
-  --surface-r:     #201e1b;
-  --surface-h:     #252219;
-  --text:          #ede8df;
-  --muted:         #7a7268;
-  --subtle:        #4a4640;
-  --accent:        #c8a96e;
-  --accent-hover:  #d4b87e;
-  --accent-dim:    rgba(200, 169, 110, 0.12);
-  --accent-mid:    rgba(200, 169, 110, 0.30);
-  --border:        #2a2723;
-  --border-strong: #332f2b;
-  --success: #5f9e75;
-  --warning: #c47a5a;
-  --error:   #b85c5c;
-
-  --chip-bg:      rgba(200, 169, 110, 0.12);
-  --chip-fg:      #ede8df;
-  --chip-bg-firm: rgba(200, 169, 110, 0.22);
-}
+/* ── Tokens ──────────────────────────────────────────────────────────────
+   All colour, type, space, radius, elevation and motion values live in
+   tokens.css. Primitive styles live in ui.css. The legacy names used by
+   inline styles across the app (--bg, --surface, --muted, ...) are aliases
+   defined at the bottom of tokens.css. */
+@import "./tokens.css";
+@import "./ui.css";
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -184,52 +94,6 @@ html.lunia-editing ::-webkit-scrollbar { display: none; }
 }
 .btn-ghost:hover { background: var(--surface-h); border-color: var(--subtle); }
 .btn-ghost:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* ── ui/ control system (Apple, DESIGN.md) ─────────────────────────────────
-   Shared, app-adoptable button vocabulary. One accent, 1px borders, no
-   shadows. Rest state uses --text (readable) so controls never read as
-   disabled; disabled is reserved for genuinely unavailable actions. */
-.ui-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  font-family: var(--font-ui); font-weight: 500; line-height: 1;
-  border-radius: var(--r-sm); cursor: pointer; white-space: nowrap;
-  border: 1px solid transparent;
-  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
-}
-.ui-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-mid); }
-.ui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.ui-btn--sm { min-height: 32px; padding: 0 12px; font-size: 12px; }
-.ui-btn--md { min-height: 36px; padding: 0 16px; font-size: 13px; }
-/* For the button that advances a flow. Bigger than a toolbar control because
-   it is the only thing on the screen you are certain to press. */
-.ui-btn--lg { min-height: 46px; padding: 0 30px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-/* --bg, not #fff: the accent is near-black in light mode and GOLD in dark, so
-   a hardcoded white label sat at about 1.9:1 on gold — unreadable, and it
-   shipped everywhere the ui/ system had already been adopted. --bg is the
-   ground the accent was chosen against, so it inverts correctly in both. */
-.ui-btn--primary   { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-.ui-btn--primary:not(:disabled):hover   { background: var(--accent-hover); border-color: var(--accent-hover); }
-.ui-btn--secondary { background: transparent; color: var(--text); border-color: var(--border-strong); }
-.ui-btn--secondary:not(:disabled):hover { background: var(--surface-h); border-color: var(--border-strong); }
-.ui-btn--ghost     { background: transparent; color: var(--text); border-color: transparent; }
-.ui-btn--ghost:not(:disabled):hover     { background: var(--surface-h); }
-.ui-btn--danger    { background: transparent; color: var(--error); border-color: var(--border-strong); }
-.ui-btn--danger:not(:disabled):hover    { background: var(--surface-h); border-color: var(--error); }
-.ui-btn--selected  { background: var(--accent-dim); color: var(--text); border-color: var(--accent); }
-
-.ui-icon-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; padding: 0; flex-shrink: 0;
-  border: 1px solid var(--border); border-radius: var(--r-sm);
-  background: var(--surface); color: var(--text); cursor: pointer;
-  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
-}
-.ui-icon-btn:not(:disabled):hover { background: var(--surface-h); border-color: var(--border-strong); }
-.ui-icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-mid); }
-.ui-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.ui-icon-btn--active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-.ui-icon-btn--danger { color: var(--error); }
-.ui-icon-btn--danger:not(:disabled):hover { border-color: var(--error); background: var(--surface-h); }
 
 /* Divider between control clusters (destructive split, action groups). */
 .ui-divider-v { width: 1px; align-self: stretch; background: var(--border); margin: 0 2px; }
