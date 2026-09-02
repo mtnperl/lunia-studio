@@ -32,11 +32,13 @@ export function Dialog({ open, onClose, title, children, footer, wide = false, c
     const el = ref.current;
     if (!el) return;
     const onCancel = (e: Event) => { e.preventDefault(); if (dismissible) onClose(); };
+    // Backdrop click: the event target is the <dialog> element itself only
+    // when the click landed outside its content (the dialog has no padding).
+    // Do not use pointer coordinates here: a keyboard-activated button fires
+    // a click at 0,0, which a coordinate test reads as "outside".
     const onClick = (e: MouseEvent) => {
       if (!dismissible) return;
-      const r = el.getBoundingClientRect();
-      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-      if (!inside) onClose();
+      if (e.target === el) onClose();
     };
     el.addEventListener("cancel", onCancel);
     el.addEventListener("click", onClick);

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & {
   /** Accessible name. Required: icon-only buttons have no text label. */
@@ -10,6 +10,7 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & {
   /** 1px border and solid ground; for toolbars that sit on the canvas. */
   outlined?: boolean;
   children: ReactNode;
+  ref?: Ref<HTMLButtonElement>;
 };
 
 /** Icon-only button. Quiet by default (no border), `outlined` for toolbars
