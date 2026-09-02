@@ -1,17 +1,19 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import {
-  Button, IconButton, Tooltip, Tabs, Panel, Field, Input, Textarea, Select, Toggle, Menu, useContextMenu, Dialog, EmptyState, Skeleton, Badge, Spinner, useToast,
+  Button, IconButton, Tooltip, Tabs, Menu, useContextMenu, Dialog, EmptyState, Skeleton, Badge, Spinner, Field, Input, Select, useToast, useConfirm,
   IcCopy, IcTrash, IcRefresh, IcPlus, IcCheck, IcDragHandle, type MenuItem, type Command,
 } from "@/components/ui";
 import { Shell, RailHead, useHistory, useAutosave, Editable } from "./Shell";
-import { MOCK_EMAIL, SUBJECTS, type MockBlock, type BlockKind } from "./mock-data";
+import { EmailTab, BlockTab, ImagesTab, EmailBriefTab } from "./EmailRails";
+import { MOCK_EMAIL, SUBJECTS, ADDABLE_KINDS, BLOCK_KIND_LABELS, type MockBlock, type BlockKind, type MockEmailDoc } from "./mock-data";
 
-type Doc = typeof MOCK_EMAIL;
+type Doc = MockEmailDoc;
 type View = "desktop" | "mobile";
 
 const C = { navy: "var(--lunia-rich-navy)", deep: "var(--lunia-deep-navy)", slate: "var(--lunia-slate-blue)", ivory: "var(--lunia-soft-ivory)", aqua: "var(--lunia-aqua)", yellow: "var(--lunia-signal-yellow)", font: "var(--lunia-font)" };
-const KIND_LABEL: Record<BlockKind, string> = { header: "Header", hero: "Hero", text: "Text", stat: "Stat", checklist: "List", promo: "Promo", cta: "Button", footer: "Footer" };
+const ROLE: Record<string, string> = { ivory: C.ivory, aqua: C.aqua, yellow: C.yellow, navy: C.navy, slate: C.slate };
+const SPACING = { none: 0, tight: 8, default: 16, roomy: 24, loose: 32 } as const;
 const GEN_STEPS = [
   { label: "Reading the brief", ms: 800 },
   { label: "Drafting three subject lines", ms: 1500 },
@@ -26,17 +28,21 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
   const doc = history.value;
   const [view, setView] = useState<View>("desktop");
   const [selected, setSelected] = useState<string | null>(doc ? "b3" : null);
-  const [railTab, setRailTab] = useState<"block" | "email" | "brief">("block");
+  const [railTab, setRailTab] = useState<"block" | "email" | "images" | "brief">("block");
   const saveState = useAutosave(doc);
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [regen, setRegen] = useState<Record<string, boolean>>({});
+  const [alternates, setAlternates] = useState<Record<string, string[]>>({});
   const [gen, setGen] = useState<number | null>(null);
   const [briefOpen, setBriefOpen] = useState(false);
   const [brief, setBrief] = useState({ topic: "", tone: "calm, editorial", offer: "" });
   const [drag, setDrag] = useState<{ from: number; over: number | null; pos: "before" | "after" } | null>(null);
+  const [saved, setSaved] = useState(!startEmpty);
 
   const cur = doc?.blocks.find((b) => b.id === selected) ?? null;
   const idx = doc && cur ? doc.blocks.indexOf(cur) : -1;
+  const patchDoc = (p: Partial<Doc>, key?: string) => history.set((d) => d ? { ...d, ...p } : d, key);
   const patch = (id: string, p: Partial<MockBlock>, key?: string) => history.set((d) => d ? { ...d, blocks: d.blocks.map((b) => (b.id === id ? { ...b, ...p } : b)) } : d, key);
   const move = (from: number, to: number) => history.set((d) => { if (!d || from === to) return d; const blocks = [...d.blocks]; const [b] = blocks.splice(from, 1); blocks.splice(to, 0, b); return { ...d, blocks }; });
   const remove = (id: string) => {
@@ -47,54 +53,77 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
   const duplicate = (id: string) => history.set((d) => { if (!d) return d; const i = d.blocks.findIndex((b) => b.id === id); const blocks = [...d.blocks]; blocks.splice(i + 1, 0, { ...d.blocks[i], id: `${id}-c${Date.now()}` }); return { ...d, blocks }; });
   const add = (kind: BlockKind) => history.set((d) => {
     if (!d) return d;
-    const b: MockBlock = { id: `b-${Date.now()}`, kind, text: kind === "text" ? "Write the next point here." : kind === "cta" ? "See the formula" : undefined, heading: kind === "stat" ? "One number" : kind === "checklist" ? "What is inside" : kind === "promo" ? "Offer" : undefined, items: kind === "checklist" ? ["First item", "Second item"] : undefined, imageUrl: kind === "hero" ? MOCK_EMAIL.blocks[1].imageUrl : undefined };
+    const b: MockBlock = { id: `b-${Date.now()}`, kind, sample: true,
+      text: ["text", "cta", "stat", "promo", "testimonial"].includes(kind) ? (kind === "cta" ? "See the formula" : kind === "testimonial" ? "I stopped waking at 3am within the first week." : "Sample copy written from the brand facts. Keep it or clear it.") : undefined,
+      heading: ["stat", "checklist", "promo", "imagetext", "headerimage", "ingredients", "discount", "comparison", "timeline"].includes(kind) ? (kind === "stat" ? "558 reviews" : kind === "checklist" ? "What is inside" : kind === "promo" ? "Offer" : BLOCK_KIND_LABELS[kind]) : undefined,
+      items: kind === "checklist" ? ["Magnesium bisglycinate 500mg", "L-theanine 300mg", "Apigenin 50mg"] : undefined,
+      imageUrl: ["hero", "image", "imagetext", "imagebullets", "headerimage", "grid", "trustgrid"].includes(kind) ? MOCK_EMAIL.blocks[1].imageUrl : undefined,
+      author: kind === "testimonial" ? "Priya, verified buyer" : undefined, stars: kind === "testimonial" ? 5 : undefined };
     const at = idx >= 0 ? idx + 1 : d.blocks.length - 1; const blocks = [...d.blocks]; blocks.splice(at, 0, b);
-    window.setTimeout(() => setSelected(b.id), 0);
+    window.setTimeout(() => { setSelected(b.id); setRailTab("block"); }, 0);
     return { ...d, blocks };
   });
   const regenerate = (id: string) => {
     setRegen((r) => ({ ...r, [id]: true }));
-    window.setTimeout(() => { patch(id, { text: "Rewritten: the point stays, the sentence gets shorter, and the claim stays inside what the study supports." }); setRegen((r) => { const n = { ...r }; delete n[id]; return n; }); toast({ title: "Block rewritten", description: "Only this block changed.", action: { label: "Undo", onClick: history.undo } }); }, 1500);
+    window.setTimeout(() => {
+      setRegen((r) => { const n = { ...r }; delete n[id]; return n; });
+      setAlternates((a) => ({ ...a, [id]: [
+        "The night shift study is real, and it is about timing, not sedation. Melatonin tells the body when it is night; it does not make you sleepy.",
+        "Melatonin is a clock signal. The study shows what a clean signal does for repair. Restore works on the other half: letting the nervous system stand down.",
+        "Read the study precisely: a timing hormone, measured in people whose clocks were broken. For everyone else, the question is what keeps you awake.",
+      ] }));
+      toast({ title: "Three versions ready", description: "Pick one in the Block tab, or keep the current copy." });
+    }, 1500);
   };
 
   const startGeneration = () => {
     setBriefOpen(false);
-    history.reset({ ...MOCK_EMAIL, subject: "", subjects: [], blocks: [MOCK_EMAIL.blocks[0], MOCK_EMAIL.blocks[8]] });
+    history.reset({ ...MOCK_EMAIL, subject: "", subjects: [], topBanner: "", promoBand: "", blocks: [MOCK_EMAIL.blocks[0], MOCK_EMAIL.blocks[8]] });
+    setSaved(false);
     setGen(0); let t = 0;
     GEN_STEPS.forEach((s, i) => {
       t += s.ms;
       window.setTimeout(() => {
         setGen(i + 1);
-        if (i === 1) history.set((d) => d ? { ...d, subjects: MOCK_EMAIL.subjects, subject: MOCK_EMAIL.subjects[0] } : d);
+        if (i === 1) history.set((d) => d ? { ...d, subjects: MOCK_EMAIL.subjects, subject: MOCK_EMAIL.subjects[0], preheader: MOCK_EMAIL.preheader } : d);
         if (i === 2) history.set((d) => d ? { ...d, blocks: insertBefore(d.blocks, "b9", [MOCK_EMAIL.blocks[2]]) } : d);
         if (i === 3) history.set((d) => d ? { ...d, blocks: insertBefore(d.blocks, "b9", [MOCK_EMAIL.blocks[3], MOCK_EMAIL.blocks[4], MOCK_EMAIL.blocks[5]]) } : d);
-        if (i === 4) history.set((d) => d ? { ...d, blocks: insertBefore(d.blocks, "b9", [MOCK_EMAIL.blocks[6], MOCK_EMAIL.blocks[7]]) } : d);
-        if (i === 5) { history.set((d) => d ? { ...d, blocks: [d.blocks[0], MOCK_EMAIL.blocks[1], ...d.blocks.slice(1)] } : d); setGen(null); toast({ title: "Email ready", description: "3 subject lines, 7 blocks. Autosaved.", kind: "success" }); }
+        if (i === 4) history.set((d) => d ? { ...d, topBanner: MOCK_EMAIL.topBanner, promoBand: MOCK_EMAIL.promoBand, blocks: insertBefore(d.blocks, "b9", [MOCK_EMAIL.blocks[6], MOCK_EMAIL.blocks[7]]) } : d);
+        if (i === 5) { history.set((d) => d ? { ...d, blocks: [d.blocks[0], MOCK_EMAIL.blocks[1], ...d.blocks.slice(1)] } : d); setGen(null); setSaved(true); toast({ title: "Email ready", description: "3 subject lines, 7 blocks, a banner and a promo band. Autosaved.", kind: "success" }); }
       }, t);
     });
   };
 
   const commands: Command[] = useMemo(() => [
     { id: "new", label: "New email", group: "Create", shortcut: "mod+n", onSelect: () => setBriefOpen(true) },
-    { id: "add-text", label: "Add text block", group: "Block", shortcut: "mod+shift+n", onSelect: () => add("text") },
-    { id: "add-stat", label: "Add stat block", group: "Block", onSelect: () => add("stat") },
-    { id: "add-list", label: "Add checklist", group: "Block", onSelect: () => add("checklist") },
-    { id: "add-promo", label: "Add promo band", group: "Block", onSelect: () => add("promo") },
+    { id: "import", label: "Import a Klaviyo flow", group: "Create", onSelect: () => toast({ title: "Import from Klaviyo", description: "Pick a flow; each message becomes an email in a deck." }) },
+    ...ADDABLE_KINDS.map((k) => ({ id: `add-${k}`, label: `Add ${BLOCK_KIND_LABELS[k].toLowerCase()} block`, group: "Add block", shortcut: k === "text" ? "mod+shift+n" : undefined, onSelect: () => add(k) })),
+    { id: "snippet", label: "Insert a saved snippet", group: "Add block", onSelect: () => toast({ title: "Snippets", description: "Your saved blocks." }) },
     { id: "dup", label: "Duplicate block", group: "Block", shortcut: "mod+d", onSelect: () => selected && duplicate(selected) },
-    { id: "regen", label: "Rewrite this block", group: "Block", keywords: "ai regenerate", onSelect: () => selected && regenerate(selected) },
+    { id: "regen", label: "Rewrite this block, pick from 3", group: "Block", keywords: "ai regenerate", onSelect: () => selected && regenerate(selected) },
     { id: "del", label: "Delete block", group: "Block", shortcut: "backspace", onSelect: () => selected && remove(selected) },
+    { id: "personalize", label: "Insert merge tag", group: "Block", keywords: "personalize first name klaviyo", onSelect: () => toast({ title: "Merge tag inserted" }) },
+    { id: "fact", label: "Insert brand fact", group: "Block", onSelect: () => toast({ title: "Brand fact inserted" }) },
     { id: "mobile", label: view === "mobile" ? "Desktop preview" : "Mobile preview", group: "View", onSelect: () => setView((v) => (v === "mobile" ? "desktop" : "mobile")) },
-    { id: "subjects", label: "Choose subject line", group: "Email", onSelect: () => setRailTab("email") },
+    { id: "subjects", label: "Regenerate subject lines", group: "Email", onSelect: () => setRailTab("email") },
+    { id: "banner", label: "Suggest a top banner", group: "Email", onSelect: () => setRailTab("email") },
+    { id: "promo", label: "Suggest a promo band", group: "Email", onSelect: () => setRailTab("email") },
+    { id: "shapes", label: "Restructure with a shape", group: "Email", onSelect: () => toast({ title: "Shape gallery" }) },
+    { id: "improve", label: "Improve with Claude", group: "Email", onSelect: () => toast({ title: "Improving with Claude", description: "Subject and text blocks only. Revert is one click." }) },
+    { id: "images", label: "Generate images", group: "Images", onSelect: () => setRailTab("images") },
     { id: "html", label: "Copy HTML", group: "Export", onSelect: () => toast({ title: "HTML copied", kind: "success" }) },
-    { id: "klaviyo", label: "Push to Klaviyo", group: "Export", shortcut: "mod+e", onSelect: () => toast({ title: "Pushed to Klaviyo as a draft", description: "Opens in Klaviyo's editor.", kind: "success" }) },
-    { id: "test", label: "Send a test email", group: "Export", onSelect: () => toast({ title: "Test sent to you" }) },
+    { id: "export-html", label: "Export HTML file", group: "Export", onSelect: () => toast({ title: "campaign-melatonin.html downloaded", kind: "success" }) },
+    { id: "klaviyo", label: "Push to Klaviyo", group: "Export", shortcut: "mod+e", onSelect: () => toast({ title: "Pushed to Klaviyo as a draft", description: "Open in Klaviyo from the export menu.", kind: "success" }) },
+    { id: "save", label: "Save now", group: "Export", shortcut: "mod+s", onSelect: () => toast({ title: "Saved" }) },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [selected, view]);
 
   const ctx = useContextMenu();
   const blockMenu = (id: string): MenuItem[] => [
     { label: "Duplicate", icon: <IcCopy size={14} />, shortcut: "mod+d", onSelect: () => duplicate(id) },
-    { label: "Rewrite with AI", icon: <IcRefresh size={14} />, onSelect: () => regenerate(id) },
+    { label: "Rewrite with AI, pick from 3", icon: <IcRefresh size={14} />, onSelect: () => regenerate(id) },
+    { label: "Save as snippet", onSelect: () => toast({ title: "Snippet saved" }) },
+    { label: "Copy block text", onSelect: () => toast({ title: "Copied" }) },
     { label: "Move up", disabled: idx <= 1, onSelect: () => move(idx, idx - 1) },
     { label: "Move down", disabled: !doc || idx >= doc.blocks.length - 2, onSelect: () => move(idx, idx + 1) },
     { type: "separator" },
@@ -102,11 +131,20 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
   ];
   const [addOpen, setAddOpen] = useState(false);
   const addRef = useRef<HTMLButtonElement | null>(null);
+  const addItems: MenuItem[] = [
+    { type: "heading", label: "Block" },
+    ...ADDABLE_KINDS.map((k) => ({ label: BLOCK_KIND_LABELS[k], onSelect: () => add(k) })),
+    { type: "separator" },
+    { type: "heading", label: "Insert into the focused block" },
+    { label: "Snippet", onSelect: () => toast({ title: "Snippets", description: "Saved blocks, inserted as a new block." }) },
+    { label: "Personalize (merge tag)", onSelect: () => toast({ title: "First name, last order item, discount code" }) },
+    { label: "Brand fact", onSelect: () => toast({ title: "Reviews, five-star share, customers, prices, dose, differentiators" }) },
+  ];
 
   const left = doc && (
     <>
       <RailHead actions={<Tooltip label="Add block" shortcut="mod+shift+n"><IconButton title="Add block" size="sm" ref={addRef} onClick={() => setAddOpen(true)}><IcPlus size={14} /></IconButton></Tooltip>}>Blocks <Badge>{doc.blocks.length}</Badge></RailHead>
-      <Menu open={addOpen} onClose={() => setAddOpen(false)} anchorRef={addRef} ariaLabel="Add block" items={(["text", "stat", "checklist", "promo", "hero", "cta"] as BlockKind[]).map((k) => ({ label: KIND_LABEL[k], onSelect: () => add(k) }))} />
+      <Menu open={addOpen} onClose={() => setAddOpen(false)} anchorRef={addRef} ariaLabel="Add block" items={addItems} />
       <div className="blocks" role="listbox" aria-label="Blocks">
         {doc.blocks.map((b, i) => {
           const locked = b.kind === "header" || b.kind === "footer";
@@ -124,8 +162,9 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
               onContextMenu={(e) => { if (locked) return; setSelected(b.id); ctx.bind.onContextMenu(e); }}
             >
               <span className="blocks__grip" aria-hidden="true">{locked ? <span style={{ width: 16 }} /> : <IcDragHandle size={14} />}</span>
-              <span className="blocks__kind">{KIND_LABEL[b.kind]}</span>
-              <span className="blocks__text">{b.heading ?? b.text ?? (b.kind === "header" ? "Logo and preheader" : b.kind === "footer" ? "Address and unsubscribe" : "")}</span>
+              <span className="blocks__kind">{BLOCK_KIND_LABELS[b.kind]}</span>
+              <span className="blocks__text">{b.heading ?? b.text ?? (b.kind === "header" ? "Logo, banner, preview text" : b.kind === "footer" ? "Promo band, address, unsubscribe" : "")}</span>
+              {b.sample && <Badge tone="warning">Sample</Badge>}
               {regen[b.id] && <Spinner size={12} />}
             </button>
           );
@@ -140,61 +179,25 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
           </div>
         </div>
       )}
+      <div style={{ padding: "0 12px 12px", display: "flex", gap: 6, fontSize: 11, color: "var(--ui-text-2)", flexWrap: "wrap" }}>
+        {[["Subject", !!doc.subject], ["Hero", doc.blocks.some((b) => b.kind === "hero")], [`${doc.blocks.length - 2} blocks`, doc.blocks.length > 2], ["CTA", doc.blocks.some((b) => b.kind === "cta")]].map(([l, ok]) => <span key={String(l)} style={{ display: "inline-flex", gap: 4, alignItems: "center", color: ok ? "var(--ui-success)" : "var(--ui-text-3)" }}>{ok ? <IcCheck size={12} /> : "·"} {l}</span>)}
+      </div>
     </>
   );
 
   const right = doc && (
     <>
-      <div style={{ padding: "8px 12px 0" }}><Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "block", label: "Block" }, { value: "email", label: "Email" }, { value: "brief", label: "Brief" }]} /></div>
-      {railTab === "block" && (
-        <div className="shell__rail-body">
-          {!cur ? (
-            <EmptyState title="Nothing selected" description="Click a block in the email or the list to edit it." />
-          ) : (
-            <Panel title={KIND_LABEL[cur.kind]} actions={cur.kind !== "header" && cur.kind !== "footer" && <Tooltip label="Rewrite this block with AI"><IconButton title="Rewrite" size="sm" onClick={() => regenerate(cur.id)} disabled={!!regen[cur.id]}>{regen[cur.id] ? <Spinner /> : <IcRefresh size={14} />}</IconButton></Tooltip>}>
-              {cur.heading !== undefined && <Field label="Heading">{(p) => <Input {...p} value={cur.heading} onChange={(e) => patch(cur.id, { heading: e.target.value }, "h")} />}</Field>}
-              {cur.text !== undefined && <Field label={cur.kind === "cta" ? "Button label" : "Text"} hint={cur.kind === "text" ? `${cur.text.split(" ").length} words` : undefined}>{(p) => <Textarea {...p} rows={cur.kind === "cta" ? 1 : 5} value={cur.text} onChange={(e) => patch(cur.id, { text: e.target.value }, "t")} />}</Field>}
-              {cur.items && <Field label="Items" hint="One per line">{(p) => <Textarea {...p} rows={4} value={cur.items?.join("\n")} onChange={(e) => patch(cur.id, { items: e.target.value.split("\n") }, "i")} />}</Field>}
-              {cur.kind === "cta" && <Field label="Link">{(p) => <Input {...p} defaultValue="https://lunialife.com/products/restore" />}</Field>}
-              {cur.kind === "hero" && <><div style={{ aspectRatio: "4/5", borderRadius: 6, overflow: "hidden", border: "1px solid var(--ui-border)" }}><img src={cur.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div><div style={{ display: "flex", gap: 6 }}><Button icon={<IcRefresh size={14} />} onClick={() => toast({ title: "Generating a new hero", description: "About 30 seconds." })}>New image</Button><Button onClick={() => toast({ title: "Asset library opens here" })}>Choose</Button></div></>}
-              {(cur.kind === "text" || cur.kind === "stat") && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <Field label="Align">{(p) => <Select {...p} value={cur.align ?? "left"} onChange={(e) => patch(cur.id, { align: e.target.value as "left" | "center" })}><option value="left">Left</option><option value="center">Center</option></Select>}</Field>
-                  <Field label="Size">{(p) => <Select {...p} value={cur.size ?? "m"} onChange={(e) => patch(cur.id, { size: e.target.value as "s" | "m" | "l" })}><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></Select>}</Field>
-                </div>
-              )}
-              {cur.kind === "text" && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><Button size="sm" onClick={() => patch(cur.id, { text: (cur.text ?? "").split(". ").slice(0, 2).join(". ") + "." })}>Shorten</Button><Button size="sm" onClick={() => toast({ title: "No banned claims found", kind: "success" })}>Check claims</Button><Button size="sm" onClick={() => toast({ title: "Merge tag inserted", description: "{{ first_name|default:'there' }}" })}>Personalise</Button></div>}
-            </Panel>
-          )}
-        </div>
-      )}
-      {railTab === "email" && (
-        <div className="shell__rail-body">
-          <Panel title="Subject line">
-            <div role="radiogroup" aria-label="Subject line" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {doc.subjects.map((s) => <button key={s} type="button" role="radio" aria-checked={doc.subject === s} className="ui-card-btn" onClick={() => history.set((d) => d ? { ...d, subject: s } : d)}><span className="ui-card-btn__title" style={{ fontWeight: 500 }}>{s}</span><span className="ui-card-btn__desc">{s.length} characters</span></button>)}
-            </div>
-            <Button icon={<IcRefresh size={14} />} onClick={() => toast({ title: "Three new subject lines" })}>More options</Button>
-            <Field label="Preheader">{(p) => <Input {...p} value={doc.preheader} onChange={(e) => history.set((d) => d ? { ...d, preheader: e.target.value } : d, "pre")} />}</Field>
-          </Panel>
-          <Panel title="Theme">
-            <Tabs value={doc.theme} onChange={(v) => history.set((d) => d ? { ...d, theme: v } : d)} ariaLabel="Email theme" items={[{ value: "navy", label: "Navy" }, { value: "cream", label: "Cream" }]} />
-            <Field label="Block spacing">{(p) => <Select {...p} defaultValue="default"><option value="tight">Tight</option><option value="default">Default</option><option value="roomy">Roomy</option></Select>}</Field>
-            <Toggle checked onChange={() => {}} label="Show social row in footer" />
-          </Panel>
-        </div>
-      )}
-      {railTab === "brief" && (
-        <div className="shell__rail-body">
-          <Panel title="Brief">
-            <Field label="Topic">{(p) => <Textarea {...p} rows={2} defaultValue="Melatonin supplements boost DNA repair in night shift workers" />}</Field>
-            <Field label="Tone">{(p) => <Select {...p} defaultValue="calm, editorial">{["calm, editorial", "warm, personal", "direct, product-first", "urgent, promotional"].map((t) => <option key={t}>{t}</option>)}</Select>}</Field>
-            <Field label="Offer">{(p) => <Input {...p} defaultValue="Three month plan, $60" />}</Field>
-            <Button variant="primary" icon={<IcRefresh size={14} />} onClick={() => { setSelected(null); startGeneration(); }}>Regenerate from brief</Button>
-            <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Rewrites every block. Rewrite one block from its own panel when only one is wrong.</span>
-          </Panel>
-        </div>
-      )}
+      <div style={{ padding: "8px 8px 0" }}><Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "block", label: "Block" }, { value: "email", label: "Email" }, { value: "images", label: "Images" }, { value: "brief", label: "Brief" }]} /></div>
+      <div className="shell__rail-body">
+        {railTab === "block" && (!cur ? <EmptyState title="Nothing selected" description="Click a block in the email or the list to edit it." /> : (
+          <BlockTab block={cur} index={idx} patch={(p, k) => patch(cur.id, p, k)} onRegenerate={() => regenerate(cur.id)} regen={!!regen[cur.id]} alternates={alternates[cur.id] ?? null}
+            onPickAlternate={(t) => { if (t) patch(cur.id, { text: t }); setAlternates((a) => { const n = { ...a }; delete n[cur.id]; return n; }); if (t) toast({ title: "Version applied", action: { label: "Undo", onClick: history.undo } }); }}
+            onDuplicate={() => duplicate(cur.id)} onDelete={() => remove(cur.id)} />
+        ))}
+        {railTab === "email" && <EmailTab doc={doc} patch={patchDoc} />}
+        {railTab === "images" && <ImagesTab images={doc.images} onChange={(images) => patchDoc({ images })} />}
+        {railTab === "brief" && <EmailBriefTab onRegenerateAll={() => { setSelected(null); startGeneration(); }} />}
+      </div>
     </>
   );
 
@@ -205,8 +208,8 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
       <div className="shell__stage" style={{ alignItems: "start" }} onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
         <div style={{ width, background: dark ? C.navy : C.ivory, color: dark ? C.ivory : C.deep, fontFamily: C.font, boxShadow: "var(--ui-elev-2)", borderRadius: 2, overflow: "hidden", transition: "width var(--ui-dur-3) var(--ui-ease-in-out)" }} aria-label="Email preview">
           {doc.blocks.map((b) => (
-            <div key={b.id} className={`sel-hover${selected === b.id ? " sel-outline" : ""}`} style={{ position: "relative" }} onClick={() => { setSelected(b.id); setRailTab("block"); }} onContextMenu={(e) => { if (b.kind === "header" || b.kind === "footer") return; setSelected(b.id); ctx.bind.onContextMenu(e); }}>
-              {regen[b.id] ? <div style={{ padding: 24 }}><Skeleton height={14} /><div style={{ height: 8 }} /><Skeleton height={14} width="80%" /></div> : <EmailBlock block={b} dark={dark} mobile={view === "mobile"} onChange={(p) => patch(b.id, p, b.id)} />}
+            <div key={b.id} className={`sel-hover${selected === b.id ? " sel-outline" : ""}`} style={{ position: "relative", marginBottom: b.kind === "footer" || b.kind === "header" ? 0 : SPACING[doc.spacing] }} onClick={() => { setSelected(b.id); setRailTab("block"); }} onContextMenu={(e) => { if (b.kind === "header" || b.kind === "footer") return; setSelected(b.id); ctx.bind.onContextMenu(e); }}>
+              {regen[b.id] ? <div style={{ padding: 24 }}><Skeleton height={14} /><div style={{ height: 8 }} /><Skeleton height={14} width="80%" /></div> : <EmailBlock block={b} doc={doc} dark={dark} mobile={view === "mobile"} onChange={(p) => patch(b.id, p, b.id)} onImageClick={() => setRailTab("images")} onCtaDrag={(x, y) => patchDoc({ cta: { ...doc.cta, x, y } }, "cta")} />}
             </div>
           ))}
         </div>
@@ -215,7 +218,7 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
     </>
   ) : (
     <div className="shell__stage">
-      <EmptyState plain icon={<IcPlus size={28} strokeWidth={1.5} />} title="Start an email" description="Pick a subject or an offer. Subject lines arrive first, then the blocks fill in while you read." actions={<><Button variant="primary" onClick={() => setBriefOpen(true)}>New email</Button><Button onClick={() => { history.reset(MOCK_EMAIL); setSelected("b3"); }}>Open a recent one</Button><Button onClick={() => toast({ title: "Import from Klaviyo opens here" })}>Import from Klaviyo</Button></>} />
+      <EmptyState plain icon={<IcPlus size={28} strokeWidth={1.5} />} title="Start an email" description="Pick a subject or an offer. Subject lines arrive first, then the blocks fill in while you read." actions={<><Button variant="primary" onClick={() => setBriefOpen(true)}>New email</Button><Button onClick={() => { history.reset(MOCK_EMAIL); setSelected("b3"); }}>Open a recent one</Button><Button onClick={() => toast({ title: "Import from Klaviyo", description: "Pick a flow; each message becomes an email in a deck with batch restructure and save all." })}>Import from Klaviyo</Button></>} />
     </div>
   );
 
@@ -223,19 +226,32 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
     <>
       <Shell<View>
         title={doc?.subject || "Untitled email"}
-        onTitle={(t) => history.set((d) => d ? { ...d, subject: t } : d, "title")}
+        onTitle={(t) => patchDoc({ subject: t }, "title")}
         kindLabel="Email"
         saveState={doc ? saveState : "saved"}
         canUndo={history.canUndo} canRedo={history.canRedo} onUndo={history.undo} onRedo={history.redo}
         views={[{ value: "desktop", label: "Desktop" }, { value: "mobile", label: "Mobile" }]} view={view} onView={setView}
-        exportLabel="Push to Klaviyo" onExport={() => toast({ title: "Pushed to Klaviyo as a draft", description: "Opens in Klaviyo's editor.", kind: "success" })}
+        exportLabel="Push to Klaviyo" onExport={() => toast({ title: "Pushed to Klaviyo as a draft", kind: "success" })}
+        exportMenu={[
+          { type: "heading", label: "Send it out" },
+          { label: "Push to Klaviyo", shortcut: "mod+e", onSelect: () => toast({ title: "Pushed to Klaviyo as a draft", description: "Open in Klaviyo from this menu once it lands.", kind: "success" }) },
+          { label: "Open in Klaviyo", disabled: true, onSelect: () => {} },
+          { label: "Export HTML file", onSelect: () => toast({ title: "campaign-melatonin.html downloaded", kind: "success" }) },
+          { label: "Copy HTML", onSelect: () => toast({ title: "HTML copied", kind: "success" }) },
+          { type: "separator" },
+          { label: "Improve with Claude", onSelect: () => toast({ title: "Improving with Claude", description: "Subject and text blocks only. Revert is one click." }) },
+          { label: "Revert last improve", disabled: true, onSelect: () => {} },
+          { type: "separator" },
+          { label: "Discard this email", danger: true, onSelect: async () => { if (await confirm({ title: "Discard this email?", description: "It is removed from the library.", confirmLabel: "Discard", tone: "danger" })) { history.reset(null); toast({ title: "Email discarded", action: { label: "Undo", onClick: () => history.reset(MOCK_EMAIL) } }); } } },
+        ]}
+        saveAction={doc ? <Button size="sm" variant={saved ? "ghost" : "secondary"} onClick={() => { setSaved(true); toast({ title: saved ? "Updated in library" : "Saved to library", kind: "success" }); }}>{saved ? "Update" : "Save to library"}</Button> : null}
         commands={commands}
         left={left} right={right}
         topExtra={<Badge tone="warning">Proposal</Badge>}
       >
         {canvas}
       </Shell>
-      <Dialog open={briefOpen} onClose={() => setBriefOpen(false)} title="New email" wide footer={<><Button onClick={() => setBriefOpen(false)}>Cancel</Button><Button variant="primary" disabled={brief.topic.trim().length < 4} onClick={startGeneration}>Generate</Button></>}>
+      <Dialog open={briefOpen} onClose={() => setBriefOpen(false)} title="New email" wide footer={<><Button onClick={() => setBriefOpen(false)}>Cancel</Button><Button variant="ghost" disabled={brief.topic.trim().length < 4} onClick={startGeneration}>Test (no AI)</Button><Button variant="primary" disabled={brief.topic.trim().length < 4} onClick={startGeneration}>Generate</Button></>}>
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Field label="Topic or angle">{(p) => <Input {...p} autoFocus value={brief.topic} onChange={(e) => setBrief({ ...brief, topic: e.target.value })} placeholder="Search subjects or type an angle" />}</Field>
@@ -245,8 +261,11 @@ export default function EmailProposal({ startEmpty = false }: { startEmpty?: boo
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Field label="Tone">{(p) => <Select {...p} value={brief.tone} onChange={(e) => setBrief({ ...brief, tone: e.target.value })}>{["calm, editorial", "warm, personal", "direct, product-first", "urgent, promotional"].map((t) => <option key={t}>{t}</option>)}</Select>}</Field>
+            <Field label="Occasion" hint="Optional">{(p) => <Input {...p} placeholder="Memorial Day weekend" />}</Field>
             <Field label="Offer" hint="Optional">{(p) => <Input {...p} value={brief.offer} onChange={(e) => setBrief({ ...brief, offer: e.target.value })} placeholder="Up to 35% off" />}</Field>
-            <Field label="Start from">{(p) => <Select {...p} defaultValue="model"><option value="model">Let the model choose a layout</option><option value="edu">Educational</option><option value="proof">Proof-led</option><option value="last">Last call</option></Select>}</Field>
+            <Field label="CTA link">{(p) => <Input {...p} defaultValue="https://lunialife.com/products/restore" />}</Field>
+            <Field label="Layout">{(p) => <Select {...p} defaultValue="model"><option value="model">Let the model choose</option>{["Editorial", "Discount announcement", "Educational", "Proof-led", "Welcome", "Last call", "Ingredient deep dive", "Subscribe or one-time", "Wind-down story", "Why we're different"].map((t) => <option key={t}>{t}</option>)}</Select>}</Field>
+            <Button variant="ghost" size="sm" onClick={() => toast({ title: "Import from Klaviyo", description: "Rebuild an existing flow instead." })}>Import from Klaviyo instead</Button>
           </div>
         </div>
       </Dialog>
@@ -260,18 +279,63 @@ function insertBefore(blocks: MockBlock[], id: string, add: MockBlock[]) { const
  *  real `renderCampaignEmail` HTML in an iframe with block ids, which is the
  *  same thing the export uses. Here it is React so the prototype can edit in
  *  place. */
-function EmailBlock({ block: b, dark, mobile, onChange }: { block: MockBlock; dark: boolean; mobile: boolean; onChange: (p: Partial<MockBlock>) => void }) {
+function EmailBlock({ block: b, doc, dark, mobile, onChange, onImageClick, onCtaDrag }: { block: MockBlock; doc: MockEmailDoc; dark: boolean; mobile: boolean; onChange: (p: Partial<MockBlock>) => void; onImageClick: () => void; onCtaDrag: (x: number, y: number) => void }) {
   const ink = dark ? C.ivory : C.deep; const sub = dark ? "rgba(247,244,239,0.7)" : C.slate;
   const pad = mobile ? 20 : 32;
   const size = { s: 14, m: 16, l: 19 }[b.size ?? "m"];
+  const hs = { S: 16, M: 20, L: 26, XL: 32 }[b.headerSize ?? "M"];
+  const ha = ({ L: "left", C: "center", R: "right" } as const)[b.headerAlign ?? "C"];
+  const banner = (s: string) => s.split(/(\*\*[^*]+\*\*)/).map((part, i) => part.startsWith("**") ? <span key={i} style={{ background: dark ? C.aqua : C.navy, color: dark ? C.navy : C.ivory, padding: "2px 8px", borderRadius: 2, marginLeft: 6 }}>{part.slice(2, -2)}</span> : <span key={i}>{part}</span>);
+  const ctaBg = doc.cta.color ? ROLE[doc.cta.color] : (!dark ? C.navy : doc.cta.bottom === "navy" ? C.navy : C.ivory);
+  const ctaFg = ctaBg === C.navy || ctaBg === C.slate ? C.ivory : C.navy;
   switch (b.kind) {
-    case "header": return <div style={{ padding: `${pad}px ${pad}px 8px`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, letterSpacing: "0.2em", color: sub }}><span style={{ fontWeight: 600, color: ink }}>LUNIA LIFE</span><span>View in browser</span></div>;
-    case "hero": return <div style={{ position: "relative" }}><img src={b.imageUrl} alt="" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} /><div style={{ position: "absolute", left: pad, right: pad, bottom: pad, background: C.ivory, color: C.deep, padding: "14px 18px", fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", textAlign: "center" }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="hero caption" /></div></div>;
-    case "text": return <div style={{ padding: `16px ${pad}px`, fontSize: size, lineHeight: 1.6, fontWeight: 300, color: ink, textAlign: b.align ?? "left" }}><Editable as="p" multiline value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="text" style={{ margin: 0 }} /></div>;
-    case "stat": return <div style={{ margin: `8px ${pad}px`, padding: 24, border: `1px solid ${dark ? "rgba(247,244,239,0.25)" : C.slate}`, textAlign: "center" }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="stat heading" style={{ fontSize: 40, fontWeight: 300, letterSpacing: "-0.02em", color: dark ? C.aqua : C.deep }} /><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="stat text" style={{ fontSize: 14, marginTop: 8, color: sub }} multiline /></div>;
-    case "checklist": return <div style={{ padding: `8px ${pad}px 16px` }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="list heading" style={{ fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: sub, marginBottom: 10 }} /><ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>{(b.items ?? []).map((it, i) => <li key={i} style={{ display: "flex", gap: 10, fontSize: 15, fontWeight: 300, color: ink }}><span style={{ color: dark ? C.aqua : C.deep }}>✓</span>{it}</li>)}</ul></div>;
-    case "promo": return <div style={{ margin: `12px ${pad}px`, background: C.yellow, color: C.deep, padding: 20, textAlign: "center" }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="promo heading" style={{ fontSize: 20, fontWeight: 600 }} /><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="promo text" style={{ fontSize: 13, marginTop: 4 }} /></div>;
-    case "cta": return <div style={{ padding: `16px ${pad}px 28px`, textAlign: "center" }}><span style={{ display: "inline-block", background: dark ? C.ivory : C.navy, color: dark ? C.navy : C.ivory, padding: "14px 28px", fontSize: 13, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500 }}><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="button label" as="span" /></span></div>;
-    case "footer": return <div style={{ padding: `${pad}px`, borderTop: `1px solid ${dark ? "rgba(247,244,239,0.2)" : C.slate}`, fontSize: 11, lineHeight: 1.6, color: sub, textAlign: "center" }}>Lunia Life · 123 Sleep St, Melbourne · <u>Unsubscribe</u></div>;
+    case "header": return (
+      <div>
+        {doc.topBanner && <div style={{ background: dark ? "rgba(247,244,239,0.06)" : "rgba(1,37,63,0.06)", padding: "10px 16px", textAlign: "center", fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: ink }}>{banner(doc.topBanner)}</div>}
+        <div style={{ padding: `${pad}px ${pad}px 8px`, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, letterSpacing: "0.2em", color: sub }}>{doc.showLogo ? <span style={{ fontWeight: 600, color: ink }}>LUNIA LIFE</span> : <span />}<span>View in browser</span></div>
+      </div>
+    );
+    case "hero": {
+      const ov = doc.cta.heroOverlayColor ? ROLE[doc.cta.heroOverlayColor] : ctaBg;
+      const ovFg = ov === C.navy || ov === C.slate ? C.ivory : C.navy;
+      return (
+        <div style={{ position: "relative" }}>
+          <img src={b.imageUrl} alt="" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onImageClick(); }} />
+          {doc.cta.showOnHero && (
+            <div
+              role="button" tabIndex={0} aria-label="Hero call to action, drag to move"
+              draggable={!doc.cta.locked}
+              onDragEnd={(e) => { const r = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect(); onCtaDrag(Math.round(((e.clientX - r.left) / r.width) * 100), Math.round(((e.clientY - r.top) / r.height) * 100)); }}
+              style={{ position: "absolute", left: `${doc.cta.x}%`, top: `${doc.cta.y}%`, transform: "translate(-50%, -50%)", background: ov, color: ovFg, padding: "14px 22px", fontSize: 13, letterSpacing: "0.16em", textTransform: "uppercase", textAlign: "center", cursor: doc.cta.locked ? "default" : "grab", whiteSpace: "nowrap" }}
+            >
+              <Editable value={b.heading ?? doc.cta.label} onChange={(v) => onChange({ heading: v })} placeholder="hero caption" />
+            </div>
+          )}
+        </div>
+      );
+    }
+    case "text": return <div style={{ padding: `12px ${pad}px`, fontSize: size, lineHeight: 1.6, fontWeight: b.weight ?? 300, fontStyle: b.italic ? "italic" : undefined, color: ink, textAlign: b.align ?? "left" }}><Editable as="p" multiline value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="text" style={{ margin: 0 }} /></div>;
+    case "stat": return <div style={{ margin: `0 ${pad}px`, padding: 24, border: `1px solid ${dark ? "rgba(247,244,239,0.25)" : C.slate}`, textAlign: ha }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="stat heading" style={{ fontSize: hs * 2, fontWeight: 300, letterSpacing: "-0.02em", color: dark ? C.aqua : C.deep }} /><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="stat text" style={{ fontSize: 14, marginTop: 8, color: sub }} multiline /></div>;
+    case "checklist": return <div style={{ padding: `0 ${pad}px` }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="list heading" style={{ fontSize: hs * 0.6, letterSpacing: "0.18em", textTransform: "uppercase", color: sub, marginBottom: 10, textAlign: ha }} /><ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>{(b.items ?? []).map((it, i) => <li key={i} style={{ display: "flex", gap: 10, fontSize: 15, fontWeight: 300, color: ink }}><span style={{ color: dark ? C.aqua : C.deep }}>✓</span>{it}</li>)}</ul></div>;
+    case "promo": return <div style={{ margin: `0 ${pad}px`, background: C.yellow, color: C.deep, padding: 20, textAlign: ha }}><Editable value={b.heading ?? ""} onChange={(v) => onChange({ heading: v })} placeholder="promo heading" style={{ fontSize: hs, fontWeight: 600 }} /><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="promo text" style={{ fontSize: 13, marginTop: 4 }} /></div>;
+    case "cta": return <div style={{ padding: `8px ${pad}px 20px`, textAlign: "center" }}><span style={{ display: "inline-block", background: ctaBg, color: ctaFg, padding: "14px 28px", fontSize: 13, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500 }}><Editable value={b.text ?? doc.cta.label} onChange={(v) => onChange({ text: v })} placeholder="button label" as="span" /></span></div>;
+    case "testimonial": return <div style={{ margin: `0 ${pad}px`, padding: 20, borderLeft: `3px solid ${dark ? C.aqua : C.navy}` }}><div style={{ color: C.yellow, fontSize: 14, letterSpacing: 2 }}>{"★".repeat(b.stars ?? 5)}</div><Editable value={b.text ?? ""} onChange={(v) => onChange({ text: v })} placeholder="quote" multiline style={{ fontSize: 16, fontStyle: "italic", fontWeight: 300, color: ink, marginTop: 6 }} /><Editable value={b.author ?? ""} onChange={(v) => onChange({ author: v })} placeholder="author" style={{ fontSize: 12, color: sub, marginTop: 6 }} /></div>;
+    case "footer": return (
+      <div>
+        {doc.promoBand && <div style={{ margin: `0 ${pad}px 16px`, background: doc.promoColor ? ROLE[doc.promoColor] : C.yellow, color: doc.promoColor === "navy" || doc.promoColor === "slate" ? C.ivory : C.deep, padding: 16, textAlign: "center", fontSize: 14, fontWeight: 500 }}>{doc.promoBand}</div>}
+        <div style={{ padding: `${pad}px`, borderTop: `1px solid ${dark ? "rgba(247,244,239,0.2)" : C.slate}`, fontSize: 11, lineHeight: 1.6, color: sub, textAlign: "center" }}>Lunia Life · 123 Sleep St, Melbourne · <u>Unsubscribe</u></div>
+      </div>
+    );
+    default: return (
+      <div style={{ margin: `0 ${pad}px`, padding: 18, border: `1px dashed ${dark ? "rgba(247,244,239,0.35)" : C.slate}`, display: "flex", gap: 12, alignItems: "center" }}>
+        {b.imageUrl && <img src={b.imageUrl} alt="" style={{ width: 72, height: 72, objectFit: "cover", order: b.imageSide === "right" ? 2 : 0, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onImageClick(); }} />}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: sub }}>{BLOCK_KIND_LABELS[b.kind]}</div>
+          {b.heading !== undefined && <Editable value={b.heading} onChange={(v) => onChange({ heading: v })} placeholder="heading" style={{ fontSize: hs, fontWeight: 500, color: ink, textAlign: ha }} />}
+          {b.text !== undefined && <Editable value={b.text} onChange={(v) => onChange({ text: v })} placeholder="text" multiline style={{ fontSize: 14, fontWeight: 300, color: ink }} />}
+          {b.items && <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 14, color: ink }}>{b.items.map((it, i) => <li key={i}>{it}</li>)}</ul>}
+        </div>
+      </div>
+    );
   }
 }

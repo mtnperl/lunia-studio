@@ -8,6 +8,7 @@ import {
 import { Shell, RailHead, useHistory, useAutosave, useFitScale } from "./Shell";
 import { SlideCanvas, SLIDE_W, SLIDE_H, type SlideElement } from "./SlideCanvas";
 import { MOCK_CAROUSEL, SUBJECTS, HOOK_OPTIONS, type MockSlide } from "./mock-data";
+import { HookSlidePanel, ContentSlidePanel, TakeawayPanel, StyleTab, BriefTab, CaptionTab, CheckTab, DEFAULT_STYLE, HOOK_WEIGHT_PX, type StyleState } from "./CarouselRails";
 
 type Doc = typeof MOCK_CAROUSEL;
 type View = "editor" | "preview";
@@ -39,11 +40,14 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
   const [view, setView] = useState<View>("editor");
   const [selected, setSelected] = useState<string[]>(() => (doc?.slides[0] ? [doc.slides[0].id] : []));
   const [element, setElement] = useState<SlideElement | null>(null);
-  const [railTab, setRailTab] = useState<"slide" | "style" | "brief">("slide");
+  const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption" | "check">("slide");
   const [zoom, setZoom] = useState<number | "fit">("fit");
-  const [showArrows, setShowArrows] = useState(true);
-  const [showNumbers, setShowNumbers] = useState(false);
-  const [logoScale, setLogoScale] = useState(100);
+  const [style, setStyleState] = useState<StyleState>(DEFAULT_STYLE);
+  const setStyle = (p: Partial<StyleState>) => setStyleState((s) => ({ ...s, ...p }));
+  const showArrows = style.showArrows, showNumbers = style.showNumbers;
+  const logoScale = { S: 75, M: 100, L: 140, XL: 180 }[style.logo];
+  const [hookIndex, setHookIndex] = useState(0);
+  const [saved, setSaved] = useState(!startEmpty);
   const saveState = useAutosave(doc);
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -76,13 +80,13 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
     return { ...d, slides };
   });
   const [regen, setRegen] = useState<Record<string, boolean>>({});
-  const regenerate = (ids: string[], what: "copy" | "graphic" = "copy") => {
+  const regenerate = (ids: string[], what: "copy" | "graphic" | "image" | "background" = "copy") => {
     setRegen((r) => ({ ...r, ...Object.fromEntries(ids.map((i) => [i, true])) }));
     window.setTimeout(() => {
-      ids.forEach((id) => patchSlide(id, what === "copy" ? { headline: rewrite(doc?.slides.find((s) => s.id === id)?.headline ?? "") } : { graphic: "stat" }));
+      ids.forEach((id) => patchSlide(id, what === "copy" ? { headline: rewrite(doc?.slides.find((s) => s.id === id)?.headline ?? "") } : what === "graphic" ? { graphic: "stat" } : what === "background" ? { bgImageUrl: MOCK_CAROUSEL.slides[0].imageUrl, bgDim: 0.3 } : { imageUrl: MOCK_CAROUSEL.slides[0].imageUrl }));
       setRegen((r) => { const n = { ...r }; ids.forEach((i) => delete n[i]); return n; });
       toast({ title: ids.length === 1 ? `Slide ${what} regenerated` : `${ids.length} slides regenerated`, description: "The rest of the carousel is untouched.", action: { label: "Undo", onClick: history.undo } });
-    }, 1600);
+    }, what === "image" ? 3000 : 1600);
   };
   const addSlide = () => history.set((d) => {
     if (!d) return d;
@@ -171,7 +175,11 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
     { id: "del", label: "Delete slide", group: "Slide", shortcut: "backspace", onSelect: () => remove(selected) },
     { id: "all", label: "Select all slides", group: "Slide", shortcut: "mod+a", onSelect: () => doc && setSelected(doc.slides.map((s) => s.id)) },
     { id: "preview", label: "Preview at Instagram size", group: "View", onSelect: () => setView("preview") },
-    { id: "arrows", label: showArrows ? "Hide slide arrows" : "Show slide arrows", group: "Style", onSelect: () => setShowArrows((v) => !v) },
+    { id: "arrows", label: showArrows ? "Hide slide arrows" : "Show slide arrows", group: "Style", onSelect: () => setStyle({ showArrows: !showArrows }) },
+    { id: "check", label: "Fact check every slide", group: "Document", keywords: "verify sources", onSelect: () => setRailTab("check") },
+    { id: "pdf", label: "PDF guide (engagement format)", group: "Export", onSelect: () => toast({ title: "PDF guide", description: "Lead magnet written from this carousel. Engagement format only." }) },
+    { id: "link", label: "Copy share link", group: "Export", onSelect: () => toast({ title: "Link copied" }) },
+    { id: "hd", label: "Preview HD for this slide", group: "Slide", onSelect: () => toast({ title: "Preview HD", description: "Server render at full resolution." }) },
     { id: "export", label: "Export PNGs", group: "Export", shortcut: "mod+e", onSelect: () => toast({ title: "Exporting 5 PNGs", description: "1080 by 1350, one file per slide.", kind: "success" }) },
     { id: "caption", label: "Copy Instagram caption", group: "Export", onSelect: () => toast({ title: "Caption copied" }) },
     { id: "email", label: "Turn into an email", group: "Create", keywords: "campaign convert", onSelect: () => toast({ title: "Email draft started from this carousel" }) },
@@ -215,7 +223,7 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
               onContextMenu={(e) => { if (!selected.includes(s.id)) setSelected([s.id]); ctx.bind.onContextMenu(e); }}
             >
               <div className="strip__thumb" style={{ aspectRatio: `${SLIDE_W} / ${SLIDE_H}` }}>
-                {regen[s.id] ? <Skeleton width="100%" height="100%" /> : <ThumbSlide slide={s} showArrows={showArrows} />}
+                {regen[s.id] ? <Skeleton width="100%" height="100%" /> : <ThumbSlide slide={{ ...s, dark: s.kind !== "hook" && style.slidesBg === "dark" }} showArrows={showArrows} />}
               </div>
               <div className="strip__label"><span className="n">{i + 1}</span>{s.kind === "hook" ? "Hook" : s.kind === "takeaway" ? "Takeaway" : s.headline}</div>
             </button>
@@ -230,90 +238,33 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
 
   const right = doc && current && (
     <>
-      <div style={{ padding: "8px 12px 0" }}>
-        <Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "slide", label: "Slide" }, { value: "style", label: "Style" }, { value: "brief", label: "Brief" }]} />
+      <div style={{ padding: "8px 8px 0" }}>
+        <Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "slide", label: "Slide" }, { value: "style", label: "Style" }, { value: "brief", label: "Brief" }, { value: "caption", label: "Caption" }, { value: "check", label: "Check" }]} />
       </div>
-      {railTab === "slide" && (
-        <div className="shell__rail-body">
-          {selected.length > 1 ? (
-            <Panel title={`${selected.length} slides selected`}>
-              <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Actions here apply to every selected slide.</span>
-              <Button onClick={() => regenerate(selected)} icon={<IcRefresh size={14} />}>Regenerate copy</Button>
-              <Button onClick={() => duplicate(selected)} icon={<IcCopy size={14} />}>Duplicate</Button>
-              <Button variant="danger" onClick={() => remove(selected)} icon={<IcTrash size={14} />}>Delete</Button>
-            </Panel>
-          ) : (
-            <>
-              <Panel title={current.kind === "hook" ? "Hook slide" : current.kind === "takeaway" ? "Takeaway" : `Slide ${idx + 1}`} actions={<Tooltip label="Regenerate this slide's copy"><IconButton title="Regenerate copy" size="sm" onClick={() => regenerate([current.id])} disabled={!!regen[current.id]}>{regen[current.id] ? <Spinner /> : <IcRefresh size={14} />}</IconButton></Tooltip>}>
-                {dir.props === "rail" ? (
-                  <>
-                    {current.eyebrow !== undefined && <Field label="Eyebrow">{(p) => <Input {...p} value={current.eyebrow} onChange={(e) => patchSlide(current.id, { eyebrow: e.target.value }, "eyebrow")} onFocus={() => setElement("eyebrow")} />}</Field>}
-                    <Field label="Headline" hint={`${current.headline.length} characters`}>{(p) => <Textarea {...p} rows={2} value={current.headline} onChange={(e) => patchSlide(current.id, { headline: e.target.value }, "headline")} onFocus={() => setElement("headline")} />}</Field>
-                    {current.body !== undefined && <Field label="Body">{(p) => <Textarea {...p} rows={4} value={current.body} onChange={(e) => patchSlide(current.id, { body: e.target.value }, "body")} onFocus={() => setElement("body")} />}</Field>}
-                    {current.citation !== undefined && <Field label="Citation">{(p) => <Textarea {...p} rows={2} value={current.citation} onChange={(e) => patchSlide(current.id, { citation: e.target.value }, "citation")} onFocus={() => setElement("citation")} />}</Field>}
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <Button size="sm" onClick={() => patchSlide(current.id, { headline: shorten(current.headline) })}>Shorten</Button>
-                      <Button size="sm" onClick={() => patchSlide(current.id, { headline: punch(current.headline) })}>Punch up</Button>
-                      <Button size="sm" onClick={() => toast({ title: "No banned claims found", kind: "success" })}>Check claims</Button>
-                    </div>
-                  </>
-                ) : (
-                  <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Click any text on the slide to edit it there. The floating toolbar carries shorten, punch up and regenerate.</span>
-                )}
-              </Panel>
-              {current.kind === "content" && (
-                <Panel title="Graphic">
-                  <Field label="Type">{(p) => <Select {...p} value={current.graphic ?? "none"} onChange={(e) => patchSlide(current.id, { graphic: e.target.value as MockSlide["graphic"] })}><option value="none">None</option><option value="stat">Hero number</option><option value="list">Two column list</option><option value="timeline">Timeline</option></Select>}</Field>
-                  <Button onClick={() => regenerate([current.id], "graphic")} icon={<IcRefresh size={14} />}>Regenerate graphic</Button>
-                </Panel>
-              )}
-              {current.kind === "hook" && (
-                <Panel title="Image">
-                  <div style={{ aspectRatio: "4/3", borderRadius: 6, overflow: "hidden", border: "1px solid var(--ui-border)" }}>{current.imageUrl ? <img src={current.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Skeleton width="100%" height="100%" />}</div>
-                  <div style={{ display: "flex", gap: 6 }}><Button onClick={() => toast({ title: "Generating a new hook image", description: "About 30 seconds. The slide stays editable meanwhile." })} icon={<IcRefresh size={14} />}>New image</Button><Button onClick={() => toast({ title: "Asset library opens here" })}>Choose</Button></div>
-                  <Field label="Image prompt">{(p) => <Textarea {...p} rows={3} defaultValue="Editorial still life of fermented foods on ivory linen, soft morning light" />}</Field>
-                </Panel>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {railTab === "style" && (
-        <div className="shell__rail-body">
-          <Panel title="Format">
-            <Field label="Aspect">{(p) => <Select {...p} defaultValue="4:5"><option value="4:5">4:5 Feed, 1080 by 1350</option><option value="9:16">9:16 Story, 1080 by 1920</option></Select>}</Field>
-            <Field label="Preset">{(p) => <Select {...p} defaultValue="editorial"><option value="editorial">Editorial scientific</option><option value="default">Default</option><option value="freepress">Free press</option></Select>}</Field>
+      <div className="shell__rail-body">
+        {railTab === "slide" && (selected.length > 1 ? (
+          <Panel title={`${selected.length} slides selected`}>
+            <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Actions here apply to every selected slide.</span>
+            <Button onClick={() => regenerate(selected)} icon={<IcRefresh size={14} />}>Regenerate copy</Button>
+            <Button onClick={() => regenerate(selected, "graphic")} icon={<IcRefresh size={14} />}>Regenerate graphics</Button>
+            <Button onClick={() => duplicate(selected)} icon={<IcCopy size={14} />}>Duplicate</Button>
+            <Button onClick={() => toast({ title: `${selected.length} PNGs downloaded` })}>Download PNGs</Button>
+            <Button variant="danger" onClick={() => remove(selected)} icon={<IcTrash size={14} />}>Delete</Button>
           </Panel>
-          <Panel title="Branding">
-            <Field label="Logo size">{(p) => <Slider id={p.id} value={logoScale} onChange={setLogoScale} min={60} max={140} format={(v) => `${v}%`} />}</Field>
-            <Toggle checked={showArrows} onChange={setShowArrows} label="Slide arrows" />
-            <Toggle checked={showNumbers} onChange={setShowNumbers} label="Slide numbers" />
-            <Toggle checked onChange={() => {}} label="Citation bars" />
-          </Panel>
-          <Panel title="Palette">
-            <PanelSectionTitle>Content colours</PanelSectionTitle>
-            <div style={{ display: "flex", gap: 6 }}>
-              {["--lunia-deep-navy", "--lunia-rich-navy", "--lunia-slate-blue", "--lunia-soft-ivory", "--lunia-aqua", "--lunia-signal-yellow"].map((c) => <span key={c} title={c} style={{ width: 24, height: 24, borderRadius: 4, background: `var(${c})`, border: "1px solid var(--ui-border)" }} />)}
-            </div>
-            <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Closed set. The lint flags anything else.</span>
-          </Panel>
-        </div>
-      )}
-      {railTab === "brief" && (
-        <div className="shell__rail-body">
-          <Panel title="Brief">
-            <Field label="Topic">{(p) => <Textarea {...p} rows={2} value={doc.topic} onChange={(e) => history.set((d) => d ? { ...d, topic: e.target.value } : d, "topic")} />}</Field>
-            <Field label="Hook tone">{(p) => <Select {...p} value={doc.tone} onChange={(e) => history.set((d) => d ? { ...d, tone: e.target.value } : d)}>{["Educational", "Science-backed", "Myth-bust", "Bold hook", "The Paradox", "The Symptom"].map((t) => <option key={t}>{t}</option>)}</Select>}</Field>
-            <Field label="Length">{(p) => <Select {...p} defaultValue="Concise"><option>Concise</option><option>Standard</option></Select>}</Field>
-            <Button variant="primary" onClick={() => { setSelected([]); startGeneration(); }} icon={<IcRefresh size={14} />}>Regenerate from brief</Button>
-            <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Rewrites every slide. Regenerate one slide from its own panel instead when only one is wrong.</span>
-          </Panel>
-          <Panel title="Caption" collapsible defaultCollapsed>
-            <Textarea rows={6} value={doc.caption} onChange={(e) => history.set((d) => d ? { ...d, caption: e.target.value } : d, "caption")} aria-label="Instagram caption" />
-            <Button onClick={() => toast({ title: "Caption copied" })} icon={<IcCopy size={14} />}>Copy caption</Button>
-          </Panel>
-        </div>
-      )}
+        ) : dir.props === "floating" && current.kind !== "hook" ? (
+          <Panel title="Editing on the canvas"><span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Click any text on the slide to edit it there. The floating toolbar carries shorten, punch up, rewrite and the claim check. Graphic, background and export controls stay here.</span>{current.kind === "content" && <ContentSlidePanel slide={current} patch={(p, k) => patchSlide(current.id, p, k)} regen={!!regen[current.id]} onRegenerate={(w) => regenerate([current.id], w)} style={style} setStyle={setStyle} index={idx} />}</Panel>
+        ) : current.kind === "hook" ? (
+          <HookSlidePanel slide={current} patch={(p, k) => patchSlide(current.id, p, k)} regen={!!regen[current.id]} onRegenerate={(w) => regenerate([current.id], w)} style={style} setStyle={setStyle} index={idx} hookIndex={hookIndex} onPickHook={(i) => { setHookIndex(i); patchSlide(current.id, { ...HOOK_OPTIONS[i] }); toast({ title: "Hook switched", description: "Slide 1 text changed. The image is kept." }); }} />
+        ) : current.kind === "takeaway" ? (
+          <TakeawayPanel slide={current} patch={(p, k) => patchSlide(current.id, p, k)} regen={!!regen[current.id]} onRegenerate={(w) => regenerate([current.id], w)} style={style} setStyle={setStyle} index={idx} />
+        ) : (
+          <ContentSlidePanel slide={current} patch={(p, k) => patchSlide(current.id, p, k)} regen={!!regen[current.id]} onRegenerate={(w) => regenerate([current.id], w)} style={style} setStyle={setStyle} index={idx} />
+        ))}
+        {railTab === "style" && <StyleTab style={style} setStyle={setStyle} />}
+        {railTab === "brief" && <BriefTab topic={doc.topic} tone={doc.tone} onTopic={(t) => history.set((d) => d ? { ...d, topic: t } : d, "topic")} onTone={(t) => history.set((d) => d ? { ...d, tone: t } : d)} onRegenerateAll={() => { setSelected([]); startGeneration(); }} />}
+        {railTab === "caption" && <CaptionTab caption={doc.caption} onChange={(c) => history.set((d) => d ? { ...d, caption: c } : d, "caption")} />}
+        {railTab === "check" && <CheckTab slides={doc.slides} />}
+      </div>
     </>
   );
 
@@ -328,7 +279,7 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
               {regen[current.id] ? (
                 <div style={{ width: SLIDE_W, height: SLIDE_H, background: "var(--lunia-soft-ivory)", display: "grid", placeItems: "center" }}><div style={{ transform: `scale(${1 / scale})`, display: "flex", gap: 10, alignItems: "center", color: "var(--lunia-slate-blue)", fontSize: 14 }}><Spinner /> Rewriting this slide</div></div>
               ) : (
-                <SlideCanvas slide={current} editable selected={element} onSelect={setElement} onChange={(p) => patchSlide(current.id, p, Object.keys(p)[0])} showArrows={showArrows} showNumber={showNumbers} index={idx} total={doc.slides.length} logoScale={logoScale / 100} />
+                <SlideCanvas slide={{ ...current, dark: current.kind !== "hook" && style.slidesBg === "dark" }} editable selected={element} onSelect={setElement} onChange={(p) => patchSlide(current.id, p, Object.keys(p)[0])} showArrows={showArrows} showNumber={showNumbers} index={idx} total={doc.slides.length} logoScale={logoScale / 100} hookWeight={HOOK_WEIGHT_PX[style.hookWeight]} showCitationBar={style.showCitationBars} />
               )}
             </div>
             {dir.props === "floating" && element && !regen[current.id] && (
@@ -381,6 +332,20 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
         canUndo={history.canUndo} canRedo={history.canRedo} onUndo={history.undo} onRedo={history.redo}
         views={[{ value: "editor", label: "Editor" }, { value: "preview", label: "Instagram preview" }]} view={view} onView={setView}
         exportLabel="Export" onExport={() => toast({ title: "Exporting 5 PNGs", description: "1080 by 1350, one file per slide.", kind: "success" })}
+        exportMenu={[
+          { type: "heading", label: "Export" },
+          { label: `Download all (${doc?.slides.length ?? 0} PNGs)`, shortcut: "mod+e", onSelect: () => toast({ title: `Exporting ${doc?.slides.length ?? 0} PNGs`, description: "1080 by 1350, one file per slide. Blocked only when the fact check found a contradiction you have not decided on.", kind: "success" }) },
+          { label: "Download this slide (PNG)", onSelect: () => toast({ title: "Slide PNG downloaded" }) },
+          { label: "Preview HD for this slide", onSelect: () => toast({ title: "Preview HD", description: "Server render at full resolution." }) },
+          { label: "PDF guide", disabled: true, onSelect: () => {} },
+          { type: "separator" },
+          { label: "Copy Instagram caption", onSelect: () => { navigator.clipboard?.writeText(doc?.caption ?? "").catch(() => {}); toast({ title: "Caption copied", kind: "success" }); } },
+          { label: "Copy share link", onSelect: () => toast({ title: "Link copied" }) },
+          { label: "Turn into an email", onSelect: () => toast({ title: "Email draft started from this carousel" }) },
+          { type: "separator" },
+          { label: "Discard this carousel", danger: true, onSelect: async () => { if (await confirm({ title: "Discard this carousel?", description: "It is removed from the library. You can undo for a few seconds.", confirmLabel: "Discard", tone: "danger" })) { history.reset(null); toast({ title: "Carousel discarded", action: { label: "Undo", onClick: () => history.reset(MOCK_CAROUSEL) } }); } } },
+        ]}
+        saveAction={doc ? <Row2><Button size="sm" variant={saved ? "ghost" : "secondary"} onClick={() => { setSaved(true); toast({ title: saved ? "Updated in library" : "Saved to library", kind: "success" }); }}>{saved ? "Update" : "Save to library"}</Button>{saved && <Tooltip label="Copy the public share link"><IconButton title="Copy link" size="sm" onClick={() => toast({ title: "Link copied" })}><IcCopy size={14} /></IconButton></Tooltip>}</Row2> : null}
         commands={commands}
         left={left} right={right}
         topExtra={<DirectionSwitch dir={dir} onChange={updateDir} />}
@@ -396,6 +361,8 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
 }
 
 /* ── pieces ───────────────────────────────────────────────────────────── */
+
+function Row2({ children }: { children: React.ReactNode }) { return <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>{children}</span>; }
 
 function ThumbSlide({ slide, showArrows }: { slide: MockSlide; showArrows: boolean }) {
   return <div style={{ transform: `scale(${1 / 5.5})`, transformOrigin: "top left", width: SLIDE_W, height: SLIDE_H, position: "absolute" }}><SlideCanvas slide={slide} showArrows={showArrows} /></div>;

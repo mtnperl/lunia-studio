@@ -22,7 +22,7 @@ export type SlideElement = "eyebrow" | "headline" | "body" | "bullets" | "citati
  *  `editable`, every text run is a contentEditable region and the selected
  *  one gets the chrome selection outline; the outline is the only chrome
  *  colour allowed on top of the artwork, and it is not exported. */
-export function SlideCanvas({ slide, editable = false, selected, onSelect, onChange, showArrows = true, showNumber, index, total, logoScale = 1 }: {
+export function SlideCanvas({ slide, editable = false, selected, onSelect, onChange, showArrows = true, showNumber, index, total, logoScale = 1, hookWeight = 300, showCitationBar = true }: {
   slide: MockSlide;
   editable?: boolean;
   selected?: SlideElement | null;
@@ -33,8 +33,13 @@ export function SlideCanvas({ slide, editable = false, selected, onSelect, onCha
   index?: number;
   total?: number;
   logoScale?: number;
+  /** Hook headline weight: Default 300, Medium 400, Bold 600, Black 800. */
+  hookWeight?: number;
+  showCitationBar?: boolean;
 }) {
-  const dark = slide.kind === "takeaway" || slide.dark;
+  // Editorial preset: every slide is ivory, including the takeaway. `dark` is
+  // the per-slide or global "Slides bg: Dark" override from Settings.
+  const dark = !!slide.dark;
   const ink = dark ? C.ivory : C.deep;
   const sub = dark ? "rgba(247,244,239,0.72)" : C.slate;
   const bg = dark ? C.navy : C.ivory;
@@ -72,7 +77,7 @@ export function SlideCanvas({ slide, editable = false, selected, onSelect, onCha
         {arrows}
         <div style={{ position: "absolute", left: 84, right: 84, bottom: 100, color: C.deep }}>
           {text("eyebrow", slide.eyebrow ?? "", { fontSize: 24, letterSpacing: "0.28em", textTransform: "uppercase", fontWeight: 400, marginBottom: 22, color: C.slate })}
-          {text("headline", slide.headline, { fontSize: 104, lineHeight: 1.02, fontWeight: 300, letterSpacing: "-0.02em", textTransform: "uppercase" }, "h1")}
+          {text("headline", slide.headline, { fontSize: 104, lineHeight: 1.02, fontWeight: hookWeight, letterSpacing: "-0.02em", textTransform: "uppercase" }, "h1")}
           {text("body", slide.body ?? "", { fontSize: 34, fontWeight: 300, marginTop: 28, color: C.slate })}
         </div>
       </div>
@@ -84,17 +89,17 @@ export function SlideCanvas({ slide, editable = false, selected, onSelect, onCha
       <div style={{ width: SLIDE_W, height: SLIDE_H, position: "relative", overflow: "hidden", background: bg, color: ink, fontFamily: C.font, padding: "84px 84px 72px" }}>
         {logo}
         <div style={{ position: "absolute", left: 84, right: 84, top: 300 }}>
-          {text("eyebrow", slide.eyebrow ?? "", { fontSize: 24, letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 28, color: C.aqua })}
+          {text("eyebrow", slide.eyebrow ?? "", { fontSize: 24, letterSpacing: "0.28em", textTransform: "uppercase", marginBottom: 28, color: dark ? C.aqua : C.slate })}
           {text("headline", slide.headline, { fontSize: 76, lineHeight: 1.08, fontWeight: 600, letterSpacing: "-0.015em", marginBottom: 56 }, "h1")}
           <ol className={cls("bullets")} onClick={editable ? pick("bullets") : undefined} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 34 }}>
             {(slide.bullets ?? []).map((b, i) => (
               <li key={i} style={{ display: "flex", gap: 28, alignItems: "flex-start", fontSize: 36, fontWeight: 300, lineHeight: 1.3 }}>
-                <span style={{ width: 56, height: 56, borderRadius: "50%", background: C.aqua, color: C.navy, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 600, flexShrink: 0 }}>{i + 1}</span>
+                <span style={{ width: 56, height: 56, borderRadius: "50%", background: dark ? C.aqua : C.deep, color: dark ? C.navy : C.ivory, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 600, flexShrink: 0 }}>{i + 1}</span>
                 <span>{b}</span>
               </li>
             ))}
           </ol>
-          {text("body", slide.body ?? "", { fontSize: 30, fontWeight: 300, marginTop: 64, color: sub, borderTop: `2px solid ${C.aqua}`, paddingTop: 32 }, "p", true)}
+          {text("body", slide.body ?? "", { fontSize: 30, fontWeight: 300, marginTop: 64, color: sub, borderTop: `2px solid ${dark ? C.aqua : C.deep}`, paddingTop: 32 }, "p", true)}
         </div>
         {number}
       </div>
@@ -115,7 +120,7 @@ export function SlideCanvas({ slide, editable = false, selected, onSelect, onCha
         </div>
       </div>
       <div style={{ position: "absolute", left: 84, right: 84, bottom: 72 }}>
-        {text("citation", slide.citation ?? "", { fontSize: 22, lineHeight: 1.4, fontWeight: 300, color: sub, borderTop: `1px solid ${C.slate}`, paddingTop: 20 }, "p", true)}
+        {text("citation", slide.citation ?? "", { fontSize: 22, lineHeight: 1.4, fontWeight: 300, color: sub, borderTop: showCitationBar ? `1px solid ${C.slate}` : "none", paddingTop: 20 }, "p", true)}
       </div>
       {number}
     </div>

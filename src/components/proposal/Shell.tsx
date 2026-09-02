@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Button, IconButton, Tooltip, Kbd, Tabs, CommandPalette, useToast, IcUndo, IcRedo, IcDownload, type Command } from "@/components/ui";
+import { Button, IconButton, Tooltip, Kbd, Tabs, CommandPalette, Menu, useToast, IcUndo, IcRedo, IcDownload, type Command, type MenuItem } from "@/components/ui";
 
 export type SaveState = "saved" | "saving" | "dirty" | "offline";
 
@@ -11,7 +11,7 @@ export type SaveState = "saved" | "saving" | "dirty" | "offline";
  *  and the command palette shortcut. */
 export function Shell<V extends string>({
   title, onTitle, kindLabel, saveState, canUndo, canRedo, onUndo, onRedo,
-  views, view, onView, exportLabel, onExport, commands, left, right, children, leftWidth, rightWidth, topExtra,
+  views, view, onView, exportLabel, onExport, exportMenu, commands, left, right, children, leftWidth, rightWidth, topExtra, saveAction,
 }: {
   title: string;
   onTitle: (t: string) => void;
@@ -20,12 +20,18 @@ export function Shell<V extends string>({
   canUndo: boolean; canRedo: boolean; onUndo: () => void; onRedo: () => void;
   views: { value: V; label: string }[]; view: V; onView: (v: V) => void;
   exportLabel: string; onExport: () => void;
+  /** When given, the primary button opens this menu instead of calling onExport directly. */
+  exportMenu?: MenuItem[];
+  /** Optional explicit save control next to the save state (Save / Update, Copy link). */
+  saveAction?: ReactNode;
   commands: Command[];
   left: ReactNode; right: ReactNode; children: ReactNode;
   leftWidth?: number; rightWidth?: number;
   topExtra?: ReactNode;
 }) {
   const [cmd, setCmd] = useState(false);
+  const [exp, setExp] = useState(false);
+  const exportRef = useRef<HTMLButtonElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,6 +66,7 @@ export function Shell<V extends string>({
             {saveState === "saved" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>}
             {saveText}
           </span>
+          {saveAction}
         </div>
         <div className="shell__top-center">
           <Tabs value={view} onChange={onView} items={views} ariaLabel="View" />
@@ -69,7 +76,8 @@ export function Shell<V extends string>({
           <Tooltip label="Undo" shortcut="mod+z"><IconButton title="Undo" onClick={onUndo} disabled={!canUndo}><IcUndo /></IconButton></Tooltip>
           <Tooltip label="Redo" shortcut="mod+shift+z"><IconButton title="Redo" onClick={onRedo} disabled={!canRedo}><IcRedo /></IconButton></Tooltip>
           <Tooltip label="Commands" shortcut="mod+k"><Button variant="ghost" onClick={() => setCmd(true)}><Kbd>⌘</Kbd><Kbd>K</Kbd></Button></Tooltip>
-          <Button variant="primary" icon={<IcDownload size={14} />} onClick={onExport}>{exportLabel}</Button>
+          <Button ref={exportRef} variant="primary" icon={<IcDownload size={14} />} onClick={() => (exportMenu ? setExp(true) : onExport())} aria-haspopup={exportMenu ? "menu" : undefined} aria-expanded={exportMenu ? exp : undefined}>{exportLabel}</Button>
+          {exportMenu && <Menu open={exp} onClose={() => setExp(false)} anchorRef={exportRef} placement="bottom-end" items={exportMenu} ariaLabel="Export" />}
         </div>
       </header>
       <div className="shell__body">
