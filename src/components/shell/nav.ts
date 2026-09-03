@@ -6,7 +6,7 @@
 export type Tab =
   | "home" | "generate" | "editor" | "library" | "carousel-v2" | "carousel-library" | "batch" | "subjects"
   | "email-reviews" | "email-flows" | "campaign" | "campaign-library" | "video" | "video-assets" | "video-library"
-  | "ugc" | "ugc-briefs" | "assets" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
+  | "ugc" | "ugc-briefs" | "assets" | "facts" | "business-overview" | "business-pnl" | "business-unit-economics" | "business-cash" | "business-assumptions";
 
 export const TAB_TITLES: Record<Tab, string> = {
   home: "Home",
@@ -25,6 +25,7 @@ export const TAB_TITLES: Record<Tab, string> = {
   "video-library": "Video library",
   "video-assets": "Video assets",
   assets: "Assets",
+  facts: "Facts",
   ugc: "UGC tracker",
   "ugc-briefs": "UGC briefs",
   "business-overview": "Business, overview",
@@ -57,6 +58,7 @@ export const NAV: NavSection[] = [
       { key: "campaign-library", label: "Emails" },
       { key: "assets", label: "Assets", keywords: "images library" },
       { key: "subjects", label: "Subjects", keywords: "topics" },
+      { key: "facts", label: "Facts", keywords: "claims ledger sources citations" },
     ],
   },
   {

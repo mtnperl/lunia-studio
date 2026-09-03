@@ -20,6 +20,7 @@ import EmailReviewView from "@/components/email-review/EmailReviewView";
 import EmailFlowsLibrary from "@/components/email-review/EmailFlowsLibrary";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
 import UGCBriefsView from "@/components/ugc/UGCBriefsView";
+import FactsView from "@/components/FactsView";
 import { AppShell, type RecentDoc } from "@/components/shell/AppShell";
 import { isTab, type Tab } from "@/components/shell/nav";
 import type { Script, SavedCarousel, SavedCampaign, EmailFlow } from "@/lib/types";
@@ -204,6 +205,7 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
       {tab === "video-library" && <VideoLibraryView />}
       {tab === "video-assets" && <VideoAssetsView />}
       {tab === "assets" && <AssetsView />}
+      {tab === "facts" && <FactsView onOpenDocument={(kind, id) => (kind === "carousel" ? openRecent({ kind: "carousel", id, title: "" }) : openRecent({ kind: "email", id, title: "" }))} />}
       {tab === "ugc" && <UGCTrackerView />}
       {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
       {tab === "business-overview" && <BusinessView active="overview" />}

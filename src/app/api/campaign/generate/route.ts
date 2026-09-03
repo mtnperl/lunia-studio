@@ -1,4 +1,6 @@
 import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
+import { getFacts } from "@/lib/kv";
+import { matchFacts, factsPromptBlock } from "@/lib/facts";
 import { checkRateLimit, getAssets } from "@/lib/kv";
 import { generateCampaignSlotImage } from "@/lib/campaign-image";
 import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
@@ -114,7 +116,11 @@ export async function POST(req: Request) {
       return Response.json({ topic, content: testContent });
     }
 
-    const prompt = `${LUNIA_VOICE_SPEC}
+    // Claims ledger: verified facts for this subject are quoted, not recalled.
+    const ledger = await getFacts().catch(() => []);
+    const ledgerBlock = factsPromptBlock(matchFacts(ledger, topic, typeof body.subjectId === "string" ? body.subjectId : undefined));
+
+    const prompt = `${LUNIA_VOICE_SPEC}${ledgerBlock}
 
 Write a complete marketing email campaign for Lunia Life.
 

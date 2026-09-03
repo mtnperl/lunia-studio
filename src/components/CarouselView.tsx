@@ -339,6 +339,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: t,
+          ...(subjectId ? { subjectId } : {}),
           hookTone: tone,
           count: format === "did_you_know" ? 3 : 1,
           concise: conciseMode ?? false,

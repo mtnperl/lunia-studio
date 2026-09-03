@@ -1,3 +1,4 @@
+import type { Fact } from "./types";
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
@@ -487,6 +488,29 @@ export async function deleteSubject(id: string): Promise<void> {
   const all = await getSubjects();
   const filtered = all.filter((s) => s.id !== id);
   await writeCollection(SUBJECTS_KEY, filtered);
+}
+
+// ─── Claims ledger ────────────────────────────────────────────────────────────
+const FACTS_KEY = "lunia:facts";
+
+export async function getFacts(): Promise<Fact[]> {
+  return readCollection<Fact>(FACTS_KEY);
+}
+
+export async function saveFacts(facts: Fact[]): Promise<void> {
+  await writeCollection(FACTS_KEY, facts);
+}
+
+export async function upsertFact(fact: Fact): Promise<void> {
+  const all = await getFacts();
+  const idx = all.findIndex((f) => f.id === fact.id);
+  if (idx >= 0) all[idx] = fact; else all.unshift(fact);
+  await writeCollection(FACTS_KEY, all);
+}
+
+export async function deleteFact(id: string): Promise<void> {
+  const all = await getFacts();
+  await writeCollection(FACTS_KEY, all.filter((f) => f.id !== id));
 }
 
 // ─── Carousel Templates ───────────────────────────────────────────────────────

@@ -1087,6 +1087,33 @@ export type SavedCampaign = {
   content: CampaignContent;
 };
 
+// ─── Claims ledger ────────────────────────────────────────────────────────────
+export type FactStatus = "verified" | "pending" | "retracted";
+
+/** One sourced fact, keyed to a subject. See src/lib/facts.ts. */
+export type Fact = {
+  id: string;
+  /** Subject library id when known. */
+  subjectId?: string;
+  /** Subject text, or the carousel topic the fact was verified under. */
+  subjectText: string;
+  /** One sentence carrying the figure. */
+  statement: string;
+  /** The figure on its own, for display: "8 mg per 200 ml cup". */
+  value?: string;
+  source: { citation?: string; url?: string; title?: string; quote?: string };
+  status: FactStatus;
+  origin: "verification" | "research" | "manual";
+  /** Document it was verified in, when it came from a fact check. */
+  contentId?: string;
+  createdAt: string;
+  updatedAt: string;
+  verifiedAt?: string;
+  /** Earlier statements, kept so an old value can be hunted down. */
+  previous?: { statement: string; changedAt: string }[];
+  note?: string;
+};
+
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────
 
 export type MetaCampaign = {
