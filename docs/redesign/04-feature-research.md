@@ -38,16 +38,16 @@ regenerate · documents with URLs.
 | 1 | **Duplicate and vary** | The core Lunia loop is variants of a winning concept. Today that means rebuilding from the brief and losing the structure that worked. One action: keep the structure, style and graphic types, change the angle, tone or topic, get N variants as new documents. | M | A `structureFrom` parameter on `carousel-v2/generate` and `campaign/generate` (backend, small, flagged). Document model from slice 2. | Very high | **Build** |
 | 2 | **Templates and brand presets** | Every carousel starts from a layout that already converted. Today the email has shapes and the carousel has three presets; neither can save a finished document as a starting point with its settings. Save as template, start from template, template picker in the New sheet. | M | KV collection for templates (reuse `carousel-templates`), New sheet from slice 2. | High | **Build** |
 | 3 | **Inline AI editing on selection** | Rewrite, shorten, punch up the hook, make it compliant, without regenerating the slide. Today: shorten slide and regenerate slide exist, but nothing is selection-scoped. Select text on the canvas, get a small menu. | M | One endpoint, `rewrite-selection`, with an instruction enum (backend, small, flagged). Uses the on-canvas editing from slice 3. | High | **Build** |
-| 4 | **Brand compliance linting** | Banned claim language and off-palette colour caught while typing, not at review. `banned-terms.ts` exists; the fact check exists; neither runs in the editor. Adds a palette aligner that snaps drawn colours to the closed six and a lint that fails on hex literals outside it. | M | `banned-terms.ts` (exists). Palette aligner in `brand-tokens.ts` (new, pure). No backend. | High | **Build** |
+| 4 | Brand compliance linting | Banned claim language and off-palette colour caught while typing. `banned-terms.ts` exists; the fact check exists; neither runs in the editor. | M | `banned-terms.ts`, a palette aligner | High | Not building, by decision on 2026-09-02 |
 | 5 | **Version history with named checkpoints** | Undo covers "I just made a bad edit". It does not cover "yesterday's version was better" or survive a closed tab. Snapshots on every save, name a checkpoint, restore any. | M | A versions KV collection with a retention rule (30 versions, checkpoints kept). Autosave from slice 2. `TODOS.md` already scopes this. | High | **Build** |
 | 6 | Visible undo timeline | A scrubbable list of undo steps. Nice, rarely used once checkpoints exist. | S | 5 | Low | Park |
-| 7 | Asset library search | Exists with folders, search and descriptions. The gap is inside the editor: pick from the library without leaving the rail. | S | Editor slices | Medium | Park, folded into slice 3 and 4 as the rail picker |
-| 8 | Export presets per channel | IG carousel and story exist. Email hero and Meta static ad from a slide would need two renderers and a crop model. | L | Slide renderer refactor | Medium | Park |
+| 7 | Asset library picker in the rail | Exists with folders, search and descriptions. The gap is inside the editor: pick from the library without leaving the rail. | S | Editor slices | Medium | **Build** (decision 2026-09-02) |
+| 8 | Export presets per channel | IG carousel and story exist. Email hero and Meta static ad from a slide need two renderers and a crop model. | L | Slide renderer refactor | Medium | **Build** (decision 2026-09-02) |
 | 9 | Comments and review mode | One creator today. The phone review view covers approve and request a change for a second person. Threaded comments need identity and notifications. | L | Auth for a second user | Low today | Park |
 | 10 | Multi-select and bulk edit | In the carousel editor slice already. | S | Slice 3 | High | Baseline |
 | 11 | Keyboard shortcuts and cheat sheet | In the shell slice already. | S | Slice 2 | High | Baseline |
 | 12 | Paste a study link to start | Start a carousel from a paper URL: fetch, extract claims, pre-fill the brief and citations. | M | A fetch and extract endpoint (backend, new). | High for the science-first content | Park for this cycle, revisit next |
-| 13 | Scheduled daily batch | Memory notes this was designed and deferred, blocked on middleware secret support. Not an editor feature. | M | Cron auth | Medium | Park, unchanged |
+| 13 | Scheduled daily batch | Designed earlier and deferred, blocked on middleware secret support. | M | Cron auth (backend, must be called out) | Medium | **Build** (decision 2026-09-02) |
 
 ## Impact and effort grid
 
@@ -67,17 +67,21 @@ Low      │ 6 undo timeline          │                          │ 9 comment
 
 The rendered grid is on the Phase 4 artifact page.
 
-## The shortlist, in build order
+## The build list, in build order (revised 2026-09-02)
 
-1. **Brand compliance linting with the palette aligner.** Smallest backend surface (none), protects
-   every other feature, and the aligner is needed by slice 3 anyway to close the palette.
+Brand compliance linting was removed from the list by decision. Three parked items were promoted.
+
+1. **Asset library picker in the rail.** Smallest, lands inside slices 3 and 4.
 2. **Inline AI editing on selection.** Rides on the on-canvas editing from slice 3. One small endpoint.
 3. **Templates and brand presets.** Needs the New sheet and the document model; makes the empty state
    real.
 4. **Duplicate and vary.** The highest value item. Built after templates because a variant is a
    template applied to a new angle, so the two share the structure extraction.
-5. **Version history with named checkpoints.** Last because it needs autosave stable in production
-   first, and it is the one that touches storage.
+5. **Export presets per channel.** IG carousel, IG story, email hero, Meta static ad. Needs the slide
+   renderer to accept a target frame; the largest item.
+6. **Version history with named checkpoints.** Needs autosave stable in production first.
+7. **Scheduled daily batch.** Not an editor feature; needs cron auth in the middleware, which is a
+   backend change and will be called out when it lands.
 
 ## What each shortlisted feature needs from the backend, stated plainly
 
