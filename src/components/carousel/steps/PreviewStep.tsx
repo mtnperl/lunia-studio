@@ -12,6 +12,8 @@ import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
+import { EditorShell, RailHead } from "@/components/shell/EditorShell";
+import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
 import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
 import { DEFAULT_GATING } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
@@ -22,12 +24,10 @@ import FeedPreview from "@/components/carousel/preview/FeedPreview";
 import { SLIDE_ELEMENT_LABEL, isEditable as isEditableElement, type SlideElement } from "@/lib/slide-elements";
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
-import { IcChevron } from "@/components/ui/icons";
 import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
 import SlideRail from "@/components/carousel/preview/SlideRail";
-import InspectorPanel from "@/components/carousel/preview/InspectorPanel";
 
 // v2 editor: which tool panel is docked in the inspector (null = closed).
 type InspectorMode =
@@ -90,6 +90,8 @@ type Props = {
    *  in so the "Save" button updates that record in place instead of minting
    *  a brand-new carousel on every save. */
   initialSavedId?: string | null;
+  /** Leave the editor (back to the library). Batch review passes onChangeHook instead. */
+  onExit?: () => void;
   /** Fires after a successful save with the resulting carousel id. Lets a parent
    *  (e.g. BatchView's queue cards) surface a "Saved ✓" state of its own. */
   onSaved?: (id: string) => void;
@@ -327,7 +329,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -372,7 +374,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // The brief — topic and hook — folded into the workspace instead of living
   // two screens back. Collapsed by default: it is what you decided, not what
   // you are doing.
-  const [briefOpen, setBriefOpen] = useState(false);
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>(null);
   // v2 editor: AI-suggested icon ids for the focused content slide, held
   // un-applied so opening the icon panel never mutates the slide.
@@ -380,6 +381,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // v2 editor: measured editor width — canvas scale is derived from it.
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [editorW, setEditorW] = useState(0);
+  const [editorH, setEditorH] = useState(0);
+  const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption" | "check">("slide");
   // v2-only: graphic type picker — which slide's picker is open (or null)
   // v2-only: graphic data editor — which slide's editor is open (or null)
   const [exportError, setExportError] = useState<string | null>(null);
@@ -1243,6 +1246,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Open an inspector tool for the focused slide. Toggles closed if already open.
   function openInspector(mode: Exclude<InspectorMode, null>) {
     setInspectorMode((cur) => (cur === mode ? null : mode));
+    setRailTab("slide");
   }
 
   // Open the icon panel for a content slide (slideIndex 0-2). Never mutates the
@@ -1736,12 +1740,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     </div>
   );
 
-  function getInspector(): { title: string; subtitle?: string; body: React.ReactNode } | null {
-    if (!inspectorMode) return null;
+  function getInspector(mode: InspectorMode = inspectorMode): { title: string; subtitle?: string; body: React.ReactNode } | null {
+    if (!mode) return null;
     const slideIdx = focusedSlide - 1; // 0-2 when a content slide is focused
 
     // ── Settings ──────────────────────────────────────────────────────────
-    if (inspectorMode === "settings") {
+    if (mode === "settings") {
       return {
         title: "Settings",
         body: (
@@ -1876,7 +1880,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     // The controls for the part of the slide you clicked, and nothing else.
     // Everything here used to live in one flat Settings panel where a headline
     // control and a logo control looked identical and sat next to each other.
-    if (inspectorMode === "element" && selectedElement) {
+    if (mode === "element" && selectedElement) {
       const slide = content.slides[slideIdx];
       if (!slide) return null;
 
@@ -1991,7 +1995,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Text editor (content slides) ──────────────────────────────────────
-    if (inspectorMode === "text") {
+    if (mode === "text") {
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       return {
@@ -2018,7 +2022,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Takeaway editor (payoff slide) ────────────────────────────────────
-    if (inspectorMode === "takeaway") {
+    if (mode === "takeaway") {
       const takeaway = content.takeaway;
       if (!takeaway) return null;
       const points = takeaway.points;
@@ -2122,7 +2126,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Icon picker (non-destructive suggestions) ─────────────────────────
-    if (inspectorMode === "icons") {
+    if (mode === "icons") {
       const selected = getSelectedIcons(slideIdx);
       const showLabels = getShowLabels(slideIdx);
       const loadingSuggestions = suggestingIcons === slideIdx;
@@ -2267,7 +2271,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Graphic type picker ───────────────────────────────────────────────
-    if (inspectorMode === "graphicType") {
+    if (mode === "graphicType") {
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       let currentComp: string | undefined;
@@ -2297,7 +2301,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Graphic data editor ───────────────────────────────────────────────
-    if (inspectorMode === "graphicData") {
+    if (mode === "graphicData") {
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       return {
@@ -2319,7 +2323,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Graphic regeneration comment ──────────────────────────────────────
-    if (inspectorMode === "graphicComment") {
+    if (mode === "graphicComment") {
       const slide = content.slides[slideIdx];
       if (!slide) return null;
       const used = graphicRegenCount[slideIdx] ?? 0;
@@ -2354,7 +2358,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Hook overlays ─────────────────────────────────────────────────────
-    if (inspectorMode === "overlays") {
+    if (mode === "overlays") {
       const wash = hookOverlays.backgroundWash ?? WASH_SEED;
       const setWash = (patch: Partial<BackgroundWash>) =>
         setHookOverlays((s) => ({ ...s, backgroundWash: { ...(s.backgroundWash ?? WASH_SEED), ...patch } }));
@@ -2407,7 +2411,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     }
 
     // ── Hook image refine ─────────────────────────────────────────────────
-    if (inspectorMode === "image") {
+    if (mode === "image") {
       return {
         title: "Refine hook image",
         subtitle: "Edit the prompt or add guidelines — Claude rewrites it, then regenerates.",
@@ -2758,252 +2762,154 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const slideH = Math.round((reelsMode ? 1920 : 1350) * PREVIEW_SCALE);
   const inspector = isV2 ? getInspector() : null;
 
-  // v2 editor: track the editor's own width (changes only on window resize),
-  // then derive the canvas column width arithmetically so the focused slide
-  // scales to fit even as the inspector docks in and out.
+  // The stage measures itself; the focused slide scales to fit both axes.
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
-    const measure = () => { const w = el.clientWidth; if (w > 0) setEditorW(w); };
+    const measure = () => { const w = el.clientWidth; const h = el.clientHeight; if (w > 0) setEditorW(w); if (h > 0) setEditorH(h); };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, [isV2, viewMode]);
 
-  const RAIL_COL = 112;
-  const editorGap = inspector ? 16 : 12;
-  const canvasColW = editorW > 0
-    ? Math.max(200, editorW - RAIL_COL - (inspector ? 320 : 0) - editorGap * 2)
-    : slideW;
-  const canvasScale = Math.min(1, canvasColW / slideW);
+  const STAGE_PAD = 40;
+  const canvasScale = editorW > 0
+    ? Math.min(1, (editorW - STAGE_PAD * 2) / slideW, editorH > 0 ? (editorH - STAGE_PAD * 2) / slideH : 1)
+    : 0.5;
+  const slideInspector = inspector && inspectorMode !== "settings" ? inspector : null;
+  const settingsInspector = isV2 ? getInspector("settings") : null;
 
   return (
-    // Was capped at 960 inside an 860 column — the artwork, which is the entire
-    // point of this screen, got less room than the controls beside it.
-    <div style={{ maxWidth: "100%" }}>
-      {/* Header — the topic is the heading. A generic "Your carousel" title
-          sat directly under the view's own title and said nothing the page
-          did not already say. */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, gap: 16, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 0, flex: "1 1 340px" }}>
-          <h2 className="display display-md" style={{ margin: 0 }}>{topic}</h2>
-          <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: 13, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            {slideCount} slides
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn-ghost" onClick={handleSave} disabled={saving} title={savedId ? "Update the saved carousel" : "Save this carousel to the library"}>
-            {saving ? (savedId ? "Updating…" : "Saving…") : (saveLabel ?? (savedId ? "Update" : "Save"))}
-          </button>
-          {savedId && (
-            <button className="btn-ghost" onClick={handleCopyShareLink}>
-              {copyLabel}
-            </button>
-          )}
-          {imagesLoading && (
-            <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--muted)', animation: 'shimmer 1s ease-in-out infinite' }} />
-              Generating visuals…
-            </span>
-          )}
-          <button
-            className="btn"
-            onClick={downloadAll}
-            disabled={downloadingAll || exportBlocked}
-            title={exportNote}
-            style={{
-              minWidth: 160,
-              // The button carries the verification state so a flagged export
-              // never looks identical to a clean one. It stays clickable: the
-              // signal is the product, the lock is not.
-              ...(verificationStatus === "red"
-                ? { borderColor: "var(--error)" }
-                : exportWarned
-                  ? { borderColor: "var(--warning)" }
-                  : {}),
-              ...(exportBlocked ? { opacity: 0.6, cursor: "not-allowed" } : {}),
-            }}
-          >
-            {downloadingAll ? (
-              <>
-                <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 4 }}>⟳</span>
-                Exporting…
-              </>
-            ) : exportBlocked ? (
-              "Download blocked"
+    <>
+      <EditorShell<"editor" | "feed">
+        kindLabel="Carousel"
+        title={topic}
+        onBack={onChangeHook ?? onExit}
+        saveState={savedId ? (saving ? "saving" : "saved") : "unsaved"}
+        saveActions={<>
+          <UiButton size="sm" variant={savedId ? "ghost" : "secondary"} onClick={handleSave} busy={saving} title={savedId ? "Update the saved carousel" : "Save this carousel to the library"}>{saveLabel ?? (savedId ? "Update" : "Save to library")}</UiButton>
+          {savedId && <UiTooltip label={copyLabel}><UiIconButton title="Copy share link" size="sm" onClick={handleCopyShareLink}><UiIcCopy size={14} /></UiIconButton></UiTooltip>}
+          {imagesLoading && <span className="shell__save shell__save--saving"><span className="ui-spinner" style={{ width: 10, height: 10 }} />Generating visuals</span>}
+        </>}
+        views={[{ value: "editor", label: "Editor" }, { value: "feed", label: reelsMode ? "TikTok feed" : "IG feed" }]}
+        view={viewMode}
+        onView={setViewMode}
+        exportLabel={downloadingAll ? "Exporting" : exportBlocked ? "Download blocked" : "Export"}
+        exportNote={exportNote}
+        exportTone={verificationStatus === "red" ? "danger" : exportWarned ? "warning" : undefined}
+        exportMenu={[
+          { type: "heading", label: "Export" },
+          { label: `Download all (${slideCount} PNGs)`, disabled: downloadingAll || exportBlocked, onSelect: downloadAll },
+          { label: downloading === focusedSlide ? "Exporting this slide" : `Download ${slideLabels[focusedSlide]} (PNG)`, disabled: downloading !== null, onSelect: () => downloadSlide(focusedSlide) },
+          ...(focusedSlide >= 1 && focusedSlide <= 3 ? [{ label: "Preview HD for this slide", disabled: hdLoading !== null, onSelect: () => previewHD(focusedSlide) }] : []),
+          ...(carouselFormat === "engagement" ? [{ label: generatingPdf ? "Generating PDF" : "PDF guide", disabled: generatingPdf, onSelect: handleGeneratePdf }] : []),
+          { type: "separator" },
+          { label: "Copy Instagram caption", disabled: !content.caption, onSelect: () => { navigator.clipboard.writeText(content.caption).then(() => { setCaptionCopyLabel("Copied!"); setTimeout(() => setCaptionCopyLabel("Copy"), 2000); }); } },
+          ...(savedId ? [{ label: "Copy share link", onSelect: handleCopyShareLink }] : []),
+          { type: "separator" },
+          { label: "Start over", danger: true, onSelect: onRestart },
+        ]}
+        left={<>
+          <RailHead>Slides <UiBadge>{slideCount}</UiBadge></RailHead>
+          <div style={{ padding: 8 }}>
+            <SlideRail slides={slideNodes} labels={slideLabels} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} thumbW={168} />
+          </div>
+        </>}
+        right={<>
+          <div style={{ padding: "8px 8px 0" }}>
+            <UiTabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "slide", label: "Slide" }, { value: "style", label: "Style" }, { value: "brief", label: "Brief" }, { value: "caption", label: "Caption" }, { value: "check", label: "Check" }]} />
+          </div>
+          <div className="shell__rail-body">
+            {exportError && <div className="ui-badge ui-badge--danger" style={{ whiteSpace: "normal", padding: 8, height: "auto" }}>{exportError}</div>}
+            {pdfError && <div className="ui-badge ui-badge--danger" style={{ whiteSpace: "normal", padding: 8, height: "auto", display: "flex", justifyContent: "space-between", gap: 8 }}><span>PDF error: {pdfError}</span><button type="button" onClick={() => setPdfError(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }} aria-label="Dismiss">×</button></div>}
+            {graphicError && <div className="ui-badge ui-badge--danger" style={{ whiteSpace: "normal", padding: 8, height: "auto", display: "flex", justifyContent: "space-between", gap: 8 }}><span>{graphicError}</span><button type="button" onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }} aria-label="Dismiss">×</button></div>}
+            {railTab === "slide" && (slideInspector ? (
+              <UiPanel title={slideInspector.title} actions={<UiIconButton title="Close" size="sm" onClick={() => { setInspectorMode(null); setSelectedElement(null); }}>×</UiIconButton>}>
+                {slideInspector.subtitle && <span style={{ fontSize: 12, color: "var(--ui-text-2)" }}>{slideInspector.subtitle}</span>}
+                {slideInspector.body}
+              </UiPanel>
             ) : (
-              `↓ Download all (${slideCount} PNGs)`
+              <UiPanel title={slideLabels[focusedSlide]}>
+                <span style={{ fontSize: 13, color: "var(--ui-text-2)", lineHeight: 1.5 }}>Click any text on the slide to select it, double-click to edit it there. The actions under the slide open their controls here.</span>
+              </UiPanel>
+            ))}
+            {railTab === "style" && settingsInspector && <UiPanel title="Settings">{settingsInspector.body}</UiPanel>}
+            {railTab === "brief" && (
+              <UiPanel title="Brief">
+                {onSelectHook && content.hooks.length > 1 ? (
+                  <div>
+                    <Label kind="section">Hook</Label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {content.hooks.map((h, i) => {
+                        const active = i === selectedHook;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => onSelectHook(i)}
+                            style={{
+                              textAlign: "left", padding: "10px 12px", borderRadius: 8,
+                              border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                              background: active ? "var(--accent-dim)" : "var(--bg)",
+                              cursor: "pointer", fontFamily: "inherit", color: "var(--text)",
+                              transition: "border-color 120ms ease, background 120ms ease",
+                            }}
+                          >
+                            <div style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, lineHeight: 1.35 }}>{h.headline}</div>
+                            {h.subline && (
+                              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>{h.subline}</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                      Switching the hook changes the first slide&apos;s text. The image already
+                      generated for it stays — regenerate it from Refine image if you want a new one.
+                    </p>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>One hook was written for this carousel. A new hook image is one click away in Refine image on the hook slide.</span>
+                )}
+                <div style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Hook tone: {hookTone}. Start over, in the Export menu, rewrites everything from a new brief.</div>
+              </UiPanel>
             )}
-          </button>
-          {carouselFormat === "engagement" && (
-            <button
-              className="btn-ghost"
-              onClick={handleGeneratePdf}
-              disabled={generatingPdf}
-              title="Generate the PDF guide to send to commenters"
-            >
-              {generatingPdf ? (
-                <>
-                  <span style={{ display: "inline-block", animation: "spin 1s linear infinite", marginRight: 4 }}>⟳</span>
-                  Generating PDF…
-                </>
-              ) : (
-                "↓ PDF guide"
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Brief ──────────────────────────────────────────────────────────
-          Topic and hook used to be steps 1 and 3 — screens you left the
-          canvas to reach, and could not reach at all from Preview until the
-          step tabs became navigable. Switching hook is the single most common
-          thing to want back, so it happens here without going anywhere. */}
-      {onSelectHook && content.hooks.length > 1 && (
-        <div style={{ border: "1px solid var(--border)", borderRadius: 10, marginBottom: 20, background: "var(--surface)" }}>
-          <button
-            type="button"
-            onClick={() => setBriefOpen((v) => !v)}
-            aria-expanded={briefOpen}
-            style={{
-              display: "flex", alignItems: "center", gap: 10, width: "100%",
-              minHeight: 44, padding: "0 14px", border: "none", background: "transparent",
-              cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-              borderBottom: briefOpen ? "1px solid var(--border)" : "none",
-            }}
-          >
-            <span style={{
-              display: "inline-flex", color: "var(--muted)", transition: "transform 130ms ease",
-              transform: briefOpen ? "rotate(0deg)" : "rotate(-90deg)",
-            }}>
-              <IcChevron size={16} />
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Brief
-            </span>
-            <span style={{
-              flex: 1, minWidth: 0, fontSize: 13, color: "var(--muted)",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {hook.headline}
-            </span>
-          </button>
-          {briefOpen && (
-            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <Label kind="section">Hook</Label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {content.hooks.map((h, i) => {
-                    const active = i === selectedHook;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => onSelectHook(i)}
-                        style={{
-                          textAlign: "left", padding: "10px 12px", borderRadius: 8,
-                          border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                          background: active ? "var(--accent-dim)" : "var(--bg)",
-                          cursor: "pointer", fontFamily: "inherit", color: "var(--text)",
-                          transition: "border-color 120ms ease, background 120ms ease",
-                        }}
-                      >
-                        <div style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, lineHeight: 1.35 }}>{h.headline}</div>
-                        {h.subline && (
-                          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>{h.subline}</div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-                  Switching the hook changes the first slide&apos;s text. The image already
-                  generated for it stays — regenerate it from Refine image if you want a new one.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Fact check. Only available once saved — verification reads the carousel
-          from storage by id, so there is nothing to check before a first save. */}
-      <div style={{ marginBottom: 20 }}>
-        {savedId ? (
-          <VerificationPanel
-            carouselId={savedId}
-            record={verification}
-            // Pass the policy explicitly. Without it the panel fell back to a
-            // hardcoded "contradicted claims block download", which stopped
-            // being true when verification went advisory — so the footer
-            // claimed a block that no longer existed.
-            gating={gating}
-            staleUnitIds={staleUnitIds}
-            pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
-            onRecordChange={setVerification}
-            autoRun={autoVerify}
-            onApplyFix={(unitId, fields: UnitFields) => {
-              // Writes into the live content. The unit's hash now differs from
-              // the one on its verdict, so the staleness effect marks it edited
-              // and the panel stops presenting the old verdict as current.
-              onContentChange({ ...config, content: applyUnitFields(config.content, unitId, fields) });
-            }}
-          />
-        ) : (
-          <div style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Fact check</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>
-              Save this carousel first, then every slide can be checked against real sources.
-            </div>
+            {railTab === "caption" && (
+              <UiPanel title="Instagram caption" actions={<UiButton size="sm" variant="primary" disabled={!content.caption} onClick={() => { navigator.clipboard.writeText(content.caption).then(() => { setCaptionCopyLabel("Copied!"); setTimeout(() => setCaptionCopyLabel("Copy"), 2000); }); }}>{captionCopyLabel}</UiButton>}>
+                {content.caption ? <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{content.caption}</div> : <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>No caption was written for this carousel.</span>}
+              </UiPanel>
+            )}
+            {railTab === "check" && (savedId ? (
+              <VerificationPanel
+                carouselId={savedId}
+                record={verification}
+                // Pass the policy explicitly. Without it the panel fell back to a
+                // hardcoded "contradicted claims block download", which stopped
+                // being true when verification went advisory — so the footer
+                // claimed a block that no longer existed.
+                gating={gating}
+                staleUnitIds={staleUnitIds}
+                pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
+                onRecordChange={setVerification}
+                autoRun={autoVerify}
+                onApplyFix={(unitId, fields: UnitFields) => {
+                  // Writes into the live content. The unit's hash now differs from
+                  // the one on its verdict, so the staleness effect marks it edited
+                  // and the panel stops presenting the old verdict as current.
+                  onContentChange({ ...config, content: applyUnitFields(config.content, unitId, fields) });
+                }}
+              />
+            ) : (
+              <UiPanel title="Fact check">
+                <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Save this carousel first. The check runs on its own after the first save, and every slide is checked against real sources.</span>
+              </UiPanel>
+            ))}
           </div>
-        )}
-      </div>
-
-      {exportError && (
-        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)" }}>
-          ⚠ {exportError}
-        </div>
-      )}
-      {pdfError && (
-        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>PDF error: {pdfError}</span>
-          <button onClick={() => setPdfError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--error)", padding: "0 4px", fontFamily: "inherit" }}>×</button>
-        </div>
-      )}
-      {graphicError && (
-        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "var(--error)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>⚠ {graphicError}</span>
-          <button onClick={() => setGraphicError(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--error)", padding: "0 4px", fontFamily: "inherit" }}>×</button>
-        </div>
-      )}
-
-
-      {/* ─── v2 layout (3-zone editor) ──────────────────────────────────── */}
-      {isV2 && (
-        <div ref={editorRef}>
-          {/* View toggle */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>View</span>
-            {(["editor", "feed"] as const).map((mode) => {
-              const active = viewMode === mode;
-              return (
-                <button key={mode} onClick={() => setViewMode(mode)} style={{
-                  padding: "5px 12px", borderRadius: 5,
-                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                  background: active ? "var(--accent-dim)" : "transparent",
-                  color: active ? "var(--accent)" : "var(--muted)",
-                  fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: "inherit",
-                  cursor: "pointer", letterSpacing: "0.04em", textTransform: "uppercase",
-                }}>
-                  {mode === "editor" ? "Editor" : (reelsMode ? "TikTok feed" : "IG feed")}
-                </button>
-              );
-            })}
-          </div>
-
-          {viewMode === "feed" ? (
+        </>}
+      >
+        {viewMode === "feed" ? (
+          <div className="shell__stage">
             <FeedPreview
               slideNode={exportNodes[Math.min(feedIndex, exportNodes.length - 1)]}
               index={Math.min(feedIndex, exportNodes.length - 1)}
@@ -3015,29 +2921,20 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               caption={content.caption}
               brandAccent={bs?.accent ?? "#1e7a8a"}
             />
-          ) : (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: `${RAIL_COL}px minmax(0, 1fr) ${inspector ? "320px" : "0px"}`,
-              gap: editorGap,
-              alignItems: "start",
-              transition: "grid-template-columns 0.22s ease-out, gap 0.22s ease-out",
-            }}>
-              {/* Rail */}
-              <SlideRail slides={slideNodes} labels={slideLabels} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} />
-
-              {/* Canvas */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, minWidth: 0 }}>
-                <div style={{
-                  position: "relative",
-                  width: Math.round(slideW * canvasScale),
-                  height: Math.round(slideH * canvasScale),
-                  borderRadius: 8, overflow: "hidden", flexShrink: 0,
-                  opacity: ((regeneratingGraphic === focusedSlide - 1) || (focusedSlide === 0 && regeneratingImage)) ? 0.45 : 1,
-                }}>
-                  <div style={{ width: slideW, height: slideH, transform: `scale(${canvasScale})`, transformOrigin: "top left" }}>
-                    {slideNodes[focusedSlide]}
-                  </div>
+          </div>
+        ) : (
+          <>
+            <div className="shell__stage" ref={editorRef}>
+              <div style={{
+                position: "relative",
+                width: Math.round(slideW * canvasScale),
+                height: Math.round(slideH * canvasScale),
+                borderRadius: 4, overflow: "hidden", flexShrink: 0, boxShadow: "var(--ui-elev-2)",
+                opacity: ((regeneratingGraphic === focusedSlide - 1) || (focusedSlide === 0 && regeneratingImage)) ? 0.45 : 1,
+              }}>
+                <div style={{ width: slideW, height: slideH, transform: `scale(${canvasScale})`, transformOrigin: "top left" }}>
+                  {slideNodes[focusedSlide]}
+                </div>
                   {regeneratingGraphic === focusedSlide - 1 && (
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: "none" }}>
                       <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.15)", borderTopColor: "var(--accent)", animation: "spin 0.7s linear infinite" }} />
@@ -3050,8 +2947,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#fff", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>generating image…</span>
                     </div>
                   )}
-                </div>
-
+              </div>
+            </div>
+            <div className="shell__zoombar" style={{ justifyContent: "center" }}>
                 {/* Action bar */}
                 {(() => {
                   const sIdx = focusedSlide - 1;
@@ -3070,7 +2968,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
                       <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
                       {isContent && <ToolbarButton label={hdLoading === focusedSlide ? "Rendering…" : "✨ Preview HD"} active={!!hdPreviewUrl} onClick={() => previewHD(focusedSlide)} disabled={hdLoading !== null} />}
-                      <ToolbarButton label="Settings" active={inspectorMode === "settings"} onClick={() => openInspector("settings")} />
+                      <ToolbarButton label="Style" active={railTab === "style"} onClick={() => setRailTab("style")} />
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} badge={isEditorial && !!imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
                       {isContent && <ToolbarButton label="Edit text" active={inspectorMode === "text"} onClick={() => openInspector("text")} />}
@@ -3098,20 +2996,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                     </div>
                   );
                 })()}
-              </div>
-
-              {/* Inspector */}
-              <div style={{ overflow: "hidden", minWidth: 0, alignSelf: "stretch" }}>
-                {inspector && (
-                  <InspectorPanel title={inspector.title} subtitle={inspector.subtitle} onClose={() => { setInspectorMode(null); setSelectedElement(null); }}>
-                    {inspector.body}
-                  </InspectorPanel>
-                )}
-              </div>
+              <span style={{ marginLeft: 12, color: "var(--ui-text-3)", fontFamily: "var(--ui-font-mono)", fontSize: 11 }}>{slideW} × {slideH} · {slideLabels[focusedSlide]}</span>
             </div>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </EditorShell>
 
       {/* Preview HD modal — the Remotion-rendered (exported) PNG, shown inline. */}
       {(hdPreviewUrl || hdError) && (
@@ -3136,101 +3025,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
-      {/* Caption */}
-      {content.caption && (
-        <div style={{
-          marginTop: 36,
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          overflow: "hidden",
-        }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "12px 16px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--surface)",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted)" }}>
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                <circle cx="12" cy="12" r="4"/>
-                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
-              </svg>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", letterSpacing: "0.01em" }}>
-                Instagram caption
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(content.caption).then(() => {
-                  setCaptionCopyLabel("Copied!");
-                  setTimeout(() => setCaptionCopyLabel("Copy"), 2000);
-                });
-              }}
-              style={{
-                background: captionCopyLabel === "Copied!" ? "rgba(95,158,117,0.12)" : "var(--bg)",
-                border: `1px solid ${captionCopyLabel === "Copied!" ? "#bbf7d0" : "var(--border-strong)"}`,
-                borderRadius: 6,
-                padding: "5px 12px",
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                color: captionCopyLabel === "Copied!" ? "#15803d" : "var(--text)",
-                transition: "all 0.2s",
-              }}
-            >
-              {captionCopyLabel}
-            </button>
-          </div>
-          <div style={{
-            padding: "16px 18px",
-            fontSize: 13.5,
-            lineHeight: 1.7,
-            color: "var(--text)",
-            whiteSpace: "pre-wrap",
-            background: "var(--bg)",
-          }}>
-            {content.caption}
-          </div>
-        </div>
-      )}
-
-      {/* Footer actions */}
-      <div style={{ display: "flex", gap: 20, marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-        {/* Batch review only. The builder passes no onChangeHook, so nothing
-            renders here — there is no screen behind the canvas any more. */}
-        {onChangeHook && (
-          <button
-            onClick={onChangeHook}
-            style={{
-              background: "transparent", color: "var(--text)", border: "none",
-              fontSize: 13, fontWeight: 600, fontFamily: "inherit",
-              cursor: "pointer", padding: 0,
-              display: "flex", alignItems: "center", gap: 4,
-            }}
-          >
-            ← Back to review
-          </button>
-        )}
-        <button
-          onClick={onRestart}
-          style={{
-            background: "transparent",
-            color: "var(--muted)",
-            border: "none",
-            fontSize: 13,
-            fontFamily: "inherit",
-            cursor: "pointer",
-            padding: 0,
-          }}
-        >
-          {"Start over"}
-        </button>
-      </div>
-
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (
@@ -3239,6 +3033,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

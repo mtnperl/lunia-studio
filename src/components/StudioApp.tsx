@@ -165,6 +165,7 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
           initialCarousel={pendingCarousel}
           onCarouselLoaded={() => setPendingCarousel(null)}
           onSaved={(id) => { if (openDoc?.id !== id) go("carousel-v2", { kind: "carousel", id }, true); }}
+          onExit={() => go("carousel-library")}
         />
       )}
       {tab === "batch" && <BatchView />}

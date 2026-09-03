@@ -86,7 +86,7 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; version?: "v1" | "v2" }) {
+export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2" }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -110,6 +110,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // ─── Load saved carousel ──────────────────────────────────────────────────
   useEffect(() => {
     if (!initialCarousel) return;
+    // A document opened by id is the source of truth; a draft restored from
+    // this browser a moment earlier is not "your unsaved carousel". The id is
+    // kept here because the parent clears `initialCarousel` once consumed.
+    setRestoredDraft(false);
+    setLoadedId(initialCarousel.id);
     setTopic(initialCarousel.topic);
     setHookTone(initialCarousel.hookTone);
     setVariants([initialCarousel.content]);
@@ -153,6 +158,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // exactly where you left off instead of losing the carousel.
   const DRAFT_KEY = `lunia:builder:active:${version}`;
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [loadedId, setLoadedId] = useState<string | null>(initialCarousel?.id ?? null);
   const restoreAttempted = useRef(false);
 
   function clearActiveDraft() {
@@ -501,22 +507,23 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     </div>
   );
 
+  const inStudio = !loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && !!config;
+
   return (
-    // 860px was narrower than the artwork deserved: on a 1440 screen it left
-    // ~380px empty and clipped the slide, and on a 1920 monitor it wasted
-    // nearly half the width. The creative is the point of this screen.
-    <div style={{ maxWidth: 1240, margin: "0 auto", padding: "48px 40px 80px" }}>
-      {/* The subtitle here used to read "Opus 4.7 content, Recraft imagery, and
-          per-slide infographic regeneration" — the build sheet, not a
-          description of what the screen is for. */}
-      <PageHeader
-        title="Carousel builder"
-        description="Pick a subject, shape the slides, and export a finished set for Instagram."
-        actions={<>
-          {falBadge}
-          <Button variant="secondary" onClick={handleRestart}>New</Button>
-        </>}
-      />
+    // The studio is full-bleed inside the app shell: the editor shell owns its
+    // own chrome. The brief, loaders and the Did You Know preview keep a page
+    // frame with a title.
+    <div className={inStudio ? "studio-frame" : undefined} style={inStudio ? undefined : { maxWidth: 1240, margin: "0 auto", padding: "40px 40px 80px" }}>
+      {!inStudio && (
+        <PageHeader
+          title={step === 1 ? "New carousel" : "Carousel"}
+          description={step === 1 ? "Pick a subject, shape the slides, and export a finished set for Instagram." : undefined}
+          actions={<>
+            {falBadge}
+            {step !== 1 && <Button variant="secondary" onClick={handleRestart}>New</Button>}
+          </>}
+        />
+      )}
 
       <>
           {restoredDraft && (
@@ -576,6 +583,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           )}
           {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
+              // Remount when a saved carousel loads over a restored draft, so
+              // the studio's saved id, settings and verification come from the
+              // document and Save cannot create a duplicate.
+              key={loadedId ?? "draft"}
               config={config}
               hookTone={hookTone}
               onRestart={handleRestart}
@@ -599,8 +610,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialShowCitationBars={initialCarousel?.showCitationBars}
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
-              initialSavedId={initialCarousel?.id ?? null}
+              initialSavedId={loadedId}
               onSaved={onSaved}
+              onExit={onExit}
               initialVerification={initialCarousel?.verification}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}

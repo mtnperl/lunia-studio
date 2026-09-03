@@ -7,6 +7,11 @@
   display: grid; grid-template-rows: var(--ui-topbar-height) 1fr; height: 100vh; height: 100dvh;
   background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui-font); overflow: hidden;
 }
+/* Inside the app shell the editor sits under the app top bar. */
+.shell--embedded { height: auto; flex: 1; min-height: 0; }
+.studio-frame { height: calc(100vh - var(--ui-topbar-height)); height: calc(100dvh - var(--ui-topbar-height)); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.studio-frame__banners { flex: none; padding: 8px 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.studio-frame__banners:empty { display: none; }
 .shell__top {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--ui-space-4);
   padding: 0 var(--ui-space-4); border-bottom: 1px solid var(--ui-border); background: var(--ui-bg); z-index: var(--ui-z-sticky);
@@ -26,6 +31,9 @@
 .shell__save { display: inline-flex; align-items: center; gap: 6px; font-size: var(--ui-text-12); color: var(--ui-text-3); padding: 0 var(--ui-space-3); white-space: nowrap; }
 .shell__save--saving { color: var(--ui-text-2); }
 .shell__save--dirty { color: var(--ui-warning); }
+.shell__export-note { font-size: var(--ui-text-12); color: var(--ui-text-3); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell__export-note--warning { color: var(--ui-warning); }
+.shell__export-note--danger { color: var(--ui-danger); }
 
 .shell__body { display: grid; grid-template-columns: var(--shell-left, 232px) 1fr var(--shell-right, 300px); min-height: 0; }
 .shell__left, .shell__right {

@@ -2,6 +2,8 @@
 import { type ReactNode } from "react";
 
 type Props = {
+  /** Thumbnail width in px. The editor rail passes what fits. */
+  thumbW?: number;
   /** Slide nodes already rendered at PREVIEW_SCALE. */
   slides: ReactNode[];
   labels: string[];
@@ -19,8 +21,8 @@ const RAIL_THUMB_W = 92;
  * Vertical slide navigator. Each thumbnail is the real slide node scaled down,
  * so the rail always reflects live edits. Click to focus a slide in the canvas.
  */
-export default function SlideRail({ slides, labels, focused, onSelect, slideW, slideH }: Props) {
-  const thumbScale = RAIL_THUMB_W / slideW;
+export default function SlideRail({ slides, labels, focused, onSelect, slideW, slideH, thumbW = RAIL_THUMB_W }: Props) {
+  const thumbScale = thumbW / slideW;
   const thumbH = Math.round(slideH * thumbScale);
 
   return (
@@ -47,7 +49,7 @@ export default function SlideRail({ slides, labels, focused, onSelect, slideW, s
           >
             <div
               style={{
-                width: RAIL_THUMB_W,
+                width: thumbW,
                 height: thumbH,
                 borderRadius: 4,
                 overflow: "hidden",
