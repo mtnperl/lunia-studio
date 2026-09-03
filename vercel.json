@@ -44,12 +44,25 @@
     },
     "src/app/api/carousel-v2/export/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/facts/research/route.ts": {
+      "maxDuration": 180
+    },
+    "src/app/api/facts/research-batch/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/campaign/generate/route.ts": {
+      "maxDuration": 240
     }
   },
   "crons": [
     {
       "path": "/api/campaign/cleanup-temp-images",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/facts/research-batch",
+      "schedule": "30 5 * * *"
     }
   ]
 }

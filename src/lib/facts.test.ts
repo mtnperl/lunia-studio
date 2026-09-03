@@ -23,14 +23,17 @@ describe("matchFacts", () => {
 });
 
 describe("factsPromptBlock", () => {
-  it("quotes only verified facts with their source", () => {
+  it("separates verified facts from sourced-but-unreviewed ones", () => {
     const block = factsPromptBlock([fact({}), fact({ id: "p", status: "pending", statement: "Pending thing 3 mg" })]);
+    expect(block).toContain("VERIFIED FACTS");
     expect(block).toContain("8 mg of L-theanine");
     expect(block).toContain("Keenan");
-    expect(block).not.toContain("Pending thing");
+    expect(block).toContain("NOT YET REVIEWED");
+    expect(block.indexOf("8 mg of L-theanine")).toBeLessThan(block.indexOf("Pending thing"));
   });
-  it("is empty with nothing verified", () => {
-    expect(factsPromptBlock([fact({ status: "pending" })])).toBe("");
+  it("is empty with nothing on file, and never quotes retracted facts", () => {
+    expect(factsPromptBlock([])).toBe("");
+    expect(factsPromptBlock([fact({ status: "retracted" })])).toBe("");
   });
 });
 

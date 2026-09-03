@@ -1,7 +1,6 @@
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
-import { getFacts } from "@/lib/kv";
-import { matchFacts, factsPromptBlock } from "@/lib/facts";
+import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
@@ -79,8 +78,7 @@ export async function POST(req: Request) {
 
     const hasStyleRef = styleRefs.length > 0;
     // Claims ledger: verified facts for this subject are quoted, not recalled.
-    const ledger = await getFacts().catch(() => []);
-    const ledgerBlock = factsPromptBlock(matchFacts(ledger, topic, typeof body.subjectId === "string" ? body.subjectId : undefined));
+    const ledgerBlock = await ledgerBlockFor(topic, typeof body.subjectId === "string" ? body.subjectId : undefined);
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)

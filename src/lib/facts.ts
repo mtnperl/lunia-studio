@@ -47,15 +47,26 @@ export function matchFacts(facts: Fact[], topic: string, subjectId?: string): Fa
   return scored.map((x) => x.f).slice(0, 12);
 }
 
-/** The block appended to a generation prompt. Empty string when nothing matches. */
+/** The block appended to a generation prompt. Verified facts are quoted as
+ *  ground truth. Pending ones (sourced, not yet reviewed) are offered as
+ *  citable figures that beat memory but must keep their source. Empty string
+ *  when nothing matches. */
 export function factsPromptBlock(facts: Fact[]): string {
   const verified = facts.filter((f) => f.status === "verified");
-  if (verified.length === 0) return "";
-  const lines = verified.map((f) => {
+  const pending = facts.filter((f) => f.status === "pending");
+  if (verified.length === 0 && pending.length === 0) return "";
+  const line = (f: Fact) => {
     const src = f.source.citation || f.source.title || f.source.url || "source on file";
     return `- ${f.statement}${f.value ? ` (${f.value})` : ""} [Source: ${src}]`;
-  });
-  return `\n\nVERIFIED FACTS FOR THIS TOPIC. These figures and attributions were checked against their sources. Use them exactly as written where they apply, and cite the source given. Do not substitute a number from memory for one listed here. If you need a figure that is not listed, say so in the citation rather than inventing one.\n${lines.join("\n")}\n`;
+  };
+  let out = "";
+  if (verified.length) {
+    out += `\n\nVERIFIED FACTS FOR THIS TOPIC. These figures and attributions were checked against their sources. Use them exactly as written where they apply, and cite the source given. Do not substitute a number from memory for one listed here.\n${verified.map(line).join("\n")}\n`;
+  }
+  if (pending.length) {
+    out += `\n\nSOURCED FACTS NOT YET REVIEWED. Each carries a primary source. Prefer these to anything you recall, keep the figure with its stated condition, and cite the source given. If a figure you need is in neither list, say so in the citation rather than inventing one.\n${pending.map(line).join("\n")}\n`;
+  }
+  return out;
 }
 
 /** Numbers and units inside a statement, for hunting an old value in other

@@ -43,6 +43,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   if (isPublic(pathname)) return NextResponse.next();
 
+  // Vercel Cron carries `Authorization: Bearer <CRON_SECRET>` and no cookie.
+  // Let it reach the route; the route checks the secret again itself.
+  if (process.env.CRON_SECRET && req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.next();
+  }
+
   const cfg = authIsConfigured();
   if (!cfg.ok) {
     if (process.env.NODE_ENV === "production") {

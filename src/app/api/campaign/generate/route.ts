@@ -1,6 +1,5 @@
 import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
-import { getFacts } from "@/lib/kv";
-import { matchFacts, factsPromptBlock } from "@/lib/facts";
+import { ledgerBlockFor } from "@/lib/facts-gate";
 import { checkRateLimit, getAssets } from "@/lib/kv";
 import { generateCampaignSlotImage } from "@/lib/campaign-image";
 import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
@@ -117,8 +116,7 @@ export async function POST(req: Request) {
     }
 
     // Claims ledger: verified facts for this subject are quoted, not recalled.
-    const ledger = await getFacts().catch(() => []);
-    const ledgerBlock = factsPromptBlock(matchFacts(ledger, topic, typeof body.subjectId === "string" ? body.subjectId : undefined));
+    const ledgerBlock = await ledgerBlockFor(topic, typeof body.subjectId === "string" ? body.subjectId : undefined);
 
     const prompt = `${LUNIA_VOICE_SPEC}${ledgerBlock}
 

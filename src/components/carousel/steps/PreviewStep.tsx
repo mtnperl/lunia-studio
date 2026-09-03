@@ -332,6 +332,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [verification, setVerification] = useState<VerificationRecord | undefined>(initialVerification);
+  const [autoVerify, setAutoVerify] = useState(false);
   const [staleUnitIds, setStaleUnitIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
@@ -1075,8 +1076,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       });
       if (!res.ok) return;
       const { id } = await res.json();
+      const firstSave = !savedId;
       setSavedId(id);
       onSaved?.(id);
+      // Every carousel is fact-checked. A first save starts the run without a
+      // click; later saves leave the panel's stale-unit logic to prompt a re-check.
+      if (firstSave) setAutoVerify(true);
       // Brief "Saved!" flash on the button so the user knows the update landed.
       setSaveLabel("Saved!");
       setTimeout(() => setSaveLabel(null), 1600);
@@ -2938,6 +2943,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             staleUnitIds={staleUnitIds}
             pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
             onRecordChange={setVerification}
+            autoRun={autoVerify}
             onApplyFix={(unitId, fields: UnitFields) => {
               // Writes into the live content. The unit's hash now differs from
               // the one on its verdict, so the staleness effect marks it edited

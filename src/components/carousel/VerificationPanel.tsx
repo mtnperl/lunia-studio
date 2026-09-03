@@ -54,6 +54,9 @@ import type {
 } from "@/lib/types";
 
 type Props = {
+  /** Start a run as soon as the panel mounts with no record. Set after a
+   *  first save so every carousel is checked without a click. */
+  autoRun?: boolean;
   carouselId: string;
   record?: VerificationRecord;
   gating?: SurfaceGating;
@@ -233,6 +236,7 @@ export default function VerificationPanel({
   onRecordChange,
   onApplyFix,
   concise = true,
+  autoRun = false,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -253,6 +257,13 @@ export default function VerificationPanel({
 
   // Leaving the screen cancels the run — say so and mean it.
   useEffect(() => () => abortRef.current?.abort(), []);
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (!autoRun || record || autoRanRef.current) return;
+    autoRanRef.current = true;
+    void runVerify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, record]);
 
   const isOpen = (id: string) => openUnits.includes(id);
   const toggleOpen = (id: string) =>

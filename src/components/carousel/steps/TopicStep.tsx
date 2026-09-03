@@ -80,6 +80,15 @@ export default function TopicStep({ onNext }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  // Facts on file for the chosen subject. Nothing on file means research runs
+  // before writing, which adds about a minute; say so here, not after.
+  const [coverage, setCoverage] = useState<{ subjectId: string; verified: number; pending: number } | null>(null);
+  useEffect(() => {
+    if (!selectedSubject) return;
+    let cancelled = false;
+    fetch(`/api/facts/coverage?subjectId=${encodeURIComponent(selectedSubject.id)}`).then((r) => r.json()).then((c) => { if (!cancelled && c && typeof c.verified === "number") setCoverage(c); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedSubject]);
   const [custom, setCustom] = useState("");
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
@@ -550,6 +559,13 @@ export default function TopicStep({ onNext }: Props) {
           {selectedSubject && (
             <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#15803d" }}>
               ✓ {selectedSubject.text}
+            </div>
+          )}
+          {selectedSubject && coverage && coverage.subjectId === selectedSubject.id && (
+            <div style={{ marginTop: 6, fontSize: 12, color: coverage.verified + coverage.pending > 0 ? "var(--muted)" : "var(--warning)" }}>
+              {coverage.verified + coverage.pending > 0
+                ? `${coverage.verified} verified and ${coverage.pending} pending facts on file. The writer quotes them.`
+                : "No facts on file for this subject yet. Sources are researched before writing, which adds about a minute."}
             </div>
           )}
         </div>
