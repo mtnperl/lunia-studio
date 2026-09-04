@@ -22,7 +22,7 @@ describe("viralChecklist", () => {
     expect(byId.compliance).toBe("pass");
     expect(byId.cta).toBe("pass");
     expect(byId.caption).toBe("pass");
-    expect(byId.facts).toBe("fail");
+    expect(byId.facts).toBe("manual");
     expect(byId.tension).toBe("manual");
   });
   it("fails a nine-word hook, a banned phrase and a stray CTA", () => {

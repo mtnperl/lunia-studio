@@ -61,8 +61,8 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   rows.push({ id: "caption", label: "Caption carries the standard follow line", state: follow ? "pass" : "fail", detail: follow ? "For more Sleep-Science content follow @lunia_life" : "Add: For more Sleep-Science content follow @lunia_life" });
 
   // 9. Fact check.
-  if (!record) rows.push({ id: "facts", label: "Fact check clean", state: "fail", detail: "Not checked yet. Run the check in this tab." });
-  else { const s = summarize(record); rows.push({ id: "facts", label: "Fact check clean", state: s.findings === 0 ? "pass" : "fail", detail: s.findings === 0 ? "Nothing to fix" : `${s.findings} to fix below` }); }
+  if (!record) rows.push({ id: "facts", label: "Fact check clean", state: "manual", detail: "Runs with the fact check above." });
+  else { const s = summarize(record); rows.push({ id: "facts", label: "Fact check clean", state: s.findings === 0 ? "pass" : "fail", detail: s.findings === 0 ? "Nothing to fix" : `${s.findings} to fix above` }); }
 
   return rows;
 }

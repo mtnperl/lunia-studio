@@ -2933,7 +2933,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 {content.caption ? <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{content.caption}</div> : <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>No caption was written for this carousel.</span>}
               </UiPanel>
             )}
-            {railTab === "check" && isViral && <ViralChecklist content={content} selectedHook={config.selectedHook} record={verification} />}
             {railTab === "check" && (savedId ? (
               <VerificationPanel
                 carouselId={savedId}
@@ -2960,6 +2959,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Save this carousel first. The check runs on its own after the first save, and every slide is checked against real sources.</span>
               </UiPanel>
             ))}
+            {railTab === "check" && isViral && <ViralChecklist content={content} selectedHook={config.selectedHook} record={verification} />}
           </div>
         </>}
       >
