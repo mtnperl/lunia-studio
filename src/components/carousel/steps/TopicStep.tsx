@@ -852,7 +852,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
           {([
             { val: "standard" as CarouselContrastMode, label: "Standard", desc: "Ivory frame, edge to edge" },
-            { val: "high" as CarouselContrastMode, label: "Bold", desc: "Full-bleed photo on a dark ground, ivory type, one yellow phrase" },
+            { val: "high" as CarouselContrastMode, label: "Bold post", desc: "Full-bleed photo on a dark ground, ivory type, one yellow phrase" },
           ]).map((opt) => {
             const sel = contrastMode === opt.val;
             return (

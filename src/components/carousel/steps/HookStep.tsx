@@ -355,7 +355,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Contrast:</span>
                 {([
                   { value: "standard" as CarouselContrastMode, label: "Standard" },
-                  { value: "high" as CarouselContrastMode, label: "Bold" },
+                  { value: "high" as CarouselContrastMode, label: "Bold post" },
                 ]).map((chip) => {
                   const active = contrastMode === chip.value;
                   return (
