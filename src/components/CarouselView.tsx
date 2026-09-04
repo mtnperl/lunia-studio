@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, CarouselContrastMode, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel, type CarouselLookSettings } from "@/lib/types";
+import { lookFromCarousel } from "@/lib/carousel-looks";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
@@ -86,7 +87,7 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2" }) {
+export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, varyFrom, onVaryConsumed, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2"; varyFrom?: SavedCarousel | null; onVaryConsumed?: () => void }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -162,6 +163,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // The look chosen in the brief; the studio opens with its settings when no
   // saved carousel supplies its own.
   const [pendingLook, setPendingLook] = useState<CarouselLookSettings | null>(null);
+  const varyLook = varyFrom ? lookFromCarousel(varyFrom) : null;
   const restoreAttempted = useRef(false);
 
   function clearActiveDraft() {
@@ -322,7 +324,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   }
 
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings) {
-    setPendingLook(look ?? null);
+    setPendingLook(look ?? varyLook);
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
@@ -357,6 +359,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           engagementSubType: engSubType,
           stylePreset: preset ?? "default",
           includeSeoFooter: seoFooter ?? true,
+          ...(varyFrom ? { structureFrom: { documentId: varyFrom.id } } : {}),
         }),
       });
       const data = await res.json();
@@ -561,7 +564,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={handleTopicNext} />
+            <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
           )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
             <DidYouKnowPreviewStep

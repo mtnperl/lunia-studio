@@ -41,6 +41,8 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
   const [tab, setTabState] = useState<Tab>(initialOpen ? (initialOpen.kind === "carousel" ? "carousel-v2" : "campaign") : initialTab);
   const [activeScript, setActiveScript] = useState<Script | null>(null);
   const [pendingCarousel, setPendingCarousel] = useState<SavedCarousel | null>(null);
+  // Duplicate and vary: the carousel whose structure and look the next brief mirrors.
+  const [pendingVary, setPendingVary] = useState<SavedCarousel | null>(null);
   const [pendingCampaign, setPendingCampaign] = useState<SavedCampaign | null>(null);
   const [pendingEmailFlow, setPendingEmailFlow] = useState<EmailFlow | null>(null);
   const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
@@ -166,6 +168,8 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
           onCarouselLoaded={() => setPendingCarousel(null)}
           onSaved={(id) => { if (openDoc?.id !== id) go("carousel-v2", { kind: "carousel", id }, true); }}
           onExit={() => go("carousel-library")}
+          varyFrom={pendingVary}
+          onVaryConsumed={() => setPendingVary(null)}
         />
       )}
       {tab === "batch" && <BatchView />}
@@ -173,7 +177,7 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
       {tab === "carousel-library" && (
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 40px 80px" }}>
           <PageHeader title="Carousels" description="Everything you have built. Open one to keep editing, or copy its caption straight to Instagram." />
-          <CarouselLibraryView onOpen={openCarousel} onConvertToCampaign={(c) => { setPendingCarousel(c); setPendingCampaign(null); go("campaign", null); }} />
+          <CarouselLibraryView onOpen={openCarousel} onVary={(c) => { setPendingVary(c); setPendingCarousel(null); go("carousel-v2", null); }} onConvertToCampaign={(c) => { setPendingCarousel(c); setPendingCampaign(null); go("campaign", null); }} />
         </div>
       )}
       {tab === "campaign" && (

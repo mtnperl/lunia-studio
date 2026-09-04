@@ -133,7 +133,7 @@ function SkeletonCard() {
 }
 
 // ── CarouselCard ───────────────────────────────────────────────────────────────
-function CarouselCard({ c, onClick, onDelete, onConvertToCampaign }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
+function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onVary?: (c: SavedCarousel) => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
   const [hovered, setHovered] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -308,6 +308,15 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign }: { c: SavedC
           ) : (
             <>
               <CopyButton text={caption} />
+              {onVary && (
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--sm ui-btn--secondary"
+                  onClick={(e) => { e.stopPropagation(); onVary(c); }}
+                  title="New carousel on another subject with this one's slide structure and look"
+                  style={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                >Vary</button>
+              )}
               {onConvertToCampaign && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onConvertToCampaign(c); }}
@@ -368,7 +377,7 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign }: { c: SavedC
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
-export default function CarouselLibraryView({ onOpen, onConvertToCampaign }: { onOpen?: (c: SavedCarousel) => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
+export default function CarouselLibraryView({ onOpen, onConvertToCampaign, onVary }: { onOpen?: (c: SavedCarousel) => void; onVary?: (c: SavedCarousel) => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
   const [carousels, setCarousels] = useState<SavedCarousel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -421,6 +430,7 @@ export default function CarouselLibraryView({ onOpen, onConvertToCampaign }: { o
                 onClick={() => onOpen?.(c)}
                 onDelete={() => setCarousels(prev => prev.filter(x => x.id !== c.id))}
                 onConvertToCampaign={onConvertToCampaign}
+                onVary={onVary}
               />
             ))}
         </div>

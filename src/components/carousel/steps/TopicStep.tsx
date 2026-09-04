@@ -55,6 +55,12 @@ export const CATEGORIES = [
 ];
 
 type Props = {
+  /** Duplicate and vary: the look of the source carousel, applied to this brief. */
+  initialLook?: CarouselLookSettings;
+  initialFormat?: CarouselFormat;
+  /** The source carousel's topic, shown in a banner while varying. */
+  varyFrom?: string;
+  onClearVary?: () => void;
   onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings) => void;
 };
 
@@ -74,7 +80,7 @@ export const SAMPLE_SUBJECTS = [
   "Apigenin: the chamomile compound that quiets the brain",
 ];
 
-export default function TopicStep({ onNext }: Props) {
+export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom, onClearVary }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -91,15 +97,15 @@ export default function TopicStep({ onNext }: Props) {
     return () => { cancelled = true; };
   }, [selectedSubject]);
   const [custom, setCustom] = useState("");
-  const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>("standard");
+  const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>(initialFormat ?? "standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   const [concise, setConcise] = useState(true);
   // Default ON — every Lunia post should carry the brand SEO footer so AI
   // crawlers / answer engines build the brand entity graph from social.
   const [includeSeoFooter, setIncludeSeoFooter] = useState(true);
-  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>("realistic");
-  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>("editorial-scientific");
+  const [imageStyle, setImageStyle] = useState<CarouselImageStyle>((initialLook?.imageStyle as CarouselImageStyle | undefined) ?? "realistic");
+  const [stylePreset, setStylePreset] = useState<CarouselStylePreset>(initialLook?.stylePreset ?? "editorial-scientific");
   // Applies to the hook image from the very first generation, so a new deck can
   // be high-contrast without a regenerate.
   const [contrastMode, setContrastMode] = useState<CarouselContrastMode>("standard");
@@ -296,7 +302,13 @@ export default function TopicStep({ onNext }: Props) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Choose a topic</h2>
+      {varyFrom && (
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", marginBottom: 18, border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-2)", background: "var(--ui-surface-2)", fontSize: 13 }}>
+          <span style={{ flex: 1 }}>Varying <strong>{varyFrom}</strong>. The new carousel keeps its slide structure and look. Pick the new subject below.</span>
+          {onClearVary && <button type="button" className="ui-btn ui-btn--sm ui-btn--ghost" onClick={onClearVary}>Start plain instead</button>}
+        </div>
+      )}
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>{varyFrom ? "Choose the new subject" : "Choose a topic"}</h2>
       <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick from your subject library or enter a custom topic.</p>
 
       {/* Mode toggle + quick-test sample-subject button */}

@@ -2,7 +2,8 @@ import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CON
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
-import { checkRateLimit, getAssets, getCarouselTemplateById } from "@/lib/kv";
+import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById } from "@/lib/kv";
+import { structurePromptBlock } from "@/lib/carousel-looks";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
 import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
@@ -79,10 +80,14 @@ export async function POST(req: Request) {
     const hasStyleRef = styleRefs.length > 0;
     // Claims ledger: verified facts for this subject are quoted, not recalled.
     const ledgerBlock = await ledgerBlockFor(topic, typeof body.subjectId === "string" ? body.subjectId : undefined);
+    // Duplicate and vary: mirror an earlier carousel's slide structure.
+    const structureFromId: string | undefined = typeof body.structureFrom?.documentId === "string" ? body.structureFrom.documentId : undefined;
+    const structureSource = structureFromId ? await getCarouselById(structureFromId).catch(() => null) : null;
+    const structureBlock = structureSource ? structurePromptBlock(structureSource) : "";
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter)) + ledgerBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter)) + ledgerBlock + structureBlock;
 
     // Build message content
     type ContentBlock =
