@@ -81,7 +81,9 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
             style={{
               position: 'absolute', top: 0, left: 0,
               width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'center',
+              // A shorter frame crops the image; keep the top, where the editorial
+              // preset bakes the headline into the picture.
+              objectFit: 'cover', objectPosition: slideH < SLIDE_H.carousel ? 'top' : 'center',
               display: 'block',
               filter: overlays?.colorGrade.enabled ? buildColorGradeFilter(overlays.colorGrade.intensity) : undefined,
             }}

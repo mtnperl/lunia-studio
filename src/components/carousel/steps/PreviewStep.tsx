@@ -774,7 +774,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     exportH: number,
   ): Promise<File> {
     const elRect = el.getBoundingClientRect();
-    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string };
+    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string; objectPosition: string };
     const infos: ImgInfo[] = [];
 
     for (const img of imgEls) {
@@ -794,6 +794,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         w: r.width,
         h: r.height,
         objectFit: getComputedStyle(img).objectFit || "fill",
+        objectPosition: getComputedStyle(img).objectPosition || "50% 50%",
       });
     }
 
@@ -836,8 +837,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           if (info.objectFit === "cover") {
             const scale = Math.max(dw / im.width, dh / im.height);
             const sw = dw / scale, sh = dh / scale;
+            // Honour object-position: "top" keeps the top edge (the short
+            // square frame anchors the hook image there); anything else centres.
+            const topAnchored = /\btop\b|0%$/.test(info.objectPosition);
             const sx = (im.width - sw) / 2;
-            const sy = (im.height - sh) / 2;
+            const sy = topAnchored ? 0 : (im.height - sh) / 2;
             ctx.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
           } else if (info.objectFit === "contain") {
             const scale = Math.min(dw / im.width, dh / im.height);

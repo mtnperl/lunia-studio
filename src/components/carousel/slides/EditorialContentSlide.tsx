@@ -174,8 +174,11 @@ export default function EditorialContentSlide({
   const hasPhoto = !!bgImageUrl;
 
   // Headline + body sizes — scale-aware so the existing PreviewStep size sliders still bite.
-  const headlineSize = Math.round(96 * headlineScale);
-  const bodySize     = Math.round(38 * bodyScale);
+  // A shorter frame (the 1:1 export) gets proportionally smaller type, so the
+  // column still clears the citation band instead of clipping against it.
+  const compact = slideH < SLIDE_H.carousel ? slideH / SLIDE_H.carousel : 1;
+  const headlineSize = Math.round(96 * headlineScale * compact);
+  const bodySize     = Math.round(38 * bodyScale * compact);
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>

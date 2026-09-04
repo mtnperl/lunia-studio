@@ -53,6 +53,8 @@ export default function TakeawaySlide({
 }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
   const slideH = frameH ?? (reels ? 1920 : 1350);
+  // Shorter frames (the 1:1 export) scale type and vertical padding down together.
+  const compact = slideH < 1350 ? slideH / 1350 : 1;
   const contentTop = reels ? 200 : 110;
 
   // Background + ink resolution mirrors CTASlide so the closing spread is consistent.
@@ -78,11 +80,11 @@ export default function TakeawaySlide({
   const onAccentInk = isDarkColor(accent) ? "#F7F4EF" : "#01253f";
 
   const headlineFont = isEditorial
-    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 78, textTransform: "none" as const, letterSpacing: "-0.015em" }
-    : { fontFamily: "Jost, Montserrat, sans-serif", fontWeight: 400, fontSize: 72, textTransform: "uppercase" as const, letterSpacing: "0.1em" };
+    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: Math.round(78 * compact), textTransform: "none" as const, letterSpacing: "-0.015em" }
+    : { fontFamily: "Jost, Montserrat, sans-serif", fontWeight: 400, fontSize: Math.round(72 * compact), textTransform: "uppercase" as const, letterSpacing: "0.1em" };
   const pointFont = isEditorial
-    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: 46 }
-    : { fontFamily: "Cormorant Garamond, Lora, serif", fontWeight: 500, fontSize: 50 };
+    ? { fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontWeight: 300, fontSize: Math.round(46 * compact) }
+    : { fontFamily: "Cormorant Garamond, Lora, serif", fontWeight: 500, fontSize: Math.round(50 * compact) };
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
@@ -134,7 +136,7 @@ export default function TakeawaySlide({
         position: "absolute",
         top: 0, left: 0, right: 0, bottom: 0,
         paddingTop: contentTop,
-        paddingBottom: reels ? 200 : 150,
+        paddingBottom: Math.round((reels ? 200 : 150) * compact),
         paddingLeft: 72, paddingRight: 72,
         boxSizing: "border-box",
         display: "flex",
@@ -145,7 +147,7 @@ export default function TakeawaySlide({
         <div style={{
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 600,
-          fontSize: 26,
+          fontSize: Math.round(26 * compact),
           letterSpacing: "0.32em",
           textTransform: "uppercase",
           color: accent,
@@ -170,7 +172,7 @@ export default function TakeawaySlide({
                 color: onAccentInk,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: "Jost, Montserrat, sans-serif",
-                fontWeight: 600, fontSize: 34,
+                fontWeight: 600, fontSize: Math.round(34 * compact),
                 marginTop: 2,
               }}>
                 {i + 1}
@@ -207,7 +209,7 @@ export default function TakeawaySlide({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{
               fontFamily: "Jost, Montserrat, sans-serif",
-              fontWeight: 700, fontSize: 25, letterSpacing: "0.18em",
+              fontWeight: 700, fontSize: Math.round(25 * compact), letterSpacing: "0.18em",
               textTransform: "uppercase", color: accent,
             }}>
               {INTERACTION_VERB[interaction.type]}
@@ -216,7 +218,7 @@ export default function TakeawaySlide({
               fontFamily: isEditorial ? "Inter, system-ui, -apple-system, sans-serif" : "Cormorant Garamond, Lora, serif",
               fontWeight: isEditorial ? 300 : 500,
               fontStyle: isEditorial ? "normal" : "italic",
-              fontSize: 38,
+              fontSize: Math.round(38 * compact),
               color: bodyColor,
               lineHeight: 1.25,
             }}>
@@ -235,7 +237,7 @@ export default function TakeawaySlide({
               fontFamily: isEditorial ? "Inter, system-ui, -apple-system, sans-serif" : "Cormorant Garamond, Lora, serif",
               fontWeight: isEditorial ? 300 : 400,
               fontStyle: isEditorial ? "normal" : "italic",
-              fontSize: 30,
+              fontSize: Math.round(30 * compact),
               lineHeight: 1.4,
               color: mutedColor,
             }}>

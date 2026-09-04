@@ -50,6 +50,8 @@ function parseCtaIconLayout(graphic?: string): IconLayoutData | null {
 export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, frameH, reels = false, stylePreset = "default", showSlideArrows: _showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars: _showCitationBars = true, graphic }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
   const slideH = frameH ?? (reels ? 1920 : 1350);
+  // Shorter frames (the 1:1 export) scale type and vertical padding down together.
+  const compact = slideH < 1350 ? slideH / 1350 : 1;
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
 
@@ -122,7 +124,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         <div style={isEditorial ? {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
           fontWeight: 300,
-          fontSize: 80,
+          fontSize: Math.round(80 * compact),
           color: headlineColor,
           textTransform: "none",
           letterSpacing: "-0.015em",
@@ -130,7 +132,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         } : {
           fontFamily: "Jost, Montserrat, sans-serif",
           fontWeight: 400,
-          fontSize: 72,
+          fontSize: Math.round(72 * compact),
           color: headlineColor,
           textTransform: "uppercase",
           letterSpacing: "0.14em",
@@ -141,7 +143,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
         <div style={isEditorial ? {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
           fontWeight: 200,
-          fontSize: 36,
+          fontSize: Math.round(36 * compact),
           color: followColor,
           lineHeight: 1.45,
           marginTop: 56,
@@ -149,7 +151,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
           fontFamily: "Cormorant Garamond, Lora, serif",
           fontWeight: 400,
           fontStyle: "italic",
-          fontSize: 36,
+          fontSize: Math.round(36 * compact),
           color: followColor,
           lineHeight: 1.4,
           marginTop: 56,
@@ -198,7 +200,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
                     <div style={{
                       fontFamily: "Inter, system-ui, -apple-system, sans-serif",
                       fontWeight: 400,
-                      fontSize: 18,
+                      fontSize: Math.round(18 * compact),
                       color: labelCol,
                       letterSpacing: "0.04em",
                       textAlign: "center",
