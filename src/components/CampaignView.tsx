@@ -5,7 +5,7 @@ import BriefStep, { type CampaignBrief } from "@/components/campaign/BriefStep";
 import CampaignEditor from "@/components/campaign/CampaignEditor";
 import FlowDeck, { type DeckEmail } from "@/components/campaign/FlowDeck";
 import KlaviyoFlowPicker from "@/components/email-review/KlaviyoFlowPicker";
-import { getShape } from "@/lib/campaign-shapes";
+import { getShape, applyPresetSettings } from "@/lib/campaign-shapes";
 import { CampaignGenLoader } from "@/components/campaign/Loaders";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -80,9 +80,9 @@ export default function CampaignView({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !Array.isArray(data?.blocks) || data.blocks.length === 0) return content;
-      const shape = getShape(brief.shapeId!);
+      const shape = getShape(brief.shapeId!) ?? brief.shape;
       return {
-        ...content,
+        ...applyPresetSettings(content, shape?.settings),
         blocks: data.blocks as CampaignContent["blocks"],
         theme: shape?.theme ?? content.theme,
         topBanner: data.topBanner ?? content.topBanner,

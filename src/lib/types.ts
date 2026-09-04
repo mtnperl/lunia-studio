@@ -397,6 +397,34 @@ export type SavedHookOverlays = {
   grain: { enabled: boolean; opacity: number };
 };
 
+/** A named carousel look: every whole-deck style setting, no content. Saved
+ *  from the Style tab, applied to a new carousel from the brief or to the
+ *  open one in place. */
+export type CarouselLookSettings = Pick<SavedCarousel,
+  "stylePreset" | "imageStyle" | "reelsMode" | "darkBackground" | "slideBgColor" | "logoScale" | "arrowScale" |
+  "citationFontSize" | "headlineScale" | "bodyScale" | "iconScale" | "showLuniaLifeWatermark" | "hookOverlays" |
+  "showSlideArrows" | "showSlideNumbers" | "showCitationBars" | "hookHeadlineWeight" | "contentBgOverlayOpacity">;
+
+export type CarouselLook = {
+  id: string;
+  name: string;
+  createdAt: string;
+  settings: CarouselLookSettings;
+};
+
+/** Email brand preset: the document-level settings a saved shape can carry
+ *  besides its block layout. All optional; absent leaves the email alone. */
+export type EmailPresetSettings = {
+  blockSpacing?: number;
+  showLogo?: boolean;
+  promoRole?: BrandColorRole;
+  ctaStyle?: "cream" | "navy";
+  ctaHeroStyle?: "cream" | "navy";
+  ctaBgRole?: BrandColorRole;
+  ctaHeroBgRole?: BrandColorRole;
+  ctaShowOnHero?: boolean;
+};
+
 export type SavedCarousel = {
   id: string;
   topic: string;

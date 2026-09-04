@@ -12,7 +12,7 @@
 // come from the network. The restructure route takes a shapeId and resolves
 // guidance HERE. See resolveShapeGuidance.
 import type { LayoutBlock } from "./campaign-layout-prompts";
-import type { CampaignContent, CampaignBlockKind } from "./types";
+import type { CampaignContent, CampaignBlockKind, EmailPresetSettings } from "./types";
 
 export type CampaignShape = {
   id: string;
@@ -25,6 +25,8 @@ export type CampaignShape = {
   topBanner?: string;
   promoBand?: string;
   ctaLabel?: string;
+  /** Saved shapes carry a brand preset; built-ins do not. */
+  settings?: EmailPresetSettings;
   /** Layout instruction for the restructure prompt. Empty means "let the model
    *  choose", which is the plain Make-it-visual behaviour. */
   guidance: string;
@@ -259,12 +261,48 @@ export type SavedShape = {
   createdAt: string;
   theme?: CampaignContent["theme"];
   blocks: ShapeBlockRecord[];
+  /** Brand preset: spacing, logo, band and CTA colours. Absent on shapes
+   *  saved before presets existed. */
+  settings?: EmailPresetSettings;
 };
+
+/** The document-level settings of an email, as a preset. */
+export function capturePresetSettings(content: CampaignContent): EmailPresetSettings {
+  const out: EmailPresetSettings = {};
+  if (typeof content.blockSpacing === "number") out.blockSpacing = content.blockSpacing;
+  if (content.showLogo !== undefined) out.showLogo = content.showLogo;
+  if (content.promoRole) out.promoRole = content.promoRole;
+  if (content.cta.style) out.ctaStyle = content.cta.style;
+  if (content.cta.heroStyle) out.ctaHeroStyle = content.cta.heroStyle;
+  if (content.cta.bgRole) out.ctaBgRole = content.cta.bgRole;
+  if (content.cta.heroBgRole) out.ctaHeroBgRole = content.cta.heroBgRole;
+  if (content.cta.showOnHero !== undefined) out.ctaShowOnHero = content.cta.showOnHero;
+  return out;
+}
+
+/** Apply a preset to an email. Only the keys the preset carries change. */
+export function applyPresetSettings(content: CampaignContent, s: EmailPresetSettings | undefined): CampaignContent {
+  if (!s) return content;
+  const cta = { ...content.cta };
+  if (s.ctaStyle !== undefined) cta.style = s.ctaStyle;
+  if (s.ctaHeroStyle !== undefined) cta.heroStyle = s.ctaHeroStyle;
+  if (s.ctaBgRole !== undefined) cta.bgRole = s.ctaBgRole;
+  if (s.ctaHeroBgRole !== undefined) cta.heroBgRole = s.ctaHeroBgRole;
+  if (s.ctaShowOnHero !== undefined) cta.showOnHero = s.ctaShowOnHero;
+  return {
+    ...content,
+    ...(s.blockSpacing !== undefined ? { blockSpacing: s.blockSpacing } : {}),
+    ...(s.showLogo !== undefined ? { showLogo: s.showLogo } : {}),
+    ...(s.promoRole !== undefined ? { promoRole: s.promoRole } : {}),
+    cta,
+  };
+}
 
 /** Read the layout of an email, discarding everything else. */
 export function captureShapeStructure(content: CampaignContent): Omit<SavedShape, "id" | "name" | "createdAt"> {
   return {
     theme: content.theme,
+    settings: capturePresetSettings(content),
     blocks: content.blocks.map((b) => {
       const rec: ShapeBlockRecord = { kind: b.kind ?? "text" };
       if (b.imagePosition) rec.imagePosition = b.imagePosition;
@@ -327,8 +365,9 @@ export function savedShapeToCampaignShape(saved: SavedShape): CampaignShape {
   return {
     id: `saved:${saved.id}`,
     name: saved.name,
-    description: `Your saved layout, ${saved.blocks.length} blocks`,
+    description: `Your saved layout, ${saved.blocks.length} blocks${saved.settings && Object.keys(saved.settings).length ? ", with its brand settings" : ""}`,
     theme: saved.theme,
+    settings: saved.settings,
     guidance: deriveShapeGuidance(saved),
     // No starter: a saved shape captures no copy, so it has none to show.
     starter: undefined,

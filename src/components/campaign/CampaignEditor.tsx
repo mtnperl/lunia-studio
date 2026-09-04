@@ -15,8 +15,7 @@ import {
   captureShapeStructure,
   savedShapeToCampaignShape,
   type CampaignShape,
-  type SavedShape,
-} from "@/lib/campaign-shapes";
+  type SavedShape, applyPresetSettings } from "@/lib/campaign-shapes";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
 import type {
   CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind,
@@ -1241,6 +1240,9 @@ export default function CampaignEditor({
   // the starter copy: that would overwrite your words with canned text.
   async function applyShape(shape: CampaignShape) {
     if (shapeBusyId) return;
+    // A saved shape's brand settings need no review: apply them now, as one
+    // undoable step. The block layout still goes through the diff below.
+    if (shape.settings) patch(applyPresetSettings(latestContent.current, shape.settings));
     const c = latestContent.current;
     const hasCopy = blocksToSourceText(c.blocks).length >= 40;
     const meta = {

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BrandStyle, CarouselContent, CarouselConfig, CarouselContrastMode, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselConfig, CarouselContrastMode, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel, type CarouselLookSettings } from "@/lib/types";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
@@ -159,6 +159,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   const DRAFT_KEY = `lunia:builder:active:${version}`;
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [loadedId, setLoadedId] = useState<string | null>(initialCarousel?.id ?? null);
+  // The look chosen in the brief; the studio opens with its settings when no
+  // saved carousel supplies its own.
+  const [pendingLook, setPendingLook] = useState<CarouselLookSettings | null>(null);
   const restoreAttempted = useRef(false);
 
   function clearActiveDraft() {
@@ -318,7 +321,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings) {
+    setPendingLook(look ?? null);
     setTopic(t);
     setHookTone(tone);
     setConcise(conciseMode ?? false);
@@ -594,21 +598,21 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialImageStyle={imageStyle}
               initialContrastMode={contrastMode}
               initialMoodId={moodId}
-              initialReelsMode={initialCarousel?.reelsMode}
-              initialCitationFontSize={initialCarousel?.citationFontSize}
-              initialSlideBgColor={initialCarousel?.slideBgColor}
-              initialDarkBackground={initialCarousel?.darkBackground}
-              initialLogoScale={initialCarousel?.logoScale}
-              initialArrowScale={initialCarousel?.arrowScale}
-              initialHeadlineScale={initialCarousel?.headlineScale}
-              initialBodyScale={initialCarousel?.bodyScale}
-              initialIconScale={initialCarousel?.iconScale}
-              initialShowLuniaLifeWatermark={initialCarousel?.showLuniaLifeWatermark}
-              initialHookOverlays={initialCarousel?.hookOverlays}
-              initialShowSlideArrows={initialCarousel?.showSlideArrows}
-              initialShowSlideNumbers={initialCarousel?.showSlideNumbers}
-              initialShowCitationBars={initialCarousel?.showCitationBars}
-              initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight}
+              initialReelsMode={initialCarousel?.reelsMode ?? pendingLook?.reelsMode}
+              initialCitationFontSize={initialCarousel?.citationFontSize ?? pendingLook?.citationFontSize}
+              initialSlideBgColor={initialCarousel?.slideBgColor ?? pendingLook?.slideBgColor}
+              initialDarkBackground={initialCarousel?.darkBackground ?? pendingLook?.darkBackground}
+              initialLogoScale={initialCarousel?.logoScale ?? pendingLook?.logoScale}
+              initialArrowScale={initialCarousel?.arrowScale ?? pendingLook?.arrowScale}
+              initialHeadlineScale={initialCarousel?.headlineScale ?? pendingLook?.headlineScale}
+              initialBodyScale={initialCarousel?.bodyScale ?? pendingLook?.bodyScale}
+              initialIconScale={initialCarousel?.iconScale ?? pendingLook?.iconScale}
+              initialShowLuniaLifeWatermark={initialCarousel?.showLuniaLifeWatermark ?? pendingLook?.showLuniaLifeWatermark}
+              initialHookOverlays={initialCarousel?.hookOverlays ?? pendingLook?.hookOverlays}
+              initialShowSlideArrows={initialCarousel?.showSlideArrows ?? pendingLook?.showSlideArrows}
+              initialShowSlideNumbers={initialCarousel?.showSlideNumbers ?? pendingLook?.showSlideNumbers}
+              initialShowCitationBars={initialCarousel?.showCitationBars ?? pendingLook?.showCitationBars}
+              initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight ?? pendingLook?.hookHeadlineWeight}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={loadedId}
               onSaved={onSaved}

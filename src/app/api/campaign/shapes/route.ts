@@ -33,6 +33,23 @@ function sanitizeBlocks(input: unknown): ShapeBlockRecord[] | null {
   return out;
 }
 
+const ROLES = new Set(["ivory", "aqua", "yellow", "navy", "slate", "muted"]);
+/** Keep only known preset keys with sane values. */
+function pickSettings(raw: unknown): SavedShape["settings"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: NonNullable<SavedShape["settings"]> = {};
+  if (typeof r.blockSpacing === "number" && r.blockSpacing >= 0 && r.blockSpacing <= 64) out.blockSpacing = r.blockSpacing;
+  if (typeof r.showLogo === "boolean") out.showLogo = r.showLogo;
+  if (typeof r.promoRole === "string" && ROLES.has(r.promoRole)) out.promoRole = r.promoRole as NonNullable<SavedShape["settings"]>["promoRole"];
+  if (r.ctaStyle === "cream" || r.ctaStyle === "navy") out.ctaStyle = r.ctaStyle;
+  if (r.ctaHeroStyle === "cream" || r.ctaHeroStyle === "navy") out.ctaHeroStyle = r.ctaHeroStyle;
+  if (typeof r.ctaBgRole === "string" && ROLES.has(r.ctaBgRole)) out.ctaBgRole = r.ctaBgRole as NonNullable<SavedShape["settings"]>["ctaBgRole"];
+  if (typeof r.ctaHeroBgRole === "string" && ROLES.has(r.ctaHeroBgRole)) out.ctaHeroBgRole = r.ctaHeroBgRole as NonNullable<SavedShape["settings"]>["ctaHeroBgRole"];
+  if (typeof r.ctaShowOnHero === "boolean") out.ctaShowOnHero = r.ctaShowOnHero;
+  return Object.keys(out).length ? out : undefined;
+}
+
 export async function GET(): Promise<Response> {
   try {
     return Response.json(await getSavedShapes());
@@ -57,6 +74,7 @@ export async function POST(req: Request): Promise<Response> {
       createdAt: new Date().toISOString(),
       theme: body.theme === "cream" || body.theme === "navy" ? body.theme : undefined,
       blocks,
+      settings: pickSettings(body.settings),
     };
     await saveSavedShape(shape);
     return Response.json(shape);

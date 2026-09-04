@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject } from "@/lib/types";
+import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject, type CarouselLook, type CarouselLookSettings } from "@/lib/types";
+import { Select as UiSelect } from "@/components/ui";
 import { Button } from "@/components/ui/Button";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
@@ -54,7 +55,7 @@ export const CATEGORIES = [
 ];
 
 type Props = {
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings) => void;
 };
 
 type Mode = "list" | "custom";
@@ -102,6 +103,22 @@ export default function TopicStep({ onNext }: Props) {
   // Applies to the hook image from the very first generation, so a new deck can
   // be high-contrast without a regenerate.
   const [contrastMode, setContrastMode] = useState<CarouselContrastMode>("standard");
+  // Saved looks: picking one sets the preset and image engine here and hands
+  // the rest of its settings to the studio once the carousel exists.
+  const [looks, setLooks] = useState<CarouselLook[]>([]);
+  const [lookId, setLookId] = useState("");
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/carousel-v2/looks").then((r) => r.json()).then((d) => { if (alive && Array.isArray(d)) setLooks(d); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  function chooseLook(id: string) {
+    setLookId(id);
+    const l = looks.find((x) => x.id === id);
+    if (!l) return;
+    if (l.settings.stylePreset) setStylePreset(l.settings.stylePreset);
+    if (l.settings.imageStyle) setImageStyle(l.settings.imageStyle as CarouselImageStyle);
+  }
 
   // "Suggest topics" — diverse, unused picks pulled straight from the subject library.
   const [suggestions, setSuggestions] = useState<{ id: string; title: string; category: string }[]>([]);
@@ -241,7 +258,7 @@ export default function TopicStep({ onNext }: Props) {
       carouselFormat === "engagement" ? true
       : carouselFormat === "did_you_know" ? true
       : concise;
-    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard");
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings);
   }
 
   // Cherry-pick #5: inline add-custom-topic from list mode
@@ -765,6 +782,18 @@ export default function TopicStep({ onNext }: Props) {
 
       )}
 
+      {/* Saved looks come first: one pick sets the preset, the image engine and
+          every deck-wide style knob the studio will open with. */}
+      {carouselFormat !== "did_you_know" && looks.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Look</label>
+          <UiSelect value={lookId} onChange={(e) => chooseLook(e.target.value)} aria-label="Saved look">
+            <option value="">No saved look, set the style below</option>
+            {looks.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </UiSelect>
+          {lookId && <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>The studio opens with the sizes, colours, overlays and toggles of this look. Preset and image engine below follow it too.</div>}
+        </div>
+      )}
       {/* Carousel style preset — re-skins the whole carousel (colors, fonts,
           image engine). "Editorial Scientific" applies the Lunia brand book. */}
       {carouselFormat !== "did_you_know" && (

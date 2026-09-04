@@ -1,4 +1,4 @@
-import type { Fact } from "./types";
+import type { Fact, CarouselLook } from "./types";
 import Redis from "ioredis";
 import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
@@ -419,6 +419,24 @@ export async function saveSavedShape(shape: SavedShape): Promise<void> {
 export async function deleteSavedShape(id: string): Promise<void> {
   const all = await getSavedShapes();
   await writeCollection(CAMPAIGN_SHAPES_KEY, all.filter((s) => s.id !== id));
+}
+
+// ─── Carousel looks ───────────────────────────────────────────────────────────
+const CAROUSEL_LOOKS_KEY = "lunia:carousel-looks";
+
+export async function getCarouselLooks(): Promise<CarouselLook[]> {
+  return readCollection<CarouselLook>(CAROUSEL_LOOKS_KEY);
+}
+
+export async function saveCarouselLook(look: CarouselLook): Promise<void> {
+  const all = await getCarouselLooks();
+  all.unshift(look);
+  await writeCollection(CAROUSEL_LOOKS_KEY, all);
+}
+
+export async function deleteCarouselLook(id: string): Promise<void> {
+  const all = await getCarouselLooks();
+  await writeCollection(CAROUSEL_LOOKS_KEY, all.filter((l) => l.id !== id));
 }
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────

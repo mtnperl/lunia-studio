@@ -24,6 +24,9 @@ export type CampaignBrief = {
    *  "auto" (the default) skips that second pass and lands plain text blocks,
    *  which is what every campaign did before shapes existed. */
   shapeId?: string;
+  /** The chosen shape itself, so a saved shape's brand settings reach the
+   *  editor. Built-ins resolve from the id. */
+  shape?: CampaignShape;
 };
 
 type Mode = "list" | "custom";
@@ -234,7 +237,7 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
         <button
           className="btn"
           disabled={!canGenerate}
-          onClick={() => onGenerate({ topic, occasion, offer, ctaUrl, tone, shapeId: shape.id })}
+          onClick={() => onGenerate({ topic, occasion, offer, ctaUrl, tone, shapeId: shape.id, shape })}
           style={{ minWidth: 180, opacity: canGenerate ? 1 : 0.5, cursor: canGenerate ? "pointer" : "not-allowed" }}
         >
           Generate campaign

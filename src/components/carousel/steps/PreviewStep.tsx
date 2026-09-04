@@ -15,6 +15,8 @@ import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
 import { RewriteBar } from "@/components/editor/RewriteBar";
+import type { CarouselLook, CarouselLookSettings } from "@/lib/types";
+import { Input as UiInput } from "@/components/ui";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
 import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
 import { DEFAULT_GATING } from "@/lib/types";
@@ -520,6 +522,60 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Session-only (does not persist on save) — keeps the surface tiny.
   const [hookImageHistory, setHookImageHistory] = useState<string[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // Named looks: whole-deck style settings saved from this tab and applied
+  // here or from the brief. Loaded once the Style tab first needs them.
+  const [looks, setLooks] = useState<CarouselLook[] | null>(null);
+  const [lookName, setLookName] = useState("");
+  const [lookBusy, setLookBusy] = useState(false);
+  const [lookError, setLookError] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/carousel-v2/looks").then((r) => r.json()).then((d) => { if (alive) setLooks(Array.isArray(d) ? d : []); }).catch(() => { if (alive) setLooks([]); });
+    return () => { alive = false; };
+  }, []);
+  function captureLook(): CarouselLookSettings {
+    return {
+      stylePreset, imageStyle, reelsMode, darkBackground, slideBgColor, logoScale, arrowScale, citationFontSize, headlineScale, bodyScale, iconScale,
+      showLuniaLifeWatermark, hookOverlays, showSlideArrows, showSlideNumbers, showCitationBars, hookHeadlineWeight, contentBgOverlayOpacity,
+    };
+  }
+  /** Everything a look carries except the style preset and image engine,
+   *  which are fixed once a carousel is generated. Those apply from the brief. */
+  function applyLook(s: CarouselLookSettings) {
+    if (s.reelsMode !== undefined) setReelsMode(s.reelsMode);
+    if (s.darkBackground !== undefined) setDarkBackground(s.darkBackground);
+    if (s.slideBgColor !== undefined) setSlideBgColor(s.slideBgColor);
+    if (s.logoScale !== undefined) setLogoScale(s.logoScale);
+    if (s.arrowScale !== undefined) setArrowScale(s.arrowScale);
+    if (s.citationFontSize !== undefined) setCitationFontSize(s.citationFontSize);
+    if (s.headlineScale !== undefined) setHeadlineScale(s.headlineScale);
+    if (s.bodyScale !== undefined) setBodyScale(s.bodyScale);
+    if (s.iconScale !== undefined) setIconScale(s.iconScale);
+    if (s.showLuniaLifeWatermark !== undefined) setShowLuniaLifeWatermark(s.showLuniaLifeWatermark);
+    if (s.hookOverlays) setHookOverlays(s.hookOverlays as HookOverlaySettings);
+    if (s.showSlideArrows !== undefined) setShowSlideArrows(s.showSlideArrows);
+    if (s.showSlideNumbers !== undefined) setShowSlideNumbers(s.showSlideNumbers);
+    if (s.showCitationBars !== undefined) setShowCitationBars(s.showCitationBars);
+    if (s.hookHeadlineWeight !== undefined) setHookHeadlineWeight(s.hookHeadlineWeight);
+    if (s.contentBgOverlayOpacity !== undefined) setContentBgOverlayOpacity(s.contentBgOverlayOpacity);
+  }
+  async function saveLook() {
+    const name = lookName.trim();
+    if (!name || lookBusy) return;
+    setLookBusy(true); setLookError(null);
+    try {
+      const res = await fetch("/api/carousel-v2/looks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, settings: captureLook() }) });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.id) { setLookError(data?.error ?? "Could not save the look."); return; }
+      setLooks((prev) => [data as CarouselLook, ...(prev ?? [])]);
+      setLookName("");
+    } catch { setLookError("Network error."); }
+    finally { setLookBusy(false); }
+  }
+  async function deleteLook(id: string) {
+    setLooks((prev) => (prev ?? []).filter((l) => l.id !== id));
+    await fetch(`/api/carousel-v2/looks?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+  }
 
   // ── Full-prompt editor ──────────────────────────────────────────────────
   // fullPromptPreview = the prompt the server WOULD send right now (assembled
@@ -1753,6 +1809,22 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         title: "Settings",
         body: (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Looks</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {looks === null && <div style={{ fontSize: 12, color: "var(--muted)" }}>Loading looks</div>}
+              {looks && looks.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>No saved looks yet. Set the style below, name it, and save it to reuse on the next carousel.</div>}
+              {looks?.map((l) => (
+                <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <UiButton size="sm" variant="secondary" onClick={() => applyLook(l.settings)} title={`Apply ${l.name} to this carousel. Style preset and image engine apply from the brief only.`} style={{ flex: 1, justifyContent: "flex-start" }}>{l.name}</UiButton>
+                  <UiIconButton size="sm" title={`Delete ${l.name}`} onClick={() => deleteLook(l.id)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg></UiIconButton>
+                </div>
+              ))}
+              <form style={{ display: "flex", gap: 6 }} onSubmit={(e) => { e.preventDefault(); saveLook(); }}>
+                <UiInput size="sm" value={lookName} onChange={(e) => setLookName(e.target.value)} placeholder="Name the current style" aria-label="Look name" style={{ flex: 1 }} />
+                <UiButton size="sm" variant="secondary" type="submit" disabled={!lookName.trim()} busy={lookBusy}>Save look</UiButton>
+              </form>
+              {lookError && <div style={{ fontSize: 11, color: "var(--error)" }}>{lookError}</div>}
+            </div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
             {/* Only what applies to the WHOLE deck lives here. Headline, body,
                 citation and icon sizing moved onto the elements they resize —
