@@ -49,6 +49,7 @@ import { pickableStyle, editableProps, editingStyle } from '@/lib/slide-elements
 
 // ─── Layout tokens (shared with the render + regression pipeline) ────────────
 import { SLIDE } from '@/lib/brand-tokens';
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 const SLIDE_PADDING = SLIDE.pad;
 const SECTION_GAP = SLIDE.sectionGap;
 // Cap the graphic so it stays compact and hugs the body rather than ballooning
@@ -281,7 +282,7 @@ export default function ContentSlide({
             : {}),
         }
       : { style: {} as React.CSSProperties };
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isEditorial = isEditorialPreset(stylePreset);
   const editorialFontFamily = "Inter, system-ui, -apple-system, sans-serif";
   const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 220 : SLIDE_PADDING.y;

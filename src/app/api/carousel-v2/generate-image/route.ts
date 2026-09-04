@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
     // Editorial Scientific preset locks the mood to the Lunia editorial look.
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
-    const isEditorial = stylePreset === 'editorial-scientific';
+    const isEditorial = stylePreset === 'editorial-scientific' || stylePreset === 'viral';
     const isFreePress = stylePreset === 'free-press';
 
     // Editorial extras: interpretive lane + paper tone. Both only meaningful

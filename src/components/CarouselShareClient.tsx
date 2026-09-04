@@ -11,6 +11,7 @@ import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import { SavedCarousel, BrandStyle } from "@/lib/types";
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 type Props = { carousel: SavedCarousel };
 
@@ -71,7 +72,7 @@ export default function CarouselShareClient({ carousel }: Props) {
     showCitationBars = true,
     hookHeadlineWeight = "default",
   } = carousel;
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
   // Editorial slides use the dedicated editorial layout component (suppresses
   // duplicate HTML text overlay, renders icon bullets, etc.). Default carousels

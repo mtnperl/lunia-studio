@@ -323,7 +323,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number) {
     setPendingLook(look ?? varyLook);
     setTopic(t);
     setHookTone(tone);
@@ -360,6 +360,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           stylePreset: preset ?? "default",
           includeSeoFooter: seoFooter ?? true,
           ...(varyFrom ? { structureFrom: { documentId: varyFrom.id } } : {}),
+          ...(slideCount ? { slideCount } : {}),
         }),
       });
       const data = await res.json();

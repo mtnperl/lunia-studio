@@ -30,14 +30,39 @@ export const EDITORIAL_MOOD_ID = "editorial-scientific";
 /** Returns the BrandStyle preset for a given preset name, or `undefined` so
  *  callers can fall back to their existing brandStyle source. */
 export function getStylePresetBrandStyle(p?: CarouselStylePreset): BrandStyle | undefined {
-  if (p === "editorial-scientific") return EDITORIAL_BRAND_STYLE;
+  if (p === "editorial-scientific" || p === "viral") return EDITORIAL_BRAND_STYLE;
   if (p === "free-press") return FREE_PRESS_BRAND_STYLE;
   return undefined;
 }
 
+/** True for every preset drawn with the editorial components: Editorial
+ *  Scientific itself and Viral, which changes structure, not look. */
 export function isEditorialPreset(p?: CarouselStylePreset | null): boolean {
-  return p === "editorial-scientific";
+  return p === "editorial-scientific" || p === "viral";
 }
+
+export function isViralPreset(p?: CarouselStylePreset | null): boolean {
+  return p === "viral";
+}
+
+/** Slot table for the viral engine. Hook and CTA bracket the content slots. */
+export const VIRAL_SLOTS: Record<5 | 10, { name: string; job: string; openLoop: string }[]> = {
+  5: [
+    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs. The reader must think this is worth their time in one second.", openLoop: "Here is why the usual fix fails." },
+    { name: "Turn", job: "Amplify the pain, invalidate the current method, pivot on BUT. Do not deliver the solution.", openLoop: "The fix is smaller than you think." },
+    { name: "Solution", job: "One idea, one easy step toward a result, with its proof. A beginner could do it tonight.", openLoop: "One more thing decides whether it holds." },
+  ],
+  10: [
+    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs.", openLoop: "It is not the reason you were told." },
+    { name: "Pain", job: "Amplify. Show the problem compounding with a second consequence the reader has felt.", openLoop: "Most people fix the wrong half." },
+    { name: "Invalidate and turn", job: "Name the current method, say why it fails, pivot on BUT. Solution still withheld.", openLoop: "The real lever is upstream." },
+    { name: "Idea 1", job: "Education. One idea, one step a beginner does tonight.", openLoop: "That handles the start of the night." },
+    { name: "Idea 2", job: "Education. One idea, one step a beginner does tonight.", openLoop: "The middle of the night needs something else." },
+    { name: "Idea 3", job: "Education. One idea, one step a beginner does tonight.", openLoop: "Now the part that makes it stick." },
+    { name: "Proof", job: "Social proof or mechanism proof that the solution works. One sourced figure or one mechanism in one sentence.", openLoop: "Which leaves one question." },
+    { name: "Objection", job: "The reason they still will not do it, in the reader's words, answered.", openLoop: "So here is the only thing to do." },
+  ],
+};
 
 /** Free Press brand palette — a text-led editorial preset.
  *

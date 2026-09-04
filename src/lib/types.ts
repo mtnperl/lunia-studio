@@ -369,7 +369,8 @@ export type BrandStyle = {
  *  with one luminous focal element. Only meaningful on that preset. */
 export type CarouselContrastMode = "standard" | "high";
 
-export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press";
+/** "viral" shares the editorial look and swaps the slide architecture for the slot engine in docs/carousel-viral-engine.md. */
+export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press" | "viral";
 
 /** Hook slide headline boldness. "default" preserves the original weight (400 / 300 editorial). */
 export type HookHeadlineWeight = "default" | "medium" | "bold" | "black";

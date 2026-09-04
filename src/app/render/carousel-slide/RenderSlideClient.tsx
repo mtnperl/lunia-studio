@@ -22,6 +22,7 @@ import FreePressContentSlide from "@/components/carousel/slides/FreePressContent
 import { FP_COLORS } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
 import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 export type RenderSlideProps = {
   headline: string;
@@ -188,7 +189,7 @@ export default function RenderSlideClient(props: RenderSlideProps) {
     >
       {props.stylePreset === "free-press" ? (
         <FreePressContentSlide {...scaled} scale={1} />
-      ) : props.stylePreset === "editorial-scientific" ? (
+      ) : isEditorialPreset(props.stylePreset) ? (
         <EditorialContentSlide {...scaled} scale={1} />
       ) : (
         <ContentSlide {...scaled} scale={1} />

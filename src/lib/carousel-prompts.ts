@@ -1,5 +1,6 @@
 import type { BrandStyle, CarouselTemplate } from "./types";
 import { LUNIA_BRAND } from "./lunia-brand";
+import { VIRAL_SLOTS } from "./carousel-style-presets";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -221,6 +222,30 @@ This template instruction takes PRIORITY over all other copy-length rules below.
 ===\n\n`;
 }
 
+/** The slot engine, docs/carousel-viral-engine.md, as prompt text. */
+function viralEngineBlock(total: 5 | 10): string {
+  const slots = VIRAL_SLOTS[total];
+  const rows = slots.map((s, i) => `  Slide ${i + 2} (${s.name}): ${s.job}\n    Last line of the body, verbatim or in the same spirit: "${s.openLoop}"`).join("\n");
+  return `
+VIRAL PRESET. THIS OVERRIDES THE SLIDE COUNT, THE NARRATIVE ARC AND THE TIER RULES BELOW.
+
+Return EXACTLY ${slots.length} objects in "slides", in this order. Each slide has ONE job. A slide that does another slot's job fails.
+${rows}
+The hook is slide 1 and the CTA is slide ${total}. Do NOT return a "takeaway" object.
+
+Retention rules, all mandatory:
+- Never resolve the tension before the midpoint. The first slide that may contain a solution is slide ${total === 10 ? 5 : 3}.
+- Every content slide ends owing the reader something: its body's final sentence is the open-loop line above. Keep it under 10 words.
+- Simplicity gate: a complete beginner understands every slide on first read. One idea per slide.
+- Hook headline: 8 words or fewer, one sentence, a promise or a number. Never the product.
+- Slide headlines: the hero line, 3 to 8 words, uppercase, top-left. Body: 25 to 45 words, the support copy, then the open-loop line.
+- The product may appear from slide ${total === 10 ? 8 : 4} onward, and only as the mechanism, never as the promise.
+- "graphic": return "" on every slide except the Proof slide${total === 10 ? " (slide 9)" : " (slide 4)"}, which may carry one stat graphic when it has a sourced figure.
+- CTA headline: one ask to lunialife.com, uppercase, max 6 words. Nothing else on that slide.
+- Every figure needs a real source in "citation" or must be hedged in words. Never invent a study.
+`;
+}
+
 export const GENERATE_CAROUSEL_PROMPT = (
   topic: string,
   hookTone = "educational",
@@ -237,8 +262,11 @@ export const GENERATE_CAROUSEL_PROMPT = (
    *  Paragraph 4 of the caption, and the server appends a static brand
    *  entity line after that. See src/lib/lunia-brand.ts. */
   includeSeoFooter: boolean = true,
+  /** Viral preset only: total slides including hook and CTA, 5 or 10. */
+  viralSlides?: number,
 ) => {
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isViral = stylePreset === "viral";
+  const isEditorial = stylePreset === "editorial-scientific" || isViral;
   const isFreePress = stylePreset === "free-press";
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
@@ -263,7 +291,7 @@ Return ONLY valid JSON in this exact format, no other text:
   "cta": {
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
-  },${v2Mode ? `
+  },${v2Mode && !isViral ? `
   "takeaway": {
     "headline": "string",
     "points": ["string", "string", "string"],
@@ -295,7 +323,7 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
 
 The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
-` : ""}${v2Mode ? `
+` : ""}${isViral ? viralEngineBlock(viralSlides === 10 ? 10 : 5) : ""}${v2Mode && !isViral ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE
@@ -342,7 +370,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. Write in ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
-- graphic: compact single-line JSON. ${v2Mode ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
+- graphic: compact single-line JSON. ${v2Mode && !isViral ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
     A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A

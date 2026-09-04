@@ -7,6 +7,7 @@ import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { Button } from "@/components/ui/Button";
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -349,7 +350,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 is generated, so the setting has to be reachable here and not only
                 on the topic screen. Editorial Scientific only: elsewhere the
                 image route never reads it. */}
-            {stylePreset === "editorial-scientific" && (
+            {isEditorialPreset(stylePreset) && (
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Contrast:</span>
                 {([

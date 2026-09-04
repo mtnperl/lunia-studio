@@ -3,6 +3,7 @@ import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isDarkColor, INK_LIGHT, INK_DARK } from "@/lib/color";
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 type Interaction = { type: "save" | "send" | "comment"; label: string };
 
@@ -51,7 +52,7 @@ export default function TakeawaySlide({
   showLuniaLifeWatermark = false, prominentWatermark = false, frameH, reels = false,
   stylePreset = "default", showSlideArrows = true, followLine,
 }: Props) {
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isEditorial = isEditorialPreset(stylePreset);
   const slideH = frameH ?? (reels ? 1920 : 1350);
   // Shorter frames (the 1:1 export) scale type and vertical padding down together.
   const compact = slideH < 1350 ? slideH / 1350 : 1;

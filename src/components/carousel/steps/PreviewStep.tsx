@@ -33,12 +33,15 @@ import GraphicTypePicker from "@/components/carousel/preview/GraphicTypePicker";
 import GraphicDataEditor from "@/components/carousel/preview/GraphicDataEditor";
 import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary";
 import SlideRail from "@/components/carousel/preview/SlideRail";
+import { isEditorialPreset, isViralPreset } from "@/lib/carousel-style-presets";
+import { ViralChecklist } from "@/components/carousel/ViralChecklist";
 
 // v2 editor: which tool panel is docked in the inspector (null = closed).
-export type ExportFrame = "feed" | "story" | "square";
+export type ExportFrame = "feed" | "feedGrid" | "story" | "square";
 /** Channel frames. Width is always 1080; the slide adapts its height. */
 export const EXPORT_FRAMES: Record<ExportFrame, { h: number; label: string; file: string }> = {
   feed: { h: 1350, label: "Instagram feed, 4:5", file: "feed" },
+  feedGrid: { h: 1440, label: "Feed, 4:5 with grid margin (organic only)", file: "feed-grid" },
   story: { h: 1920, label: "Story and Reels, 9:16", file: "story" },
   square: { h: 1080, label: "Square, 1:1 for ChatGPT ads", file: "square" },
 };
@@ -416,7 +419,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [darkBackground, setDarkBackground] = useState(initialDarkBackground ?? false);
   // Free-form dominant slide background. When set, slides use this color and auto-derive
   // ink (text/arrows/watermark/logo) from luminance — overrides the Classic/Match-hook toggle.
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isEditorial = isEditorialPreset(stylePreset);
+  const isViral = isViralPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
   // Editorial Scientific renders content slides with a bespoke layout —
   // logo top, big editorial headline + rule, body, optional icon-stat rows,
@@ -543,6 +547,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const frame: ExportFrame = exportFrame ?? (reelsMode ? "story" : "feed");
   const frameH = EXPORT_FRAMES[frame].h;
   const frameReels = frame === "story";
+  // The grid-margin frame keeps every line of type inside the 1350 safe zone:
+  // the slide renders at 1350 and the wrapper adds 45px of its own background
+  // above and below. See docs/carousel-viral-engine.md, section 4.
+  const slideFrameH = frame === "feedGrid" ? 1350 : frameH;
   // Named looks: whole-deck style settings saved from this tab and applied
   // here or from the brief. Loaded once the Style tab first needs them.
   const [looks, setLooks] = useState<CarouselLook[] | null>(null);
@@ -640,7 +648,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // carousels keep their comment-CTA, and decks saved before this slide existed
   // have no `takeaway`. When present the carousel is 6 slides instead of 5, so
   // labels, loop bounds, and the CTA index are all derived from here.
-  const hasTakeaway = isV2 && carouselFormat !== "engagement"
+  const hasTakeaway = isV2 && !isViral && carouselFormat !== "engagement"
     && !!content.takeaway
     && Array.isArray(content.takeaway.points) && content.takeaway.points.length > 0
     && !!content.takeaway.interaction;
@@ -2871,15 +2879,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={frameH} headlineWeight={hookHeadlineWeight} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={slideFrameH} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={frameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={frameH} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={slideFrameH} />]
       : [carouselFormat === "engagement" && content.commentKeyword
-          ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={frameH} />
-          : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={frameH} />]),
+          ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={slideFrameH} />
+          : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={slideFrameH} />]),
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -2924,7 +2932,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         exportTone={verificationStatus === "red" ? "danger" : exportWarned ? "warning" : undefined}
         exportMenu={[
           { type: "heading", label: "Export" },
-          ...(["feed", "story", "square"] as ExportFrame[]).map((fr) => ({ label: `Download all, ${EXPORT_FRAMES[fr].label}`, disabled: downloadingAll || exportBlocked, onSelect: () => { void downloadAllAs(fr); } })),
+          ...(["feed", "feedGrid", "story", "square"] as ExportFrame[]).map((fr) => ({ label: `Download all, ${EXPORT_FRAMES[fr].label}`, disabled: downloadingAll || exportBlocked, onSelect: () => { void downloadAllAs(fr); } })),
           { label: downloading === focusedSlide ? "Exporting this slide" : `Download ${slideLabels[focusedSlide]} (PNG)`, disabled: downloading !== null, onSelect: () => downloadSlide(focusedSlide) },
           ...(focusedSlide >= 1 && focusedSlide <= 3 ? [{ label: "Preview HD for this slide", disabled: hdLoading !== null, onSelect: () => previewHD(focusedSlide) }] : []),
           ...(carouselFormat === "engagement" ? [{ label: generatingPdf ? "Generating PDF" : "PDF guide", disabled: generatingPdf, onSelect: handleGeneratePdf }] : []),
@@ -3004,6 +3012,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 {content.caption ? <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{content.caption}</div> : <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>No caption was written for this carousel.</span>}
               </UiPanel>
             )}
+            {railTab === "check" && isViral && <ViralChecklist content={content} selectedHook={config.selectedHook} record={verification} />}
             {railTab === "check" && (savedId ? (
               <VerificationPanel
                 carouselId={savedId}
@@ -3154,7 +3163,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (
-          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: frameH }}>
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: frameH, background: i === 0 ? (bs?.hookBackground ?? "#01253f") : (slideBgColor ?? bs?.background ?? "#F7F4EF"), paddingTop: frame === "feedGrid" ? 45 : 0, boxSizing: "border-box" }}>
             {node}
           </div>
         ))}

@@ -61,7 +61,7 @@ type Props = {
   /** The source carousel's topic, shown in a banner while varying. */
   varyFrom?: string;
   onClearVary?: () => void;
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number) => void;
 };
 
 type Mode = "list" | "custom";
@@ -113,6 +113,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
   // the rest of its settings to the studio once the carousel exists.
   const [looks, setLooks] = useState<CarouselLook[]>([]);
   const [lookId, setLookId] = useState("");
+  const [viralSlides, setViralSlides] = useState<5 | 10>(5);
   useEffect(() => {
     let alive = true;
     fetch("/api/carousel-v2/looks").then((r) => r.json()).then((d) => { if (alive && Array.isArray(d)) setLooks(d); }).catch(() => {});
@@ -264,7 +265,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
       carouselFormat === "engagement" ? true
       : carouselFormat === "did_you_know" ? true
       : concise;
-    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings);
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings, stylePreset === "viral" ? viralSlides : undefined);
   }
 
   // Cherry-pick #5: inline add-custom-topic from list mode
@@ -816,6 +817,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
             { val: "default" as CarouselStylePreset, label: "Default", desc: "Current v2 styling" },
             { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
             { val: "free-press" as CarouselStylePreset, label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
+            { val: "viral" as CarouselStylePreset, label: "Viral", desc: "Editorial look, slot-built for swipe depth. 5 or 10 slides" },
           ]).map((opt) => {
             const sel = stylePreset === opt.val;
             return (
@@ -838,6 +840,19 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
             );
           })}
         </div>
+        {stylePreset === "viral" && (
+          <div style={{ marginTop: 12 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Length</label>
+            <div style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+              {([5, 10] as const).map((n) => (
+                <button key={n} type="button" onClick={() => setViralSlides(n)} aria-pressed={viralSlides === n} style={{ padding: "8px 14px", fontSize: 13, fontFamily: "inherit", border: "none", cursor: "pointer", background: viralSlides === n ? "var(--text)" : "var(--bg)", color: viralSlides === n ? "var(--bg)" : "var(--text)" }}>
+                  {n} slides
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>Five when the subject has one lever, ten when it has three. Hook, stakes, turn, then the solution, then one CTA.</div>
+          </div>
+        )}
       </div>
       )}
 

@@ -6,6 +6,7 @@ import SlideWrapper from '@/components/carousel/shared/SlideWrapper';
 import { BrandStyle, CarouselStylePreset, HookHeadlineWeight } from '@/lib/types';
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
 import { BRAND_FONT_FAMILY, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -54,7 +55,7 @@ const HEADLINE_WEIGHTS = {
 } as const;
 
 export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
-  const isEditorial = stylePreset === "editorial-scientific";
+  const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
   const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
   const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);

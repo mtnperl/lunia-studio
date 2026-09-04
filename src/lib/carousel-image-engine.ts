@@ -49,7 +49,7 @@ export function chooseImageEngine(opts: ChooseEngineInput): ImageEngine {
   if (opts.override) return opts.override;
   // Editorial Scientific style: every image goes through gpt-image-2 so the
   // bottle / brand look stays consistent across the whole carousel.
-  if (opts.stylePreset === "editorial-scientific") return "gpt-image-2";
+  if (opts.stylePreset === "editorial-scientific" || opts.stylePreset === "viral") return "gpt-image-2";
   // Free Press covers are documentary photographs that must contain NO text at
   // all, because the headline is composited over them in HTML. The weighted
   // mix below rolls engines that routinely paint incidental signage and

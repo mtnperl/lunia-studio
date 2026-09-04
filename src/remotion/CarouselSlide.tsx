@@ -7,6 +7,7 @@ import { loadFont as loadOutfit } from "@remotion/google-fonts/Outfit";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
+import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 // Register the fonts ContentSlide + its graphics use so headless Chromium has
 // them before the still is painted. loadFont() wires delayRender internally.
@@ -48,7 +49,7 @@ export type CarouselSlideProps = {
 export const CarouselSlide: React.FC<CarouselSlideProps> = (props) => {
   return (
     <AbsoluteFill style={{ background: props.slideBgColor ?? "#01253f" }}>
-      {props.stylePreset === "editorial-scientific" ? (
+      {isEditorialPreset(props.stylePreset) ? (
         <EditorialContentSlide {...props} scale={1} />
       ) : (
         <ContentSlide {...props} scale={1} />

@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter)) + ledgerBlock + structureBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, stylePreset === "viral" ? (Number(body.slideCount) === 10 ? 10 : 5) : undefined)) + ledgerBlock + structureBlock;
 
     // Build message content
     type ContentBlock =
