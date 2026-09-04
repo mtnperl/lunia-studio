@@ -1,6 +1,7 @@
 import { saveAssetIfNew, saveCarousel, getCarouselById } from "@/lib/kv";
 import { AssetMetadata, DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
+import { recordVersion } from "@/lib/versions";
 import { put } from "@vercel/blob";
 
 // ── Blob mirroring ────────────────────────────────────────────────────────────
@@ -149,6 +150,8 @@ export async function POST(req: Request) {
     };
 
     await saveCarousel(carousel);
+    // Version history is best effort; a failure never fails the save.
+    await recordVersion("carousel", carousel.id, carousel).catch((e) => console.warn("[save] version not recorded", e));
 
     // ── Register text-free carousel images in the asset library ────────────
     // So the email-campaign image picker can reuse them. Editorial hooks

@@ -16,6 +16,7 @@ export default function CampaignView({
   onCampaignLoaded,
   onCarouselConsumed,
   onExit,
+  onReload,
 }: {
   initialCampaign?: SavedCampaign | null;
   initialCarousel?: SavedCarousel | null;
@@ -23,6 +24,7 @@ export default function CampaignView({
   onCarouselConsumed?: () => void;
   /** Back arrow in the editor's top bar. */
   onExit?: () => void;
+  onReload?: () => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
@@ -289,6 +291,7 @@ export default function CampaignView({
           onSaved={setSavedId}
           onExit={onExit}
           onRestart={handleRestart}
+          onReload={onReload}
         />
       )}
     </div>

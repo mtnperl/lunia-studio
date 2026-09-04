@@ -10,6 +10,7 @@ import { stripInlineTokens } from "@/lib/campaign-inline-style";
 import { withImagePrompt, suggestImagePrompt, blockOwnText, type EmailImageContext } from "@/lib/campaign-image-prompt";
 import ShapeGallery from "./ShapeGallery";
 import AssetBrowser from "./AssetBrowser";
+import { VersionsPanel } from "@/components/editor/VersionsPanel";
 import {
   CAMPAIGN_SHAPES,
   captureShapeStructure,
@@ -341,6 +342,7 @@ export default function CampaignEditor({
   onPendingResolved,
   onExit,
   onRestart,
+  onReload,
 }: {
   topic: string;
   content: CampaignContent;
@@ -357,6 +359,8 @@ export default function CampaignEditor({
   onExit?: () => void;
   /** Start over, in the export menu. */
   onRestart?: () => void;
+  /** Reload the document from the server, after a version restore. */
+  onReload?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -520,6 +524,7 @@ export default function CampaignEditor({
   const [addBlockMenuOpen, setAddBlockMenuOpen] = useState(false);
   const addBlockRef = useRef<HTMLButtonElement | null>(null);
   const [railTab, setRailTab] = useState<"block" | "email" | "images" | "assets">("email");
+  const [versionsOpen, setVersionsOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -1510,6 +1515,7 @@ export default function CampaignEditor({
     { type: "separator" },
     { label: improveBusy ? "Improving copy" : "Improve with Claude", disabled: improveBusy, onSelect: improveWithClaude },
     ...(preImprove && !improveBusy ? [{ label: "Revert the improvement", onSelect: revertImprove }] : []),
+    ...(savedId ? [{ type: "separator" } as MenuItem, { label: "Version history", onSelect: () => setVersionsOpen(true) } as MenuItem] : []),
     ...(onRestart ? [{ type: "separator" } as MenuItem, { label: "Start over", danger: true, onSelect: onRestart } as MenuItem] : []),
   ];
 
@@ -3203,6 +3209,7 @@ export default function CampaignEditor({
       right={rightRail}
     >
       {previewStage}
+      {savedId && <VersionsPanel kind="email" documentId={savedId} open={versionsOpen} onClose={() => setVersionsOpen(false)} onRestored={() => onReload?.()} />}
     </EditorShell>
   );
 }

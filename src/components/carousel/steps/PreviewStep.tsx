@@ -15,6 +15,7 @@ import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
 import { RewriteBar } from "@/components/editor/RewriteBar";
+import { VersionsPanel } from "@/components/editor/VersionsPanel";
 import type { CarouselLook, CarouselLookSettings } from "@/lib/types";
 import { Input as UiInput } from "@/components/ui";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
@@ -107,6 +108,8 @@ type Props = {
   /** Fires after a successful save with the resulting carousel id. Lets a parent
    *  (e.g. BatchView's queue cards) surface a "Saved ✓" state of its own. */
   onSaved?: (id: string) => void;
+  /** Reload the document from the server, after a version restore. */
+  onReload?: () => void;
   /** Fact-verification record loaded alongside a saved carousel, if it has one. */
   initialVerification?: import("@/lib/types").VerificationRecord;
 };
@@ -341,7 +344,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -530,6 +533,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Session-only (does not persist on save) — keeps the surface tiny.
   const [hookImageHistory, setHookImageHistory] = useState<string[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   // Export frame per channel. Null follows the editor (story when Reels mode
   // is on, feed otherwise). The ref mirrors the state so an export started
   // right after switching frames reads the frame it asked for.
@@ -2926,7 +2930,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           ...(carouselFormat === "engagement" ? [{ label: generatingPdf ? "Generating PDF" : "PDF guide", disabled: generatingPdf, onSelect: handleGeneratePdf }] : []),
           { type: "separator" },
           { label: "Copy Instagram caption", disabled: !content.caption, onSelect: () => { navigator.clipboard.writeText(content.caption).then(() => { setCaptionCopyLabel("Copied!"); setTimeout(() => setCaptionCopyLabel("Copy"), 2000); }); } },
-          ...(savedId ? [{ label: "Copy share link", onSelect: handleCopyShareLink }] : []),
+          ...(savedId ? [{ label: "Copy share link", onSelect: handleCopyShareLink }, { label: "Version history", onSelect: () => setVersionsOpen(true) }] : []),
           { type: "separator" },
           { label: "Start over", danger: true, onSelect: onRestart },
         ]}
@@ -3145,6 +3149,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         </div>
       )}
 
+      {savedId && <VersionsPanel kind="carousel" documentId={savedId} open={versionsOpen} onClose={() => setVersionsOpen(false)} onRestored={() => onReload?.()} />}
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (

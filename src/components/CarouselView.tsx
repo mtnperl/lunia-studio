@@ -87,7 +87,7 @@ function CarouselLoader() {
   );
 }
 
-export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, varyFrom, onVaryConsumed, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2"; varyFrom?: SavedCarousel | null; onVaryConsumed?: () => void }) {
+export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, varyFrom, onVaryConsumed, onReload, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2"; varyFrom?: SavedCarousel | null; onVaryConsumed?: () => void; onReload?: () => void }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
@@ -620,6 +620,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialSavedId={loadedId}
               onSaved={onSaved}
               onExit={onExit}
+              onReload={onReload}
               initialVerification={initialCarousel?.verification}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}

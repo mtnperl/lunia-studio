@@ -47,6 +47,9 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
   const [pendingEmailFlow, setPendingEmailFlow] = useState<EmailFlow | null>(null);
   const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
   const [openDoc, setOpenDoc] = useState<OpenDoc | null>(initialOpen);
+  // Bumped after a version restore: remounts the editor and refetches the doc.
+  const [reloadTick, setReloadTick] = useState(0);
+  const reloadDoc = useCallback(() => { setReloadTick((t) => t + 1); setOpenDoc((d) => (d ? { ...d } : d)); }, []);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentDoc[]>([]);
 
@@ -163,13 +166,14 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
       {tab === "library" && <LibraryView onOpen={openScript} />}
       {tab === "carousel-v2" && (
         <CarouselViewV2
-          key={openDoc?.id ?? "new"}
+          key={`${openDoc?.id ?? "new"}:${reloadTick}`}
           initialCarousel={pendingCarousel}
           onCarouselLoaded={() => setPendingCarousel(null)}
           onSaved={(id) => { if (openDoc?.id !== id) go("carousel-v2", { kind: "carousel", id }, true); }}
           onExit={() => go("carousel-library")}
           varyFrom={pendingVary}
           onVaryConsumed={() => setPendingVary(null)}
+          onReload={reloadDoc}
         />
       )}
       {tab === "batch" && <BatchView />}
@@ -182,12 +186,13 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
       )}
       {tab === "campaign" && (
         <CampaignView
-          key={openDoc?.id ?? "new"}
+          key={`${openDoc?.id ?? "new"}:${reloadTick}`}
           initialCampaign={pendingCampaign}
           initialCarousel={pendingCarousel}
           onCampaignLoaded={() => setPendingCampaign(null)}
           onCarouselConsumed={() => setPendingCarousel(null)}
           onExit={() => go("campaign-library")}
+          onReload={reloadDoc}
         />
       )}
       {tab === "campaign-library" && <CampaignLibraryView onOpen={openCampaign} />}

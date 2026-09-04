@@ -1,4 +1,5 @@
 import { saveCampaignEmail } from "@/lib/kv";
+import { recordVersion } from "@/lib/versions";
 import { mirrorImageToBlob } from "@/lib/blob-mirror";
 import { collectBlockImageUrls, setBlockImageUrls, refKey } from "@/lib/campaign-block-images";
 import type { CampaignContent, SavedCampaign } from "@/lib/types";
@@ -64,6 +65,7 @@ export async function POST(req: Request): Promise<Response> {
     };
 
     await saveCampaignEmail(campaign);
+    await recordVersion("email", id, campaign).catch((e) => console.warn("[campaign/save] version not recorded", e));
     return Response.json({ id });
   } catch (err) {
     console.error("[api/campaign/save]", err);
