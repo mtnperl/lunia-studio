@@ -105,7 +105,7 @@ Run against every drafted carousel before publishing. A fail on any line sends i
 5. Every text pairing is in the pass table above.
 6. Compliance pass: no banned phrase, every figure carries its source, "Individual results may vary" on any outcome claim, no product claim the landing page cannot support.
 7. CTA to lunialife.com appears exactly once, on the last slide.
-8. Caption closes with the standard follow line: Follow @lunia_life for science-based sleep strategies.
+8. Caption closes with the standard follow line: For more Sleep-Science content follow @lunia_life. The brand bridge sentence and the entity line may follow it.
 9. Fact check in the studio shows nothing to fix, or every fix applied.
 
 ## 6. Worked example

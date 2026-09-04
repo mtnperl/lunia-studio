@@ -55,8 +55,10 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   rows.push({ id: "cta", label: "One CTA to lunialife.com, on the last slide only", state: content.cta?.headline && ctaMentions === 0 ? "pass" : "fail", detail: !content.cta?.headline ? "No CTA slide" : ctaMentions ? `lunialife.com also appears on ${ctaMentions} content slide${ctaMentions > 1 ? "s" : ""}` : "CTA slide only" });
 
   // 8. Caption follow line.
-  const follow = /follow @lunia_life for science-based sleep strategies\.?/i.test(content.caption ?? "");
-  rows.push({ id: "caption", label: "Caption carries the standard follow line", state: follow ? "pass" : "fail", detail: follow ? "Follow @lunia_life for science-based sleep strategies." : "Add: Follow @lunia_life for science-based sleep strategies." });
+  // The caption standard is the generator's own closing line; the CTA slide's
+  // follow line is accepted too.
+  const follow = /for more sleep-science content follow @lunia_life|follow @lunia_life for science-based sleep strategies/i.test(content.caption ?? "");
+  rows.push({ id: "caption", label: "Caption carries the standard follow line", state: follow ? "pass" : "fail", detail: follow ? "For more Sleep-Science content follow @lunia_life" : "Add: For more Sleep-Science content follow @lunia_life" });
 
   // 9. Fact check.
   if (!record) rows.push({ id: "facts", label: "Fact check clean", state: "fail", detail: "Not checked yet. Run the check in this tab." });
