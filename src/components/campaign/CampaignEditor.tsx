@@ -30,11 +30,12 @@ import { PRODUCT } from "@/lib/lunia-brand-guidelines";
 import { getSubjectLineHints } from "@/lib/subject-line-hints";
 import { layoutBlockToCampaignBlock, blocksToSourceText } from "@/lib/campaign-layout-prompts";
 import { IconButton } from "@/components/ui/IconButton";
-import { Section } from "@/components/ui/Section";
+import { EditorShell, RailHead, type SaveState } from "@/components/shell/EditorShell";
+import { Button as UiButton, IconButton as UiIconButton, Tabs as UiTabs, Badge as UiBadge, EmptyState as UiEmptyState, Menu as UiMenu, type MenuItem } from "@/components/ui";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import {
   IcAlignLeft, IcAlignCenter, IcCopy, IcCheck, IcTrash, IcBookmarkPlus, IcDragHandle,
-  IcChevron, IcDownload, IcSend, IcUndo, IcRedo, IcRefresh, IcPlus,
+  IcChevron, IcRefresh, IcPlus,
 } from "@/components/ui/icons";
 import {
   reorderBlocks, applyUndo, applyRedo, applySuggestion, type SuggestionMode, type SuggestionMeta,
@@ -337,6 +338,8 @@ export default function CampaignEditor({
   onSaved,
   initialPending = null,
   onPendingResolved,
+  onExit,
+  onRestart,
 }: {
   topic: string;
   content: CampaignContent;
@@ -349,6 +352,10 @@ export default function CampaignEditor({
   /** Fired when a seeded review is accepted or discarded, so the owner can
    *  drop it and not re-seed it on the next remount. */
   onPendingResolved?: () => void;
+  /** Back arrow in the top bar. */
+  onExit?: () => void;
+  /** Start over, in the export menu. */
+  onRestart?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -412,7 +419,7 @@ export default function CampaignEditor({
   // Bumped each time autosaveStatus transitions to "saved", so the checkmark
   // pulse (120-150ms hover-state timing convention, no new motion
   // vocabulary) replays on every save, not just the first.
-  const [saveConfirmTick, setSaveConfirmTick] = useState(0);
+  const [, setSaveConfirmTick] = useState(0);
   useEffect(() => {
     if (autosaveStatus === "saved") setSaveConfirmTick((t) => t + 1);
   }, [autosaveStatus]);
@@ -510,6 +517,8 @@ export default function CampaignEditor({
   const [brandFactsPickerOpen, setBrandFactsPickerOpen] = useState(false);
   const [savingSnippetFor, setSavingSnippetFor] = useState<string | null>(null);
   const [addBlockMenuOpen, setAddBlockMenuOpen] = useState(false);
+  const addBlockRef = useRef<HTMLButtonElement | null>(null);
+  const [railTab, setRailTab] = useState<"block" | "email" | "images">("email");
 
   useEffect(() => {
     let alive = true;
@@ -715,6 +724,7 @@ export default function CampaignEditor({
       if (d.type === "selectBlock" && d.id) {
         setSelectedBlockId(d.id);
         setSelectedSlotId(null);
+        setRailTab("block");
         blockCardRefs.current[d.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
@@ -726,6 +736,7 @@ export default function CampaignEditor({
       if (d.type === "selectSlot" && d.id) {
         setSelectedBlockId(null);
         setSelectedSlotId(d.id);
+        setRailTab("images");
         pendingSlotScroll.current = d.id;
         setImagesOpenSignal((v) => v + 1);
         return;
@@ -1477,59 +1488,30 @@ export default function CampaignEditor({
   // Collapse gates (checked once on mount, then a plain manual toggle —
   // re-collapsing live under an in-progress edit would fight the user).
   const activeSubjectLine = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
-  const heroImageFilled = content.images.some((i) => i.role === "hero" && !!i.url);
-  const headerDefaultCollapsed = !!activeSubjectLine.trim() && heroImageFilled;
-  const imagesDefaultCollapsed = heroImageFilled;
 
   // Completion indicator — derived purely from content (see campaign-editor-state.ts).
   const completionItems = computeCompletionItems(content);
 
-  return (
-    <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-      {/* ── Live preview ───────────────────────────────────────────────────── */}
-      {/* The preview GROWS twice as fast as the controls rail — the email is
-          the artefact, and the rail is 300-odd px of inputs that gain nothing
-          from extra width. The basis stays at 520 on purpose: this row wraps,
-          and wrapping is decided on the un-shrunk bases, so raising it drops
-          the rail below a 4,000px email on a 1280px screen. Grow, don't
-          reserve. */}
-      <div style={{ flex: "2 1 520px", minWidth: 320 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ ...sectionLabel, marginBottom: 0 }}>Live preview</div>
-          {/* Desktop / Mobile preview toggle. Default = desktop. */}
-          <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
-            {(["desktop", "mobile"] as const).map((mode) => {
-              const active = previewMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setPreviewMode(mode)}
-                  title={mode === "desktop" ? "Show the desktop layout" : "Show how the email reflows on mobile (~375px viewport)"}
-                  style={{
-                    padding: "4px 10px",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    border: "none",
-                    borderRight: mode === "desktop" ? "1px solid var(--border)" : "none",
-                    background: active ? "var(--accent-dim)" : "transparent",
-                    color: active ? "var(--accent)" : "var(--muted)",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  {mode}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {/* Navy wrapper so the iframe blends with the email's own navy body.
-            The iframe is rendered at its NATIVE width (600px desktop, 375px
-            mobile) and CSS-scaled down to fit the pane — that way the
-            email's own @media (max-width:600px) rules trigger at the right
-            moments and the preview matches what real clients render. */}
+  const selectedBlock = content.blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const shellSaveState: SaveState = saving || autosaveStatus === "saving" ? "saving" : autosaveStatus === "dirty" ? "dirty" : savedId ? "saved" : "unsaved";
+  const shellNote = klaviyoError ?? improveError ?? saveError ?? undefined;
+  const addMenuItems: MenuItem[] = BLOCK_KINDS.map((k) => ({ label: k.label, onSelect: () => { addBlock(k.key); setRailTab("block"); } }));
+  const exportMenuItems: MenuItem[] = [
+    { type: "heading", label: "Export" },
+    { label: "Export HTML file", onSelect: exportHtml },
+    { label: copyLabel, onSelect: copyHtml },
+    { type: "separator" },
+    { label: klaviyoBusy ? "Pushing to Klaviyo" : "Push to Klaviyo", disabled: klaviyoBusy, onSelect: pushToKlaviyo },
+    ...(klaviyoResult ? [{ label: "Open in Klaviyo", onSelect: () => { window.open(klaviyoResult.editorUrl, "_blank", "noopener,noreferrer"); } }] : []),
+    { type: "separator" },
+    { label: improveBusy ? "Improving copy" : "Improve with Claude", disabled: improveBusy, onSelect: improveWithClaude },
+    ...(preImprove && !improveBusy ? [{ label: "Revert the improvement", onSelect: revertImprove }] : []),
+    ...(onRestart ? [{ type: "separator" } as MenuItem, { label: "Start over", danger: true, onSelect: onRestart } as MenuItem] : []),
+  ];
+
+  const previewStage = (
+    <div className="shell__stage" style={{ placeItems: "start center", alignContent: "start" }}>
+      <div style={{ width: "100%", maxWidth: previewMode === "mobile" ? 420 : 980 }}>
         <div ref={previewPaneRef} style={{
           border: previewMode === "mobile" ? "none" : "1px solid var(--border)",
           borderRadius: 8,
@@ -1602,9 +1584,49 @@ export default function CampaignEditor({
           )}
         </div>
       </div>
+    </div>
+  );
 
-      {/* ── Controls ───────────────────────────────────────────────────────── */}
-      <div style={{ flex: "1 1 320px", minWidth: 300, display: "flex", flexDirection: "column", gap: 18 }}>
+  const leftRail = (
+    <>
+      <RailHead actions={<>
+        <UiIconButton ref={addBlockRef} size="sm" title="Add a block" onClick={() => setAddBlockMenuOpen(true)} aria-haspopup="menu" aria-expanded={addBlockMenuOpen}><IcPlus size={14} /></UiIconButton>
+        <UiMenu open={addBlockMenuOpen} onClose={() => setAddBlockMenuOpen(false)} anchorRef={addBlockRef} placement="bottom-end" items={addMenuItems} ariaLabel="Add block" />
+      </>}>Blocks <UiBadge>{content.blocks.length}</UiBadge></RailHead>
+      <div className="blocks" role="listbox" aria-label="Blocks">
+        {content.blocks.map((b, i) => {
+          const kind: BlockKind = b.kind ?? "text";
+          const text = blockPreviewText(b);
+          return (
+            <button
+              key={b.id}
+              type="button"
+              role="option"
+              className="blocks__item"
+              aria-selected={selectedBlockId === b.id}
+              draggable
+              data-dragging={draggedBlockId === b.id || undefined}
+              onDragStart={() => setDraggedBlockId(b.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); if (draggedBlockId) reorderBlock(draggedBlockId, b.id); setDraggedBlockId(null); }}
+              onDragEnd={() => setDraggedBlockId(null)}
+              onClick={() => {
+                setSelectedBlockId(b.id);
+                setSelectedSlotId(null);
+                setRailTab("block");
+                iframeRef.current?.contentWindow?.postMessage({ source: "lunia-editor", type: "highlightBlock", id: b.id }, "*");
+              }}
+              title={text || BLOCK_KIND_META[kind].title}
+            >
+              <span className="blocks__grip" aria-hidden="true"><IcDragHandle size={14} /></span>
+              <span className="blocks__kind">{i + 1} {BLOCK_KIND_META[kind].label}</span>
+              <span className="blocks__text">{text || "Empty"}</span>
+              {b.isSample && <UiBadge>Sample</UiBadge>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ padding: "0 12px 12px" }}>
         {/* Completion indicator — text checklist, --success/--muted tokens,
             SVG check / empty ring (no emoji). */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, fontWeight: 500 }}>
@@ -1618,381 +1640,20 @@ export default function CampaignEditor({
           ))}
         </div>
 
-        <Section title="Header" defaultCollapsed={headerDefaultCollapsed}>
-        {/* Top banner — thin white strip above the logo. Renders uppercase
-            via CSS; wrap a fragment with **double asterisks** to highlight
-            it with the brand color (navy pill). */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <label style={{ ...fieldLabel, marginBottom: 0 }}>Top banner (optional)</label>
-            <button
-              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
-              onClick={suggestTopBanner}
-              disabled={bannerBusy}
-              title="Generate a short top-banner line from the campaign topic"
-            >
-              {bannerBusy && <Spinner size={10} />}
-              {bannerBusy ? "Thinking…" : "✨ Suggest"}
-            </button>
-          </div>
-          <input type="text" value={content.topBanner ?? ""}
-            placeholder="e.g. SAVE **26%** WITH A 3-MONTH SUBSCRIPTION"
-            onChange={(e) => patch({ topBanner: e.target.value || undefined })} style={input} />
-          {bannerError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{bannerError}</div>}
-          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
-            Wrap a phrase in <code style={{ fontFamily: "monospace" }}>**double asterisks**</code> to mark it with the brand color. Renders in caps automatically.
-          </div>
-          {/* Logo visibility — the logo strip sits at the very top of the email,
-              just below this banner. Off hides it without losing the logo url. */}
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={content.showLogo !== false}
-              onChange={(e) => patch({ showLogo: e.target.checked })}
-              style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
-            />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show logo</span>
-            <span style={{ fontSize: 11, color: "var(--muted)" }}>Hide the logo strip at the top of the email</span>
-          </label>
-        </div>
+      </div>
+    </>
+  );
 
-        {/* Subject */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ ...sectionLabel, marginBottom: 0 }}>Subject line</span>
-            <button
-              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
-              onClick={regenerateSubjects}
-              disabled={subjectsBusy}
-              title="Replace all three subject lines with fresh options"
-            >
-              {subjectsBusy && <Spinner size={10} />}
-              {subjectsBusy ? "Writing…" : "✨ Regenerate"}
-            </button>
-          </div>
-          {subjectsError && <div style={{ marginBottom: 6, fontSize: 11, color: "var(--error)" }}>{subjectsError}</div>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
-            {content.subjectLines.map((s, i) => {
-              const active = content.selectedSubject === i;
-              const key = `subj:${i}`;
-              const copied = copiedKey === key;
-              const errored = copiedKey === `err:${key}`;
-              return (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
-                  <button
-                    onClick={() => patch({ selectedSubject: i })}
-                    style={{
-                      flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 6,
-                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                      background: active ? "var(--accent-dim)" : "var(--bg)",
-                      color: "var(--text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-                    }}
-                  >{s}</button>
-                  <button
-                    onClick={() => copyText(key, s)}
-                    title="Copy this subject line to the clipboard"
-                    style={{ ...miniBtn(copied), padding: "0 10px", flexShrink: 0 }}
-                  >
-                    {copied ? <IcCheck size={15} /> : errored ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy size={15} />}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          {(() => {
-            const activeSubject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
-            const hints = getSubjectLineHints(activeSubject);
-            if (hints.length === 0) return null;
-            return (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                {hints.map((h) => (
-                  <span key={h.id} style={{
-                    fontSize: 10, padding: "3px 8px", borderRadius: 5,
-                    border: "1px solid var(--border)", color: "var(--muted)", background: "var(--bg)",
-                  }}>{h.text}</span>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-        {/* Preview text */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <label style={{ ...fieldLabel, marginBottom: 0 }}>Preview text</label>
-            <button
-              onClick={() => copyText("preview", content.previewText)}
-              title="Copy the preview text to the clipboard"
-              style={miniBtn(copiedKey === "preview")}
-            >
-              {copiedKey === "preview" ? <IcCheck size={15} /> : copiedKey === "err:preview" ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <><IcCopy size={15} /> Copy</>}
-            </button>
-          </div>
-          <input type="text" value={content.previewText}
-            onChange={(e) => patch({ previewText: e.target.value })} style={input} />
-        </div>
-
-        {/* Promo band */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <label style={{ ...fieldLabel, marginBottom: 0 }}>Promo band (optional)</label>
-            <button
-              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
-              onClick={suggestPromoBand}
-              disabled={promoBusy}
-              title="Generate a short promo band line from the campaign topic"
-            >
-              {promoBusy && <Spinner size={10} />}
-              {promoBusy ? "Thinking…" : "✨ Suggest"}
-            </button>
-          </div>
-          <input type="text" value={content.promoBand ?? ""}
-            placeholder="e.g. MEMORIAL DAY WEEKEND SALE"
-            onChange={(e) => patch({ promoBand: e.target.value || undefined })} style={input} />
-          {/* Band colour. "Theme" follows the email — cream on navy, navy on
-              cream — which is what it does when nothing is picked. The ink is
-              derived from whichever ground you choose by measured contrast, so
-              every role is offered and none of them can be unreadable. */}
-          {content.promoBand?.trim() && (
-            <div style={{ marginTop: 6 }}>
-              <label style={fieldLabel}>Band colour</label>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-                <button
-                  type="button"
-                  onClick={() => patch({ promoRole: undefined })}
-                  title="Follow the email theme"
-                  style={{ ...miniBtn(!content.promoRole), fontSize: 11, padding: "3px 8px", letterSpacing: 0, textTransform: "none" }}
-                >Theme</button>
-                {BRAND_COLOR_ROLES.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => patch({ promoRole: role })}
-                    title={BRAND_ROLE_LABELS[role]}
-                    aria-label={BRAND_ROLE_LABELS[role]}
-                    aria-pressed={content.promoRole === role}
-                    style={{
-                      width: 22, height: 22, padding: 0, borderRadius: 5, cursor: "pointer",
-                      background: BRAND_ROLE_HEX[role],
-                      border: content.promoRole === role ? "2px solid var(--accent)" : "1px solid var(--border)",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
-        </div>
-        </Section>
-
-        <Section title="Body" defaultCollapsed={false}>
-        {/* Whole-email colour theme. Lives in Body because it is the only
-            section that never auto-collapses: headerDefaultCollapsed and
-            imagesDefaultCollapsed both close once the email has a subject and
-            a hero, which is precisely when you would reach for this. */}
-        <div style={{ marginBottom: 12 }}>
-          <label style={fieldLabel}>Email theme</label>
-          <div style={segWrap}>
-            <SegButton
-              active={(content.theme ?? "navy") === "navy"}
-              onClick={() => patch({ theme: "navy" })}
-              title="Navy shell, white copy (default)"
-            >Navy</SegButton>
-            <SegButton
-              active={content.theme === "cream"}
-              onClick={() => patch({ theme: "cream" })}
-              title="Soft Ivory background with dark copy, the brand handbook's light treatment"
-              last
-            >Cream</SegButton>
-          </div>
-          {/* The matching note in the CTA block lives in the Images section,
-              which auto-collapses once a hero image exists — i.e. exactly when
-              someone is likely to switch themes. Repeat it here, where the
-              switch actually happened, so the disabled CTA control is never
-              unexplained. */}
-          {content.theme === "cream" && (
-            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-              On cream the CTA is always navy, for contrast. Your Cream/Navy button
-              choice is kept and returns if you switch back.
-            </div>
-          )}
-        </div>
-        {/* Space between blocks. Document-level, next to the theme, because
-            the gap is a property of the email's rhythm rather than of any one
-            block — set it once and the whole email breathes the same way. */}
-        <div style={{ marginBottom: 12 }}>
-          <label style={fieldLabel}>Space between blocks</label>
-          <div style={segWrap}>
-            {BLOCK_SPACINGS.map((sp, si) => (
-              <SegButton
-                key={sp.px}
-                active={(content.blockSpacing ?? 16) === sp.px}
-                onClick={() => patch({ blockSpacing: sp.px })}
-                title={sp.title}
-                last={si === BLOCK_SPACINGS.length - 1}
-              >{sp.label}</SegButton>
-            ))}
-          </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-            The gap below every body block. The hero, promo band and CTA keep
-            their own spacing.
-          </div>
-        </div>
-        {/* Shapes — one door for what used to be three: "Make it visual",
-            "AG1 style" and the Templates dropdown all did the same job, laying
-            your copy out in a shape. Every shape, including the plain
-            model-chosen one, is an entry in the gallery now. */}
-        {(() => {
-          const enough = blocksToSourceText(content.blocks).length >= 40;
-          return (
-            <div style={{ marginBottom: 12 }}>
-              <button
-                style={{ ...miniBtn(shapeGalleryOpen), width: "100%", justifyContent: "center" }}
-                onClick={() => setShapeGalleryOpen((v) => !v)}
-                disabled={!!shapeBusyId}
-                title={
-                  enough
-                    ? "Lay this email's copy out in a shape. Nothing is applied until you review the before and after."
-                    : "The email is empty, so a shape will drop in its starter copy for you to edit"
-                }
-              >
-                {shapeBusyId && <Spinner size={10} color="var(--text)" />}
-                {shapeBusyId ? "Restructuring…" : "✨ Shapes"}
-              </button>
-              {!enough && (
-                <div style={{ marginTop: 5, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
-                  This email has no copy yet, so a shape will bring its own starter text.
-                  Write the body first if you want your own words laid out instead.
-                </div>
-              )}
-              {restructureError && (
-                <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
-              )}
-              {restructureDropped && (
-                <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>{restructureDropped}</div>
-              )}
-              {shapeGalleryOpen && (
-                <ShapeGallery
-                  shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
-                  busyShapeId={shapeBusyId}
-                  onPick={applyShape}
-                  onClose={() => setShapeGalleryOpen(false)}
-                  onDelete={deleteSavedShapeById}
-                  onSaveCurrent={saveCurrentAsShape}
-                  savingCurrent={savingShape}
-                />
-              )}
-            </div>
-          );
-        })()}
-        {/* The review panel lives in Body, not Header, even though "Suggest
-            layout" (its other producer) sits in Header: what it reviews is
-            BLOCKS, and Header is collapsed by default — a review rendered
-            there is a review nobody sees. */}
-
-        {/* Pending layout suggestion — never written into content.blocks
-            until accepted, so a suggestion never silently overwrites the
-            existing body. */}
-        {pendingBlocks && (
-          <div style={{ border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ ...sectionLabel, marginBottom: 0 }}>
-                {pendingMode === "replace"
-                  ? "Restructured layout — this REPLACES the body"
-                  : "Suggested layout — review before adding"}
-              </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button style={miniBtn(false)} onClick={() => setPendingBlocks((prev) => prev && prev.map((p) => ({ ...p, included: true })))}>Accept all</button>
-                <button style={miniBtn(false)} onClick={discardPendingBlocks}>Discard all</button>
-              </div>
-            </div>
-            {restructureDiff && (
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
-                  Same words, new structure. Check every number against the left
-                  side before accepting — the restructure is not fact-checked in code.
-                </div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
-                  Image blocks arrive with a prompt already written from this
-                  email&apos;s copy. Nothing is generated until you press Generate
-                  on the block.
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {([
-                    { key: "before", label: "Before", doc: restructureDiff.before },
-                    { key: "after", label: "After", doc: restructureDiff.after },
-                  ] as const).map((pane) => (
-                    <div key={pane.key} style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                        letterSpacing: "0.08em", color: "var(--muted)", marginBottom: 4,
-                      }}>{pane.label}</div>
-                      {/* 600px document scaled to the pane width. overflow:hidden
-                          on the frame plus a fixed height keeps two full emails
-                          glanceable side by side; the real preview pane on the
-                          right is still the place to read one closely. */}
-                      <div style={{
-                        height: 260, overflow: "hidden", borderRadius: 6,
-                        border: "1px solid var(--border)", background: "#ffffff",
-                      }}>
-                        <iframe
-                          srcDoc={pane.doc}
-                          title={`${pane.label} restructure`}
-                          sandbox=""
-                          scrolling="no"
-                          style={{
-                            width: 600, height: 1040, border: 0, display: "block",
-                            transform: "scale(0.25)", transformOrigin: "top left",
-                            pointerEvents: "none",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
-              {/* Staged reveal: each suggested block fades in with a stagger
-                  (min(80ms, 500ms/blockCount) per block) as it lands — framed
-                  as functional progress feedback per DESIGN.md's Decisions
-                  Log, not decoration. A fade only, DESIGN.md's existing
-                  220ms ease-out timing, no bounce/spring. */}
-              {pendingBlocks.map((p, i) => (
-                <label key={p.block.id} style={{
-                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
-                  borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
-                  animation: "fadeIn 220ms ease-out both",
-                  animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
-                }}>
-                  <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
-                    style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 2 }}>
-                      {p.block.kind ?? "text"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {blockPreviewText(p.block)}
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <button
-              style={{ ...miniBtn(true), width: "100%", justifyContent: "center" }}
-              onClick={acceptPendingBlocks}
-              disabled={!pendingBlocks.some((p) => p.included)}
-            >
-              {pendingMode === "replace"
-                ? `Replace body with ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"}`
-                : `Add ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"} to email`}
-            </button>
-          </div>
-        )}
-        {/* Blocks */}
-        <div>
+  const rightRail = (
+    <>
+      <div style={{ padding: "8px 8px 0" }}>
+        <UiTabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "block", label: "Block" }, { value: "email", label: "Email" }, { value: "images", label: "Images" }]} />
+      </div>
+      <div className="shell__rail-body">
+        {railTab === "block" && (
+          <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
-            <span style={sectionLabel}>Text blocks</span>
+            <span style={sectionLabel}>Insert</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", position: "relative" }}>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(addBlockMenuOpen)} onClick={() => setAddBlockMenuOpen((v) => !v)}><IcPlus size={14} /> Block <IcChevron size={14} style={{ transform: addBlockMenuOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} /></button>
@@ -2099,8 +1760,12 @@ export default function CampaignEditor({
             .blk-icon{ transition: background 130ms ease, color 130ms ease, border-color 130ms ease; }
             .blk-icon:hover{ background: var(--surface-h); color: var(--text); border-color: var(--border-strong); }
           `}</style>
+            {!selectedBlock && (
+              <UiEmptyState title="No block selected" description="Click a block in the email or in the list on the left to edit it here." />
+            )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {content.blocks.map((b, i) => {
+            {content.blocks.filter((b) => b.id === selectedBlockId).map((b) => {
+              const i = content.blocks.indexOf(b);
               const weight = b.weight ?? "light";
               const kind: BlockKind = b.kind ?? "text";
               const copied = copiedKey === `block:${b.id}`;
@@ -2872,57 +2537,377 @@ export default function CampaignEditor({
               </div>
             </div>
           )}
+          </>
+        )}
+        {railTab === "email" && (
+          <>
+        {/* Top banner — thin white strip above the logo. Renders uppercase
+            via CSS; wrap a fragment with **double asterisks** to highlight
+            it with the brand color (navy pill). */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Top banner (optional)</label>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={suggestTopBanner}
+              disabled={bannerBusy}
+              title="Generate a short top-banner line from the campaign topic"
+            >
+              {bannerBusy && <Spinner size={10} />}
+              {bannerBusy ? "Thinking…" : "✨ Suggest"}
+            </button>
+          </div>
+          <input type="text" value={content.topBanner ?? ""}
+            placeholder="e.g. SAVE **26%** WITH A 3-MONTH SUBSCRIPTION"
+            onChange={(e) => patch({ topBanner: e.target.value || undefined })} style={input} />
+          {bannerError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{bannerError}</div>}
+          <div style={{ marginTop: 4, fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+            Wrap a phrase in <code style={{ fontFamily: "monospace" }}>**double asterisks**</code> to mark it with the brand color. Renders in caps automatically.
+          </div>
+          {/* Logo visibility — the logo strip sits at the very top of the email,
+              just below this banner. Off hides it without losing the logo url. */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={content.showLogo !== false}
+              onChange={(e) => patch({ showLogo: e.target.checked })}
+              style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show logo</span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>Hide the logo strip at the top of the email</span>
+          </label>
         </div>
-        </Section>
 
-        <Section title="Images" defaultCollapsed={imagesDefaultCollapsed} openSignal={imagesOpenSignal}>
+        {/* Subject */}
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={sectionLabel}>Images</span>
-            {unplacedImages.length < 5 && <button style={miniBtn(false)} onClick={addImage}>+ Image</button>}
+            <span style={{ ...sectionLabel, marginBottom: 0 }}>Subject line</span>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={regenerateSubjects}
+              disabled={subjectsBusy}
+              title="Replace all three subject lines with fresh options"
+            >
+              {subjectsBusy && <Spinner size={10} />}
+              {subjectsBusy ? "Writing…" : "✨ Regenerate"}
+            </button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {unplacedImages.map((img) => {
-              const label = img.role === "hero"
-                ? "Hero image"
-                : `Image ${secondaryImages.indexOf(img) + 2}`;
+          {subjectsError && <div style={{ marginBottom: 6, fontSize: 11, color: "var(--error)" }}>{subjectsError}</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+            {content.subjectLines.map((s, i) => {
+              const active = content.selectedSubject === i;
+              const key = `subj:${i}`;
+              const copied = copiedKey === key;
+              const errored = copiedKey === `err:${key}`;
               return (
-                <div
-                  key={img.id}
-                  ref={(el) => {
-                    slotCardRefs.current[img.id] = el;
-                    // The just-mounted case: the section was collapsed when
-                    // the preview asked for this slot, so this is the first
-                    // moment there is anything to scroll to.
-                    if (el) scrollToSlot(img.id);
-                  }}
-                  style={{
-                    // The ring the preview click lands on, so the jump is
-                    // visible rather than just a scroll. Same treatment a
-                    // selected block card gets.
-                    border: `1px solid ${selectedSlotId === img.id ? "var(--accent)" : "transparent"}`,
-                    borderRadius: 8,
-                    padding: selectedSlotId === img.id ? 8 : 0,
-                    transition: "border-color 120ms ease",
-                  }}
-                >
-                <ImageSlotControl
-                  slot={img}
-                  label={label}
-                  topic={topic}
-                  emailContext={emailContext}
-                  onChange={updateImage}
-                  onGenerated={(url) => markGenerated(img.id, url)}
-                  // Hero carries the primary CTA overlay — no remove control,
-                  // so it can't be silently dropped from the email.
-                  onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}
-                />
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+                  <button
+                    onClick={() => patch({ selectedSubject: i })}
+                    style={{
+                      flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 6,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "var(--bg)",
+                      color: "var(--text)", fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                    }}
+                  >{s}</button>
+                  <button
+                    onClick={() => copyText(key, s)}
+                    title="Copy this subject line to the clipboard"
+                    style={{ ...miniBtn(copied), padding: "0 10px", flexShrink: 0 }}
+                  >
+                    {copied ? <IcCheck size={15} /> : errored ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <IcCopy size={15} />}
+                  </button>
                 </div>
               );
             })}
           </div>
+          {(() => {
+            const activeSubject = content.subjectLines[content.selectedSubject] ?? content.subjectLines[0] ?? "";
+            const hints = getSubjectLineHints(activeSubject);
+            if (hints.length === 0) return null;
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                {hints.map((h) => (
+                  <span key={h.id} style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 5,
+                    border: "1px solid var(--border)", color: "var(--muted)", background: "var(--bg)",
+                  }}>{h.text}</span>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+        {/* Preview text */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Preview text</label>
+            <button
+              onClick={() => copyText("preview", content.previewText)}
+              title="Copy the preview text to the clipboard"
+              style={miniBtn(copiedKey === "preview")}
+            >
+              {copiedKey === "preview" ? <IcCheck size={15} /> : copiedKey === "err:preview" ? <span style={{ fontSize: 12, fontWeight: 700 }}>!</span> : <><IcCopy size={15} /> Copy</>}
+            </button>
+          </div>
+          <input type="text" value={content.previewText}
+            onChange={(e) => patch({ previewText: e.target.value })} style={input} />
         </div>
 
+        {/* Promo band */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <label style={{ ...fieldLabel, marginBottom: 0 }}>Promo band (optional)</label>
+            <button
+              style={{ ...miniBtn(false), display: "inline-flex", alignItems: "center", gap: 5 }}
+              onClick={suggestPromoBand}
+              disabled={promoBusy}
+              title="Generate a short promo band line from the campaign topic"
+            >
+              {promoBusy && <Spinner size={10} />}
+              {promoBusy ? "Thinking…" : "✨ Suggest"}
+            </button>
+          </div>
+          <input type="text" value={content.promoBand ?? ""}
+            placeholder="e.g. MEMORIAL DAY WEEKEND SALE"
+            onChange={(e) => patch({ promoBand: e.target.value || undefined })} style={input} />
+          {/* Band colour. "Theme" follows the email — cream on navy, navy on
+              cream — which is what it does when nothing is picked. The ink is
+              derived from whichever ground you choose by measured contrast, so
+              every role is offered and none of them can be unreadable. */}
+          {content.promoBand?.trim() && (
+            <div style={{ marginTop: 6 }}>
+              <label style={fieldLabel}>Band colour</label>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => patch({ promoRole: undefined })}
+                  title="Follow the email theme"
+                  style={{ ...miniBtn(!content.promoRole), fontSize: 11, padding: "3px 8px", letterSpacing: 0, textTransform: "none" }}
+                >Theme</button>
+                {BRAND_COLOR_ROLES.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => patch({ promoRole: role })}
+                    title={BRAND_ROLE_LABELS[role]}
+                    aria-label={BRAND_ROLE_LABELS[role]}
+                    aria-pressed={content.promoRole === role}
+                    style={{
+                      width: 22, height: 22, padding: 0, borderRadius: 5, cursor: "pointer",
+                      background: BRAND_ROLE_HEX[role],
+                      border: content.promoRole === role ? "2px solid var(--accent)" : "1px solid var(--border)",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          {promoError && <div style={{ marginTop: 4, fontSize: 11, color: "var(--error)" }}>{promoError}</div>}
+        </div>
+        {/* Whole-email colour theme. Lives in Body because it is the only
+            section that never auto-collapses: headerDefaultCollapsed and
+            imagesDefaultCollapsed both close once the email has a subject and
+            a hero, which is precisely when you would reach for this. */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={fieldLabel}>Email theme</label>
+          <div style={segWrap}>
+            <SegButton
+              active={(content.theme ?? "navy") === "navy"}
+              onClick={() => patch({ theme: "navy" })}
+              title="Navy shell, white copy (default)"
+            >Navy</SegButton>
+            <SegButton
+              active={content.theme === "cream"}
+              onClick={() => patch({ theme: "cream" })}
+              title="Soft Ivory background with dark copy, the brand handbook's light treatment"
+              last
+            >Cream</SegButton>
+          </div>
+          {/* The matching note in the CTA block lives in the Images section,
+              which auto-collapses once a hero image exists — i.e. exactly when
+              someone is likely to switch themes. Repeat it here, where the
+              switch actually happened, so the disabled CTA control is never
+              unexplained. */}
+          {content.theme === "cream" && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+              On cream the CTA is always navy, for contrast. Your Cream/Navy button
+              choice is kept and returns if you switch back.
+            </div>
+          )}
+        </div>
+        {/* Space between blocks. Document-level, next to the theme, because
+            the gap is a property of the email's rhythm rather than of any one
+            block — set it once and the whole email breathes the same way. */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={fieldLabel}>Space between blocks</label>
+          <div style={segWrap}>
+            {BLOCK_SPACINGS.map((sp, si) => (
+              <SegButton
+                key={sp.px}
+                active={(content.blockSpacing ?? 16) === sp.px}
+                onClick={() => patch({ blockSpacing: sp.px })}
+                title={sp.title}
+                last={si === BLOCK_SPACINGS.length - 1}
+              >{sp.label}</SegButton>
+            ))}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+            The gap below every body block. The hero, promo band and CTA keep
+            their own spacing.
+          </div>
+        </div>
+        {/* Shapes — one door for what used to be three: "Make it visual",
+            "AG1 style" and the Templates dropdown all did the same job, laying
+            your copy out in a shape. Every shape, including the plain
+            model-chosen one, is an entry in the gallery now. */}
+        {(() => {
+          const enough = blocksToSourceText(content.blocks).length >= 40;
+          return (
+            <div style={{ marginBottom: 12 }}>
+              <button
+                style={{ ...miniBtn(shapeGalleryOpen), width: "100%", justifyContent: "center" }}
+                onClick={() => setShapeGalleryOpen((v) => !v)}
+                disabled={!!shapeBusyId}
+                title={
+                  enough
+                    ? "Lay this email's copy out in a shape. Nothing is applied until you review the before and after."
+                    : "The email is empty, so a shape will drop in its starter copy for you to edit"
+                }
+              >
+                {shapeBusyId && <Spinner size={10} color="var(--text)" />}
+                {shapeBusyId ? "Restructuring…" : "✨ Shapes"}
+              </button>
+              {!enough && (
+                <div style={{ marginTop: 5, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>
+                  This email has no copy yet, so a shape will bring its own starter text.
+                  Write the body first if you want your own words laid out instead.
+                </div>
+              )}
+              {restructureError && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--error)" }}>{restructureError}</div>
+              )}
+              {restructureDropped && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>{restructureDropped}</div>
+              )}
+              {shapeGalleryOpen && (
+                <ShapeGallery
+                  shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
+                  busyShapeId={shapeBusyId}
+                  onPick={applyShape}
+                  onClose={() => setShapeGalleryOpen(false)}
+                  onDelete={deleteSavedShapeById}
+                  onSaveCurrent={saveCurrentAsShape}
+                  savingCurrent={savingShape}
+                />
+              )}
+            </div>
+          );
+        })()}
+        {/* The review panel lives in Body, not Header, even though "Suggest
+            layout" (its other producer) sits in Header: what it reviews is
+            BLOCKS, and Header is collapsed by default — a review rendered
+            there is a review nobody sees. */}
+
+        {/* Pending layout suggestion — never written into content.blocks
+            until accepted, so a suggestion never silently overwrites the
+            existing body. */}
+        {pendingBlocks && (
+          <div style={{ border: "1px solid var(--accent)", borderRadius: 8, padding: 12, background: "var(--accent-dim)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...sectionLabel, marginBottom: 0 }}>
+                {pendingMode === "replace"
+                  ? "Restructured layout — this REPLACES the body"
+                  : "Suggested layout — review before adding"}
+              </span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button style={miniBtn(false)} onClick={() => setPendingBlocks((prev) => prev && prev.map((p) => ({ ...p, included: true })))}>Accept all</button>
+                <button style={miniBtn(false)} onClick={discardPendingBlocks}>Discard all</button>
+              </div>
+            </div>
+            {restructureDiff && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
+                  Same words, new structure. Check every number against the left
+                  side before accepting — the restructure is not fact-checked in code.
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, lineHeight: 1.5 }}>
+                  Image blocks arrive with a prompt already written from this
+                  email&apos;s copy. Nothing is generated until you press Generate
+                  on the block.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([
+                    { key: "before", label: "Before", doc: restructureDiff.before },
+                    { key: "after", label: "After", doc: restructureDiff.after },
+                  ] as const).map((pane) => (
+                    <div key={pane.key} style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                        letterSpacing: "0.08em", color: "var(--muted)", marginBottom: 4,
+                      }}>{pane.label}</div>
+                      {/* 600px document scaled to the pane width. overflow:hidden
+                          on the frame plus a fixed height keeps two full emails
+                          glanceable side by side; the real preview pane on the
+                          right is still the place to read one closely. */}
+                      <div style={{
+                        height: 260, overflow: "hidden", borderRadius: 6,
+                        border: "1px solid var(--border)", background: "#ffffff",
+                      }}>
+                        <iframe
+                          srcDoc={pane.doc}
+                          title={`${pane.label} restructure`}
+                          sandbox=""
+                          scrolling="no"
+                          style={{
+                            width: 600, height: 1040, border: 0, display: "block",
+                            transform: "scale(0.25)", transformOrigin: "top left",
+                            pointerEvents: "none",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+              {/* Staged reveal: each suggested block fades in with a stagger
+                  (min(80ms, 500ms/blockCount) per block) as it lands — framed
+                  as functional progress feedback per DESIGN.md's Decisions
+                  Log, not decoration. A fade only, DESIGN.md's existing
+                  220ms ease-out timing, no bounce/spring. */}
+              {pendingBlocks.map((p, i) => (
+                <label key={p.block.id} style={{
+                  display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
+                  borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
+                  animation: "fadeIn 220ms ease-out both",
+                  animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
+                }}>
+                  <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
+                    style={{ marginTop: 2, width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 2 }}>
+                      {p.block.kind ?? "text"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {blockPreviewText(p.block)}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <button
+              style={{ ...miniBtn(true), width: "100%", justifyContent: "center" }}
+              onClick={acceptPendingBlocks}
+              disabled={!pendingBlocks.some((p) => p.included)}
+            >
+              {pendingMode === "replace"
+                ? `Replace body with ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"}`
+                : `Add ${pendingBlocks.filter((p) => p.included).length} block${pendingBlocks.filter((p) => p.included).length === 1 ? "" : "s"} to email`}
+            </button>
+          </div>
+        )}
         {/* CTA */}
         <div>
           <div style={sectionLabel}>Call to action</div>
@@ -3113,87 +3098,87 @@ export default function CampaignEditor({
             the bottom button is the guaranteed render.
           </div>
         </div>
-        </Section>
-
-        <Section title="Actions" defaultCollapsed={false}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            className="btn"
-            onClick={save}
-            disabled={saving}
-            style={{ minWidth: 120, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}
-          >
-            {saving && <Spinner size={13} color="var(--bg)" />}
-            {saving ? "Saving…" : savedId ? (
-              <>Saved <span key={saveConfirmTick} style={{ display: "inline-flex", animation: "pulse 150ms ease-out" }}><IcCheck size={14} /></span> Update</>
-            ) : "Save campaign"}
-          </button>
-          <span
-            title={
-              autosaveStatus === "saving" ? "Autosaving…"
-              : autosaveStatus === "dirty" ? "Unsaved changes"
-              : autosaveStatus === "saved" ? "Saved automatically"
-              : ""
-            }
-            style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 5, minWidth: 90 }}
-          >
-            {autosaveStatus === "saving" && (<><Spinner size={10} />Saving…</>)}
-            {autosaveStatus === "dirty" && "Unsaved changes"}
-            {autosaveStatus === "saved" && "Saved just now"}
-          </span>
-          <span className="ui-divider-v" style={{ height: 28 }} />
-          <div style={{ display: "inline-flex", gap: 4 }}>
-            <IconButton onClick={undo} disabled={!canUndo} title="Undo (⌘Z)"><IcUndo /></IconButton>
-            <IconButton onClick={redo} disabled={!canRedo} title="Redo (⌘⇧Z)"><IcRedo /></IconButton>
+          </>
+        )}
+        {railTab === "images" && (
+          <>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={sectionLabel}>Images</span>
+            {unplacedImages.length < 5 && <button style={miniBtn(false)} onClick={addImage}>+ Image</button>}
           </div>
-          <button className="btn-ghost" onClick={exportHtml} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><IcDownload size={15} /> Export HTML</button>
-          <button className="btn-ghost" onClick={copyHtml} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><IcCopy size={15} /> {copyLabel}</button>
-          <button
-            className="btn-ghost"
-            onClick={improveWithClaude}
-            disabled={improveBusy}
-            title="Rewrite the subject and body copy in Lunia voice. Images and links are left unchanged; you can revert."
-            style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
-          >
-            {improveBusy && <Spinner size={13} />}
-            {improveBusy ? "Improving…" : "✨ Improve with Claude"}
-          </button>
-          {preImprove && !improveBusy && (
-            <button
-              className="btn-ghost"
-              onClick={revertImprove}
-              title="Restore the original imported copy"
-              style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
-            >
-              <IcUndo size={15} /> Revert
-            </button>
-          )}
-          <button
-            className="btn-ghost"
-            onClick={pushToKlaviyo}
-            disabled={klaviyoBusy}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
-          >
-            {klaviyoBusy && <Spinner size={13} />}
-            {klaviyoBusy ? "Pushing…" : (<><IcSend size={15} /> Push to Klaviyo</>)}
-          </button>
-          {klaviyoResult && (
-            <a
-              href={klaviyoResult.editorUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Opens this template directly in the Klaviyo editor."
-              style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "underline" }}
-            >
-              Open in Klaviyo →
-            </a>
-          )}
-          {klaviyoError && <span style={{ fontSize: 12, color: "var(--error)" }}>{klaviyoError}</span>}
-          {improveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{improveError}</span>}
-          {saveError && <span style={{ fontSize: 12, color: "var(--error)" }}>{saveError}</span>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {unplacedImages.map((img) => {
+              const label = img.role === "hero"
+                ? "Hero image"
+                : `Image ${secondaryImages.indexOf(img) + 2}`;
+              return (
+                <div
+                  key={img.id}
+                  ref={(el) => {
+                    slotCardRefs.current[img.id] = el;
+                    // The just-mounted case: the section was collapsed when
+                    // the preview asked for this slot, so this is the first
+                    // moment there is anything to scroll to.
+                    if (el) scrollToSlot(img.id);
+                  }}
+                  style={{
+                    // The ring the preview click lands on, so the jump is
+                    // visible rather than just a scroll. Same treatment a
+                    // selected block card gets.
+                    border: `1px solid ${selectedSlotId === img.id ? "var(--accent)" : "transparent"}`,
+                    borderRadius: 8,
+                    padding: selectedSlotId === img.id ? 8 : 0,
+                    transition: "border-color 120ms ease",
+                  }}
+                >
+                <ImageSlotControl
+                  slot={img}
+                  label={label}
+                  topic={topic}
+                  emailContext={emailContext}
+                  onChange={updateImage}
+                  onGenerated={(url) => markGenerated(img.id, url)}
+                  // Hero carries the primary CTA overlay — no remove control,
+                  // so it can't be silently dropped from the email.
+                  onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}
+                />
+                </div>
+              );
+            })}
+          </div>
         </div>
-        </Section>
+
+          </>
+        )}
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <EditorShell<"desktop" | "mobile">
+      kindLabel="Email"
+      title={activeSubjectLine || topic}
+      onBack={onExit}
+      saveState={shellSaveState}
+      saveActions={<>
+        <UiButton size="sm" variant={savedId ? "ghost" : "secondary"} onClick={save} busy={saving} title={savedId ? "Update the saved email" : "Save this email to the library"}>{savedId ? "Update" : "Save to library"}</UiButton>
+        {(improveBusy || klaviyoBusy) && <span className="shell__save shell__save--saving"><span className="ui-spinner" style={{ width: 10, height: 10 }} />{improveBusy ? "Improving copy" : "Pushing to Klaviyo"}</span>}
+      </>}
+      views={[{ value: "desktop", label: "Desktop" }, { value: "mobile", label: "Mobile" }]}
+      view={previewMode}
+      onView={setPreviewMode}
+      undo={{ canUndo, canRedo, onUndo: undo, onRedo: redo }}
+      exportLabel="Export"
+      exportMenu={exportMenuItems}
+      exportNote={shellNote}
+      exportTone={shellNote ? "danger" : undefined}
+      leftWidth={248}
+      rightWidth={380}
+      left={leftRail}
+      right={rightRail}
+    >
+      {previewStage}
+    </EditorShell>
   );
 }

@@ -15,11 +15,14 @@ export default function CampaignView({
   initialCarousel,
   onCampaignLoaded,
   onCarouselConsumed,
+  onExit,
 }: {
   initialCampaign?: SavedCampaign | null;
   initialCarousel?: SavedCarousel | null;
   onCampaignLoaded?: () => void;
   onCarouselConsumed?: () => void;
+  /** Back arrow in the editor's top bar. */
+  onExit?: () => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
@@ -222,15 +225,18 @@ export default function CampaignView({
     seededCarouselIdRef.current = null;
   }
 
+  // The editor is full-bleed inside the app shell; the brief and the deck keep
+  // the page frame.
+  const inEditor = !loading && !importing && !deck && step === 2 && !!content;
   return (
-    // Wider than the app's usual 1280 shell: this screen is a two-pane
-    // editor, and every px of it goes to the email preview.
-    <div style={{ maxWidth: 1440, margin: "0 auto", padding: "48px 40px 80px" }}>
-      <PageHeader
-        title="Campaign builder"
-        description="Write a Lunia Life email — subject, copy and images — then export the HTML."
-        actions={step === 2 ? <Button variant="secondary" onClick={handleRestart}>New</Button> : undefined}
-      />
+    <div className={inEditor ? "studio-frame" : undefined} style={inEditor ? undefined : { maxWidth: 1440, margin: "0 auto", padding: "48px 40px 80px" }}>
+      {!inEditor && (
+        <PageHeader
+          title={step === 1 ? "New email" : "Email"}
+          description={step === 1 ? "Write a Lunia Life email: subject, copy and images, then export the HTML or push it to Klaviyo." : undefined}
+          actions={step === 2 ? <Button variant="secondary" onClick={handleRestart}>New</Button> : undefined}
+        />
+      )}
 
       {error && (
         <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>
@@ -281,6 +287,8 @@ export default function CampaignView({
           savedId={savedId}
           onChange={setContent}
           onSaved={setSavedId}
+          onExit={onExit}
+          onRestart={handleRestart}
         />
       )}
     </div>

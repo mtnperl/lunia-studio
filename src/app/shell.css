@@ -117,7 +117,7 @@
 .blocks__item[data-drop="before"]::before, .blocks__item[data-drop="after"]::after { content: ""; position: absolute; left: 8px; right: 8px; height: 2px; background: var(--ui-focus); }
 .blocks__item[data-drop="before"]::before { top: -2px; }
 .blocks__item[data-drop="after"]::after { bottom: -2px; }
-.blocks__kind { font-size: var(--ui-text-11); color: var(--ui-text-3); text-transform: uppercase; letter-spacing: var(--ui-tracking-caps); width: 56px; flex-shrink: 0; }
+.blocks__kind { flex: none; max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ui-text-11); color: var(--ui-text-3); text-transform: uppercase; letter-spacing: var(--ui-tracking-caps, 0.06em); }
 .blocks__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .blocks__grip { color: var(--ui-text-3); display: inline-flex; cursor: grab; }
 

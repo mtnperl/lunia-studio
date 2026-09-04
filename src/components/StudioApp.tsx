@@ -183,6 +183,7 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
           initialCarousel={pendingCarousel}
           onCampaignLoaded={() => setPendingCampaign(null)}
           onCarouselConsumed={() => setPendingCarousel(null)}
+          onExit={() => go("campaign-library")}
         />
       )}
       {tab === "campaign-library" && <CampaignLibraryView onOpen={openCampaign} />}
