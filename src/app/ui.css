@@ -293,6 +293,8 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
   border: 1px solid var(--ui-border); border-radius: var(--ui-radius-4); padding: 0;
   background: var(--ui-surface-2); color: var(--ui-text); box-shadow: var(--ui-elev-3);
   width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 64px);
+  /* The global reset zeroes margins; a modal dialog centres through margin: auto. */
+  margin: auto;
   animation: ui-pop-in var(--ui-dur-3) var(--ui-ease-out);
 }
 .ui-dialog--wide { width: min(720px, calc(100vw - 32px)); }
