@@ -5,6 +5,7 @@ import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
+import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
@@ -15,7 +16,12 @@ import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 type Props = { carousel: SavedCarousel };
 
-const SLIDE_LABELS = ["Hook", "Slide 2", "Slide 3", "Slide 4", "CTA"];
+/** Labels for a deck of `n` content slides: hook, the slides, then the
+ *  closing slide. Derived rather than fixed at five, so a ten-slide Viral
+ *  deck lists and downloads all of its slides. */
+function slideLabelsFor(n: number, last: string): string[] {
+  return ["Hook", ...Array.from({ length: n }, (_, i) => `Slide ${i + 2}`), last];
+}
 const PREVIEW_SCALE = 0.5;
 
 // Fetch a URL and return it as a base64 data URL
@@ -77,11 +83,14 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Editorial slides use the dedicated editorial layout component (suppresses
   // duplicate HTML text overlay, renders icon bullets, etc.). Default carousels
   // continue to use the standard ContentSlide.
+  const isViral = stylePreset === "viral";
   const ContentSlideComponent = isFreePress
     ? FreePressContentSlide
-    : isEditorial
-      ? EditorialContentSlide
-      : ContentSlide;
+    : isViral
+      ? ViralContentSlide
+      : isEditorial
+        ? EditorialContentSlide
+        : ContentSlide;
   const TakeawaySlideComponent = isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
 
   const hook = content.hooks[selectedHook];
@@ -98,7 +107,6 @@ export default function CarouselShareClient({ carousel }: Props) {
   // Per-slide blob URLs (null until preload completes for that slot).
   // Rendering these as real <a href> links gives iOS Safari a tappable target
   // that survives any user-activation expiry, which is the core mobile bug.
-  const [slideBlobs, setSlideBlobs] = useState<Array<{ url: string; name: string } | null>>([null, null, null, null, null]);
   const [preloadDone, setPreloadDone] = useState(0); // count of slides preloaded (0..5)
   const [preloadError, setPreloadError] = useState<string | null>(null);
 
@@ -112,11 +120,12 @@ export default function CarouselShareClient({ carousel }: Props) {
     && !!content.takeaway.interaction;
   // Takeaway now merges the follow-line CTA into itself and closes the deck —
   // no separate CTA slide/label when it's present (see slide-node arrays below).
-  const slideLabels = hasTakeaway
-    ? ["Hook", "Slide 2", "Slide 3", "Slide 4", "Takeaway"]
-    : SLIDE_LABELS;
+  const slideLabels = slideLabelsFor(content.slides.length, hasTakeaway ? "Takeaway" : "CTA");
   const slideCount = slideLabels.length;
-  const exportRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null, null]);
+  const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Per-slide blob URLs (null until preload completes for that slot). Sized
+  // from slideCount, so a ten-slide deck preloads and downloads all ten.
+  const [slideBlobs, setSlideBlobs] = useState<Array<{ url: string; name: string } | null>>(() => Array(slideCount).fill(null));
 
   // Pre-built PNG cache keyed by `${reelsMode}|${index}`. Filled in background on mount
   // so that when the user taps Download on mobile, navigator.share() fires instantly —
@@ -480,7 +489,7 @@ export default function CarouselShareClient({ carousel }: Props) {
   // link on iOS Safari always works, bypassing the Web Share API activation quirks.
   useEffect(() => {
     preloadedFilesRef.current = new Map();
-    setSlideBlobs([null, null, null, null, null]);
+    setSlideBlobs(Array(slideCount).fill(null));
     setPreloadDone(0);
     setPreloadError(null);
 
@@ -527,9 +536,9 @@ export default function CarouselShareClient({ carousel }: Props) {
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode}
       overlays={hookOverlays}
       stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} />,
-    <ContentSlideComponent key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[0] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
-    <ContentSlideComponent key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[1] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
-    <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[2] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
+    ...content.slides.map((s, i) => (
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
+    )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
       : [isEngagement && content.commentKeyword
@@ -544,9 +553,9 @@ export default function CarouselShareClient({ carousel }: Props) {
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode}
       overlays={hookOverlays}
       stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} />,
-    <ContentSlideComponent key={1} headline={content.slides[0].headline} body={content.slides[0].body} citation={content.slides[0].citation} graphic={content.slides[0].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[0])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
-    <ContentSlideComponent key={2} headline={content.slides[1].headline} body={content.slides[1].body} citation={content.slides[1].citation} graphic={content.slides[1].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[1])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
-    <ContentSlideComponent key={3} headline={content.slides[2].headline} body={content.slides[2].body} citation={content.slides[2].citation} graphic={content.slides[2].graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[2])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />,
+    ...content.slides.map((s, i) => (
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
+    )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
       : [isEngagement && content.commentKeyword

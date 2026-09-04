@@ -362,6 +362,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [copyLabel, setCopyLabel] = useState("Copy link");
   const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");
   const [regenerating, setRegenerating] = useState<number | null>(null);
+  // "Rewrite with a note": what the writer typed, per slide, and the last error.
+  const [slideNote, setSlideNote] = useState<Record<number, string>>({});
+  const [slideNoteError, setSlideNoteError] = useState<string | null>(null);
   const [regeneratingGraphic, setRegeneratingGraphic] = useState<number | null>(null);
   const [graphicHistory, setGraphicHistory] = useState<Record<number, string[]>>({});
   const [vectorAttempts, setVectorAttempts] = useState<Record<number, number>>({});
@@ -1408,19 +1411,37 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     writeIconGraphic(slideIndex, ids.slice(0, 4), iconPickerLayout, false);
   }
 
-  async function handleRegenerateSlide(slideIndex: number) {
+  /** Rewrite one content slide. With a note it is a directed rewrite of the
+   *  slide on screen; without one it is the old blank regenerate. Either way
+   *  the model now sees the slide it is replacing, so it cannot wander off
+   *  the subject the way the topic-only prompt did. */
+  async function handleRegenerateSlide(slideIndex: number, comment = "") {
     setRegenerating(slideIndex);
+    setSlideNoteError(null);
     try {
       const res = await fetch(`${apiBase}/regenerate-slide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, hookTone, slideIndex }),
+        body: JSON.stringify({
+          topic, hookTone, slideIndex,
+          slideTotal: content.slides.length,
+          stylePreset,
+          comment,
+          current: content.slides[slideIndex],
+        }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSlideNoteError((data as { error?: string }).error ?? "The rewrite failed. Try again.");
+        return;
+      }
       const { slide } = await res.json();
       const slides = [...content.slides];
       slides[slideIndex] = slide;
       onContentChange({ ...config, content: { ...content, slides } });
+      if (comment) setSlideNote((m) => ({ ...m, [slideIndex]: "" }));
+    } catch {
+      setSlideNoteError("The rewrite failed. Try again.");
     } finally {
       setRegenerating(null);
     }
@@ -2069,6 +2090,38 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               rows={6}
               style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" }}
             />
+
+            {/* Rewrite with a note. The model gets this slide plus the note,
+                so an instruction like "lead with the number" or "this line is
+                wrong" lands on the copy in front of you. */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--ui-border)" }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Rewrite with a note</label>
+              <textarea
+                value={slideNote[slideIdx] ?? ""}
+                onChange={(e) => setSlideNote((m) => ({ ...m, [slideIdx]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && (slideNote[slideIdx] ?? "").trim() && regenerating === null) {
+                    e.preventDefault();
+                    handleRegenerateSlide(slideIdx, (slideNote[slideIdx] ?? "").trim());
+                  }
+                }}
+                rows={3}
+                placeholder="Shorter. Lead with the number. Drop the second line."
+                style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                <UiButton
+                  size="sm"
+                  variant="primary"
+                  disabled={regenerating !== null || !(slideNote[slideIdx] ?? "").trim()}
+                  onClick={() => handleRegenerateSlide(slideIdx, (slideNote[slideIdx] ?? "").trim())}
+                >
+                  {regenerating === slideIdx ? "Rewriting…" : "Rewrite slide"}
+                </UiButton>
+                <span style={{ fontSize: 11, color: "var(--ui-text-3)" }}>Replaces the headline and text. Undo brings it back.</span>
+              </div>
+              {slideNoteError && <div style={{ fontSize: 12, color: "var(--error)", marginTop: 6 }}>{slideNoteError}</div>}
+            </div>
           </div>
         ),
       };

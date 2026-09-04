@@ -1,6 +1,6 @@
 import type { BrandStyle, CarouselTemplate } from "./types";
 import { LUNIA_BRAND } from "./lunia-brand";
-import { VIRAL_SLOTS } from "./carousel-style-presets";
+import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -451,21 +451,56 @@ HARD RULE: a reader shown only the 3 hooks must be able to name the tone without
 ===`;
 };
 
-export const REGENERATE_SLIDE_PROMPT = (topic: string, hookTone = "educational", slideIndex: number) =>
-  `You are a content strategist for Lunia Life, a sleep supplement brand. Regenerate slide ${slideIndex + 2} of a carousel about: "${topic}"
+/** Rewrite one content slide in place. Unlike the old regenerate prompt this
+ *  one SEES the slide it is replacing and the writer's note, so "make it
+ *  shorter", "lead with the number" or "this line is wrong" all work. The
+ *  viral block adds the slot's job, its open-loop line and the line format. */
+export const REGENERATE_SLIDE_PROMPT = (
+  topic: string,
+  hookTone = "educational",
+  slideIndex: number,
+  opts: {
+    current?: { headline?: string; body?: string; citation?: string; figure?: string; emphasis?: string };
+    comment?: string;
+    stylePreset?: string;
+    slideTotal?: number;
+  } = {},
+) => {
+  const { current, comment, stylePreset, slideTotal } = opts;
+  const isViral = stylePreset === "viral";
+  const total = slideTotal ?? 3;
+  const slot = isViral ? viralSlotFor(slideIndex, total) : null;
+  const note = (comment ?? "").trim().slice(0, 600);
+  return `You are a content strategist for Lunia Life, a sleep supplement brand. Rewrite slide ${slideIndex + 2} of a carousel about: "${topic}"
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-
+${current ? `
+THE SLIDE AS IT STANDS. Rewrite THIS slide. Keep what works, change what the note asks for, and do not drift to a different subject:
+  headline: "${current.headline ?? ""}"
+  body: "${(current.body ?? "").replace(/\n/g, "\\n")}"
+  citation: "${current.citation ?? ""}"${current.figure ? `\n  figure: "${current.figure}"` : ""}${current.emphasis ? `\n  emphasis: "${current.emphasis}"` : ""}
+` : ""}${note ? `
+THE WRITER'S NOTE. This is the instruction. Follow it exactly, even where it overrides a style preference below. It never overrides the accuracy rules:
+"${note}"
+` : ""}${slot ? `
+This is the "${slot.name}" slot of a viral deck. Its job: ${slot.job}
+The body's LAST line is the open loop, verbatim or in the same spirit: "${slot.openLoop}"
+` : ""}
 Return ONLY valid JSON in this exact format, no other text:
-{ "headline": "string", "body": "string", "citation": "string", "graphic": "string" }
+{ "headline": "string", "body": "string", "citation": "string"${isViral ? ', "figure": "string", "emphasis": "string"' : ', "graphic": "string"'} }
 
 Brand rules (follow exactly):
 - No em dashes anywhere.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
-- Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
-- Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages.
+- Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Keep the citation above unchanged unless the claim it supports has changed; never invent a study, and never keep a citation that no longer matches the copy.
+- Accuracy outranks the note and the word counts. A qualifier that makes a claim true is not padding. If the note asks for something the evidence does not support, write the narrower true version instead.
+${isViral ? `- "headline": the hero line, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps), no full stop. One idea.
+- "body": 2 to 4 short lines separated by a newline character (\\n). Each line is a complete sentence of 9 words or fewer. 20 to 40 words in total. The last line is the open loop above.
+- "emphasis": the one phrase that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines. Never the open-loop line. "" when nothing earns it.
+- "figure": one sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h". Only when that number is in the body and the citation is real. "" otherwise.` : `- Body copy: 2-3 sentences MAX. First sentence: bold punchy statement (core insight). Remaining 1-2 sentences: specific factual support. Total under 60 words.
 - Headline: uppercase, max 8 words
-- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (steps/checklist/iconGrid) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels ≤4 words, sublabels ≤5 words. Always output a valid component JSON.`;
+- graphic: same 3-tier GraphicSpec JSON rules as the main carousel prompt — compact single-line JSON, real data only. Use TIER A for data-rich slides, TIER B (steps/checklist/iconGrid) for structural slides, TIER C (vector with mood) for conceptual slides. LABEL RULES: all TIER B labels <=4 words, sublabels <=5 words. Always output a valid component JSON.`}`;
+};
 
 export const REGENERATE_GRAPHIC_PROMPT = (topic: string, headline: string, body: string, avoidComponents: string[] = [], userComment: string = "", forceComponent?: string) =>
   `You are a data visualisation designer for Lunia Life, a sleep supplement brand. Generate a single infographic component for this carousel slide.

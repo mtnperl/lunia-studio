@@ -6,6 +6,7 @@ import { loadFont as loadCormorant } from "@remotion/google-fonts/CormorantGaram
 import { loadFont as loadOutfit } from "@remotion/google-fonts/Outfit";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
+import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
@@ -49,7 +50,9 @@ export type CarouselSlideProps = {
 export const CarouselSlide: React.FC<CarouselSlideProps> = (props) => {
   return (
     <AbsoluteFill style={{ background: props.slideBgColor ?? "#01253f" }}>
-      {isEditorialPreset(props.stylePreset) ? (
+      {props.stylePreset === "viral" ? (
+        <ViralContentSlide {...props} scale={1} />
+      ) : isEditorialPreset(props.stylePreset) ? (
         <EditorialContentSlide {...props} scale={1} />
       ) : (
         <ContentSlide {...props} scale={1} />
