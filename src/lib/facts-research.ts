@@ -76,10 +76,11 @@ async function markAttempt(subjectId: string): Promise<void> {
 export async function researchSubject(subject: Pick<Subject, "id" | "text">): Promise<{ facts: Fact[]; added: number; updated: number }> {
   const messages: Array<{ role: "user" | "assistant"; content: unknown }> = [{ role: "user", content: `Subject: ${subject.text}\n\nFind the facts, with sources. JSON only.` }];
   let content: Array<{ type: string; text?: string }> = [];
-  for (let turn = 0; turn < 4; turn++) {
+  let continued = false;
+  for (let turn = 0; turn < 5; turn++) {
     const msg = await anthropic.messages.create({
       model: CONTENT_MODEL,
-      max_tokens: 6000,
+      max_tokens: 16_000,
       system: SYSTEM,
       messages: messages as never,
       tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 } as never],
@@ -87,6 +88,13 @@ export async function researchSubject(subject: Pick<Subject, "id" | "text">): Pr
     content = [...content, ...(msg.content as Array<{ type: string; text?: string }>)];
     console.log(`[facts/research] ${subject.text.slice(0, 40)} turn ${turn} stop=${msg.stop_reason}`);
     if (msg.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: msg.content }); continue; }
+    // Ran out of room mid-answer: ask once for the array alone, no more searching.
+    if (msg.stop_reason === "max_tokens" && !continued) {
+      continued = true;
+      messages.push({ role: "assistant", content: msg.content });
+      messages.push({ role: "user", content: "You ran out of room. Return the complete JSON array now, using only what you already found. JSON only." });
+      continue;
+    }
     break;
   }
   await markAttempt(subject.id);
