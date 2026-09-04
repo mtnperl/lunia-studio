@@ -210,3 +210,24 @@
   .app[data-mobile-open="true"] .app__nav { transform: none; }
   .app__scrim { display: block; position: fixed; inset: 0; z-index: calc(var(--ui-z-dialog) - 1); background: var(--ui-scrim); }
 }
+
+/* Asset browser in a rail */
+.assets { display: flex; flex-direction: column; gap: var(--ui-space-3); }
+.assets__target { font-size: var(--ui-text-12); color: var(--ui-text-2); padding: 8px 10px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-2); background: var(--ui-surface-2); }
+.assets__loading { display: flex; align-items: center; gap: 8px; font-size: var(--ui-text-12); color: var(--ui-text-3); padding: 6px 0; }
+.assets__folders { display: flex; flex-direction: column; gap: 4px; }
+.assets__folder { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-2); background: var(--ui-surface); color: var(--ui-text); font: inherit; font-size: var(--ui-text-12); cursor: pointer; text-align: left; }
+.assets__folder:hover { background: var(--ui-surface-3); }
+.assets__folder:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.assets__dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.assets__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.assets__thumbs { display: inline-flex; gap: 2px; }
+.assets__thumbs img { width: 20px; height: 20px; object-fit: cover; border-radius: 3px; border: 1px solid var(--ui-border); }
+.assets__folder .n { color: var(--ui-text-3); font-variant-numeric: tabular-nums; min-width: 24px; text-align: right; }
+.assets__crumb { display: flex; align-items: center; gap: 6px; font-size: var(--ui-text-12); color: var(--ui-text-2); }
+.assets__grid { display: grid; grid-template-columns: repeat(var(--assets-cols, 3), 1fr); gap: 6px; }
+.assets__cell { padding: 0; border: 2px solid var(--ui-border); border-radius: var(--ui-radius-2); background: transparent; cursor: pointer; overflow: hidden; }
+.assets__cell:hover { border-color: var(--ui-text-3); }
+.assets__cell[aria-pressed="true"] { border-color: var(--ui-text); }
+.assets__cell:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.assets__cell img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }

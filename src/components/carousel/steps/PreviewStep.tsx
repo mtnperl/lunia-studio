@@ -13,6 +13,7 @@ import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
 import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
+import AssetBrowser from "@/components/campaign/AssetBrowser";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
 import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
 import { DEFAULT_GATING } from "@/lib/types";
@@ -517,6 +518,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // displaces the current image, so the user can revert to any prior take.
   // Session-only (does not persist on save) — keeps the surface tiny.
   const [hookImageHistory, setHookImageHistory] = useState<string[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   // ── Full-prompt editor ──────────────────────────────────────────────────
   // fullPromptPreview = the prompt the server WOULD send right now (assembled
@@ -2417,6 +2419,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         subtitle: "Edit the prompt or add guidelines — Claude rewrites it, then regenerates.",
         body: (
           <div>
+            <div style={{ marginBottom: 12 }}>
+              <UiButton size="sm" variant={libraryOpen ? "secondary" : "ghost"} onClick={() => setLibraryOpen((v) => !v)}>{libraryOpen ? "Hide the library" : "Use a library photo"}</UiButton>
+              {libraryOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <AssetBrowser target="A pick replaces the hook image. The current one stays in the history below." onPick={(a) => { revertToHookImage(a.url); setLastBakedHeadlineWeight(hookHeadlineWeight); setLibraryOpen(false); }} />
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</span>
               {IMAGE_STYLE_CHIPS.map((chip) => {

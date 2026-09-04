@@ -9,6 +9,7 @@ import { sampleBlock, emptyBlock } from "@/lib/campaign-block-samples";
 import { stripInlineTokens } from "@/lib/campaign-inline-style";
 import { withImagePrompt, suggestImagePrompt, blockOwnText, type EmailImageContext } from "@/lib/campaign-image-prompt";
 import ShapeGallery from "./ShapeGallery";
+import AssetBrowser from "./AssetBrowser";
 import {
   CAMPAIGN_SHAPES,
   captureShapeStructure,
@@ -518,7 +519,7 @@ export default function CampaignEditor({
   const [savingSnippetFor, setSavingSnippetFor] = useState<string | null>(null);
   const [addBlockMenuOpen, setAddBlockMenuOpen] = useState(false);
   const addBlockRef = useRef<HTMLButtonElement | null>(null);
-  const [railTab, setRailTab] = useState<"block" | "email" | "images">("email");
+  const [railTab, setRailTab] = useState<"block" | "email" | "images" | "assets">("email");
 
   useEffect(() => {
     let alive = true;
@@ -1647,7 +1648,7 @@ export default function CampaignEditor({
   const rightRail = (
     <>
       <div style={{ padding: "8px 8px 0" }}>
-        <UiTabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "block", label: "Block" }, { value: "email", label: "Email" }, { value: "images", label: "Images" }]} />
+        <UiTabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "block", label: "Block" }, { value: "email", label: "Email" }, { value: "images", label: "Images" }, { value: "assets", label: "Assets" }]} />
       </div>
       <div className="shell__rail-body">
         {railTab === "block" && (
@@ -3100,6 +3101,26 @@ export default function CampaignEditor({
         </div>
           </>
         )}
+        {railTab === "assets" && (() => {
+          const imageKinds = new Set<BlockKind>(["imagetext", "imagebullets", "headerimage"]);
+          const blockTarget = selectedBlock && imageKinds.has(selectedBlock.kind ?? "text") ? selectedBlock : null;
+          const slotTarget = blockTarget ? null : (content.images.find((i) => i.id === selectedSlotId) ?? content.images.find((i) => i.role === "hero") ?? null);
+          const targetLabel = blockTarget
+            ? `A pick goes into block ${content.blocks.indexOf(blockTarget) + 1}, ${BLOCK_KIND_META[blockTarget.kind ?? "text"].label.toLowerCase()}.`
+            : slotTarget
+              ? slotTarget.role === "hero" ? "A pick becomes the hero image." : `A pick goes into image ${content.images.filter((i) => i.role === "secondary").indexOf(slotTarget) + 2}.`
+              : "Select a block with an image, or an image in the email, and a pick goes there.";
+          return (
+            <AssetBrowser
+              target={targetLabel}
+              selectedId={slotTarget?.assetId}
+              onPick={(a) => {
+                if (blockTarget) { updateBlock(blockTarget.id, { imageUrl: a.url, imageSourceUrl: a.url, imageCrop: undefined }); setRailTab("block"); }
+                else if (slotTarget) { updateImage({ ...slotTarget, source: "asset", assetId: a.id, url: a.url }); setSelectedSlotId(slotTarget.id); }
+              }}
+            />
+          );
+        })()}
         {railTab === "images" && (
           <>
         <div>
