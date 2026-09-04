@@ -1,5 +1,6 @@
 // Carousel v2 style presets. A preset bundles BrandStyle + typography + image
 // engine direction so the whole carousel takes on a single coherent look.
+import { PALETTE } from "@/lib/lunia-brand-guidelines";
 import { FP_COLORS } from "./brand-tokens";
 import type { BrandStyle, CarouselStylePreset } from "./types";
 
@@ -46,23 +47,48 @@ export function isViralPreset(p?: CarouselStylePreset | null): boolean {
 }
 
 /** Slot table for the viral engine. Hook and CTA bracket the content slots. */
-export const VIRAL_SLOTS: Record<5 | 10, { name: string; job: string; openLoop: string }[]> = {
+/** Viral colours: the three brand colours the preset draws with. Ivory
+ *  slides carry navy type, navy slides carry ivory type, and Signal Yellow
+ *  marks exactly one phrase and the open-loop line. */
+export const VIRAL_COLORS = {
+  ivory: PALETTE.softIvory,
+  navy: PALETTE.richNavy,
+  slate: PALETTE.slateBlue,
+  yellow: PALETTE.signalYellow,
+  deepNavy: PALETTE.deepNavy,
+} as const;
+
+export type ViralTone = "ivory" | "navy";
+export type ViralSlot = { name: string; job: string; openLoop: string; tone: ViralTone; graphic?: boolean };
+
+/** One row per content slide, for the 5 and 10 slide decks. `tone` gives
+ *  the deck its rhythm: the turn and the payoff go navy, the rest stay
+ *  ivory. `graphic` marks the slides allowed to carry an infographic. */
+export const VIRAL_SLOTS: Record<5 | 10, ViralSlot[]> = {
   5: [
-    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs. The reader must think this is worth their time in one second.", openLoop: "Here is why the usual fix fails." },
-    { name: "Turn", job: "Amplify the pain, invalidate the current method, pivot on BUT. Do not deliver the solution.", openLoop: "The fix is smaller than you think." },
-    { name: "Solution", job: "One idea, one easy step toward a result, with its proof. A beginner could do it tonight.", openLoop: "One more thing decides whether it holds." },
+    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs. The reader must think this is worth their time in one second.", openLoop: "Here is why the usual fix fails.", tone: "ivory" },
+    { name: "Turn", job: "Amplify the pain, invalidate the current method, pivot on BUT. Do not deliver the solution.", openLoop: "The fix is smaller than you think.", tone: "navy" },
+    { name: "Solution", job: "One idea, one easy step toward a result, with its proof. A beginner could do it tonight.", openLoop: "One more thing decides whether it holds.", tone: "ivory", graphic: true },
   ],
   10: [
-    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs.", openLoop: "It is not the reason you were told." },
-    { name: "Pain", job: "Amplify. Show the problem compounding with a second consequence the reader has felt.", openLoop: "Most people fix the wrong half." },
-    { name: "Invalidate and turn", job: "Name the current method, say why it fails, pivot on BUT. Solution still withheld.", openLoop: "The real lever is upstream." },
-    { name: "Idea 1", job: "Education. One idea, one step a beginner does tonight.", openLoop: "That handles the start of the night." },
-    { name: "Idea 2", job: "Education. One idea, one step a beginner does tonight.", openLoop: "The middle of the night needs something else." },
-    { name: "Idea 3", job: "Education. One idea, one step a beginner does tonight.", openLoop: "Now the part that makes it stick." },
-    { name: "Proof", job: "Social proof or mechanism proof that the solution works. One sourced figure or one mechanism in one sentence.", openLoop: "Which leaves one question." },
-    { name: "Objection", job: "The reason they still will not do it, in the reader's words, answered.", openLoop: "So here is the only thing to do." },
+    { name: "Stakes", job: "Confirm the hook. Set up the problem and what it costs.", openLoop: "It is not the reason you were told.", tone: "ivory" },
+    { name: "Pain", job: "Amplify. Show the problem compounding with a second consequence the reader has felt.", openLoop: "Most people fix the wrong half.", tone: "ivory", graphic: true },
+    { name: "Invalidate and turn", job: "Name the current method, say why it fails, pivot on BUT. Solution still withheld.", openLoop: "The real lever is upstream.", tone: "navy" },
+    { name: "Idea 1", job: "Education. One idea, one step a beginner does tonight.", openLoop: "That handles the start of the night.", tone: "ivory" },
+    { name: "Idea 2", job: "Education. One idea, one step a beginner does tonight.", openLoop: "The middle of the night needs something else.", tone: "ivory" },
+    { name: "Idea 3", job: "Education. One idea, one step a beginner does tonight.", openLoop: "Now the part that makes it stick.", tone: "ivory" },
+    { name: "Proof", job: "Social proof or mechanism proof that the solution works. One sourced figure or one mechanism in one sentence.", openLoop: "Which leaves one question.", tone: "navy", graphic: true },
+    { name: "Objection", job: "The reason they still will not do it, in the reader's words, answered.", openLoop: "So here is the only thing to do.", tone: "ivory" },
   ],
 };
+
+/** The slot for content slide `index` (0-based) in a deck of `count`
+ *  content slides. Decks that are neither 3 nor 8 slides long (hand-edited)
+ *  fall back to the nearest table by length, so a slide always has a tone. */
+export function viralSlotFor(index: number, count: number): ViralSlot {
+  const table = count >= 6 ? VIRAL_SLOTS[10] : VIRAL_SLOTS[5];
+  return table[Math.min(Math.max(index, 0), table.length - 1)];
+}
 
 /** Free Press brand palette — a text-led editorial preset.
  *

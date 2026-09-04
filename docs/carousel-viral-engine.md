@@ -51,38 +51,44 @@ Rules for the table:
 
 Western F and Z order. The eye lands top-left, drops, then sweeps.
 
-- Primary line: top-left, largest. Hero size.
-- Support line: directly below, left-aligned, smaller.
-- Smallest line last: source or open loop, bottom-left.
-- Never right-align a heading over centred body copy. Never centre the hero over left-aligned support.
+A viral content slide is not a page. It is read in half a second on a phone, so it is built from lines, not a paragraph:
 
-Type scale on the 1080-wide canvas, Inter, the weights already in the editorial preset:
+- Kicker, top-left: slide position, "03 / 10", so the reader knows how much is left.
+- Figure, when the slide has one: a sourced number with its unit at display size. It is the visual. At most three per ten-slide deck, never on two slides in a row.
+- Hero line: 3 to 7 words, sentence case, no full stop, one idea.
+- Support: 2 to 4 lines of 9 words or fewer, each a complete sentence, stacked one per line. 20 to 40 words in total.
+- Emphasis: one phrase of 2 to 6 words, copied from a support line, marked in Signal Yellow. Yellow type on navy, a yellow marker band with navy type on ivory. Never the open-loop line.
+- Open-loop line: the last support line, set apart at the foot of the column under a short yellow rule. The reason to swipe is seen before it is read.
+- Citation: one line, small, muted, truncated with an ellipsis. Never two lines.
+- No logo on content slides. The wordmark lives on the hook and the CTA.
+- Infographic: allowed on the slots marked in the slot table only (Pain and Proof on ten slides, Solution on five). A slide with a figure needs no graphic.
+
+Colour rhythm comes from the slot table, not from the writer. Setup, education and objection slides are Soft Ivory with Rich Navy type. The turn and the proof are Rich Navy with Soft Ivory type. The CTA is Rich Navy. Ten identical ivory cards was the failure this replaces.
+
+Type scale on the 1080-wide canvas, Inter:
 
 | Role | Size | Weight | Tracking | Use |
 |---|---|---|---|---|
-| Hero | 96 px | Inter 300 | -0.01em | The one line per slide. Uppercase on hooks only. |
-| Support | 38 px | Inter 300 | 0 | Body, two to four lines. |
-| Footnote | 26 px | Inter 400 | 0.06em | Citation, open-loop line when it doubles as a footnote. |
-| Kicker | 24 px | Inter 600 | 0.16em | Uppercase label above the hero on slide 1 only. |
+| Figure | 224 px | Inter 300 | -0.04em | The sourced number, when the slide has one. Yellow on navy, navy on ivory. |
+| Hero | 88 px, 64 px under a figure | Inter 600 | -0.025em | The one line per slide. Sentence case. |
+| Support | 44 px | Inter 400 | 0 | Two to four stacked lines. |
+| Open loop | 34 px | Inter 500 | 0 | Yellow on navy, navy on ivory, under a 56 px yellow rule. |
+| Citation | 20 px | Inter 400 | 0 | One line, Slate Blue on ivory, ivory at 62 percent on navy. |
+| Kicker | 22 px | Inter 600 | 0.16em | "03 / 10", top-left. |
 
-Hero weight may step to 500 or 700 through the Hook weight control. Nothing else changes weight.
+The hook keeps the editorial poster treatment and its Hook weight control. Nothing on a content slide changes weight.
 
 Contrast, measured, WCAG 2.1 ratio, 4.5:1 minimum for text:
 
 | Pairing | Ratio | Verdict |
 |---|---|---|
-| Deep Navy on Soft Ivory | 14.2 | pass |
 | Rich Navy on Soft Ivory | 14.3 | pass |
 | Slate Blue on Soft Ivory | 9.9 | pass |
 | Soft Ivory on Rich Navy | 14.3 | pass |
-| Soft Ivory on Deep Navy | 14.2 | pass |
-| Aqua on Rich Navy | 13.7 | pass, accent only |
 | Signal Yellow on Rich Navy | 11.3 | pass, accent only |
-| Deep Navy on Aqua | 13.6 | pass |
-| Deep Navy on Signal Yellow | 11.2 | pass |
-| Slate Blue on Signal Yellow | 7.8 | pass |
+| Deep Navy on Signal Yellow | 11.2 | pass, the marker band |
 
-Fails, never use for text: Aqua or Signal Yellow on Soft Ivory (1.0 and 1.3), Soft Ivory on Aqua or Signal Yellow (1.0 and 1.3), Deep Navy on Rich Navy or the reverse (1.0), Slate Blue on either navy (1.4). No current text pairing fails. One palette note: the editorial CTA slide falls back to #EFEFF4 as its background when no brand background is set. That grey is not one of the six colours. Set Soft Ivory there.
+Fails, never use for text: Signal Yellow on Soft Ivory (1.3), which is why the ivory slides mark the phrase with a band instead of colouring the type. The CTA slide on this preset is Rich Navy; the #EFEFF4 fallback noted in the first version of this document no longer applies to Viral.
 
 ## 4. Canvas spec
 

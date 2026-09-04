@@ -3,6 +3,7 @@ import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isDarkColor, INK_LIGHT, INK_DARK } from "@/lib/color";
 import { CAROUSEL_ICONS } from "@/lib/carousel-icons";
+import { VIRAL_COLORS } from "@/lib/carousel-style-presets";
 
 type Props = {
   headline: string;
@@ -48,7 +49,10 @@ function parseCtaIconLayout(graphic?: string): IconLayoutData | null {
 }
 
 export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, frameH, reels = false, stylePreset = "default", showSlideArrows: _showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars: _showCitationBars = true, graphic }: Props) {
-  const isEditorial = stylePreset === "editorial-scientific";
+  // Viral shares the editorial typography but closes the deck on Rich Navy
+  // with Soft Ivory type, the same pairing as its turn and proof slides.
+  const isViral = stylePreset === "viral";
+  const isEditorial = stylePreset === "editorial-scientific" || isViral;
   const slideH = frameH ?? (reels ? 1920 : 1350);
   // Shorter frames (the 1:1 export) scale type and vertical padding down together.
   const compact = slideH < 1350 ? slideH / 1350 : 1;
@@ -60,20 +64,26 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
   // Editorial preset always matches the content-slide pearl-ivory background,
   // regardless of `darkBackground` — the CTA is part of the same editorial
   // spread and must not flip to a contrasting palette.
-  const bg = isEditorial
-    ? (slideBgColor ?? brandStyle?.background ?? '#EFEFF4')
-    : (slideBgColor ?? brandBg ?? fallbackBg);
+  const bg = isViral
+    ? VIRAL_COLORS.navy
+    : isEditorial
+      ? (slideBgColor ?? brandStyle?.background ?? '#EFEFF4')
+      : (slideBgColor ?? brandBg ?? fallbackBg);
   const bgIsDark = isDarkColor(bg);
-  const useAutoInk = slideBgColor !== undefined;
+  const useAutoInk = slideBgColor !== undefined && !isViral;
   const ink = bgIsDark ? INK_LIGHT : INK_DARK;
 
-  const headlineColor = useAutoInk
-    ? ink
-    : (darkBackground ? (brandStyle?.headline ?? INK_DARK) : (brandStyle?.hookHeadline ?? INK_LIGHT));
-  const followColor = useAutoInk
-    ? (bgIsDark ? 'rgba(247,244,239,0.8)' : '#01253f')
-    : (darkBackground ? (brandStyle?.headline ?? '#01253f') : 'rgba(247,244,239,0.8)');
-  const useDarkInk = useAutoInk ? !bgIsDark : darkBackground;
+  const headlineColor = isViral
+    ? VIRAL_COLORS.ivory
+    : useAutoInk
+      ? ink
+      : (darkBackground ? (brandStyle?.headline ?? INK_DARK) : (brandStyle?.hookHeadline ?? INK_LIGHT));
+  const followColor = isViral
+    ? 'rgba(247,244,239,0.8)'
+    : useAutoInk
+      ? (bgIsDark ? 'rgba(247,244,239,0.8)' : '#01253f')
+      : (darkBackground ? (brandStyle?.headline ?? '#01253f') : 'rgba(247,244,239,0.8)');
+  const useDarkInk = isViral ? false : useAutoInk ? !bgIsDark : darkBackground;
 
   return (
     <SlideWrapper scale={scale} height={slideH} id={id} style={{ background: bg }}>
@@ -123,7 +133,7 @@ export default function CTASlide({ headline, followLine, scale = 1, id, brandSty
       <div style={{ position: "absolute", top: contentTop, left: 72, right: 72 }}>
         <div style={isEditorial ? {
           fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-          fontWeight: 300,
+          fontWeight: isViral ? 600 : 300,
           fontSize: Math.round(80 * compact),
           color: headlineColor,
           textTransform: "none",

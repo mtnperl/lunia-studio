@@ -175,8 +175,23 @@ export async function POST(req: Request) {
               if (slide.graphic) {
                 slide.graphic = validateOrFallbackGraphic(slide.graphic, slide.body ?? slide.headline);
               }
+              // Viral-only fields. A figure is a short token; an emphasis must
+              // still be a substring of the body or the renderer has nothing
+              // to mark. Anything else is dropped rather than drawn wrong.
+              if (typeof slide.figure === "string") {
+                const f = slide.figure.trim();
+                slide.figure = f.length > 0 && f.length <= 8 ? f : undefined;
+              } else delete slide.figure;
+              // The base prompt sets headlines in caps for the poster presets;
+              // Viral wants sentence case and the model does not always comply.
+              if (stylePreset === "viral" && typeof slide.headline === "string") slide.headline = sentenceCase(slide.headline);
+              if (typeof slide.emphasis === "string") {
+                const e = slide.emphasis.trim();
+                slide.emphasis = e.length > 0 && (slide.body ?? "").includes(e) ? e : undefined;
+              } else delete slide.emphasis;
             }
           }
+          if (stylePreset === "viral" && typeof parsed.cta?.headline === "string") parsed.cta.headline = sentenceCase(parsed.cta.headline);
           if (parsed.cta?.graphic) {
             // CTA graphic is decorative icon-row only — drop rather than
             // force an unsupported fallback component onto that slide.
@@ -299,4 +314,20 @@ async function generateDidYouKnow(topic: string, count: number): Promise<Respons
   }
 
   return Response.json({ variants: finalVariants });
+}
+
+/** All-caps to sentence case, keeping tokens that are meant to be caps
+ *  (REM, GABA, 3AM) and the brand URL. Mixed-case input is left alone. */
+function sentenceCase(text: string): string {
+  const t = text.trim();
+  if (t !== t.toUpperCase()) return t;
+  const keep = /^(REM|NREM|GABA|CBT-I|CBT|ADHD|DHA|EPA|HRV|SWS|OSA|IU|MG|NIH|AASM|\d+AM|\d+PM|[A-Z]\.)$/;
+  const words = t.toLowerCase().split(/(\s+)/).map((w) => {
+    const up = w.toUpperCase();
+    if (keep.test(up) || up === "I") return up;
+    if (/lunialife\.com/i.test(w)) return "lunialife.com";
+    return w;
+  });
+  const out = words.join("");
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }

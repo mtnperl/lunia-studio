@@ -67,6 +67,11 @@ const FIT_FLOOR = 0.5;
 const SLIDE_H = SLIDE.height;
 
 type Props = {
+  // Viral-only fields, accepted so every content slide shares one call site.
+  figure?: string;
+  emphasis?: string;
+  slideIndex?: number;
+  slideTotal?: number;
   /** Accepted for call-site compatibility. NOT rendered — see the header. */
   headline: string;
   body: string;

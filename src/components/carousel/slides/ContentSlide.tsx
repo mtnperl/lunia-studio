@@ -177,6 +177,11 @@ function LegacyGraphicZone({ style, headline, body, brandStyle }: {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 type Props = {
+  // Viral-only fields, accepted so every content slide shares one call site.
+  figure?: string;
+  emphasis?: string;
+  slideIndex?: number;
+  slideTotal?: number;
   headline: string;
   body: string;
   citation: string;

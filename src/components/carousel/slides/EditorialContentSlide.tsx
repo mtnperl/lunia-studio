@@ -19,6 +19,11 @@ const PAD = SLIDE.editorialPad;
 const EDITORIAL_FONT = BRAND_FONT_FAMILY;
 
 type Props = {
+  // Viral-only fields, accepted so every content slide shares one call site.
+  figure?: string;
+  emphasis?: string;
+  slideIndex?: number;
+  slideTotal?: number;
   headline: string;
   body: string;
   citation: string;

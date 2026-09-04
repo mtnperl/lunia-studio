@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
+import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import { FP_COLORS } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
 import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
@@ -189,6 +190,8 @@ export default function RenderSlideClient(props: RenderSlideProps) {
     >
       {props.stylePreset === "free-press" ? (
         <FreePressContentSlide {...scaled} scale={1} />
+      ) : props.stylePreset === "viral" ? (
+        <ViralContentSlide {...scaled} scale={1} />
       ) : isEditorialPreset(props.stylePreset) ? (
         <EditorialContentSlide {...scaled} scale={1} />
       ) : (

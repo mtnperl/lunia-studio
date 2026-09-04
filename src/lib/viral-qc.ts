@@ -12,8 +12,10 @@ export type QcState = "pass" | "fail" | "manual";
 export type QcRow = { id: string; label: string; state: QcState; detail?: string };
 
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean);
+/** Body copy as lines: newlines win, a paragraph splits on sentences. */
+const lines = (s: string) => (s.includes("\n") ? s.split(/\n+/) : s.trim().split(/(?<=[.!?])\s+/)).map((l) => l.trim()).filter(Boolean);
 const lastSentence = (s: string) => {
-  const parts = s.trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+  const parts = lines(s);
   return parts[parts.length - 1] ?? "";
 };
 
@@ -36,11 +38,11 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   rows.push({ id: "tension", label: `No solution before slide ${total >= 10 ? 5 : 3}`, state: "manual", detail: "Read the slides before the midpoint: they must not tell the reader what to do yet." });
 
   // 4. One idea per slide: sentence count as a proxy.
-  const busy = slides.map((s, i) => ({ i, n: s.body.trim().split(/(?<=[.!?])\s+/).filter(Boolean).length })).filter((x) => x.n > 4);
-  rows.push({ id: "one-idea", label: "One idea per slide", state: busy.length ? "fail" : "manual", detail: busy.length ? `Slide${busy.length > 1 ? "s" : ""} ${busy.map((x) => x.i + 2).join(", ")}: more than four sentences` : "No slide runs past four sentences. Count the ideas by eye." });
+  const busy = slides.map((s, i) => ({ i, n: lines(s.body).length })).filter((x) => x.n > 4);
+  rows.push({ id: "one-idea", label: "One idea per slide", state: busy.length ? "fail" : "manual", detail: busy.length ? `Slide${busy.length > 1 ? "s" : ""} ${busy.map((x) => x.i + 2).join(", ")}: more than four lines` : "No slide runs past four lines. Count the ideas by eye." });
 
   // 5. Contrast: the preset only draws approved pairings.
-  rows.push({ id: "contrast", label: "Every text pairing passes 4.5:1", state: "pass", detail: "The Viral preset draws Rich Navy and Slate Blue on Soft Ivory, and Soft Ivory on navy." });
+  rows.push({ id: "contrast", label: "Every text pairing passes 4.5:1", state: "pass", detail: "Navy on ivory, ivory on navy, yellow only as the marker and on navy." });
 
   // 6. Compliance: banned phrases and patterns across every field.
   const all = [hook?.headline, hook?.subline, ...slides.flatMap((s) => [s.headline, s.body]), content.cta?.headline, content.caption].filter(Boolean).join("\n");

@@ -225,7 +225,8 @@ This template instruction takes PRIORITY over all other copy-length rules below.
 /** The slot engine, docs/carousel-viral-engine.md, as prompt text. */
 function viralEngineBlock(total: 5 | 10): string {
   const slots = VIRAL_SLOTS[total];
-  const rows = slots.map((s, i) => `  Slide ${i + 2} (${s.name}): ${s.job}\n    Last line of the body, verbatim or in the same spirit: "${s.openLoop}"`).join("\n");
+  const rows = slots.map((s, i) => `  Slide ${i + 2} (${s.name}, ${s.tone} slide): ${s.job}\n    Last line of the body, verbatim or in the same spirit: "${s.openLoop}"${s.graphic ? "\n    This slide may carry a graphic (see below)." : ""}`).join("\n");
+  const graphicSlides = slots.map((s, i) => (s.graphic ? i + 2 : 0)).filter(Boolean).join(" and ");
   return `
 VIRAL PRESET. THIS OVERRIDES THE SLIDE COUNT, THE NARRATIVE ARC AND THE TIER RULES BELOW.
 
@@ -233,15 +234,23 @@ Return EXACTLY ${slots.length} objects in "slides", in this order. Each slide ha
 ${rows}
 The hook is slide 1 and the CTA is slide ${total}. Do NOT return a "takeaway" object.
 
+Every viral slide object has two extra fields: "figure" and "emphasis".
+{ "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": null, "figure": "string", "emphasis": "string" }
+
+How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it is lines, not a paragraph:
+- "headline": the hero line, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps, whatever the rules below say), no full stop. One idea.
+- "body": 2 to 4 short lines separated by a newline character (\\n). Each line is a complete sentence of 9 words or fewer. No line is a paragraph. The LAST line is the open-loop line for that slot, under 10 words. 20 to 40 words in total.
+- "emphasis": the one phrase in the body that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines (same characters, same case). It is drawn in yellow. Never the open-loop line. "" when nothing earns it.
+- "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
+- "graphic": "" on every slide except ${graphicSlides ? `slide ${graphicSlides}` : "none"}, which may carry one infographic spec when it has a sourced comparison worth drawing. A slide with a figure needs no graphic.
+
 Retention rules, all mandatory:
 - Never resolve the tension before the midpoint. The first slide that may contain a solution is slide ${total === 10 ? 5 : 3}.
-- Every content slide ends owing the reader something: its body's final sentence is the open-loop line above. Keep it under 10 words.
+- Every content slide ends owing the reader something: its body's final line is the open-loop line above.
 - Simplicity gate: a complete beginner understands every slide on first read. One idea per slide.
 - Hook headline: 8 words or fewer, one sentence, a promise or a number. Never the product.
-- Slide headlines: the hero line, 3 to 8 words, uppercase, top-left. Body: 25 to 45 words, the support copy, then the open-loop line.
 - The product may appear from slide ${total === 10 ? 8 : 4} onward, and only as the mechanism, never as the promise.
-- "graphic": return "" on every slide except the Proof slide${total === 10 ? " (slide 9)" : " (slide 4)"}, which may carry one stat graphic when it has a sourced figure.
-- CTA headline: one ask to lunialife.com, uppercase, max 6 words. Nothing else on that slide.
+- CTA headline: one ask to lunialife.com, sentence case, max 6 words. Nothing else on that slide.
 - Every figure needs a real source in "citation" or must be hedged in words. Never invent a study.
 `;
 }

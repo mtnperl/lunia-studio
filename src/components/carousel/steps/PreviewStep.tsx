@@ -4,6 +4,8 @@ import { toPng } from "html-to-image";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
+import { PALETTE } from "@/lib/lunia-brand-guidelines";
+import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
 import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
 import { FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
@@ -420,14 +422,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Editorial Scientific renders content slides with a bespoke layout —
   // logo top, big editorial headline + rule, body, optional icon-stat rows,
   // optional product photo. Drop-in compatible with ContentSlide's props.
+  // Viral has its own slide (ivory or navy per slot, stacked lines, a
+  // figure, the open-loop line in yellow); it takes the same props plus the
+  // slide's position and the two viral-only fields.
   const ContentSlideComponent = isFreePress
     ? FreePressContentSlide
-    : isEditorial
-      ? EditorialContentSlide
-      : ContentSlide;
+    : isViral
+      ? ViralContentSlide
+      : isEditorial
+        ? EditorialContentSlide
+        : ContentSlide;
   const TakeawaySlideComponent = isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
   // Editorial Scientific: default the slide bg to Soft Ivory if no saved color.
-  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isFreePress ? FP_COLORS.paper : isEditorial ? "#EFEFF4" : undefined));
+  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isFreePress ? FP_COLORS.paper : isViral ? PALETTE.softIvory : isEditorial ? "#EFEFF4" : undefined));
   // Decoration toggles — default true to preserve every existing carousel's look.
   const [showSlideArrows, setShowSlideArrows] = useState(initialShowSlideArrows ?? true);
   const [showSlideNumbers, setShowSlideNumbers] = useState(initialShowSlideNumbers ?? true);
@@ -2781,7 +2788,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
         onSelectElement={(el) => selectElement(i + 1, el)}
         selectedElement={focusedSlide === i + 1 ? selectedElement : null}
         editingElement={editing?.slide === i + 1 ? editing.element : null}
@@ -2803,7 +2810,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={slideFrameH} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
     )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={slideFrameH} />]

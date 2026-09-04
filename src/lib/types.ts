@@ -104,6 +104,10 @@ export type CarouselContentSlide = {
   graphic?: string; // GraphicSpec JSON string (new) or raw SVG string (legacy)
   graphicImagePrompt?: string; // fal.ai prompt for TIER B/C slides (AI-generated visual)
   graphicImageUrl?: string;    // fal.ai hosted URL once generated
+  /** Viral preset: one sourced figure set as the slide's visual, e.g. "40%". */
+  figure?: string;
+  /** Viral preset: an exact substring of body drawn as the highlighted phrase. */
+  emphasis?: string;
 };
 
 // ─── GraphicSpec — curated infographic component selection ────────────────────

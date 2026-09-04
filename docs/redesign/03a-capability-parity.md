@@ -194,3 +194,18 @@ export menu.
 12. **Off-palette colours in slide renderers.** `#EFEFF4`, `#1E6B8C`, `#9ab0b8` and others become the closed palette during slice 3. Under discussion: a palette aligner (snap to nearest palette colour, with a lint) rather than hand edits.
 
 Nothing else is proposed for removal.
+
+## Viral v2 slide (added 2026-09-04)
+
+Viral content slides render through a new component, `ViralContentSlide`, instead of the Editorial slide. Editorial Scientific, Free Press and the default preset are untouched. What the new slide does and does not carry:
+
+| Capability | Viral v2 | Note |
+|---|---|---|
+| Click to select, double-click to edit headline, body, citation | Yes | Body edits keep one line per row. |
+| Headline and body size sliders | Yes | Figure follows the headline slider. |
+| Infographic on the slide | Yes, on the Pain and Proof slots (Solution on five slides) | Drawn in the slide's own ink. |
+| Slide arrows, slide numbers, citation line toggles | Yes | Slide number is the "03 / 10" kicker. |
+| Product photo on the right, background image, background dim | No | Never part of the Viral spec. |
+| Wordmark on content slides | No | Hook and CTA only, by design. |
+| Export frames (feed, grid, story, square) | Yes | Same `frameH` scaling as the other slides. |
+| Headless render route parity | Yes | `/render/carousel-slide` picks the Viral slide for the preset. |
