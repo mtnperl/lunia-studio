@@ -229,7 +229,7 @@ export default function CampaignView({
 
   // The editor is full-bleed inside the app shell; the brief and the deck keep
   // the page frame.
-  const inEditor = !loading && !importing && !deck && step === 2 && !!content;
+  const inEditor = !loading && !importing && ((!deck && step === 2 && !!content) || !!deck);
   return (
     <div className={inEditor ? "studio-frame" : undefined} style={inEditor ? undefined : { maxWidth: 1440, margin: "0 auto", padding: "48px 40px 80px" }}>
       {!inEditor && (

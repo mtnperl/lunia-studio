@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Menu, useConfirm } from "@/components/ui";
 import { SavedCarousel } from "@/lib/types";
 
 // ── Tone label colors ──────────────────────────────────────────────────────────
@@ -66,48 +67,6 @@ function CopyButton({ text, onClick }: { text: string; onClick?: (e: React.Mouse
   );
 }
 
-// ── DownloadIconButton ─────────────────────────────────────────────────────────
-function DownloadIconButton({ href }: { href: string }) {
-  function handle(e: React.MouseEvent) {
-    e.stopPropagation();
-    window.open(href, "_blank");
-  }
-  return (
-    <button
-      onClick={handle}
-      title="Download"
-      style={{
-        width: 36, height: 36, flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "var(--surface-r)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        cursor: "pointer",
-        color: "var(--muted)",
-        transition: "color 0.14s, border-color 0.14s, background 0.14s",
-      }}
-      onMouseEnter={e => {
-        const b = e.currentTarget as HTMLButtonElement;
-        b.style.color = "var(--text)";
-        b.style.borderColor = "var(--border-strong)";
-        b.style.background = "var(--surface-h)";
-      }}
-      onMouseLeave={e => {
-        const b = e.currentTarget as HTMLButtonElement;
-        b.style.color = "var(--muted)";
-        b.style.borderColor = "var(--border)";
-        b.style.background = "var(--surface-r)";
-      }}
-    >
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M7 1.5v7M4.5 6.5l2.5 2.5 2.5-2.5"
-          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M1 10.5v1A1.5 1.5 0 0 0 2.5 13h9a1.5 1.5 0 0 0 1.5-1.5v-1"
-          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    </button>
-  );
-}
 
 // ── Skeleton card ──────────────────────────────────────────────────────────────
 function SkeletonCard() {
@@ -135,11 +94,13 @@ function SkeletonCard() {
 // ── CarouselCard ───────────────────────────────────────────────────────────────
 function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c: SavedCarousel; onClick: () => void; onDelete: () => void; onVary?: (c: SavedCarousel) => void; onConvertToCampaign?: (c: SavedCarousel) => void }) {
   const [hovered, setHovered] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLButtonElement | null>(null);
+  const confirm = useConfirm();
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleDelete(e?: React.MouseEvent) {
+    e?.stopPropagation();
     setDeleting(true);
     await fetch(`/api/carousel/${c.id}`, { method: "DELETE" });
     onDelete();
@@ -274,102 +235,27 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c
           {c.topic}
         </p>
 
-        {/* Actions — stop propagation so card click doesn't fire */}
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{ display: "flex", gap: 6, alignItems: "stretch" }}
-        >
-          {confirmDelete ? (
-            <>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{
-                  flex: 1, padding: "9px 0",
-                  background: "#A04040", border: "1px solid #A04040",
-                  borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  color: "#fff", cursor: deleting ? "not-allowed" : "pointer",
-                  fontFamily: "var(--font-ui)", opacity: deleting ? 0.6 : 1,
-                }}
-              >
-                {deleting ? "Deleting…" : "Confirm delete"}
-              </button>
-              <button
-                onClick={e => { e.stopPropagation(); setConfirmDelete(false); }}
-                style={{
-                  width: 36, flexShrink: 0,
-                  background: "var(--surface-r)", border: "1px solid var(--border)",
-                  borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  color: "var(--muted)", cursor: "pointer",
-                  fontFamily: "var(--font-ui)",
-                }}
-              >✕</button>
-            </>
-          ) : (
-            <>
-              <CopyButton text={caption} />
-              {onVary && (
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--sm ui-btn--secondary"
-                  onClick={(e) => { e.stopPropagation(); onVary(c); }}
-                  title="New carousel on another subject with this one's slide structure and look"
-                  style={{ flexShrink: 0, whiteSpace: "nowrap" }}
-                >Vary</button>
-              )}
-              {onConvertToCampaign && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onConvertToCampaign(c); }}
-                  title="Make campaign from this carousel"
-                  style={{
-                    flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    gap: 4,
-                    padding: "9px 10px",
-                    background: "var(--surface-r)", border: "1px solid var(--border)",
-                    borderRadius: 8, cursor: "pointer",
-                    fontSize: 11, fontWeight: 700, color: "var(--muted)",
-                    fontFamily: "var(--font-ui)",
-                    whiteSpace: "nowrap",
-                    transition: "color 0.14s, border-color 0.14s, background 0.14s",
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.color = "#102635";
-                    el.style.borderColor = "#FFD800";
-                    el.style.background = "rgba(255,216,0,0.10)";
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLButtonElement;
-                    el.style.color = "var(--muted)";
-                    el.style.borderColor = "var(--border)";
-                    el.style.background = "var(--surface-r)";
-                  }}
-                >
-                  ✉
-                </button>
-              )}
-              <DownloadIconButton href={shareHref} />
-              {/* Trash */}
-              <button
-                onClick={e => { e.stopPropagation(); setConfirmDelete(true); }}
-                title="Delete"
-                style={{
-                  width: 36, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "var(--surface-r)", border: "1px solid var(--border)",
-                  borderRadius: 8, cursor: "pointer", color: "var(--muted)",
-                  transition: "color 0.14s, border-color 0.14s",
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--error)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
-              >
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M1.5 3.5h11M5 3.5V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M2.5 3.5l.75 8a1 1 0 0 0 1 .916h5.5a1 1 0 0 0 1-.916l.75-8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </>
-          )}
+        {/* Actions: copy the caption, open, and a menu for the rest. */}
+        <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 6, alignItems: "stretch" }}>
+          <CopyButton text={caption} />
+          <button type="button" className="ui-btn ui-btn--sm ui-btn--secondary" onClick={onClick} style={{ flex: 1 }}>Open</button>
+          <button ref={menuRef} type="button" className="ui-btn ui-btn--sm ui-btn--secondary ui-btn--icon" title="More actions" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} style={{ width: 36, flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+          </button>
+          <Menu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            anchorRef={menuRef}
+            placement="bottom-end"
+            ariaLabel="Carousel actions"
+            items={[
+              ...(onVary ? [{ label: "Vary: new subject, same structure", onSelect: () => onVary(c) }] : []),
+              ...(onConvertToCampaign ? [{ label: "Turn into an email", onSelect: () => onConvertToCampaign(c) }] : []),
+              { label: "Download slides", onSelect: () => { window.open(shareHref, "_blank", "noopener,noreferrer"); } },
+              { type: "separator" as const },
+              { label: deleting ? "Deleting" : "Delete", danger: true, disabled: deleting, onSelect: async () => { const ok = await confirm({ title: "Delete this carousel?", description: c.topic, confirmLabel: "Delete", tone: "danger" }); if (ok) void handleDelete(); } },
+            ]}
+          />
         </div>
       </div>
     </div>

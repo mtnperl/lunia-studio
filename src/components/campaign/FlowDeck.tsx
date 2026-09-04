@@ -184,9 +184,9 @@ export default function FlowDeck({
   }
 
   return (
-    <div>
-      {/* Deck header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      {/* Deck header: a strip above the editor shell, same height rhythm as its top bar. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 12px", borderBottom: "1px solid var(--ui-border)", background: "var(--ui-surface)", flexWrap: "wrap", flex: "none" }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--subtle)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Imported from Klaviyo
@@ -240,7 +240,7 @@ export default function FlowDeck({
       </div>
 
       {shapePickerOpen && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ padding: "12px 12px 0", flex: "none" }}>
           <ShapeGallery
             shapes={[...CAMPAIGN_SHAPES, ...savedShapes.map(savedShapeToCampaignShape)]}
             busyShapeId={null}
@@ -253,7 +253,7 @@ export default function FlowDeck({
       {/* Batch restructure progress. Rows stay after the run so a failure is
           still actionable (per-row Retry) rather than a transient toast. */}
       {Object.keys(batchStatus).length > 0 && (
-        <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 16, background: "var(--surface)" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 12, margin: "12px 12px 0", background: "var(--surface)", flex: "none" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)" }}>
               Make it all visual
@@ -309,7 +309,7 @@ export default function FlowDeck({
       )}
 
       {/* Email switcher E1 … EN */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "10px 12px", borderBottom: "1px solid var(--ui-border)", flex: "none" }}>
         {emails.map((e, i) => {
           const active = i === index;
           return (
@@ -341,18 +341,19 @@ export default function FlowDeck({
       </div>
 
       {current?.flagged && (
-        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
+        <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "10px 14px", margin: "12px 12px 0", flex: "none", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
           This email had no readable HTML or text in Klaviyo, so it came in empty. Add copy and images below, or skip it.
         </div>
       )}
 
       {!current?.flagged && current?.usedFallback && (
-        <div style={{ background: "rgba(184,96,64,0.08)", border: "1px solid rgba(184,96,64,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
+        <div style={{ background: "rgba(184,96,64,0.08)", border: "1px solid rgba(184,96,64,0.3)", borderRadius: 8, padding: "10px 14px", margin: "12px 12px 0", flex: "none", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
           AI structuring did not run for this email (no response, or it could not be parsed), so the hero image, CTA, and text blocks were assembled with a simple fallback instead of being intelligently chosen. Double-check them before saving.
         </div>
       )}
 
       {current && (
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <CampaignEditor
           // initialPending is read once on mount, so the key carries whether a
           // review is parked: a restructure landing for the email you are
@@ -369,6 +370,7 @@ export default function FlowDeck({
           initialPending={pendingByEmail[current.emailId] ?? null}
           onPendingResolved={() => clearPendingFor(current.emailId)}
         />
+        </div>
       )}
     </div>
   );
