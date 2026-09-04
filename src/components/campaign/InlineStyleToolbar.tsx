@@ -11,6 +11,7 @@
 // pair loses the caret on the next re-render, so the "helpful" version is the
 // one that does not work.
 import { useEffect, useState } from "react";
+import { RewriteBar } from "@/components/editor/RewriteBar";
 import {
   applyInlineToken, clearInlineToken, parseMods,
   INLINE_SIZES, INLINE_STYLE_MODS,
@@ -38,6 +39,10 @@ export default function InlineStyleToolbar({
   // Enabled state has to react to the user selecting text, so track it from
   // the document's selectionchange rather than reading on render.
   const [hasSelection, setHasSelection] = useState(false);
+  const [rewriteOpen, setRewriteOpen] = useState(false);
+  // The selection at the moment Rewrite was opened, so typing an instruction
+  // does not lose it.
+  const [pinned, setPinned] = useState<{ start: number; end: number } | null>(null);
   useEffect(() => {
     const check = () => {
       const sel = getSelection(blockId);
@@ -103,6 +108,26 @@ export default function InlineStyleToolbar({
       <span style={{ width: 1, height: 14, background: "var(--border)", margin: "0 2px" }} />
       <button type="button" style={btn(false)} disabled={!hasSelection}
         {...preserveSelectionOnClick} onClick={clear} title="Remove styling from the selection">Clear</button>
+      <span style={{ width: 1, height: 14, background: "var(--border)", margin: "0 2px" }} />
+      <button type="button" style={btn(rewriteOpen)} disabled={!hasSelection && !rewriteOpen}
+        {...preserveSelectionOnClick}
+        onClick={() => { if (rewriteOpen) { setRewriteOpen(false); setPinned(null); return; } const sel = getSelection(blockId); if (sel && sel.end > sel.start) { setPinned(sel); setRewriteOpen(true); } }}
+        title="Rewrite the selected text with AI">Rewrite</button>
+      {rewriteOpen && pinned && (
+        <div style={{ width: "100%", marginTop: 4 }}>
+          <RewriteBar
+            label="Rewrite selection"
+            text={value.slice(pinned.start, pinned.end)}
+            context={value}
+            onResult={(t) => {
+              const next = value.slice(0, pinned.start) + t + value.slice(pinned.end);
+              onChange(next);
+              setPinned({ start: pinned.start, end: pinned.start + t.length });
+              setSelection(blockId, pinned.start, pinned.start + t.length);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

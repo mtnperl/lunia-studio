@@ -231,3 +231,9 @@
 .assets__cell[aria-pressed="true"] { border-color: var(--ui-text); }
 .assets__cell:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
 .assets__cell img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+
+/* Inline AI rewrite bar */
+.rewrite { display: flex; flex-direction: column; gap: 6px; }
+.rewrite__row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.rewrite__label { font-size: var(--ui-text-11); color: var(--ui-text-3); text-transform: uppercase; letter-spacing: var(--ui-tracking-caps); margin-right: 4px; }
+.rewrite__error { font-size: var(--ui-text-12); color: var(--ui-danger); }

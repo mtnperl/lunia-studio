@@ -14,6 +14,7 @@ import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookH
 import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
+import { RewriteBar } from "@/components/editor/RewriteBar";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
 import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
 import { DEFAULT_GATING } from "@/lib/types";
@@ -1908,6 +1909,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 rows={2}
                 style={{ ...fieldStyle, resize: "vertical" }}
               />
+              <div style={{ marginTop: 8 }}>
+                <RewriteBar text={slide.headline} context={`Slide ${slideIdx + 1} of a carousel about "${topic}". Headline: ${slide.headline}. Body: ${slide.body}`} onResult={(t) => updateSlideField(slideIdx, "headline", t)} />
+              </div>
             </div>
             <div>
               {groupLabel("Size")}
@@ -1928,6 +1932,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 rows={7}
                 style={{ ...fieldStyle, resize: "vertical" }}
               />
+              <div style={{ marginTop: 8 }}>
+                <RewriteBar text={slide.body} context={`Slide ${slideIdx + 1} of a carousel about "${topic}". Headline: ${slide.headline}. Body: ${slide.body}`} onResult={(t) => updateSlideField(slideIdx, "body", t)} />
+              </div>
             </div>
             <div>
               {groupLabel("Size")}
