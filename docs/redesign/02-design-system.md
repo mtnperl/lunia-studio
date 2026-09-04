@@ -76,6 +76,30 @@ All in `src/components/ui/`, exported from `src/components/ui/index.ts`.
 
 Every focusable primitive shows the same two-layer ring (`--ui-focus-ring`) on `:focus-visible`.
 
+### Added during the editor slices (3 to 5)
+
+| Component | Where | Notes |
+|---|---|---|
+| `EditorShell`, `RailHead` | `src/components/shell/EditorShell.tsx` | Top bar with save state and actions, view tabs, export menu with an optional note and tone, left and right rail slots, canvas. Both editors render inside it. Layout in `shell.css` under `.shell*`. |
+| `AppShell`, `nav.ts` | `src/components/shell/` | Left navigation, top bar, Cmd K, shortcut sheet, theme. Documents have URLs: `/c/:id`, `/e/:id`, `/?v=tab`. |
+| `AssetBrowser` | `src/components/campaign/AssetBrowser.tsx` | The asset library as a rail panel: folders, search, grid, a target line saying where a pick lands. Styles under `.assets*`. |
+| `RewriteBar` | `src/components/editor/RewriteBar.tsx` | Inline AI on a piece of text: four presets, a free instruction, Revert. Calls `api/rewrite-selection`. |
+| `VersionsPanel` | `src/components/editor/VersionsPanel.tsx` | Version history dialog: name, restore. Calls `api/versions`. |
+| `ViralChecklist` | `src/components/carousel/ViralChecklist.tsx` | The nine-rule pre-publish list for the Viral preset, pass, fix or check by eye. |
+| `VerificationPanel` | `src/components/carousel/VerificationPanel.tsx` | Rebuilt card per claim: impact, problem, fix with Apply, everything else behind More. |
+
+### Motion
+
+Tokens: `--ui-dur-1` 80 ms for hover and press, `--ui-dur-2` 150 ms for toggles and tooltips, `--ui-dur-3` 220 ms for panels, popovers and dialogs, `--ui-dur-4` 350 ms for page-level moves. `--ui-ease-out` is `cubic-bezier(0.2, 0, 0, 1)`; entrances use it, exits use `--ui-ease-in`, on-screen moves use `--ui-ease-in-out`. Reduced motion zeroes every duration.
+
+Rules applied in the motion pass (plans and rationale in `plans/animations/`):
+- Keyboard-opened surfaces do not animate. The command palette has none.
+- Popovers and menus scale from the edge they hang from; `usePosition` writes `data-side` and `data-align` and `ui.css` sets the origin.
+- Tooltips wait 400 ms once, then open instantly for 300 ms after the last one closed.
+- Toasts use transitions with `@starting-style`, never keyframes, so a stacking toast retargets and a leaving one fades.
+- Buttons press to 97 percent over 150 ms. Nothing else in a list, tab or menu moves on press.
+- Modal dialogs carry `margin: auto` because the global reset zeroes margins.
+
 ## How to extend
 
 1. **Need a value?** Add a token to `tokens.css`, in both themes if it is a colour, with a comment saying
@@ -86,6 +110,11 @@ Every focusable primitive shows the same two-layer ring (`--ui-focus-ring`) on `
    prefix, export from `index.ts`, and a section on `/styleguide` showing every state. A primitive without
    a style guide entry is not finished.
 4. **Need brand colour in the chrome?** You do not. Put it on the canvas.
+
+## Status at the end of slice 5
+
+- Both editors, the library home, the Facts screen and the style guide are built from the primitives.
+- The brief screens (new carousel, new email), the legacy Klaviyo deck strip, the batch view and the scripts views still carry their inline styles. They re-theme through the legacy aliases and were left as they are on purpose; see `06-before-after.md`.
 
 ## Deliberately left for later slices
 

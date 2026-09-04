@@ -83,6 +83,20 @@ Brand compliance linting was removed from the list by decision. Three parked ite
 7. **Scheduled daily batch.** Not an editor feature; needs cron auth in the middleware, which is a
    backend change and will be called out when it lands.
 
+## Status, 2026-09-04
+
+| # | Feature | Shipped | Where |
+|---|---|---|---|
+| 1 | Asset library in the rail | yes | Email Assets tab; carousel Refine image, Use a library photo |
+| 2 | Inline AI on selection | yes | Rewrite in any email block; Ask AI on a slide's headline or body |
+| 3 | Templates and brand presets | yes | Saved looks on the carousel Style tab and brief; email saved shapes carry spacing, logo and CTA settings |
+| 4 | Duplicate and vary | yes | Vary in the library card menu; `structureFrom` on generate |
+| 5 | Export presets per channel | yes | Feed 4:5, feed with grid margin 4:5 on 1440, story 9:16, square 1:1 |
+| 6 | Version history | yes | Export menu, Version history; every save kept, named ones forever |
+| 7 | Scheduled daily batch | no, by decision | Cron auth exists in the middleware; the job itself was skipped for cost |
+
+Added outside the list, by request: the claims ledger and its research runner, the fact check rebuild, the Viral preset with its operating document, and the Bold post hook mode.
+
 ## What each shortlisted feature needs from the backend, stated plainly
 
 The brief says backend changes must be called out. These are the only ones:

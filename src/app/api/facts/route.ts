@@ -25,9 +25,11 @@ export async function POST(req: Request): Promise<Response> {
         subjectText: f.subjectText ?? "",
         statement: f.statement!.trim(),
         value: f.value,
-        source: f.source ?? {},
+        // The research prompt returns citation, url and quote at the top level;
+        // the ledger keeps them under source. Accept both.
+        source: f.source ?? { citation: (f as Record<string, unknown>).citation as string | undefined, url: (f as Record<string, unknown>).url as string | undefined, quote: (f as Record<string, unknown>).quote as string | undefined },
         status: f.status ?? "pending",
-        origin: f.origin ?? "manual",
+        origin: f.origin ?? "research",
         contentId: f.contentId,
         createdAt: f.createdAt ?? now,
         updatedAt: now,
