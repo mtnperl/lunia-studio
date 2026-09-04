@@ -33,10 +33,10 @@ export const LUNIA_BRAND = {
 /** Single approved entity-line variant (no rotation). Maximises AI-crawler
  *  consistency: same entity sequence, same surface form, every post. Em-dash-
  *  free per brand rules. Carries: brand · category · product · positioning
- *  (melatonin-free + GMP-manufactured) · three ingredients with clinical
- *  doses · benefit phrase · domain. */
+ *  (melatonin-free + GMP-manufactured) · three ingredients with the amounts
+ *  on the label · benefit phrase · domain. */
 export const ENTITY_LINE_VARIANTS: readonly string[] = [
-  "From Lunia Life, a sleep & longevity brand. Lunia Restore: melatonin-free, GMP-manufactured. Three clinical doses: magnesium bisglycinate 500mg, L-theanine 300mg, apigenin 50mg. Supports deep sleep and overnight recovery. www.lunialife.com",
+  "From Lunia Life, a sleep & longevity brand. Lunia Restore: melatonin-free, GMP-manufactured. Three ingredients, every amount on the label: magnesium bisglycinate 500mg, L-theanine 300mg, apigenin 50mg. Supports deep sleep and overnight recovery. www.lunialife.com",
 ];
 
 /** Pick a single entity-line variant. Pure function — callers pass a seed

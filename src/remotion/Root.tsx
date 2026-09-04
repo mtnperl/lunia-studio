@@ -28,7 +28,7 @@ const DEFAULT_CAPTIONS_PROPS: VideoCaptionsData = {
     "72% of adults wake up exhausted every morning.",
     "Magnesium may be the missing piece in your routine.",
     "Lunia Restore — magnesium, L-theanine, and apigenin.",
-    "Try it at lunialife.com. Under $1 per serving.",
+    "Try it at lunialife.com. Under a dollar a night on subscription.",
   ],
 };
 

@@ -115,7 +115,7 @@ export const ANGLE_LIBRARY: Angle[] = [
         label: "Why dose matters",
         videoHook: "Two bottles side by side. \"Same ingredient. 10x the dose.\"",
         textHook: "The study used 500mg. Most supplements give you 50.",
-        narrativeArc: "Compare competitor doses. Explain why clinical dose matters. Show Lunia's dose matches the study. Acknowledge: more isn't always better, but under-dosed is useless. Trust through specificity.",
+        narrativeArc: "Compare competitor doses. Explain elemental versus compound weight. Show every Lunia amount as printed on the label, and say plainly where it sits against the research (L-theanine inside the studied range, magnesium below the bisglycinate trial dose). Trust through specificity.",
       },
       {
         id: "science-mineral",
@@ -192,7 +192,7 @@ export const ANGLE_LIBRARY: Angle[] = [
         label: "$2 a day",
         videoHook: "Calculator visible. \"Let's do the math. $2 a day.\"",
         textHook: "Cheaper than my coffee. More useful than my coffee.",
-        narrativeArc: "Math the daily cost. Compare to a latte, a drugstore multivitamin. Honest framing: not the cheapest, priced for clinical doses. Subscribe-and-save mention. End with: \"worth it to me. Decide for yourself.\"",
+        narrativeArc: "Math the daily cost. Compare to a latte, a drugstore multivitamin. Honest framing: not the cheapest, priced for real amounts printed on the label. Under a dollar a night on subscription, and say subscription in the same breath. End with: \"worth it to me. Decide for yourself.\"",
       },
       {
         id: "financial-replacement",

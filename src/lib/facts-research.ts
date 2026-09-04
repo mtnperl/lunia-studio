@@ -45,6 +45,19 @@ export function parseFactArray(content: Array<{ type: string; text?: string }>):
       else if (ch === "]") { depth--; if (depth === 0) { const a = asArray(tryParse(stripped.slice(start, i + 1))); if (a) return a; break; } }
     }
   }
+  // Truncated or unterminated array: salvage every complete object inside it.
+  if (start >= 0) {
+    const objs: unknown[] = [];
+    let depth = 0, inStr = false, esc = false, objStart = -1;
+    for (let i = start + 1; i < stripped.length; i++) {
+      const ch = stripped[i];
+      if (inStr) { if (esc) esc = false; else if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === "{") { if (depth === 0) objStart = i; depth++; }
+      else if (ch === "}") { depth--; if (depth === 0 && objStart >= 0) { const o = tryParse(stripped.slice(objStart, i + 1)); if (o && typeof o === "object") objs.push(o); objStart = -1; } }
+    }
+    if (objs.length) return objs;
+  }
   throw new Error("Model did not return a JSON array. First 200 chars: " + stripped.slice(0, 200));
 }
 

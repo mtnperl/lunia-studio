@@ -1,3 +1,4 @@
+import { PRODUCT } from "./lunia-brand-guidelines";
 import { describe, it, expect } from "vitest";
 import { BLOCK_SAMPLES, sampleBlock, emptyBlock } from "./campaign-block-samples";
 import { hasForbiddenDash } from "./strip-dashes";
@@ -49,7 +50,7 @@ describe("BLOCK_SAMPLES", () => {
 
   it("draws prices and counts from PRODUCT rather than hardcoding them", () => {
     expect(sampleBlock("comparison", "id").comparisonRightPrice).toBe("$29.20");
-    expect(sampleBlock("stat", "id").statValue).toBe("558 reviews");
+    expect(sampleBlock("stat", "id").statValue).toBe(`${PRODUCT.reviewCount} reviews`);
     expect(sampleBlock("ingredients", "id").ingredientItems?.map((i) => i.name)).toEqual([
       "Magnesium Bisglycinate", "L-Theanine", "Apigenin",
     ]);

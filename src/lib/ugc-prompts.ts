@@ -7,7 +7,7 @@ const REFERENCE_SCRIPTS: BriefScript[] = [
     textHook: "3am wake-ups, brain fog, mood swings. Nobody told me this was perimenopause.",
     narrative: `So here's what's happening. Estrogen drops in your forties, even before periods stop. That drop hits GABA. GABA runs your sleep and your mood. That's why the 3am wake-ups aren't random, they're hormonal.
 
-I read the label on this. Three ingredients I recognized from the actual studies. Magnesium glycinate, the form that crosses the blood-brain barrier. Ashwagandha at a clinical dose. L-theanine, 200mg, the same amount in the research.
+I read the label on this. Three ingredients I recognized from the actual studies. Magnesium glycinate, the chelated form. Apigenin, 50mg, printed right on the label. L-theanine, 300mg, inside the range the research used.
 
 Three weeks in, I went from waking up four times a night to once. That's it. Not cured, not transformed. Just sleeping.`,
     cta: "I really recommend it if you're in the same boat. Link's below. Not sponsored, just sharing.",
