@@ -397,20 +397,21 @@ function paperToneBlock(tone: 'white' | 'warm'): string {
 // emitting light. This block encodes that as the value structure rather than
 // leaving it to chance, and composes with paperTone: the tone still picks the
 // ivory of the TYPE ZONE, the subject zone goes near-black either way.
-function contrastPaletteBlock(tone: 'white' | 'warm'): string {
-  const typeZone = tone === 'warm'
-    ? "  • TYPE ZONE — the upper third to half of the frame: #EFE1C8 (warm ecru cream), flat and evenly lit, like uncoated cream paper. The warmth lives in the paper itself, not in a directional warm light raking across the scene. It holds the navy type and nothing else — quiet, clean, near-empty."
-    : "  • TYPE ZONE — the upper third to half of the frame: #EFEFF4 (clean neutral ivory), flat and evenly lit, like premium uncoated magazine paper. It holds the navy type and nothing else — quiet, clean, near-empty.";
+function contrastPaletteBlock(_tone: 'white' | 'warm'): string {
+  // "Bold" mode. The earlier version split the frame into an ivory paper band
+  // over a near-black ground, which read as a layout trick, not a stop. This
+  // one puts the contrast where a thumb notices it: one large, brightly lit
+  // subject against a deep navy-to-black ground, with the headline reversed
+  // to ivory and a single phrase in Signal Yellow. Everything stays on the
+  // six-colour palette.
   return [
     "PALETTE & VALUE — STRICT (this is the defining instruction for this image; where any softer styling note above disagrees with it, this wins):",
-    "  • The frame is built from TWO zones with a real, visible edge between them — not a gradient, not a soft vignette, not a blur. A viewer must be able to point at the line where one ends and the other begins. That edge belongs to the scene, not to a graphic-design layer: a soil line, a waterline, a horizon, a table edge, the lip of a vessel, a wall meeting its own shadow.",
-    typeZone,
-    "  • SUBJECT ZONE — the rest of the frame: a genuinely dark, near-black ground, #0B0A09 through #1A1714. Soil, deep water, night air, unlit interior, dark stone, shadow. Real shadow detail stays readable inside it — dark, not empty.",
-    "  • Both zones must be present in the SAME frame: paper-bright above, near-black below. That value gap IS the composition. Never ivory-on-ivory, never an all-mid-tone image, never a uniformly dark one.",
-    "  • LUMINOUS FOCAL EVENT — exactly one element inside the dark zone emits or catches light, and it is the brightest thing in the lower half: glowing roots under soil, a lit filament, embers, a cold shaft of light through water, one lit edge of mineral or glass. Small, precise, and clearly the reason this picture exists. The eye lands on it first, then travels up into the type.",
-    "  • Text: #01253f (rich navy), set on the paper zone only.",
-    "  • ONE accent hue is permitted: the colour the luminous element's own light would actually be (warm amber, cold blue-white, deep ember), plus the short falloff it throws on the surfaces immediately around it. Nothing else in the frame carries that hue. It is emitted light, never painted colour.",
-    "  • Natural subject colours are fine but must live comfortably inside this paper + near-black + navy palette. Skin, fabric and natural textures read true to life.",
+    "  • ONE SUBJECT, LARGE. The subject fills at least half the frame and is the brightest thing in it: rim-lit or side-lit by one strong light, real highlights, real shadow detail. It should read at thumbnail size on a phone.",
+    "  • GROUND: deep rich navy (#01253F) falling to near-black (#0B0A09) in the shadows. One continuous dark environment: night air, dark water, unlit room, dark stone. No paper band, no split frame, no second zone.",
+    "  • QUIET CORNER: the top-left third of the frame stays dark and uncluttered so the type can sit there without a box, a band or a scrim.",
+    "  • TEXT: soft ivory (#F7F4EF), reversed out of the dark ground. ONE phrase of the headline, two or three words, the words that carry the promise or the number, set in Signal Yellow (#FFD800). Nothing else in the frame is yellow.",
+    "  • LIGHT: one directional source, physical and local. High dynamic range from the lighting itself, not from a filter. Deep blacks keep their detail.",
+    "  • Natural subject colours read true to life: skin, linen, glass, water, foliage. They live inside the navy and near-black ground; nothing is graded toward purple, lavender, teal or orange.",
   ].join("\n");
 }
 
@@ -576,9 +577,7 @@ function buildEditorialHookPrompt(args: {
   // no longer a colour cast on flat paper, it is the two zones collapsing into
   // each other — the dark drifting up to grey, or a veil dragging the paper down.
   const offToneGuard = isHighContrast
-    ? (paperTone === 'warm'
-        ? "The paper zone stays warm ecru with no cool daylight cast, but that warmth STOPS at the zone edge — it must not spread into the dark ground, which stays neutral near-black."
-        : "The paper zone stays clean neutral ivory — no grey-blue cast, no warm cream cast. The dark ground stays neutral near-black, not navy-tinted.")
+    ? "The ground reads rich navy into near-black. NO grey haze lifting the blacks, NO warm orange or sodium cast on the shadows, NO purple or lavender anywhere."
     : paperTone === 'warm'
     ? "NO cool daylight cast on the warm paper — the LIGHT itself must be warm. NO clinical or fluorescent light. NO pure yellow, NO orange, NO golden-amber-dominant, NO pink. The warmth is late-afternoon / candle-lit on cream paper, never neon or sunset-saturated."
     : "NO desaturated grey-blue cast and NO warm cream / golden cast. Keep it clean neutral ivory.";
@@ -601,7 +600,7 @@ function buildEditorialHookPrompt(args: {
     "",
     // ── Mandatory baked text (the only prescriptive part) ──
     isHighContrast
-      ? "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place ALL of it inside the paper type zone described in the palette below — every line of type sits on paper. NO type of any kind enters the dark subject zone."
+      ? "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Set it top-left in the quiet dark corner described in the palette below, large, left-aligned, headline first, subline beneath it. NO type of any kind enters the dark subject zone."
       : "MANDATORY — bake the following text into the image as the ONLY typography in the scene. Render it crisp, perfectly legible, anti-aliased, in the Inter font family at the specified weights. Place it where it reads best within an editorial layout.",
     `  • Headline (${headlineWeightLabel(headlineWeight)}): "${headline}"`,
     `  • Body (Inter ExtraLight 200, lighter weight): "${subline}"`,
@@ -609,7 +608,7 @@ function buildEditorialHookPrompt(args: {
     // The "only chromatic anchor" claim is dropped in high contrast — it would
     // contradict the one accent hue the luminous element is allowed to emit.
     isHighContrast
-      ? "Text colour: rich navy (#01253f), on paper only — never navy on the dark ground, never reversed to white or ivory type, never a second text colour. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines."
+      ? "Text colour: soft ivory (#F7F4EF) on the dark ground, with two or three words of the headline in Signal Yellow (#FFD800) and no other colour in any type. Body subline at 75% opacity of the ivory. No drop shadows, no glow, no outlines, no box or band behind the type."
       : "Text colour: rich navy (#01253f). The navy text is the only chromatic anchor in the image. Body subline may render at 70–80% opacity of the same navy. No drop shadows, no glow, no outlines.",
     "",
     // ── Palette (strict) ──
@@ -621,15 +620,15 @@ function buildEditorialHookPrompt(args: {
     "  • NO product, NO supplement bottle, capsule, pill, tincture, jar, dropper, amber glass, or any packaging.",
     "  • NO additional text beyond the headline / body / overlay listed above. No labels, captions, signage, UI, quotes, or price tags.",
     isHighContrast
-      ? "  • NO chromatic accents beyond paper, navy, the near-black ground, and the single hue emitted by the luminous element. NO second accent colour, NO teal / sage / mint / mustard / pink / purple wash, NO colour grade laid over the whole frame, NO heavy saturation anywhere."
+      ? "  • NO chromatic accents beyond ivory, navy, near-black and the single yellow phrase. NO teal / sage / mint / orange / pink / purple / lavender wash, NO colour grade laid over the whole frame, NO gradients as a design layer, NO heavy saturation anywhere."
       : "  • NO chromatic accents beyond ivory + navy. NO teal, sage, mint, mustard, orange, pink, purple, gold or heavy saturation.",
     isHighContrast
-      ? "  • NO muddy mid-tone image — the dark ground must not drift up into grey and the paper must not be dragged down into it. NO crushed blacks that swallow all shadow detail. NO HDR bloom, lens flare, god rays or glowing haze filling the frame: the light source is small, physical and local. NO dark veil or scrim across the paper zone."
+      ? "  • NO paper band, NO split frame, NO ivory zone, NO scrim or box behind the type. NO muddy mid-tone image: the ground stays deep and the subject stays bright. NO HDR bloom, lens flare or glowing haze."
       : "",
     `  • ${offToneGuard}`,
     "",
     isHighContrast
-      ? `Photoreal, magazine-cover quality. Calm and contemplative in mood, but high-contrast in value — the stillness comes from the composition and the emptiness of the type zone, not from flat even light. (paper: ${paperHex}, ground: near-black, contrast: high, lane: ${lane.key}, variation seed: ${variationNonce})`
+      ? `Photoreal, magazine-cover quality. Still and cinematic, built to stop a thumb: one bright subject, one dark ground, ivory type, one yellow phrase. (ground: rich navy to near-black, contrast: bold, lane: ${lane.key}, variation seed: ${variationNonce})`
       : `Photoreal, magazine-cover quality, calm and contemplative. (paper: ${paperHex}, lane: ${lane.key}, variation seed: ${variationNonce})`,
   ].filter(Boolean).join("\n");
 }

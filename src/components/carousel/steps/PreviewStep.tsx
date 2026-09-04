@@ -2735,7 +2735,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {([
                     { value: "standard", label: "Standard",      swatch: paperTone === "warm" ? "#EFE1C8" : "#EFEFF4" },
-                    { value: "high",     label: "High contrast", swatch: `linear-gradient(180deg, ${paperTone === "warm" ? "#EFE1C8" : "#EFEFF4"} 50%, #0B0A09 50%)` },
+                    { value: "high",     label: "Bold", swatch: "linear-gradient(135deg, #01253F 60%, #FFD800 60%)" },
                   ] as const).map((opt) => {
                     const active = contrastMode === opt.value;
                     return (

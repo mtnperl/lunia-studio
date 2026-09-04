@@ -840,19 +840,6 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
             );
           })}
         </div>
-        {stylePreset === "viral" && (
-          <div style={{ marginTop: 12 }}>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Length</label>
-            <div style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
-              {([5, 10] as const).map((n) => (
-                <button key={n} type="button" onClick={() => setViralSlides(n)} aria-pressed={viralSlides === n} style={{ padding: "8px 14px", fontSize: 13, fontFamily: "inherit", border: "none", cursor: "pointer", background: viralSlides === n ? "var(--text)" : "var(--bg)", color: viralSlides === n ? "var(--bg)" : "var(--text)" }}>
-                  {n} slides
-                </button>
-              ))}
-            </div>
-            <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>Five when the subject has one lever, ten when it has three. Hook, stakes, turn, then the solution, then one CTA.</div>
-          </div>
-        )}
       </div>
       )}
 
@@ -865,7 +852,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
           {([
             { val: "standard" as CarouselContrastMode, label: "Standard", desc: "Ivory frame, edge to edge" },
-            { val: "high" as CarouselContrastMode, label: "High contrast", desc: "Ivory type band over a near-black subject" },
+            { val: "high" as CarouselContrastMode, label: "Bold", desc: "Full-bleed photo on a dark ground, ivory type, one yellow phrase" },
           ]).map((opt) => {
             const sel = contrastMode === opt.val;
             return (
@@ -921,8 +908,37 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
       </div>
       )}
 
+      {/* Viral: the length choice replaces content length. Every viral slide is
+          already concise by construction, so the old toggle has nothing to add. */}
+      {carouselFormat === "standard" && stylePreset === "viral" && (
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Length</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {([
+            { val: 5 as const, label: "5 slides", desc: "One lever. Hook, stakes, turn, solution, CTA" },
+            { val: 10 as const, label: "10 slides", desc: "Three levers. Adds pain, three ideas, proof and the objection" },
+          ]).map((opt) => (
+            <div
+              key={opt.val}
+              onClick={() => setViralSlides(opt.val)}
+              style={{
+                flex: 1,
+                border: `1.5px solid ${viralSlides === opt.val ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                background: viralSlides === opt.val ? "var(--accent-dim)" : "var(--bg)",
+                transition: "all 0.12s",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: viralSlides === opt.val ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+              <div style={{ fontSize: 11, color: viralSlides === opt.val ? "var(--accent)" : "var(--muted)" }}>{opt.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
+
       {/* Content length toggle (standard only — engagement is always concise) */}
-      {carouselFormat === "standard" && (
+      {carouselFormat === "standard" && stylePreset !== "viral" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Content length</label>
         <div style={{ display: "flex", gap: 8 }}>
