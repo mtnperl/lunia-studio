@@ -19,6 +19,8 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
@@ -45,9 +47,9 @@ function parseCtaIconLayout(graphic?: string): IconLayoutData | null {
   return null;
 }
 
-export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, reels = false, stylePreset = "default", showSlideArrows: _showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars: _showCitationBars = true, graphic }: Props) {
+export default function CTASlide({ headline, followLine, scale = 1, id, brandStyle, backgroundImage, shimmer = false, logoScale = 1, darkBackground = false, slideBgColor, showLuniaLifeWatermark = false, prominentWatermark = false, frameH, reels = false, stylePreset = "default", showSlideArrows: _showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars: _showCitationBars = true, graphic }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
-  const slideH = reels ? 1920 : 1350;
+  const slideH = frameH ?? (reels ? 1920 : 1350);
   const contentTop = reels ? 200 : 110;
   const parts = followLine.split("@lunia_life");
 

@@ -201,6 +201,8 @@ type Props = {
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   citationFontSize?: number;        // override the default 18px citation size
   reels?: boolean;                  // 9:16 Reels format (1920px height, expanded padding)
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
   bodyScale?: number;               // multiplier on the auto-sized body (default 1)
   iconScale?: number;               // multiplier on rendered icon size for icon-layout graphics (default 1)
@@ -247,7 +249,7 @@ export default function ContentSlide({
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
   citationFontSize = 18,
-  reels = false,
+  frameH, reels = false,
   headlineScale = 1,
   bodyScale = 1,
   iconScale = 1,
@@ -281,7 +283,7 @@ export default function ContentSlide({
       : { style: {} as React.CSSProperties };
   const isEditorial = stylePreset === "editorial-scientific";
   const editorialFontFamily = "Inter, system-ui, -apple-system, sans-serif";
-  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 220 : SLIDE_PADDING.y;
   const sectionGapBase = reels ? 46 : SECTION_GAP;
   const graphicMaxH = reels ? 440 : GRAPHIC_MAX_HEIGHT;

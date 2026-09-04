@@ -78,6 +78,8 @@ type Props = {
   arrowScale?: number;
   citationFontSize?: number;
   reels?: boolean;
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   bodyScale?: number;
   showSlideArrows?: boolean;
   /** Editor only — undefined on the export path, which then renders exactly
@@ -132,7 +134,7 @@ export default function FreePressContentSlide({
   logoScale = 1,
   arrowScale = 1,
   citationFontSize,
-  reels = false,
+  frameH, reels = false,
   bodyScale = 1,
   showSlideArrows = true,
   onSelectElement,
@@ -142,7 +144,7 @@ export default function FreePressContentSlide({
   onCommitElement,
   onCancelEditElement,
 }: Props) {
-  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const paper = brandStyle?.background ?? FP_COLORS.paper;
   const ink = brandStyle?.body ?? FP_COLORS.ink;
   const indicator = brandStyle?.accent ?? FP_COLORS.indicator;

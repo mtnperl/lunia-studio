@@ -23,6 +23,8 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;
   reels?: boolean;                  // 9:16 Reels format (1920px height)
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   /** Follow prompt merged in from the (now-dropped) CTA slide — this is the
@@ -46,11 +48,11 @@ const INTERACTION_VERB: Record<Interaction["type"], string> = {
 export default function TakeawaySlide({
   headline, points, interaction, scale = 1, id, brandStyle, backgroundImage, shimmer = false,
   logoScale = 1, arrowScale = 1, darkBackground = false, slideBgColor,
-  showLuniaLifeWatermark = false, prominentWatermark = false, reels = false,
+  showLuniaLifeWatermark = false, prominentWatermark = false, frameH, reels = false,
   stylePreset = "default", showSlideArrows = true, followLine,
 }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
-  const slideH = reels ? 1920 : 1350;
+  const slideH = frameH ?? (reels ? 1920 : 1350);
   const contentTop = reels ? 200 : 110;
 
   // Background + ink resolution mirrors CTASlide so the closing spread is consistent.

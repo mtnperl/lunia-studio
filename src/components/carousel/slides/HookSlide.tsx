@@ -31,6 +31,8 @@ type Props = {
   /** v2: layered overlays applied on top of the background image (frame, vignette, color grade, grain). */
   overlays?: HookOverlaySettings;
   reels?: boolean;       // 9:16 Reels format (1920px height, expanded padding)
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   /** Carousel-wide style preset. "editorial-scientific" swaps typography to
    *  Inter and tones down the hook treatment; "free-press" replaces the text
    *  overlay entirely with a masthead cover. */
@@ -51,11 +53,11 @@ const HEADLINE_WEIGHTS = {
   black: { default: 900, editorial: 900 },
 } as const;
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
   const isEditorial = stylePreset === "editorial-scientific";
   const isFreePress = stylePreset === "free-press";
   const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
-  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
   // Hook stays dark by default so white text reads cleanly; users can override via brandStyle.hookBackground.

@@ -33,6 +33,8 @@ type Props = {
   brandStyle?: BrandStyle;
   logoScale?: number;
   reels?: boolean;
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   followLine?: string;
 
   // Accepted and ignored — see the header.
@@ -54,10 +56,10 @@ export default function FreePressTakeawaySlide({
   id,
   brandStyle,
   logoScale = 1,
-  reels = false,
+  frameH, reels = false,
   followLine,
 }: Props) {
-  const slideH = reels ? SLIDE.height.reels : SLIDE.height.carousel;
+  const slideH = frameH ?? (reels ? SLIDE.height.reels : SLIDE.height.carousel);
   const paper = brandStyle?.background ?? FP_COLORS.paper;
   const ink = brandStyle?.body ?? FP_COLORS.ink;
   const indicator = brandStyle?.accent ?? FP_COLORS.indicator;

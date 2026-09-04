@@ -34,6 +34,14 @@ import PanelErrorBoundary from "@/components/carousel/preview/PanelErrorBoundary
 import SlideRail from "@/components/carousel/preview/SlideRail";
 
 // v2 editor: which tool panel is docked in the inspector (null = closed).
+export type ExportFrame = "feed" | "story" | "square";
+/** Channel frames. Width is always 1080; the slide adapts its height. */
+export const EXPORT_FRAMES: Record<ExportFrame, { h: number; label: string; file: string }> = {
+  feed: { h: 1350, label: "Instagram feed, 4:5", file: "feed" },
+  story: { h: 1920, label: "Story and Reels, 9:16", file: "story" },
+  square: { h: 1080, label: "Square, 1:1 for ChatGPT ads", file: "square" },
+};
+
 type InspectorMode =
   | null
   | "element"
@@ -522,6 +530,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Session-only (does not persist on save) — keeps the surface tiny.
   const [hookImageHistory, setHookImageHistory] = useState<string[]>([]);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // Export frame per channel. Null follows the editor (story when Reels mode
+  // is on, feed otherwise). The ref mirrors the state so an export started
+  // right after switching frames reads the frame it asked for.
+  const [exportFrame, setExportFrame] = useState<ExportFrame | null>(null);
+  const exportFrameRef = useRef<ExportFrame | null>(null);
+  const currentFrame = (): ExportFrame => exportFrameRef.current ?? (reelsMode ? "story" : "feed");
+  const frame: ExportFrame = exportFrame ?? (reelsMode ? "story" : "feed");
+  const frameH = EXPORT_FRAMES[frame].h;
+  const frameReels = frame === "story";
   // Named looks: whole-deck style settings saved from this tab and applied
   // here or from the brief. Loaded once the Style tab first needs them.
   const [looks, setLooks] = useState<CarouselLook[] | null>(null);
@@ -909,10 +926,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (!el) throw new Error("Export element not found");
 
     const label = (slideLabels[index] ?? `slide-${index + 1}`).toLowerCase().replace(" ", "-");
-    const filename = reelsMode
-      ? `lunia-reel-${index + 1}-${label}.png`
-      : `lunia-slide-${index + 1}-${label}.png`;
-    const exportH = reelsMode ? 1920 : 1350;
+    const fr = currentFrame();
+    const filename = `lunia-${EXPORT_FRAMES[fr].file}-${index + 1}-${label}.png`;
+    const exportH = EXPORT_FRAMES[fr].h;
 
     // Infographic content slides (slides 1..N) with a GraphicSpec graphic, no AI
     // background image, and standard (non-Reels) format render via Remotion for
@@ -921,7 +937,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const contentIdx = index - 1;
     const isContentSlide = contentIdx >= 0 && contentIdx < content.slides.length;
     const hasBgImage = isContentSlide && !!contentBgImages[contentIdx];
-    if (isContentSlide && !hasBgImage && !reelsMode) {
+    if (isContentSlide && !hasBgImage && fr === "feed") {
       try {
         return await renderContentSlideViaRemotion(content.slides[contentIdx], filename);
       } catch (err) {
@@ -1052,6 +1068,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     } finally {
       setDownloadingAll(false);
     }
+  }
+
+  /** Export every slide in a channel frame. The hidden export nodes re-render
+   *  at the frame's height first; a short wait lets fonts and layout settle. */
+  async function downloadAllAs(fr: ExportFrame) {
+    if (exportBlocked || downloadingAll) return;
+    exportFrameRef.current = fr;
+    setExportFrame(fr);
+    await new Promise((r) => setTimeout(r, 400));
+    try { await downloadAll(); }
+    finally { exportFrameRef.current = null; setExportFrame(null); }
   }
 
   async function handleGeneratePdf() {
@@ -2836,15 +2863,15 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={frameH} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={frameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={frameH} />]
       : [carouselFormat === "engagement" && content.commentKeyword
-          ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
-          : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />]),
+          ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={frameH} />
+          : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={frameH} />]),
   ];
 
   const slideW = Math.round(1080 * PREVIEW_SCALE);
@@ -2889,7 +2916,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         exportTone={verificationStatus === "red" ? "danger" : exportWarned ? "warning" : undefined}
         exportMenu={[
           { type: "heading", label: "Export" },
-          { label: `Download all (${slideCount} PNGs)`, disabled: downloadingAll || exportBlocked, onSelect: downloadAll },
+          ...(["feed", "story", "square"] as ExportFrame[]).map((fr) => ({ label: `Download all, ${EXPORT_FRAMES[fr].label}`, disabled: downloadingAll || exportBlocked, onSelect: () => { void downloadAllAs(fr); } })),
           { label: downloading === focusedSlide ? "Exporting this slide" : `Download ${slideLabels[focusedSlide]} (PNG)`, disabled: downloading !== null, onSelect: () => downloadSlide(focusedSlide) },
           ...(focusedSlide >= 1 && focusedSlide <= 3 ? [{ label: "Preview HD for this slide", disabled: hdLoading !== null, onSelect: () => previewHD(focusedSlide) }] : []),
           ...(carouselFormat === "engagement" ? [{ label: generatingPdf ? "Generating PDF" : "PDF guide", disabled: generatingPdf, onSelect: handleGeneratePdf }] : []),
@@ -3117,7 +3144,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       {/* Hidden full-size slides for accurate PNG export */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         {exportNodes.map((node, i) => (
-          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: reelsMode ? 1920 : 1350 }}>
+          <div key={i} ref={el => { exportRefs.current[i] = el; }} style={{ width: 1080, height: frameH }}>
             {node}
           </div>
         ))}

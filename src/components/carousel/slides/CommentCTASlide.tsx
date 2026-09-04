@@ -15,6 +15,8 @@ type Props = {
   showLuniaLifeWatermark?: boolean;
   prominentWatermark?: boolean;     // v2: bolder, more visible watermark
   reels?: boolean;
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
@@ -33,13 +35,13 @@ export default function CommentCTASlide({
   logoScale = 1,
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
-  reels = false,
+  frameH, reels = false,
   stylePreset: _stylePreset = "default",
   showSlideArrows: _showSlideArrows = true,
   showSlideNumbers: _showSlideNumbers = true,
   showCitationBars: _showCitationBars = true,
 }: Props) {
-  const slideH = reels ? 1920 : 1350;
+  const slideH = frameH ?? (reels ? 1920 : 1350);
   const bg = brandStyle?.hookBackground ?? "#01253f";
   const headlineColor = brandStyle?.hookHeadline ?? "#ffffff";
   const accentColor = brandStyle?.accent ?? "#F7F4EF";

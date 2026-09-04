@@ -34,6 +34,8 @@ type Props = {
   prominentWatermark?: boolean;
   citationFontSize?: number;
   reels?: boolean;
+  /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
+  frameH?: number;
   headlineScale?: number;
   bodyScale?: number;
   /** Multiplier on rendered icon size when the graphic is an icon layout. */
@@ -97,7 +99,7 @@ export default function EditorialContentSlide({
   showLuniaLifeWatermark = false,
   prominentWatermark = false,
   citationFontSize = 22,
-  reels = false,
+  frameH, reels = false,
   headlineScale = 1,
   bodyScale = 1,
   iconScale = 1,
@@ -126,7 +128,7 @@ export default function EditorialContentSlide({
             : {}),
         }
       : { style: {} as React.CSSProperties };
-  const slideH = reels ? SLIDE_H.reels : SLIDE_H.carousel;
+  const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 200 : PAD.y;
   // Reserve a band at the bottom for the citation (up to ~2 lines) so the
   // editorial column never runs its graphic into it.
