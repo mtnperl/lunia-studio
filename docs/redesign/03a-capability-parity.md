@@ -70,7 +70,7 @@ export menu.
 
 | Today | Proposal | Rec. |
 |---|---|---|
-| PNG (this slide), Preview HD, HD modal with download | Slide tab, Export this slide; export menu | Move |
+| PNG (this slide), Preview HD, HD modal with download | Slide tab, Export this slide; export menu. Preview HD removed 2026-09-04 by decision, not in use | Move, HD removed |
 | Settings panel (branding and format, decoration, text and content) | Style tab | Move |
 | Refine image: style chips, full prompt accordion with override and reset, prompt, guidelines, suggested concepts, model Auto / GPT Image 2, direction, subject, paper tone, contrast, image history (8), 3 directions, New image, Generate other weights, more directions | Hook slide, Image panel: every one of these, same order | Keep |
 | Overlays: reset, editorial frame (colour, opacity), vignette, colour grade, film grain, wash mode, colour, opacity, style | Hook slide, Overlays panel, collapsed by default | Keep |
@@ -82,7 +82,7 @@ export menu.
 | Graphic type picker (32 thumbnails, tiers, Current badge, limit) | Change type opens the picker as a dialog | Keep |
 | Graphic data editor (schema form, arrays, validation, revert) | Edit data opens it as a dialog | Keep |
 | Regen slide, session cap 5, avoid list | Copy panel Regen slide, counter shown | Keep |
-| AI background, Regen background, Clear, dim slider | Background panel | Keep |
+| AI background, Regen background, Clear, dim slider | Clear and the dim slider stay for carousels that already carry a background. AI background and Regen removed 2026-09-04 by decision | Removed |
 | Icons button on CTA slide (Editorial) | Takeaway panel gains Icons when preset is Editorial | Keep |
 | Toolbar badge dot (hook weight drifted) | Hook weight note in the panel, badge on the Image panel | Keep |
 

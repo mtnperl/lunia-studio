@@ -405,11 +405,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // v2-only: graphic data editor — which slide's editor is open (or null)
   const [exportError, setExportError] = useState<string | null>(null);
   const [graphicError, setGraphicError] = useState<string | null>(null);
-  // "Preview HD" — render the focused content slide via Remotion and show the
-  // PNG inline, so the server-rendered (exported) output is visible in-builder.
-  const [hdLoading, setHdLoading] = useState<number | null>(null);
-  const [hdPreviewUrl, setHdPreviewUrl] = useState<string | null>(null);
-  const [hdError, setHdError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
@@ -454,7 +449,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [contentBgImages, setContentBgImages] = useState<(string | null)[]>(
     config.contentBgImages ?? [null, null, null]
   );
-  const [contentBgGenerating, setContentBgGenerating] = useState<Set<number>>(new Set());
   const [contentBgOverlayOpacity, setContentBgOverlayOpacity] = useState<number>(
     typeof config.contentBgOverlayOpacity === 'number' ? config.contentBgOverlayOpacity : 0.55
   );
@@ -919,22 +913,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (!res.ok) throw new Error(`render-slide ${res.status}`);
     const blob = await res.blob();
     return new File([blob], filename, { type: "image/png" });
-  }
-
-  async function previewHD(index: number) {
-    const contentIdx = index - 1;
-    if (contentIdx < 0 || contentIdx >= content.slides.length) return;
-    setHdLoading(index);
-    setHdError(null);
-    try {
-      const file = await renderContentSlideViaRemotion(content.slides[contentIdx], "lunia-slide-hd.png");
-      if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl);
-      setHdPreviewUrl(URL.createObjectURL(file));
-    } catch {
-      setHdError("HD render failed — the Remotion route may still be deploying, or this slide type isn't supported yet.");
-    } finally {
-      setHdLoading(null);
-    }
   }
 
   async function buildSlideFile(index: number): Promise<File> {
@@ -1754,62 +1732,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setGraphicError("Network error — please check your connection");
     } finally {
       setRegeneratingGraphic(null);
-    }
-  }
-
-  async function handleGenerateContentBg(slideIndex: number) {
-    if (slideIndex < 0 || slideIndex > 2) {
-      setGraphicError(`bg: invalid slide index ${slideIndex}`);
-      return;
-    }
-    const slide = content.slides[slideIndex];
-    if (!slide) {
-      setGraphicError(`bg: slide ${slideIndex + 1} not found in content (have ${content.slides.length} slides)`);
-      return;
-    }
-    setContentBgGenerating(prev => { const next = new Set(prev); next.add(slideIndex); return next; });
-    setGraphicError(null);
-    const url = `${apiBase}/generate-slide-bg`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic,
-          headline: slide.headline,
-          body: slide.body,
-          slideBgColor,
-          imageAspect: reelsMode ? "9:16" : "4:5",
-          stylePreset,
-          ...(isEditorial ? { paperTone } : {}),
-        }),
-      });
-      // Capture the body as text first so we can surface useful errors even when the response isn't JSON (Vercel auth wall, framework 404 page, etc.).
-      const raw = await res.text();
-      type ApiResp = { url?: string; error?: string };
-      let data: ApiResp | null = null;
-      try { data = JSON.parse(raw) as ApiResp; } catch { /* not JSON */ }
-      const successUrl = data?.url;
-      if (!res.ok || !successUrl) {
-        const detail = data?.error ?? raw.slice(0, 200) ?? "(empty response)";
-        setGraphicError(`bg: ${res.status} from ${url} — ${detail}`);
-        console.error("[generate-slide-bg] failed", { status: res.status, url, raw });
-        return;
-      }
-      setContentBgImages(prev => {
-        const next = [...prev];
-        while (next.length < 3) next.push(null);
-        next[slideIndex] = successUrl;
-        // Sync to config so onContentChange persists across reloads + saves.
-        onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
-        return next;
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setGraphicError(`bg: network error calling ${url} — ${msg}`);
-      console.error("[generate-slide-bg] network", err);
-    } finally {
-      setContentBgGenerating(prev => { const next = new Set(prev); next.delete(slideIndex); return next; });
     }
   }
 
@@ -2859,7 +2781,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageShimmer={contentBgGenerating.has(i)} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
         onSelectElement={(el) => selectElement(i + 1, el)}
         selectedElement={focusedSlide === i + 1 ? selectedElement : null}
         editingElement={editing?.slide === i + 1 ? editing.element : null}
@@ -2934,7 +2856,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           { type: "heading", label: "Export" },
           ...(["feed", "feedGrid", "story", "square"] as ExportFrame[]).map((fr) => ({ label: `Download all, ${EXPORT_FRAMES[fr].label}`, disabled: downloadingAll || exportBlocked, onSelect: () => { void downloadAllAs(fr); } })),
           { label: downloading === focusedSlide ? "Exporting this slide" : `Download ${slideLabels[focusedSlide]} (PNG)`, disabled: downloading !== null, onSelect: () => downloadSlide(focusedSlide) },
-          ...(focusedSlide >= 1 && focusedSlide <= 3 ? [{ label: "Preview HD for this slide", disabled: hdLoading !== null, onSelect: () => previewHD(focusedSlide) }] : []),
           ...(carouselFormat === "engagement" ? [{ label: generatingPdf ? "Generating PDF" : "PDF guide", disabled: generatingPdf, onSelect: handleGeneratePdf }] : []),
           { type: "separator" },
           { label: "Copy Instagram caption", disabled: !content.caption, onSelect: () => { navigator.clipboard.writeText(content.caption).then(() => { setCaptionCopyLabel("Copied!"); setTimeout(() => setCaptionCopyLabel("Copy"), 2000); }); } },
@@ -3094,14 +3015,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   // there's no separate CTA render to attach icon-editing to.
                   const isCta = focusedSlide === slideCount - 1 && !isTakeaway;
                   const isDownloading = downloading === focusedSlide;
-                  const bgGenerating = isContent && contentBgGenerating.has(sIdx);
                   const hasBg = isContent && !!contentBgImages[sIdx];
                   // CTA icons currently only render on the editorial preset.
                   const ctaIconsAvailable = isCta && isEditorial;
                   return (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
                       <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
-                      {isContent && <ToolbarButton label={hdLoading === focusedSlide ? "Rendering…" : "✨ Preview HD"} active={!!hdPreviewUrl} onClick={() => previewHD(focusedSlide)} disabled={hdLoading !== null} />}
                       <ToolbarButton label="Style" active={railTab === "style"} onClick={() => setRailTab("style")} />
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} badge={isEditorial && !!imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}
@@ -3125,8 +3044,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                         <ToolbarButton label="Icons" active={inspectorMode === "icons"} onClick={openIconInspector} />
                       ) : null}
                       {isContent && <ToolbarButton label={regenerating === sIdx ? "Regenerating…" : "Regen slide"} onClick={() => handleRegenerateSlide(sIdx)} disabled={regenerating === sIdx || regeneratingGraphic === sIdx} />}
-                      {isContent && <ToolbarButton label={bgGenerating ? "Generating…" : hasBg ? "Regen background" : "AI background"} onClick={() => handleGenerateContentBg(sIdx)} disabled={bgGenerating} />}
-                      {isContent && hasBg && !bgGenerating && <ToolbarButton label="Clear background" onClick={() => handleClearContentBg(sIdx)} />}
+                      {isContent && hasBg && <ToolbarButton label="Clear background" onClick={() => handleClearContentBg(sIdx)} />}
                     </div>
                   );
                 })()}
@@ -3135,29 +3053,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           </>
         )}
       </EditorShell>
-
-      {/* Preview HD modal — the Remotion-rendered (exported) PNG, shown inline. */}
-      {(hdPreviewUrl || hdError) && (
-        <div
-          onClick={() => { if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl); setHdPreviewUrl(null); setHdError(null); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: "min(92vw, 460px)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Remotion HD render — exactly what export produces</span>
-              <button onClick={() => { if (hdPreviewUrl) URL.revokeObjectURL(hdPreviewUrl); setHdPreviewUrl(null); setHdError(null); }} style={{ border: "none", background: "transparent", color: "var(--muted)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>✕</button>
-            </div>
-            {hdError ? (
-              <div style={{ fontSize: 13, color: "var(--error, #c40000)", padding: "12px 4px" }}>{hdError}</div>
-            ) : (
-              <>
-                <img src={hdPreviewUrl!} alt="Remotion HD render" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", display: "block" }} />
-                <a href={hdPreviewUrl!} download="lunia-slide-hd.png" style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>↓ Download this PNG</a>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {savedId && <VersionsPanel kind="carousel" documentId={savedId} open={versionsOpen} onClose={() => setVersionsOpen(false)} onRestored={() => onReload?.()} />}
       {/* Hidden full-size slides for accurate PNG export */}
