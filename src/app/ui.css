@@ -28,9 +28,10 @@
   font-family: var(--ui-font); font-weight: var(--ui-weight-medium); line-height: 1;
   border-radius: var(--ui-radius-2); cursor: pointer; white-space: nowrap;
   border: 1px solid transparent; position: relative;
-  transition: background var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out);
+  transition: background var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out), transform var(--ui-dur-2) var(--ui-ease-out);
   -webkit-user-select: none; user-select: none;
 }
+.ui-btn:not(:disabled):active { transform: scale(0.97); }
 .ui-btn:disabled, .ui-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
 .ui-btn--sm { min-height: var(--ui-control-sm); padding: 0 var(--ui-space-5); font-size: var(--ui-text-12); }
 .ui-btn--md { min-height: var(--ui-control-md); padding: 0 var(--ui-space-6); font-size: var(--ui-text-13); }
@@ -64,8 +65,9 @@
   width: var(--ui-control-md); height: var(--ui-control-md); padding: 0; flex-shrink: 0;
   border: 1px solid transparent; border-radius: var(--ui-radius-2);
   background: transparent; color: var(--ui-text); cursor: pointer;
-  transition: background var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out);
+  transition: background var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out), transform var(--ui-dur-2) var(--ui-ease-out);
 }
+.ui-icon-btn:not(:disabled):active { transform: scale(0.97); }
 .ui-icon-btn--sm { width: var(--ui-control-sm); height: var(--ui-control-sm); }
 .ui-icon-btn--outlined { border-color: var(--ui-border); background: var(--ui-bg); }
 .ui-icon-btn:not(:disabled):hover { background: var(--ui-surface-3); }
@@ -179,6 +181,7 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
   animation: ui-fade-in var(--ui-dur-2) var(--ui-ease-out);
   display: inline-flex; align-items: center; gap: var(--ui-space-4);
 }
+.ui-tooltip[data-warm="true"] { animation: none; }
 .ui-tooltip .ui-kbd { background: rgba(255,255,255,0.14); color: inherit; border-color: transparent; }
 
 /* ── Kbd ────────────────────────────────────────────────────────────────── */
@@ -196,8 +199,15 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
   border: 1px solid var(--ui-border); border-radius: var(--ui-radius-3);
   box-shadow: var(--ui-elev-2); padding: var(--ui-space-4);
   animation: ui-pop-in var(--ui-dur-3) var(--ui-ease-out);
-  transform-origin: top left;
 }
+/* Grow from the trigger, whichever edge the popover hangs from. */
+.ui-popover[data-side="bottom"][data-align="start"] { transform-origin: top left; }
+.ui-popover[data-side="bottom"][data-align="end"]   { transform-origin: top right; }
+.ui-popover[data-side="top"][data-align="start"]    { transform-origin: bottom left; }
+.ui-popover[data-side="top"][data-align="end"]      { transform-origin: bottom right; }
+.ui-popover[data-side="right"]                      { transform-origin: left center; }
+.ui-popover[data-side="left"]                       { transform-origin: right center; }
+.ui-popover:not([data-side])                        { transform-origin: top left; }
 .ui-popover--menu { padding: var(--ui-space-2); min-width: 180px; }
 .ui-menu-item {
   display: flex; align-items: center; gap: var(--ui-space-4); width: 100%;
@@ -268,8 +278,12 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
   background: var(--ui-text); color: var(--ui-bg);
   padding: var(--ui-space-4) var(--ui-space-5); border-radius: var(--ui-radius-3); box-shadow: var(--ui-elev-3);
   font-family: var(--ui-font); font-size: var(--ui-text-13); line-height: var(--ui-lh-13);
-  animation: ui-slide-up var(--ui-dur-3) var(--ui-ease-out);
+  /* Transitions, not keyframes: a stacking toast retargets mid-flight. */
+  opacity: 1; transform: none;
+  transition: opacity var(--ui-dur-3) var(--ui-ease-out), transform var(--ui-dur-3) var(--ui-ease-out);
 }
+@starting-style { .ui-toast { opacity: 0; transform: translateY(8px); } }
+.ui-toast[data-leaving="true"] { opacity: 0; transform: translateY(8px); transition-duration: var(--ui-dur-2); }
 .ui-toast__icon { display: inline-flex; flex-shrink: 0; margin-top: 1px; }
 .ui-toast--success .ui-toast__icon { color: var(--ui-success); }
 .ui-toast--danger  .ui-toast__icon { color: var(--ui-danger); }
@@ -329,6 +343,9 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
 
 /* ── Command palette ────────────────────────────────────────────────────── */
 .ui-cmdk { width: min(600px, calc(100vw - 32px)); align-self: flex-start; margin-top: 12vh; overflow: hidden; }
+/* Keyboard-opened, dozens of times a day: no entrance motion. The dialog's
+   pop-in and backdrop fade are for occasional modals, not this. */
+.ui-cmdk, .ui-cmdk::backdrop { animation: none; }
 .ui-cmdk__input-row { display: flex; align-items: center; gap: var(--ui-space-4); padding: 0 var(--ui-space-5); border-bottom: 1px solid var(--ui-border); }
 .ui-cmdk__input-row > svg { color: var(--ui-text-3); flex-shrink: 0; }
 .ui-cmdk-input {

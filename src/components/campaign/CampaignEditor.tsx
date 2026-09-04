@@ -1564,7 +1564,7 @@ export default function CampaignEditor({
                 transform: `scale(${previewScale})`,
                 transformOrigin: "top left",
                 opacity: previewLoading ? 0.55 : 1,
-                transition: "opacity 120ms ease-out",
+                transition: "opacity var(--ui-dur-2) var(--ui-ease-out)",
               }}
             />
           </div>
@@ -1666,7 +1666,7 @@ export default function CampaignEditor({
             <span style={sectionLabel}>Insert</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", position: "relative" }}>
               <div style={{ position: "relative" }}>
-                <button style={miniBtn(addBlockMenuOpen)} onClick={() => setAddBlockMenuOpen((v) => !v)}><IcPlus size={14} /> Block <IcChevron size={14} style={{ transform: addBlockMenuOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} /></button>
+                <button style={miniBtn(addBlockMenuOpen)} onClick={() => setAddBlockMenuOpen((v) => !v)}><IcPlus size={14} /> Block <IcChevron size={14} style={{ transform: addBlockMenuOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} /></button>
                 {addBlockMenuOpen && (
                   <div style={{
                     position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
@@ -1690,7 +1690,7 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setSnippetPickerOpen((v) => !v)} disabled={snippets.length === 0} title={snippets.length === 0 ? "No saved snippets yet" : "Insert a saved snippet as a new block"}>
-                  Snippets <IcChevron size={14} style={{ transform: snippetPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
+                  Snippets <IcChevron size={14} style={{ transform: snippetPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
                 </button>
                 {snippetPickerOpen && snippets.length > 0 && (
                   <div style={{
@@ -1715,7 +1715,7 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setPersonalizationPickerOpen((v) => !v)} title="Insert a Klaviyo merge tag into the focused block">
-                  Personalize <IcChevron size={14} style={{ transform: personalizationPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
+                  Personalize <IcChevron size={14} style={{ transform: personalizationPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
                 </button>
                 {personalizationPickerOpen && (
                   <div style={{
@@ -1739,7 +1739,7 @@ export default function CampaignEditor({
               </div>
               <div style={{ position: "relative" }}>
                 <button style={miniBtn(false)} onClick={() => setBrandFactsPickerOpen((v) => !v)} title="Insert a canonical Lunia fact into the focused block">
-                  Brand facts <IcChevron size={14} style={{ transform: brandFactsPickerOpen ? "rotate(180deg)" : "none", transition: "transform 130ms ease" }} />
+                  Brand facts <IcChevron size={14} style={{ transform: brandFactsPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
                 </button>
                 {brandFactsPickerOpen && (
                   <div style={{
@@ -1765,9 +1765,9 @@ export default function CampaignEditor({
             </div>
           </div>
           <style>{`
-            .blk-seg{ transition: background 130ms ease, color 130ms ease; }
+            .blk-seg{ transition: background var(--ui-dur-2) var(--ui-ease-out), color var(--ui-dur-2) var(--ui-ease-out); }
             .blk-seg:hover:not(.is-active){ background: var(--surface-h); color: var(--text); }
-            .blk-icon{ transition: background 130ms ease, color 130ms ease, border-color 130ms ease; }
+            .blk-icon{ transition: background var(--ui-dur-2) var(--ui-ease-out), color var(--ui-dur-2) var(--ui-ease-out), border-color var(--ui-dur-2) var(--ui-ease-out); }
             .blk-icon:hover{ background: var(--surface-h); color: var(--text); border-color: var(--border-strong); }
           `}</style>
             {!selectedBlock && (
@@ -1803,7 +1803,7 @@ export default function CampaignEditor({
                   style={{
                     border: `1px solid ${selectedBlockId === b.id ? "var(--accent)" : "var(--border)"}`,
                     borderRadius: 8, background: "var(--surface)", overflow: "hidden",
-                    transition: "border-color 120ms ease",
+                    transition: "border-color var(--ui-dur-2) var(--ui-ease-out)",
                     opacity: draggedBlockId === b.id ? 0.5 : 1,
                   }}
                 >
@@ -2891,7 +2891,7 @@ export default function CampaignEditor({
                 <label key={p.block.id} style={{
                   display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
                   borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
-                  animation: "fadeIn 220ms ease-out both",
+                  animation: "ui-slide-up var(--ui-dur-3) var(--ui-ease-out) both",
                   animationDelay: `${i * Math.min(80, 500 / pendingBlocks.length)}ms`,
                 }}>
                   <input type="checkbox" checked={p.included} onChange={() => togglePendingBlock(i)}
@@ -3159,7 +3159,7 @@ export default function CampaignEditor({
                     border: `1px solid ${selectedSlotId === img.id ? "var(--accent)" : "transparent"}`,
                     borderRadius: 8,
                     padding: selectedSlotId === img.id ? 8 : 0,
-                    transition: "border-color 120ms ease",
+                    transition: "border-color var(--ui-dur-2) var(--ui-ease-out)",
                   }}
                 >
                 <ImageSlotControl

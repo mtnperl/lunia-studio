@@ -2985,7 +2985,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                               border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                               background: active ? "var(--accent-dim)" : "var(--bg)",
                               cursor: "pointer", fontFamily: "inherit", color: "var(--text)",
-                              transition: "border-color 120ms ease, background 120ms ease",
+                              transition: "border-color var(--ui-dur-2) var(--ui-ease-out), background var(--ui-dur-2) var(--ui-ease-out)",
                             }}
                           >
                             <div style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, lineHeight: 1.35 }}>{h.headline}</div>

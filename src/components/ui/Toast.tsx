@@ -12,7 +12,7 @@ export type ToastInput = {
   /** ms. Defaults to 5000, or 8000 when there is an action. `0` keeps it until dismissed. */
   duration?: number;
 };
-type ToastRecord = ToastInput & { id: number };
+type ToastRecord = ToastInput & { id: number; leaving?: boolean };
 
 const ToastCtx = createContext<{ toast: (t: ToastInput) => number; dismiss: (id: number) => void } | null>(null);
 
@@ -23,8 +23,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const seq = useRef(0);
   const timers = useRef<Map<number, number>>(new Map());
 
+  // Two phases: mark it leaving so the CSS transition can play, then drop it.
   const dismiss = useCallback((id: number) => {
-    setItems((xs) => xs.filter((x) => x.id !== id));
+    setItems((xs) => xs.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+    window.setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), 160);
     const t = timers.current.get(id);
     if (t) { window.clearTimeout(t); timers.current.delete(id); }
   }, []);
@@ -54,6 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               className={`ui-toast ui-toast--${t.kind ?? "neutral"}`}
+              data-leaving={t.leaving || undefined}
               role={t.kind === "danger" ? "alert" : "status"}
               onMouseEnter={() => { const h = timers.current.get(t.id); if (h) { window.clearTimeout(h); timers.current.delete(t.id); } }}
               onMouseLeave={() => { if (!timers.current.has(t.id)) arm(t); }}

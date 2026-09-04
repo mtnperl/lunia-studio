@@ -42,6 +42,9 @@ export function usePosition(
       top = Math.max(pad, Math.min(top, vh - f.height - pad));
       el.style.setProperty("top", `${Math.round(top)}px`);
       el.style.setProperty("left", `${Math.round(left)}px`);
+      // The resolved side and alignment, so the CSS can grow the box from its trigger.
+      el.setAttribute("data-side", side);
+      el.setAttribute("data-align", align ?? "start");
       el.style.setProperty("visibility", "visible");
     };
     compute();
