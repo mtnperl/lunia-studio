@@ -19,7 +19,7 @@ import { VersionsPanel } from "@/components/editor/VersionsPanel";
 import type { CarouselLook, CarouselLookSettings } from "@/lib/types";
 import { Input as UiInput } from "@/components/ui";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
-import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields } from "@/lib/verification-status";
+import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields, getUnitFields } from "@/lib/verification-status";
 import { DEFAULT_GATING } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
@@ -3017,6 +3017,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
                 onRecordChange={setVerification}
                 autoRun={autoVerify}
+                unitFields={(unitId) => getUnitFields(config.content, unitId)}
                 onApplyFix={(unitId, fields: UnitFields) => {
                   // Writes into the live content. The unit's hash now differs from
                   // the one on its verdict, so the staleness effect marks it edited

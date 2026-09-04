@@ -67,6 +67,8 @@ type Props = {
   onRecordChange: (record: VerificationRecord) => void;
   /** Writes an accepted fix back into the carousel content. */
   onApplyFix?: (unitId: string, fields: UnitFields) => void;
+  /** The unit's live fields, so a claim-level fix can be applied in place. */
+  unitFields?: (unitId: string) => UnitFields | null;
   /** Concise mode changes the body word budget the rewrite must respect. */
   concise?: boolean;
 };
@@ -235,6 +237,7 @@ export default function VerificationPanel({
   pendingUnitLabels = [],
   onRecordChange,
   onApplyFix,
+  unitFields,
   concise = true,
   autoRun = false,
 }: Props) {
@@ -249,6 +252,10 @@ export default function VerificationPanel({
   /** `${unitId}::${suggestionIndex}` for every fix written into the carousel. */
   const [appliedFixes, setAppliedFixes] = useState<string[]>([]);
   const [quietOpen, setQuietOpen] = useState<string | null>(null);
+  /** Claim ids whose "More" section is open. */
+  const [moreOpen, setMoreOpen] = useState<string[]>([]);
+  /** Claim ids whose one-line fix was written into the carousel. */
+  const [appliedClaimFixes, setAppliedClaimFixes] = useState<string[]>([]);
   const [appliedCount, setAppliedCount] = useState(0);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -269,61 +276,128 @@ export default function VerificationPanel({
   const toggleOpen = (id: string) =>
     setOpenUnits((o) => (o.includes(id) ? o.filter((u) => u !== id) : [...o, id]));
 
-  /** One claim row: verdict, evidence, and the override controls. */
+  /** Where a claim's text lives in the unit, so a one-line fix can replace it in place. */
+  function locateClaim(unitId: string, claim: VerifiedClaim): { fields: UnitFields; key: string; index: number | null } | null {
+    const fields = unitFields?.(unitId);
+    if (!fields) return null;
+    const needle = claim.text.trim().toLowerCase();
+    for (const [key, val] of Object.entries(fields)) {
+      if (Array.isArray(val)) {
+        const i = val.findIndex((v) => v.toLowerCase().includes(needle));
+        if (i >= 0) return { fields, key, index: i };
+      } else if (val.toLowerCase().includes(needle)) {
+        return { fields, key, index: null };
+      }
+    }
+    return null;
+  }
+
+  function applyClaimFix(unitId: string, claim: VerifiedClaim) {
+    if (!claim.fix || !onApplyFix) return;
+    const hit = locateClaim(unitId, claim);
+    if (!hit) return;
+    const replaceIn = (text: string) => {
+      const i = text.toLowerCase().indexOf(claim.text.trim().toLowerCase());
+      return i < 0 ? text : text.slice(0, i) + claim.fix + text.slice(i + claim.text.trim().length);
+    };
+    const val = hit.fields[hit.key];
+    const next = Array.isArray(val) ? val.map((v, i) => (i === hit.index ? replaceIn(v) : v)) : replaceIn(val);
+    onApplyFix(unitId, { ...hit.fields, [hit.key]: next });
+    setAppliedCount((n) => n + 1);
+    setAppliedClaimFixes((a) => [...a, claim.id]);
+  }
+
+  /** What is wrong, in one line, when the checker did not say. */
+  function problemLine(claim: VerifiedClaim): string {
+    if (claim.problem) return claim.problem;
+    const v = effectiveVerdict(claim);
+    if (claim.overriddenTo) return v === "pass" ? "You approved this claim." : v === "fail" ? "You marked this claim wrong." : "You set this claim unresolved.";
+    if (v === "fail") return claim.reasoning ? `Contradicted: ${claim.reasoning}` : "Sources contradict this claim.";
+    return claim.reasoning ? `No source found. ${claim.reasoning}` : "No source found for this claim.";
+  }
+
+  /** One claim: problem, fix, impact. Everything else sits behind More. */
   function renderClaim(unitId: string, claim: VerifiedClaim) {
     const overriding = pendingOverride === claim.id;
+    const open = moreOpen.includes(claim.id);
+    const impact = claim.impact ?? (effectiveVerdict(claim) === "fail" ? "high" : "medium");
+    const impactLabel = impact === "high" ? "High impact" : impact === "medium" ? "Medium impact" : "Low impact";
+    const impactColor = impact === "high" ? "var(--error)" : impact === "medium" ? "var(--warning)" : "var(--muted)";
+    const canApply = !!claim.fix && !!onApplyFix && !!locateClaim(unitId, claim);
+    const applied = appliedClaimFixes.includes(claim.id);
     return (
-      <div key={claim.id} style={claimStyle}>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-          <Dot status={verdictStatus(claim)} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, lineHeight: 1.55 }}>{claim.text}</div>
-            <div style={{ ...subtleStyle, marginTop: 3 }}>
-              {verdictLabel(claim)}
-              {claim.overriddenTo && ` (checker said: ${claim.verdict})`}
-              {claim.reasoning ? `, ${claim.reasoning}` : ""}
+      <div key={claim.id} style={{ ...claimStyle, borderLeftColor: impactColor }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: impactColor, whiteSpace: "nowrap" }}>{impactLabel}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45, flex: 1, minWidth: 200 }}>{problemLine(claim)}</span>
+        </div>
+        {claim.fix && !claim.overriddenTo && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", paddingTop: 3, whiteSpace: "nowrap" }}>Fix</span>
+              <span style={{ fontSize: 14, lineHeight: 1.5, flex: 1 }}>{claim.fix}</span>
             </div>
-
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+              {canApply ? (
+                <Button variant={applied ? "selected" : "primary"} onClick={() => applyClaimFix(unitId, claim)} disabled={busy} title="Replace the sentence on the slide with this one">
+                  {applied ? "Applied" : "Apply"}
+                </Button>
+              ) : (
+                <Button variant="primary" onClick={() => { void navigator.clipboard.writeText(claim.fix ?? ""); }} title="The sentence spans more than one field, so paste this in by hand">
+                  Copy fix
+                </Button>
+              )}
+              {applied && <span style={{ ...subtleStyle, color: "var(--success)" }}>On the slide. Save to keep it.</span>}
+            </div>
+          </div>
+        )}
+        {!claim.fix && !claim.overriddenTo && effectiveVerdict(claim) === "fail" && (
+          <div style={{ ...subtleStyle, marginTop: 6 }}>No one-line rewrite; the research below drafts the whole {unitLabelKind(unitId)}.</div>
+        )}
+        <button
+          onClick={() => setMoreOpen((m) => (open ? m.filter((x) => x !== claim.id) : [...m, claim.id]))}
+          style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", padding: "6px 0 0", fontFamily: "inherit" }}
+          aria-expanded={open}
+        >
+          {open ? "Less" : "More"}
+        </button>
+        {open && (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={subtleStyle}><span style={{ fontWeight: 600 }}>On the slide:</span> {claim.text}</div>
+            <div style={subtleStyle}>
+              <span style={{ fontWeight: 600 }}>{verdictLabel(claim)}.</span>{claim.overriddenTo && ` Checker said: ${claim.verdict}.`}{claim.reasoning ? ` ${claim.reasoning}` : ""}
+            </div>
             {claim.supportingQuote && (
-              <div style={quoteStyle}>
-                <span style={{ fontStyle: "normal", color: "var(--subtle, var(--muted))" }}>
-                  source says:{" "}
-                </span>
-                &ldquo;{claim.supportingQuote}&rdquo;
+              <div style={{ ...quoteStyle, marginTop: 0 }}>
+                <span style={{ fontStyle: "normal", color: "var(--subtle, var(--muted))" }}>source says: </span>&ldquo;{claim.supportingQuote}&rdquo;
               </div>
             )}
-
             {claim.sourceUrl && (
-              <a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                {claim.sourceTitle || claim.sourceUrl}
-              </a>
+              <a href={claim.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ ...linkStyle, marginTop: 0 }}>{claim.sourceTitle || claim.sourceUrl}</a>
             )}
-
-            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
               {claim.overriddenTo ? (
-                <Button onClick={() => override(unitId, claim.id, null)} disabled={busy}>
-                  {overriding ? "Saving…" : "Undo override"}
-                </Button>
+                <Button onClick={() => override(unitId, claim.id, null)} disabled={busy}>{overriding ? "Saving…" : "Undo override"}</Button>
               ) : (
                 <>
                   {effectiveVerdict(claim) !== "pass" && (
-                    <Button onClick={() => override(unitId, claim.id, "pass")} disabled={busy}>
-                      {overriding ? "Saving…" : "I verified this myself"}
-                    </Button>
+                    <Button onClick={() => override(unitId, claim.id, "pass")} disabled={busy} title="Keep the sentence as written. Use this only when you have checked the source yourself.">{overriding ? "Saving…" : "Keep as written"}</Button>
                   )}
                   {effectiveVerdict(claim) !== "fail" && (
-                    <Button variant="danger" onClick={() => override(unitId, claim.id, "fail")} disabled={busy}>
-                      Mark wrong
-                    </Button>
+                    <Button variant="danger" onClick={() => override(unitId, claim.id, "fail")} disabled={busy}>Mark wrong</Button>
                   )}
                 </>
               )}
               {overriding && <Spinner size={12} />}
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
+  }
+
+  function unitLabelKind(unitId: string): string {
+    return record?.units.find((u) => u.id === unitId)?.kind ?? "unit";
   }
 
   /** What the second research pass concluded, above whatever it proposes. */
@@ -525,10 +599,22 @@ export default function VerificationPanel({
     // A rewrite is only offered against a contradiction. An unsourced claim is
     // usually correct as written, and rewriting one is churn, not a fix.
     const showFix = unit.claims.some(isMajorFinding) && !!onApplyFix;
+    // When every contradiction already carries a one-line fix, the deeper
+    // research pass waits behind a toggle instead of filling the panel.
+    const quick = actionableClaims(unit).every((c) => !!c.fix);
+    const researchOpen = quietOpen === `research:${unit.id}`;
     return (
       <>
         {actionableClaims(unit).map((c) => renderClaim(unit.id, c))}
-        {showFix && renderFixBox(unit)}
+        {showFix && quick && (
+          <button
+            onClick={() => setQuietOpen(researchOpen ? null : `research:${unit.id}`)}
+            style={{ ...subtleStyle, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left", fontFamily: "inherit" }}
+          >
+            {researchOpen ? "Hide the research pass" : `Research this ${unit.kind} again and rewrite it whole`}
+          </button>
+        )}
+        {showFix && (!quick || researchOpen) && renderFixBox(unit)}
         {renderQuietToggle(unit)}
       </>
     );
@@ -871,11 +957,9 @@ export default function VerificationPanel({
             <Dot status={status} size={10} />
           </div>
           <div>
-            <div style={titleStyle}>{STATUS_LABEL[status]}</div>
-            <div style={{ ...subtleStyle, marginTop: 2, fontFamily: "var(--font-mono, 'Fira Code', monospace)" }}>
-              {counts.findings === 0
-                ? `Nothing to act on · ${checkedCount} units checked`
-                : `${counts.findings} to review · ${checkedCount} units checked`}
+            <div style={titleStyle}>{counts.findings === 0 ? "Nothing to fix" : `${counts.findings} to fix`}</div>
+            <div style={{ ...subtleStyle, marginTop: 2 }}>
+              {STATUS_LABEL[status]} · {checkedCount} units checked
               {counts.overridden > 0 && ` · ${counts.overridden} overridden`}
             </div>
           </div>
@@ -930,7 +1014,7 @@ export default function VerificationPanel({
         <div style={groupStyle}>
           <div style={groupHeader}>
             <Label kind="section" style={{ color: "var(--error)", marginBottom: 0 }}>
-              Needs a decision
+              Fix these
             </Label>
             <span style={subtleStyle}>
               {groups.decide.length} unit{groups.decide.length > 1 ? "s" : ""} contradicted by sources
@@ -940,15 +1024,9 @@ export default function VerificationPanel({
             <div key={unit.id} style={{ ...decideCard, opacity: staleSet.has(unit.id) ? 0.55 : 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Dot status="red" />
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{unit.label}</span>
-                <span style={{ ...subtleStyle, flex: 1 }}>
-                  {staleSet.has(unit.id) ? "Edited since this check" : summarizeUnit(unit)}
-                </span>
-                {draftingUnits.includes(unit.id) && (
-                  <span style={{ ...subtleStyle, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Spinner size={11} /> looking up the research
-                  </span>
-                )}
+                <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{unit.label}</span>
+                {staleSet.has(unit.id) && <span style={subtleStyle}>Edited since this check</span>}
+                {draftingUnits.includes(unit.id) && <span title="Researching a fuller rewrite in the background"><Spinner size={11} /></span>}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {renderUnitBody(unit)}

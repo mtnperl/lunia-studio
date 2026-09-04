@@ -523,6 +523,15 @@ export type VerificationStatus = "green" | "amber" | "red";
  */
 export type ClaimRisk = "high" | "low";
 
+/** The cost of publishing a flagged claim as written. */
+export type ClaimImpact =
+  /** A wrong figure, dose, study, mechanism or compliance term reaches readers. */
+  | "high"
+  /** Overstated or unhedged wording; the gist survives. */
+  | "medium"
+  /** Cosmetic; a reader would not be misled. */
+  | "low";
+
 export type VerifiedClaim = {
   id: string;
   /** The atomic claim as extracted from the unit's text. */
@@ -535,6 +544,13 @@ export type VerifiedClaim = {
   verdict: ClaimVerdict;
   /** One-line justification for the verdict. */
   reasoning?: string;
+  /** What is wrong, in one plain sentence. Set on contradictions and on
+   *  unsourced high-risk claims. */
+  problem?: string;
+  /** The claim sentence rewritten so it is defensible, ready to apply. */
+  fix?: string;
+  /** What it costs to publish as written. */
+  impact?: ClaimImpact;
   sourceUrl?: string;
   sourceTitle?: string;
   /** The sentence from the source that actually supports the claim. */
