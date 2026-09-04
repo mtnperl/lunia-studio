@@ -35,7 +35,7 @@ export const BLOCK_SAMPLES: Record<CampaignBlockKind, Partial<CampaignBlock>> = 
     discountCode: "SLEEP20",
     discountDescription: "20% off your first order",
     originalPrice: money(PRODUCT.price1Bottle),
-    newPrice: money(PRODUCT.priceSubscription),
+    newPrice: money(PRODUCT.priceSubscriptionMonthly),
   },
   checklist: {
     items: ["Melatonin-free", "No proprietary blends", "Every dose printed on the label"],
@@ -64,12 +64,12 @@ export const BLOCK_SAMPLES: Record<CampaignBlockKind, Partial<CampaignBlock>> = 
     comparisonLeftPrice: money(PRODUCT.price1Bottle),
     comparisonLeftPerk: "Ships once",
     comparisonRightLabel: "Subscribe",
-    comparisonRightPrice: money(PRODUCT.priceSubscription),
+    comparisonRightPrice: money(PRODUCT.priceSubscriptionMonthly),
     comparisonRightPerk: "Cancel anytime",
   },
   ingredients: {
     ingredientHeading: "What's inside",
-    ingredientItems: PRODUCT.ingredients.map((i) => ({ name: i.name, dose: i.dose })),
+    ingredientItems: PRODUCT.ingredients.map((i) => ({ name: i.name, dose: i.label })),
     ingredientFootnote: "Melatonin-free, third-party tested",
   },
   image: {
@@ -81,14 +81,14 @@ export const BLOCK_SAMPLES: Record<CampaignBlockKind, Partial<CampaignBlock>> = 
     tableHeaders: ["Path", "Per bottle", "Per night"],
     tableRows: [
       { cells: ["One bottle at a time", money(PRODUCT.price1Bottle), "$1.30"] },
-      { cells: ["Subscription", money(PRODUCT.priceSubscription), "$0.97"] },
-      { cells: ["3 month plan", money(PRODUCT.price3Bottles / 3), "$0.84"] },
+      { cells: ["Subscription", money(PRODUCT.priceSubscriptionMonthly), "$0.97"] },
+      { cells: ["Quarterly plan, per bottle", money(PRODUCT.priceSubscriptionQuarterly), "$0.67"] },
     ],
     tableEmphasisRow: 2,
   },
   imagetext: {
-    imageHeading: "Three ingredients, all at clinical doses",
-    body: `Magnesium bisglycinate, L-theanine and apigenin. ${PRODUCT.pricePerServing} a serving, and nothing hidden behind a proprietary blend.`,
+    imageHeading: "Three ingredients, every amount on the label",
+    body: `Magnesium bisglycinate, L-theanine and apigenin. Under a dollar a night on subscription, and nothing hidden behind a proprietary blend.`,
     imagePosition: "left",
   },
   imagebullets: {

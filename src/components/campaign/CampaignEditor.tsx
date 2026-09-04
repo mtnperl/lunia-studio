@@ -105,8 +105,9 @@ const BRAND_FACTS: { label: string; text: string }[] = [
   { label: "Five-star %", text: `${PRODUCT.fiveStarPct}% five-star reviews` },
   { label: "Customer count", text: `${PRODUCT.customerCount} customers` },
   { label: "Single bottle price", text: `$${PRODUCT.price1Bottle.toFixed(2)}` },
-  { label: "Subscription price", text: `$${PRODUCT.priceSubscription.toFixed(2)}` },
-  { label: "Price per serving", text: PRODUCT.pricePerServing },
+  { label: "Monthly subscription price", text: `$${PRODUCT.priceSubscriptionMonthly.toFixed(2)}` },
+  { label: "Quarterly plan price per bottle", text: `$${PRODUCT.priceSubscriptionQuarterly.toFixed(2)}` },
+  { label: "Price per night", text: `Under a dollar a night on subscription ($${PRODUCT.perNightMonthlySub.toFixed(2)} on the monthly plan)` },
   { label: "Dose", text: PRODUCT.dose },
   ...PRODUCT.differentiators.map((d) => ({ label: d.length > 40 ? `${d.slice(0, 40)}…` : d, text: d })),
 ];
