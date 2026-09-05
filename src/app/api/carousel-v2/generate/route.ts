@@ -4,12 +4,17 @@ import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CON
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
-import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById } from "@/lib/kv";
+import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, saveCarousel } from "@/lib/kv";
 import { structurePromptBlock } from "@/lib/carousel-looks";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
-import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone } from "@/lib/types";
+import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone, SavedCarousel } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
+// A ten-slide structured deck takes two to three minutes to write. The
+// route said 300 but vercel.json still said 90, and the lower one cut the
+// function off mid-generation: the model call was billed, the client saw
+// "Network error", and the deck was gone. Both now say 300, and the
+// server-side save below is the second half of the fix.
 export const maxDuration = 300;
 
 // Convert any failure (Anthropic SDK error, JSON parse, Zod validation) into a
@@ -53,6 +58,10 @@ export async function POST(req: Request) {
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
     const structure: CarouselStructure | undefined = isCarouselStructure(body.structure) ? body.structure : undefined;
+    // Client-minted id. The finished deck is saved under it before the
+    // response goes out, so a dropped connection loses nothing: the client
+    // polls for this id and opens the deck when it lands.
+    const requestId: string | undefined = typeof body.requestId === "string" && /^[A-Za-z0-9-]{8,64}$/.test(body.requestId) ? body.requestId : undefined;
     const slideCount: number | undefined = Number(body.slideCount) === 10 ? 10 : Number(body.slideCount) === 5 ? 5 : undefined;
     const stylePreset: string | undefined = typeof body.stylePreset === "string" ? body.stylePreset : undefined;
     // SEO / GEO footer toggle. Default true — every Lunia caption should
@@ -254,8 +263,26 @@ export async function POST(req: Request) {
       template?.brandStyle ??
       null;
 
+    if (requestId) {
+      const record: SavedCarousel = {
+        id: requestId,
+        topic,
+        hookTone,
+        ...(structure ? { structure } : {}),
+        content: variants[0],
+        selectedHook: 0,
+        brandStyle: resolvedBrandStyle ?? undefined,
+        stylePreset: (stylePreset as CarouselStylePreset | undefined) ?? undefined,
+        format,
+        engagementSubType: format === "engagement" ? engagementSubType : undefined,
+        savedAt: new Date().toISOString(),
+      };
+      await saveCarousel(record).catch((e) => console.warn("[generate] could not save the deck under its request id", e));
+    }
+
     return Response.json({
       variants,
+      savedId: requestId ?? null,
       styleRefsUsed: styleRefs.length,
       templateUsed: template?.name,
       brandStyle: resolvedBrandStyle,

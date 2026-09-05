@@ -42,7 +42,7 @@ const CAROUSEL_LOADER_MSGS = [
  * and it says so by naming only the step it believes it is on rather than
  * ticking off work it cannot observe.
  */
-function CarouselLoader() {
+function CarouselLoader({ note }: { note?: string | null } = {}) {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     const t = setInterval(() => {
@@ -74,7 +74,7 @@ function CarouselLoader() {
             background: "var(--accent)", animation: "pulse 1s ease-in-out infinite",
           }}
         />
-        <span style={{ fontSize: 14.5 }}>{CAROUSEL_LOADER_MSGS[idx]}</span>
+        <span style={{ fontSize: 14.5 }}>{note ?? CAROUSEL_LOADER_MSGS[idx]}</span>
       </div>
       <div
         style={{
@@ -163,6 +163,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   const DRAFT_KEY = `lunia:builder:active:${version}`;
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [loadedId, setLoadedId] = useState<string | null>(initialCarousel?.id ?? null);
+  // Set while the client waits for a deck the server is still writing after
+  // the connection dropped. Shown in the loader in place of the rotating line.
+  const [loaderNote, setLoaderNote] = useState<string | null>(null);
   // The look chosen in the brief; the studio opens with its settings when no
   // saved carousel supplies its own.
   const [pendingLook, setPendingLook] = useState<CarouselLookSettings | null>(null);
@@ -343,6 +346,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setWarning(null);
 
     setLoading(true);
+    setLoaderNote(null);
+    // The server saves the finished deck under this id before responding.
+    // If the response never reaches us, the deck is still there to fetch.
+    const requestId = (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     if (subjectId) {
       fetch(`/api/subjects/${subjectId}`, {
         method: "PATCH",
@@ -367,6 +374,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           ...(varyFrom ? { structureFrom: { documentId: varyFrom.id } } : {}),
           ...(slideCount ? { slideCount } : {}),
           ...(deckStructure ? { structure: deckStructure } : {}),
+          requestId,
         }),
       });
       const data = await res.json();
@@ -388,7 +396,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         setStep(4);
         return;
       }
-      const std = data as MultiVariantResponse & { styleRefsUsed?: number; brandStyle?: BrandStyle };
+      const std = data as MultiVariantResponse & { styleRefsUsed?: number; brandStyle?: BrandStyle; savedId?: string | null };
+      // The deck already exists in the library under the request id, so the
+      // editor's first save updates that record instead of creating a twin.
+      if (std.savedId) setLoadedId(std.savedId);
       setVariants(std.variants);
       setSelectedVariant(0);
       setSelectedHook(0);
@@ -418,10 +429,58 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         moodId,
       });
     } catch {
-      setError("Network error — please check your connection and try again.");
+      // The request itself failed: usually the server was still writing when
+      // the connection dropped, not a bad network. The deck is saved under
+      // the request id the moment it finishes, so wait for it here rather
+      // than throwing the run away.
+      const recovered = await waitForSavedDeck(requestId);
+      if (recovered) {
+        setLoadedId(requestId);
+        setVariants([recovered.content]);
+        setSelectedVariant(0);
+        setSelectedHook(recovered.selectedHook ?? 0);
+        setBrandStyle(recovered.brandStyle ?? null);
+        setHookImageUrl(null);
+        setSlideImages([null, null, null, null, null]);
+        setStep(4);
+        startImages({
+          topic: t,
+          content: recovered.content,
+          hookIndex: 0,
+          hookTone: tone,
+          imageStyle: style ?? "realistic",
+          stylePreset: preset ?? "default",
+          contrastMode: contrast ?? "standard",
+          moodId,
+        });
+      } else {
+        setError("The connection to the server dropped and the deck did not arrive within eight minutes. If it was still being written it will appear in the library. Try again to write a new one.");
+      }
     } finally {
       setLoading(false);
+      setLoaderNote(null);
     }
+  }
+
+  /** Poll for a deck the server may still be writing. Up to eight minutes. */
+  async function waitForSavedDeck(id: string): Promise<SavedCarousel | null> {
+    const started = Date.now();
+    let tries = 0;
+    while (Date.now() - started < 8 * 60_000) {
+      tries++;
+      setLoaderNote(tries === 1
+        ? "The connection dropped while the server was still writing. Waiting for the deck to land, it will open here."
+        : `Still waiting for the server to finish, ${Math.round((Date.now() - started) / 1000)}s. Nothing is lost.`);
+      try {
+        const res = await fetch(`${apiBase}/${id}`, { cache: "no-store" });
+        if (res.ok) {
+          const d = (await res.json()) as SavedCarousel;
+          if (d && d.content && Array.isArray(d.content.slides)) return d;
+        }
+      } catch { /* keep waiting */ }
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    return null;
   }
 
   /**
@@ -568,7 +627,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
             </div>
           )}
 
-          {loading && <CarouselLoader />}
+          {loading && <CarouselLoader note={loaderNote} />}
 
           {!loading && !error && step === 1 && (
             <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} initialStructure={varyFrom?.structure ?? undefined} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
