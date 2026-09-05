@@ -7,6 +7,7 @@ import EditorialContentSlide from "@/components/carousel/slides/EditorialContent
 import { PALETTE } from "@/lib/lunia-brand-guidelines";
 import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import { slotFor, type CarouselStructure } from "@/lib/carousel-structures";
+import { FACT_CHECKS_PAUSED } from "@/lib/fact-check-pause";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
 import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
 import { FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
@@ -1177,7 +1178,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       onSaved?.(id);
       // Every carousel is fact-checked. A first save starts the run without a
       // click; later saves leave the panel's stale-unit logic to prompt a re-check.
-      if (firstSave) setAutoVerify(true);
+      // While fact checks are paused the run is not even requested, so a new
+      // deck does not open on a failed call.
+      if (firstSave && !FACT_CHECKS_PAUSED) setAutoVerify(true);
       // Brief "Saved!" flash on the button so the user knows the update landed.
       setSaveLabel("Saved!");
       setTimeout(() => setSaveLabel(null), 1600);

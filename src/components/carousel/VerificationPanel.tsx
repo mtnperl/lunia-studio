@@ -42,6 +42,7 @@ import {
 } from "@/lib/verification-status";
 import { createFrameDecoder } from "@/lib/verification-stream";
 import { effectiveVerdict } from "@/lib/types";
+import { FACT_CHECKS_PAUSED, FACT_CHECKS_PAUSED_MESSAGE } from "@/lib/fact-check-pause";
 import type { UnitFields } from "@/lib/verification-status";
 import type {
   ClaimVerdict,
@@ -892,11 +893,11 @@ export default function VerificationPanel({
           <div>
             <div style={titleStyle}>Fact check</div>
             <div style={{ ...subtleStyle, marginTop: 2 }}>
-              Not checked yet. Nothing here has been verified against a source.
+              {FACT_CHECKS_PAUSED ? FACT_CHECKS_PAUSED_MESSAGE : "Not checked yet. Nothing here has been verified against a source."}
             </div>
           </div>
-          <Button variant="primary" onClick={runVerify} disabled={busy}>
-            Verify
+          <Button variant="primary" onClick={runVerify} disabled={busy || FACT_CHECKS_PAUSED} title={FACT_CHECKS_PAUSED ? "Paused" : undefined}>
+            {FACT_CHECKS_PAUSED ? "Paused" : "Verify"}
           </Button>
         </div>
         {error && <div style={errorStyle}>{error}</div>}
@@ -966,8 +967,8 @@ export default function VerificationPanel({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {busy && <Spinner size={12} />}
-          <Button onClick={runVerify} disabled={busy}>
-            {busy ? "Checking…" : "Re-check"}
+          <Button onClick={runVerify} disabled={busy || FACT_CHECKS_PAUSED} title={FACT_CHECKS_PAUSED ? FACT_CHECKS_PAUSED_MESSAGE : undefined}>
+            {busy ? "Checking…" : FACT_CHECKS_PAUSED ? "Paused" : "Re-check"}
           </Button>
         </div>
       </div>
