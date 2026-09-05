@@ -1,4 +1,5 @@
 import { getFacts, getSubjects } from "@/lib/kv";
+import { FACT_CHECKS_PAUSED, factChecksPausedResponse } from "@/lib/fact-check-pause";
 import { coverageOf, getResearchAttempts, researchSubject } from "@/lib/facts-research";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ const RETRY_AFTER_DAYS = 14;
  *  screen (POST, normal session). Sequential, small batches: each subject is
  *  a web-search run of about a minute. */
 async function run(limit: number): Promise<Response> {
+  if (FACT_CHECKS_PAUSED) return factChecksPausedResponse();
   const [facts, subjects, attempts] = await Promise.all([getFacts(), getSubjects(), getResearchAttempts()]);
   const cov = coverageOf(facts, subjects);
   const cutoff = Date.now() - RETRY_AFTER_DAYS * 86_400_000;

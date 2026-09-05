@@ -1,4 +1,5 @@
 import { getSubjects } from "@/lib/kv";
+import { FACT_CHECKS_PAUSED, factChecksPausedResponse } from "@/lib/fact-check-pause";
 import { researchSubject } from "@/lib/facts-research";
 import { randomUUID } from "crypto";
 
@@ -7,6 +8,7 @@ export const maxDuration = 180;
 
 /** Research one subject and file the results as pending facts for review. */
 export async function POST(req: Request): Promise<Response> {
+  if (FACT_CHECKS_PAUSED) return factChecksPausedResponse();
   try {
     const { subjectId, subjectText: givenText } = await req.json();
     const subjects = await getSubjects();

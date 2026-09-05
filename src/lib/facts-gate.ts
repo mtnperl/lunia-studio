@@ -1,4 +1,5 @@
 import { getFacts, getSubjects } from "./kv";
+import { FACT_CHECKS_PAUSED } from "./fact-check-pause";
 import { matchFacts, factsPromptBlock, normalizeText } from "./facts";
 import { researchSubject, getResearchAttempts } from "./facts-research";
 
@@ -19,7 +20,9 @@ export async function ledgerBlockFor(topic: string, subjectId?: string): Promise
         const attempts = await getResearchAttempts();
         const last = attempts[subject.id];
         const recently = last && Date.now() - new Date(last).getTime() < 7 * 86_400_000;
-        if (!recently) {
+        if (FACT_CHECKS_PAUSED) {
+          console.log(`[facts] nothing on file for "${subject.text.slice(0, 50)}"; research is paused, writing from what is on file`);
+        } else if (!recently) {
           console.log(`[facts] nothing on file for "${subject.text.slice(0, 50)}", researching before writing`);
           await researchSubject(subject).catch((err) => console.warn("[facts] research before writing failed:", err));
           ledger = await getFacts();

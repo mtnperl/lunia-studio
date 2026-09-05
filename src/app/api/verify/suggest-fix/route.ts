@@ -25,6 +25,7 @@
 //      specific source, the citation comes back empty, same as generation.
 
 import { NextRequest } from "next/server";
+import { FACT_CHECKS_PAUSED, factChecksPausedResponse } from "@/lib/fact-check-pause";
 import { z } from "zod";
 import { anthropic, CONTENT_MODEL, EFFORT_STANDARD } from "@/lib/anthropic";
 import { checkRateLimit, getCarouselById } from "@/lib/kv";
@@ -91,6 +92,8 @@ const BRAND_RULES = `- No em dashes anywhere. Use commas or short sentences.
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.`;
 
 export async function POST(req: NextRequest): Promise<Response> {
+  if (FACT_CHECKS_PAUSED) return factChecksPausedResponse();
+
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??

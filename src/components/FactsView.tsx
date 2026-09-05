@@ -80,7 +80,7 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
     toast({ title: "Researching the next 2 subjects", description: "Primary sources only. A minute each. Results arrive as pending." });
     const r = await fetch("/api/facts/research-batch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ limit: 2 }) }).then((x) => x.json()).catch(() => null);
     setBusy(null);
-    if (!r?.ok) { toast({ title: "Batch failed", kind: "danger" }); return; }
+    if (!r?.ok) { toast({ title: "Batch failed", description: r?.error, kind: "danger", duration: 0 }); return; }
     const done = (r.researched as { subject: string; added?: number; error?: string }[]);
     toast({ title: `${done.filter((d) => !d.error).length} subjects researched`, description: done.map((d) => `${d.subject.slice(0, 40)}: ${d.error ? "failed" : `${d.added} facts`}`).join(" · "), kind: "success" });
     setStatus("pending"); load();

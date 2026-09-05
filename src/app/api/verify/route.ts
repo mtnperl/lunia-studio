@@ -13,6 +13,7 @@
 // library/[id] reads already return it.
 
 import { NextRequest } from "next/server";
+import { FACT_CHECKS_PAUSED, factChecksPausedResponse } from "@/lib/fact-check-pause";
 import {
   checkRateLimit,
   getCarouselById,
@@ -53,6 +54,8 @@ function clientIp(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+  if (FACT_CHECKS_PAUSED) return factChecksPausedResponse();
+
   if (!(await checkRateLimit(clientIp(req), "verify"))) {
     return Response.json(
       { error: "Too many verification runs. Try again in an hour." },
