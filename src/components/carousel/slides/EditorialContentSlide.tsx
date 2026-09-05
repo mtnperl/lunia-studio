@@ -24,6 +24,7 @@ type Props = {
   emphasis?: string;
   slideIndex?: number;
   slideTotal?: number;
+  slideTone?: "ivory" | "navy";
   headline: string;
   body: string;
   citation: string;

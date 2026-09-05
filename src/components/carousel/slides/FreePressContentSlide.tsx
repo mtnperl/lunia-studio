@@ -72,6 +72,7 @@ type Props = {
   emphasis?: string;
   slideIndex?: number;
   slideTotal?: number;
+  slideTone?: "ivory" | "navy";
   /** Accepted for call-site compatibility. NOT rendered — see the header. */
   headline: string;
   body: string;

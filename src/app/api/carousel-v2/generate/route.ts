@@ -1,4 +1,5 @@
 import { isStoryBeat } from "@/lib/story-spine";
+import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
@@ -51,6 +52,8 @@ export async function POST(req: Request) {
       : body.format === "did_you_know" ? "did_you_know"
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
+    const structure: CarouselStructure | undefined = isCarouselStructure(body.structure) ? body.structure : undefined;
+    const slideCount: number | undefined = Number(body.slideCount) === 10 ? 10 : Number(body.slideCount) === 5 ? 5 : undefined;
     const stylePreset: string | undefined = typeof body.stylePreset === "string" ? body.stylePreset : undefined;
     // SEO / GEO footer toggle. Default true — every Lunia caption should
     // carry the brand-bridge sentence + entity line so AI crawlers and LLM
@@ -88,7 +91,7 @@ export async function POST(req: Request) {
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, stylePreset === "viral" ? (Number(body.slideCount) === 10 ? 10 : 5) : undefined)) + ledgerBlock + structureBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure)) + ledgerBlock + structureBlock;
 
     // Build message content
     type ContentBlock =

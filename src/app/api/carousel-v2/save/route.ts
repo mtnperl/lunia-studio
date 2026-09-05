@@ -1,4 +1,5 @@
 import { saveAssetIfNew, saveCarousel, getCarouselById } from "@/lib/kv";
+import { isCarouselStructure } from "@/lib/carousel-structures";
 import { AssetMetadata, DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { recordVersion } from "@/lib/versions";
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       id: existingId,
-      topic, hookTone, content, selectedHook,
+      topic, hookTone, structure, content, selectedHook,
       brandStyle, hookImageUrl, slideImages,
       showDecoration, logoScale, arrowScale, darkBackground, slideBgColor,
       contentBgImages, contentBgOverlayOpacity,
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
       id,
       topic,
       hookTone: hookTone ?? "educational",
+      ...(isCarouselStructure(structure) ? { structure } : {}),
       content,
       selectedHook: selectedHook ?? 0,
       brandStyle,

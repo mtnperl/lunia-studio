@@ -3,6 +3,7 @@ import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
 import { summarize } from "./verification-status";
 import { plainLanguageCheck, describeIssues } from "./plain-language";
 import { storyCheck, describeStoryIssues } from "./story-spine";
+import { structurePlan, STRUCTURES, type CarouselStructure } from "./carousel-structures";
 
 /**
  * The pre-publish checklist from docs/carousel-viral-engine.md, section 5.
@@ -21,7 +22,19 @@ const lastSentence = (s: string) => {
   return parts[parts.length - 1] ?? "";
 };
 
+export type ChecklistOpts = { structure?: CarouselStructure | null; viralLook?: boolean };
+
+/** The Viral checklist, kept for callers and tests: the deck checklist for the Story structure on the Viral look. */
 export function viralChecklist(content: CarouselContent, selectedHook: number, record?: VerificationRecord | null): QcRow[] {
+  return deckChecklist(content, selectedHook, record, { structure: "story", viralLook: true });
+}
+
+/** The pre-publish checklist for any structure. Rules that depend on the
+ *  deck's shape read the structure's slot plan; the rest are invariants. */
+export function deckChecklist(content: CarouselContent, selectedHook: number, record?: VerificationRecord | null, opts: ChecklistOpts = {}): QcRow[] {
+  const structure = opts.structure ?? "story";
+  const plan = structurePlan(structure, (content.slides ?? []).length);
+  const spec = STRUCTURES[structure];
   const hook = content.hooks?.[selectedHook] ?? content.hooks?.[0];
   const slides = content.slides ?? [];
   const total = slides.length + 2;
@@ -37,14 +50,15 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   rows.push({ id: "loops", label: "Every slide except the first and last ends with an open-loop line", state: slides.length === 0 ? "fail" : noLoop.length === 0 ? "pass" : "fail", detail: noLoop.length ? `Slide${noLoop.length > 1 ? "s" : ""} ${noLoop.map((x) => x.i + 2).join(", ")}: last sentence is long or missing` : `${slides.length} slides end on a short line` });
 
   // 3. Solution withheld before the midpoint: cannot be judged by code.
-  rows.push({ id: "tension", label: `No solution before slide ${total >= 10 ? 5 : 3}`, state: "manual", detail: "Read the slides before the midpoint: they must not tell the reader what to do yet." });
+  const firstPayoff = plan.findIndex((sl) => sl.beat === "payoff");
+  rows.push({ id: "tension", label: firstPayoff > 0 ? `No solution before slide ${firstPayoff + 2}` : "The first slide may carry the first step", state: "manual", detail: firstPayoff > 0 ? `Read slides 2 to ${firstPayoff + 1}: they must not tell the reader what to do yet.` : `${spec.label} opens on a step; check the hook still shows the value move.` });
 
   // 4. One idea per slide: sentence count as a proxy.
   const busy = slides.map((s, i) => ({ i, n: lines(s.body).length })).filter((x) => x.n > 4);
   rows.push({ id: "one-idea", label: "One idea per slide", state: busy.length ? "fail" : "manual", detail: busy.length ? `Slide${busy.length > 1 ? "s" : ""} ${busy.map((x) => x.i + 2).join(", ")}: more than four lines` : "No slide runs past four lines. Count the ideas by eye." });
 
   // 5. Contrast: the preset only draws approved pairings.
-  rows.push({ id: "contrast", label: "Every text pairing passes 4.5:1", state: "pass", detail: "Navy on ivory, ivory on navy, yellow only as the marker and on navy." });
+  rows.push({ id: "contrast", label: "Every text pairing passes 4.5:1", state: "pass", detail: opts.viralLook ? "Navy on ivory, ivory on navy, yellow only as the marker and on navy." : "The look draws only approved pairings." });
 
   // 6. Compliance: banned phrases and patterns across every field.
   const all = [hook?.headline, hook?.subline, ...slides.flatMap((s) => [s.headline, s.body]), content.cta?.headline, content.caption].filter(Boolean).join("\n");
@@ -74,8 +88,24 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   rows.push({ id: "plain", label: "Plain language: a reader with no sleep knowledge follows every slide", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `One term taught: ${pl.terms[0]}` : "No technical terms") : describeIssues(pl) });
 
   // 11. One story: a spine, beats in order, and every handoff carried.
-  const st = storyCheck(content);
+  const st = storyCheck(content, plan.map((sl) => sl.beat));
   rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: st.ok ? "pass" : "fail", detail: st.ok ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues(st) });
+
+  // 12. Proof: enough cited slides, and no single source carrying the deck.
+  const cited = slides.filter((s) => (s.citation ?? "").trim().length > 0).length;
+  const bySource = new Map<string, number>();
+  for (const s of slides) { const c = (s.citation ?? "").trim().toLowerCase(); if (c) bySource.set(c, (bySource.get(c) ?? 0) + 1); }
+  const heavy = [...bySource.values()].filter((n) => n > 2).length;
+  const need = Math.ceil(spec.minCited * slides.length);
+  const missingProof = plan.map((sl, i) => (sl.proof && !(slides[i]?.citation ?? "").trim() ? i + 2 : 0)).filter(Boolean);
+  const proofOk = cited >= need && heavy === 0 && missingProof.length === 0;
+  rows.push({ id: "proof", label: `Proof: ${Math.round(spec.minCited * 100)}% of slides cited, no source on more than two`, state: proofOk ? "pass" : "fail", detail: proofOk ? `${cited} of ${slides.length} slides cited` : [cited < need ? `${cited} of ${slides.length} cited, needs ${need}` : "", heavy ? `${heavy} source${heavy > 1 ? "s" : ""} on more than two slides` : "", missingProof.length ? `slide${missingProof.length > 1 ? "s" : ""} ${missingProof.join(", ")} must carry a citation` : ""].filter(Boolean).join(". ") });
+
+  // 13. The product only where the structure allows it, and never in the hook.
+  const productRe = /\b(lunia|restore)\b/i;
+  const early = plan.map((sl, i) => (!sl.product && productRe.test(`${slides[i]?.headline ?? ""} ${slides[i]?.body ?? ""}`) ? i + 2 : 0)).filter(Boolean);
+  const inHook = !!hook && productRe.test(`${hook.headline} ${hook.subline ?? ""}`);
+  rows.push({ id: "product", label: "Product named only where the structure allows, never in the hook", state: early.length || inHook ? "fail" : "pass", detail: inHook ? "The hook names the product" : early.length ? `Named on slide${early.length > 1 ? "s" : ""} ${early.join(", ")}` : "Mechanism only, on the allowed slot" });
 
   return rows;
 }

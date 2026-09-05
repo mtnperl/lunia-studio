@@ -3,6 +3,7 @@ import { LUNIA_BRAND } from "./lunia-brand";
 import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
 import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
 import { spinePromptBlock, type StorySpine } from "./story-spine";
+import { structurePromptBlock, slotFor, STRUCTURES, type CarouselStructure } from "./carousel-structures";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -176,6 +177,7 @@ export const REGENERATE_HOOKS_PROMPT = (
   slides: { headline: string; body: string }[] = [],
   guidelines = "",
   spine: StorySpine | null = null,
+  structure: CarouselStructure | null = null,
 ): string => {
   const deck = slides
     .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
@@ -184,7 +186,7 @@ export const REGENERATE_HOOKS_PROMPT = (
 
 Topic: ${topic}
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-${PLAIN_LANGUAGE_BLOCK}${spinePromptBlock(spine)}${spine ? "The hook IS the moment above, in eight words or fewer: the scene, not the lesson.\n" : ""}
+${PLAIN_LANGUAGE_BLOCK}${spinePromptBlock(spine)}${structure ? `THE HOOK'S JOB (${STRUCTURES[structure].label}): ${STRUCTURES[structure].hookJob}\n` : ""}${spine ? "The hook IS the moment above, in eight words or fewer: the scene, not the lesson.\n" : ""}
 The deck the hook must introduce:
 ${deck || "(no slide content provided — base hooks on the topic)"}
 ${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}\n` : ""}
@@ -225,39 +227,23 @@ This template instruction takes PRIORITY over all other copy-length rules below.
 ===\n\n`;
 }
 
-/** The slot engine, docs/carousel-viral-engine.md, as prompt text. */
-function viralEngineBlock(total: 5 | 10): string {
-  const slots = VIRAL_SLOTS[total];
-  const rows = slots.map((s, i) => `  Slide ${i + 2} (${s.name}, ${s.tone} slide): ${s.job}\n    Last line of the body, verbatim or in the same spirit: "${s.openLoop}"${s.graphic ? "\n    This slide may carry a graphic (see below)." : ""}`).join("\n");
-  const graphicSlides = slots.map((s, i) => (s.graphic ? i + 2 : 0)).filter(Boolean).join(" and ");
+/** How a slide is WRITTEN on the Viral look: lines, a figure, an emphasis.
+ *  The order of the deck comes from the structure block, not from here. */
+function viralLookBlock(total: 5 | 10): string {
   return `
-VIRAL PRESET. THIS OVERRIDES THE SLIDE COUNT, THE NARRATIVE ARC AND THE TIER RULES BELOW.
-
-Return EXACTLY ${slots.length} objects in "slides", in this order. Each slide has ONE job. A slide that does another slot's job fails.
-${rows}
-The hook is slide 1 and the CTA is slide ${total}. Do NOT return a "takeaway" object.
-
-Every viral slide object has three extra fields: "beat", "figure" and "emphasis".
+VIRAL LOOK. Every slide object has three extra fields: "beat", "figure" and "emphasis".
 { "beat": "moment|villain|turn|payoff", "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": null, "figure": "string", "emphasis": "string" }
 
 How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it is lines, not a paragraph:
 - "headline": the hero line, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps, whatever the rules below say), no full stop. One idea.
-- "body": 2 to 4 short lines separated by a newline character (\\n). Each line is a complete sentence of 9 words or fewer. No line is a paragraph. The LAST line is the open-loop line for that slot, under 10 words. 20 to 40 words in total.
-- "emphasis": the one phrase in the body that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines (same characters, same case). It is drawn in yellow. Never the open-loop line. "" when nothing earns it.
-- "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
-- "graphic": "" on every slide except ${graphicSlides ? `slide ${graphicSlides}` : "none"}, which may carry one infographic spec when it has a sourced comparison worth drawing. A slide with a figure needs no graphic.
-
-Retention rules, all mandatory:
-- Never resolve the tension before the midpoint. The first slide that may contain a solution is slide ${total === 10 ? 5 : 3}.
-- Every content slide ends owing the reader something: its body's final line is the open-loop line above.
-- Simplicity gate: a complete beginner understands every slide on first read. One idea per slide.
+- "body": 2 to 4 short lines separated by a newline character (\\n). Each line is a complete sentence of 9 words or fewer. No line is a paragraph. The LAST line does the slot's "End on" job, under 10 words. 20 to 40 words in total.
+- "emphasis": the one phrase in the body that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines (same characters, same case). It is drawn in yellow. Never the last line. "" when nothing earns it.
+- "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, never on a "moment" slide, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
+- "graphic": "" except on the slots the structure marks as allowed, and only for a sourced comparison worth drawing. A slide with a figure needs no graphic.
 - Hook headline: 8 words or fewer, one sentence, a promise or a number. Never the product.
-- The product may appear from slide ${total === 10 ? 8 : 4} onward, and only as the mechanism, never as the promise.
-- CTA headline: one ask to lunialife.com, sentence case, max 6 words. Nothing else on that slide.
-- Every figure needs a real source in "citation" or must be hedged in words. Never invent a study.
+- Do NOT return a "takeaway" object.
 `;
 }
-
 
 /** The reader knows nothing about sleep or science. Applies to every preset
  *  and every hook tone; it sits above the format rules, not below them. */
@@ -303,10 +289,14 @@ export const GENERATE_CAROUSEL_PROMPT = (
    *  Paragraph 4 of the caption, and the server appends a static brand
    *  entity line after that. See src/lib/lunia-brand.ts. */
   includeSeoFooter: boolean = true,
-  /** Viral preset only: total slides including hook and CTA, 5 or 10. */
-  viralSlides?: number,
+  /** Total slides including hook and CTA, 5 or 10. */
+  slideCount?: number,
+  /** How the deck argues. See src/lib/carousel-structures.ts. */
+  structure?: CarouselStructure,
 ) => {
   const isViral = stylePreset === "viral";
+  const total: 5 | 10 = slideCount === 10 ? 10 : 5;
+  const structured = !!structure;
   const isEditorial = stylePreset === "editorial-scientific" || isViral;
   const isFreePress = stylePreset === "free-press";
   const svgColors = brandStyle
@@ -317,7 +307,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
 ${PLAIN_LANGUAGE_BLOCK}
 ${STORY_BLOCK}
 
-Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
+Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}${structured ? `\nTHE HOOK'S JOB IN THIS STRUCTURE (outranks the tone's formula where they differ): ${STRUCTURES[structure!].hookJob}` : ""}
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
@@ -335,7 +325,7 @@ Return ONLY valid JSON in this exact format, no other text:
   "cta": {
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
-  },${v2Mode && !isViral ? `
+  },${v2Mode && !isViral && total === 5 ? `
   "takeaway": {
     "headline": "string",
     "points": ["string", "string", "string"],
@@ -367,7 +357,7 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
 
 The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
-` : ""}${isViral ? viralEngineBlock(viralSlides === 10 ? 10 : 5) : ""}${v2Mode && !isViral ? `
+` : ""}${structured ? structurePromptBlock(structure!, total) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE
@@ -414,7 +404,7 @@ Brand rules (follow exactly):
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
 - Caption: Instagram caption for this post. Write in ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). Paragraph 1 (2 sentences): open with the most striking insight or stat — create tension or curiosity. Paragraph 2 (2-3 sentences): expand the idea — the mechanism, the evidence, the implication. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes. Tone matches the hookTone.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
-- graphic: compact single-line JSON. ${v2Mode && !isViral ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
+- graphic: compact single-line JSON. ${v2Mode && !isViral && !structured ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:
     A) DATA → slide body has ≥2 real numbers or percentages → pick from TIER A
@@ -503,14 +493,15 @@ export const REGENERATE_SLIDE_PROMPT = (
     spine?: StorySpine | null;
     prev?: { headline?: string; body?: string } | null;
     next?: { headline?: string; body?: string } | null;
+    structure?: CarouselStructure | null;
   } = {},
 ) => {
-  const { current, comment, stylePreset, slideTotal, spine, prev, next } = opts;
+  const { current, comment, stylePreset, slideTotal, spine, prev, next, structure } = opts;
   const lastLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean).slice(-1)[0] ?? "";
   const firstLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean)[0] ?? "";
   const isViral = stylePreset === "viral";
   const total = slideTotal ?? 3;
-  const slot = isViral ? viralSlotFor(slideIndex, total) : null;
+  const slot = structure ? slotFor(structure, slideIndex, total) : isViral ? viralSlotFor(slideIndex, total) : null;
   const note = (comment ?? "").trim().slice(0, 600);
   return `You are a content strategist for Lunia Life, a sleep supplement brand. Rewrite slide ${slideIndex + 2} of a carousel about: "${topic}"
 ${PLAIN_LANGUAGE_BLOCK}
@@ -529,8 +520,8 @@ The slide after this one begins: "${next.headline ?? ""}. ${firstLine(next.body)
 THE WRITER'S NOTE. This is the instruction. Follow it exactly, even where it overrides a style preference below. It never overrides the accuracy rules:
 "${note}"
 ` : ""}${slot ? `
-This is the "${slot.name}" slot of a viral deck. Its job: ${slot.job}
-The body's LAST line is the open loop, verbatim or in the same spirit: "${slot.openLoop}"
+This is the "${slot.name}" slot of the deck. Its job: ${slot.job}
+The body's LAST line: ${"endOn" in slot ? slot.endOn : `the open loop, in the same spirit as: "${(slot as { openLoop: string }).openLoop}"`}
 ` : ""}
 Return ONLY valid JSON in this exact format, no other text:
 { "beat": "${current?.beat ?? "moment|villain|turn|payoff"}", "headline": "string", "body": "string", "citation": "string"${isViral ? ', "figure": "string", "emphasis": "string"' : ', "graphic": "string"'} }

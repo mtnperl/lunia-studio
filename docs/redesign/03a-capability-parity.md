@@ -209,3 +209,13 @@ Viral content slides render through a new component, `ViralContentSlide`, instea
 | Wordmark on content slides | No | Hook and CTA only, by design. |
 | Export frames (feed, grid, story, square) | Yes | Same `frameH` scaling as the other slides. |
 | Headless render route parity | Yes | `/render/carousel-slide` picks the Viral slide for the preset. |
+
+## Structures replace hook tone and format (2026-09-05)
+
+| Before | After | Note |
+|---|---|---|
+| Hook tone picker (8 tones) | Structure picker (9 structures) with an "i" on each card | Each structure carries a legacy tone downstream, so image prompts and the recommender still work. |
+| Format: Standard | Structure deck | Length 5 or 10 for every structure and look. |
+| Format: Engagement | Kept as its own option | Own generator, no structure yet. |
+| Format: Did You Know | Untouched | By decision. |
+| Viral checklist (Viral look only) | Deck checklist for every structured deck | 13 rules; proof and product rules added. |

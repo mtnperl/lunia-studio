@@ -3,6 +3,7 @@ import { REGENERATE_SLIDE_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 import { CarouselContentSlide, HookTone } from "@/lib/types";
 import { isStoryBeat, type StorySpine } from "@/lib/story-spine";
+import { isCarouselStructure } from "@/lib/carousel-structures";
 
 export const maxDuration = 300;
 
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     const spine = body.spine && typeof body.spine === "object" ? body.spine as StorySpine : null;
     const prev = body.prev && typeof body.prev === "object" ? body.prev as { headline?: string; body?: string } : null;
     const next = body.next && typeof body.next === "object" ? body.next as { headline?: string; body?: string } : null;
+    const structure = isCarouselStructure(body.structure) ? body.structure : null;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
       messages: [
-        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal, spine, prev, next }) },
+        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal, spine, prev, next, structure }) },
       ],
     });
 

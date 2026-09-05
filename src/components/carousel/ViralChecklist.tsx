@@ -2,19 +2,20 @@
 // The Viral pre-publish checklist, one row per rule. Sits under the fact
 // check in the Check tab, muted: it is a reminder list, not the headline.
 import { Fragment } from "react";
-import { viralChecklist, type QcRow } from "@/lib/viral-qc";
+import { deckChecklist, type QcRow } from "@/lib/viral-qc";
+import type { CarouselStructure } from "@/lib/carousel-structures";
 import type { CarouselContent, VerificationRecord } from "@/lib/types";
 
 const COLOR: Record<QcRow["state"], string> = { pass: "var(--ui-text-3)", fail: "var(--error)", manual: "var(--ui-text-3)" };
 const MARK: Record<QcRow["state"], string> = { pass: "Pass", fail: "Fix", manual: "By eye" };
 
-export function ViralChecklist({ content, selectedHook, record }: { content: CarouselContent; selectedHook: number; record?: VerificationRecord | null }) {
-  const rows = viralChecklist(content, selectedHook, record);
+export function ViralChecklist({ content, selectedHook, record, structure, viralLook }: { content: CarouselContent; selectedHook: number; record?: VerificationRecord | null; structure?: CarouselStructure | null; viralLook?: boolean }) {
+  const rows = deckChecklist(content, selectedHook, record, { structure, viralLook });
   const fails = rows.filter((r) => r.state === "fail").length;
   const manual = rows.filter((r) => r.state === "manual").length;
   return (
     <div style={{ borderTop: "1px solid var(--ui-border)", padding: "12px 4px 0", marginTop: 12, color: "var(--ui-text-3)" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Viral checklist{fails ? ` · ${fails} to fix` : ""}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Checklist{fails ? ` · ${fails} to fix` : ""}</div>
       <div style={{ fontSize: 12, color: "var(--ui-text-3)", marginBottom: 8 }}>{rows.length} rules{manual ? `, ${manual} to check by eye` : ""}</div>
       {content.spine && (
         <dl style={{ margin: "0 0 10px", padding: "8px 10px", borderRadius: "var(--ui-radius-2)", background: "var(--ui-surface-2, rgba(0,0,0,0.03))", fontSize: 12, lineHeight: 1.4, display: "grid", gridTemplateColumns: "auto 1fr", gap: "2px 10px" }}>

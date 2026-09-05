@@ -34,6 +34,8 @@ type Props = {
   /** 0-based index among the content slides, and how many there are. */
   slideIndex?: number;
   slideTotal?: number;
+  /** Ivory or navy, from the structure's slot. Falls back to the Story table by position. */
+  slideTone?: "ivory" | "navy";
   scale?: number;
   id?: string;
   brandStyle?: BrandStyle;
@@ -87,7 +89,7 @@ function withEmphasis(line: string, emphasis: string | undefined, style: React.C
 
 export default function ViralContentSlide({
   headline, body, citation, graphic, figure, emphasis,
-  slideIndex = 0, slideTotal = 3,
+  slideIndex = 0, slideTotal = 3, slideTone,
   scale = 1, id, brandStyle, reels = false, frameH,
   headlineScale = 1, bodyScale = 1,
   showSlideArrows = true, showSlideNumbers = true, showCitationBars = true,
@@ -110,8 +112,7 @@ export default function ViralContentSlide({
         }
       : { style: {} as React.CSSProperties };
 
-  const slot = viralSlotFor(slideIndex, slideTotal);
-  const navy = slot.tone === "navy";
+  const navy = (slideTone ?? viralSlotFor(slideIndex, slideTotal).tone) === "navy";
   const bg = navy ? VIRAL_COLORS.navy : VIRAL_COLORS.ivory;
   const ink = navy ? VIRAL_COLORS.ivory : VIRAL_COLORS.navy;
   const muted = navy ? "rgba(247,244,239,0.62)" : VIRAL_COLORS.slate;

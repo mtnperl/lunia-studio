@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject, type CarouselLook, type CarouselLookSettings } from "@/lib/types";
 import { Select as UiSelect } from "@/components/ui";
+import { STRUCTURES, STRUCTURE_IDS, structureFromLegacy, type CarouselStructure } from "@/lib/carousel-structures";
 import { Button } from "@/components/ui/Button";
 
 export type CarouselImageStyle = "realistic" | "cartoon" | "anime" | "vector";
@@ -58,10 +59,12 @@ type Props = {
   /** Duplicate and vary: the look of the source carousel, applied to this brief. */
   initialLook?: CarouselLookSettings;
   initialFormat?: CarouselFormat;
+  /** Duplicate and vary: the source carousel's structure. */
+  initialStructure?: CarouselStructure;
   /** The source carousel's topic, shown in a banner while varying. */
   varyFrom?: string;
   onClearVary?: () => void;
-  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number) => void;
+  onNext: (topic: string, hookTone: HookTone, subjectId?: string, concise?: boolean, imageStyle?: CarouselImageStyle, format?: CarouselFormat, engagementSubType?: EngagementSubType, stylePreset?: CarouselStylePreset, includeSeoFooter?: boolean, contrastMode?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number, structure?: CarouselStructure) => void;
 };
 
 type Mode = "list" | "custom";
@@ -80,7 +83,7 @@ export const SAMPLE_SUBJECTS = [
   "Apigenin: the chamomile compound that quiets the brain",
 ];
 
-export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom, onClearVary }: Props) {
+export default function TopicStep({ onNext, initialLook, initialFormat, initialStructure, varyFrom, onClearVary }: Props) {
   const [mode, setMode] = useState<Mode>("list");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -100,6 +103,9 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>(initialFormat ?? "standard");
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
+  // How the deck argues. One picker replaced hook tone and the Standard format.
+  const [structure, setStructure] = useState<CarouselStructure>(initialStructure ?? "story");
+  const [infoFor, setInfoFor] = useState<CarouselStructure | null>(null);
   const [concise, setConcise] = useState(true);
   // Default ON — every Lunia post should carry the brand SEO footer so AI
   // crawlers / answer engines build the brand entity graph from social.
@@ -260,12 +266,12 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
     const effectiveTone =
       carouselFormat === "engagement" ? ("science-backed" as HookTone)
       : carouselFormat === "did_you_know" ? ("educational" as HookTone)
-      : hookTone;
+      : STRUCTURES[structure].legacyTone;
     const effectiveConcise =
       carouselFormat === "engagement" ? true
       : carouselFormat === "did_you_know" ? true
       : concise;
-    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings, stylePreset === "viral" ? viralSlides : undefined);
+    onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings, carouselFormat === "standard" ? viralSlides : undefined, carouselFormat === "standard" ? structure : undefined);
   }
 
   // Cherry-pick #5: inline add-custom-topic from list mode
@@ -632,7 +638,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Format</label>
         <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
           {([
-            { val: "standard" as CarouselFormat, label: "Standard", desc: "Educational carousel" },
+            { val: "standard" as CarouselFormat, label: "Structured", desc: "Pick how the deck argues" },
             { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
             { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
           ]).map((opt) => (
@@ -697,102 +703,73 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
         </div>
       )}
 
-      {/* Hook tone (only for standard format) */}
+      {/* Structure: how the deck argues. Nine cards, each with an "i" that
+          opens what it is, when to use it and an example hook, so nobody has
+          to memorise which is which. The recommender still returns legacy
+          tones; they are mapped to structures for the badges. */}
       {carouselFormat === "standard" && (
       <div style={{ marginBottom: 24 }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook tone</label>
-
-        {/* Recommendation banner — auto-runs on topic select. Opt-in: clicking
-            a tone applies it; the current selection is never changed for you. */}
-        {(loadingRec || recError || hookRec.length > 0) && (
-          <div style={{ marginBottom: 12, padding: "12px 14px", border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)" }}>
-            {loadingRec && hookRec.length === 0 && !recError && (
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Finding the best hook for this topic…</div>
-            )}
-            {recError && <div style={{ fontSize: 13, color: "var(--error)" }}>{recError}</div>}
-            {hookRec.length > 0 && (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                  Recommended hook · for this topic{loadingRec ? " · refreshing…" : ""}
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Structure</label>
+        {(() => {
+          const recStructures = hookRec.map((r) => structureFromLegacy(r.tone, "standard", stylePreset));
+          return (
+            <>
+              {hookRec.length > 0 && (
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+                  Suggested for this topic: <strong style={{ color: "var(--text)" }}>{STRUCTURES[recStructures[0]].label}</strong>{hookRec[0].reason ? ` · ${hookRec[0].reason}` : ""}
                 </div>
-                <button
-                  onClick={() => setHookTone(hookRec[0].tone)}
-                  style={{
-                    display: "block", width: "100%", textAlign: "left",
-                    padding: "10px 12px", borderRadius: 8, marginBottom: hookRec.length > 1 ? 8 : 0,
-                    border: `1.5px solid ${hookTone === hookRec[0].tone ? "var(--accent)" : "var(--border)"}`,
-                    background: "var(--bg)", cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>{TONE_LABEL[hookRec[0].tone] ?? hookRec[0].tone}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em", border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 5px" }}>Top pick</span>
-                  </div>
-                  {hookRec[0].reason && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{hookRec[0].reason}</div>}
-                </button>
-                {hookRec.length > 1 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", alignSelf: "center" }}>Also strong:</span>
-                    {hookRec.slice(1).map((r) => (
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {STRUCTURE_IDS.map((id) => {
+                  const spec = STRUCTURES[id];
+                  const sel = structure === id;
+                  const recIdx = recStructures.indexOf(id);
+                  const isRec = recIdx !== -1;
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => setStructure(id)}
+                      style={{
+                        position: "relative",
+                        border: `1.5px solid ${sel ? "var(--accent)" : isRec ? "var(--accent-mid)" : "var(--border)"}`,
+                        borderRadius: 8, padding: "10px 34px 10px 12px", cursor: "pointer",
+                        background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                        transition: "all 0.12s",
+                        boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                      }}
+                    >
                       <button
-                        key={r.tone}
-                        onClick={() => setHookTone(r.tone)}
-                        title={r.reason}
+                        type="button"
+                        aria-label={`About ${spec.label}`}
+                        aria-expanded={infoFor === id}
+                        onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === id ? null : id); }}
                         style={{
-                          fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 9999,
-                          border: `1px solid ${hookTone === r.tone ? "var(--accent)" : "var(--border)"}`,
-                          background: "var(--bg)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit",
+                          position: "absolute", top: 8, right: 8, width: 20, height: 20, borderRadius: "50%",
+                          border: `1px solid ${infoFor === id ? "var(--accent)" : "var(--border)"}`,
+                          background: infoFor === id ? "var(--accent)" : "var(--bg)",
+                          color: infoFor === id ? "var(--bg)" : "var(--muted)",
+                          fontSize: 11, fontWeight: 700, fontFamily: "Georgia, serif", fontStyle: "italic", lineHeight: 1, cursor: "pointer", padding: 0,
                         }}
-                      >
-                        {TONE_LABEL[r.tone] ?? r.tone}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-          {HOOK_TONE_OPTIONS.map((opt) => {
-            const sel = hookTone === opt.value;
-            const recIdx = hookRec.findIndex((r) => r.tone === opt.value);
-            const isRec = recIdx !== -1;
-            return (
-              <div
-                key={opt.value}
-                onClick={() => setHookTone(opt.value)}
-                style={{
-                  position: "relative",
-                  border: `1.5px solid ${sel ? "var(--accent)" : isRec ? "var(--accent-mid)" : "var(--border)"}`,
-                  borderRadius: 8,
-                  padding: "10px 12px",
-                  cursor: "pointer",
-                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
-                  transition: "all 0.12s",
-                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
-                }}
-              >
-                {isRec && (
-                  <span style={{
-                    position: "absolute", top: 6, right: 6,
-                    fontSize: 8, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em",
-                    border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 4px",
-                    background: "var(--accent-dim)",
-                    opacity: recIdx === 0 ? 1 : 0.7,
-                  }}>
-                    {recIdx === 0 ? "Top pick" : "Suggested"}
-                  </span>
-                )}
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, paddingRight: isRec ? 56 : 0, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+                      >i</button>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{spec.label}{isRec && <span style={{ marginLeft: 6, fontSize: 8, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 4px", background: "var(--accent-dim)", verticalAlign: "middle" }}>{recIdx === 0 ? "Top pick" : "Suggested"}</span>}</div>
+                      <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{spec.info.example}</div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+              {infoFor && (
+                <div style={{ marginTop: 10, padding: "12px 14px", border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)", fontSize: 13, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{STRUCTURES[infoFor].label}</div>
+                  <div><strong>What it is.</strong> {STRUCTURES[infoFor].info.what}</div>
+                  <div><strong>Use it when.</strong> {STRUCTURES[infoFor].info.when}</div>
+                  <div><strong>Example hook.</strong> &ldquo;{STRUCTURES[infoFor].info.example}&rdquo;</div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>Value move: {STRUCTURES[infoFor].valueMove === "simplify" ? "make a hard thing simple" : STRUCTURES[infoFor].valueMove === "add-research" ? "add the research to something everyone knows" : "flip something everyone believes"}.</div>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
-
       )}
 
       {/* Saved looks come first: one pick sets the preset, the image engine and
@@ -910,13 +887,13 @@ export default function TopicStep({ onNext, initialLook, initialFormat, varyFrom
 
       {/* Viral: the length choice replaces content length. Every viral slide is
           already concise by construction, so the old toggle has nothing to add. */}
-      {carouselFormat === "standard" && stylePreset === "viral" && (
+      {carouselFormat === "standard" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Length</label>
         <div style={{ display: "flex", gap: 8 }}>
           {([
-            { val: 5 as const, label: "5 slides", desc: "One lever. Hook, stakes, turn, solution, CTA" },
-            { val: 10 as const, label: "10 slides", desc: "Three levers. Adds pain, three ideas, proof and the objection" },
+            { val: 5 as const, label: "5 slides", desc: "Hook, three content slides, CTA" },
+            { val: 10 as const, label: "10 slides", desc: "Hook, eight content slides, CTA" },
           ]).map((opt) => (
             <div
               key={opt.val}

@@ -115,6 +115,7 @@ export type CarouselContentSlide = {
 // ─── GraphicSpec — curated infographic component selection ────────────────────
 import { z } from 'zod';
 import type { StoryBeat, StorySpine } from './story-spine';
+import type { CarouselStructure } from './carousel-structures';
 
 const versusItem = z.object({ label: z.string(), value: z.string(), note: z.string().optional() });
 
@@ -398,6 +399,8 @@ export type CarouselConfig = {
   contentBgOverlayOpacity?: number;
   /** Carousel-wide style preset. Default → "default". */
   stylePreset?: CarouselStylePreset;
+  /** How the deck argues. Absent on decks generated before structures existed. */
+  structure?: CarouselStructure;
 };
 
 /** v2 hook image overlay settings — inlined as a plain shape so types.ts stays free of UI imports. Mirrors HookOverlaySettings in components/carousel/shared/HookOverlays.tsx. */
@@ -440,6 +443,8 @@ export type SavedCarousel = {
   id: string;
   topic: string;
   hookTone: HookTone;
+  /** How the deck argues. Old records have none; structureFromLegacy() infers it. */
+  structure?: CarouselStructure;
   content: CarouselContent;
   selectedHook: number;
   graphicStyles?: [GraphicStyle, GraphicStyle, GraphicStyle]; // legacy

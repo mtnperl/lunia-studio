@@ -59,7 +59,12 @@ export function handoffCarries(prevBody: string, nextHeadline: string, nextBody:
   return false;
 }
 
-export function storyCheck(content: { spine?: StorySpine | null; slides: { headline: string; body: string; beat?: string }[] }): StoryReport {
+/**
+ * `expected` is the structure's beat sequence. With it, each slide must serve
+ * the beat its slot names (so Myth, Fact, Myth, Fact is valid). Without it,
+ * beats may only move forward.
+ */
+export function storyCheck(content: { spine?: StorySpine | null; slides: { headline: string; body: string; beat?: string }[] }, expected?: StoryBeat[]): StoryReport {
   const issues: StoryIssue[] = [];
   const slides = content.slides ?? [];
   if (!content.spine) issues.push({ kind: "no-spine" });
@@ -70,11 +75,14 @@ export function storyCheck(content: { spine?: StorySpine | null; slides: { headl
     const label = `slide ${i + 2}`;
     if (!isStoryBeat(s.beat)) { issues.push({ kind: "no-beat", where: label }); return; }
     const idx = STORY_BEATS.indexOf(s.beat);
-    if (idx < prevIdx) issues.push({ kind: "out-of-order", where: label, beat: s.beat, after: STORY_BEATS[prevIdx] });
+    if (expected) {
+      const want = expected[Math.min(i, expected.length - 1)];
+      if (want && s.beat !== want) issues.push({ kind: "out-of-order", where: label, beat: s.beat, after: want });
+    } else if (idx < prevIdx) issues.push({ kind: "out-of-order", where: label, beat: s.beat, after: STORY_BEATS[prevIdx] });
     prevIdx = Math.max(prevIdx, idx);
     seen.add(s.beat);
   });
-  for (const b of ["moment", "turn", "payoff"] as const) if (slides.length && !seen.has(b) && slides.every((s) => isStoryBeat(s.beat))) issues.push({ kind: "missing-beat", beat: b });
+  if (!expected) for (const b of ["moment", "turn", "payoff"] as const) if (slides.length && !seen.has(b) && slides.every((s) => isStoryBeat(s.beat))) issues.push({ kind: "missing-beat", beat: b });
 
   let handoffs = 0, carried = 0;
   for (let i = 0; i + 1 < slides.length; i++) {
@@ -91,7 +99,7 @@ export function describeStoryIssues(r: StoryReport): string {
     switch (i.kind) {
       case "no-spine": return "no story spine saved";
       case "no-beat": return `${i.where} has no beat`;
-      case "out-of-order": return `${i.where} is a ${i.beat} beat after a ${i.after} beat`;
+      case "out-of-order": return `${i.where} is a ${i.beat} beat where the structure wants ${i.after}`;
       case "missing-beat": return `no ${i.beat} beat`;
       default: return "";
     }

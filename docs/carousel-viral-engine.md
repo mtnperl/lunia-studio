@@ -1,5 +1,7 @@
 # Viral carousel engine
 
+Since 2026-09-05 the slot table in section 1 is the Story structure in docs/carousel-structures.md; the Viral look (rhythm, lines, figure, emphasis) can be worn by any structure. This document remains the operating reference for the look and the QC list.
+
 The Viral theme sits next to Editorial Scientific and Free Press. Same palette, same Inter, same restraint, same compliance language, same caption conventions, same channel specs. What changes is the slide architecture and the retention logic underneath it.
 
 To build one: pick a subject, choose 5 or 10 slides, fill the slot table in section 1 in order, run the checklist in section 5, export. Example at the end.

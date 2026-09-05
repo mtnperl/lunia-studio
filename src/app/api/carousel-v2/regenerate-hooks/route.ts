@@ -1,3 +1,4 @@
+import { isCarouselStructure } from "@/lib/carousel-structures";
 import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { REGENERATE_HOOKS_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
@@ -33,7 +34,8 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const spine = body.content?.spine && typeof body.content.spine === "object" ? body.content.spine : null;
-    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine);
+    const structure = isCarouselStructure(body.structure) ? body.structure : null;
+    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine, structure);
 
     const msg = await createContentMessage({
       model: DRAFT_MODEL,

@@ -1,4 +1,5 @@
 "use client";
+import { structureFromLegacy, type CarouselStructure } from "@/lib/carousel-structures";
 import { useState, useEffect, useRef } from "react";
 import { BrandStyle, CarouselContent, CarouselConfig, CarouselContrastMode, CarouselFormat, CarouselStylePreset, DidYouKnowContent, EngagementSubType, HookTone, MultiVariantResponse, SavedCarousel, type CarouselLookSettings } from "@/lib/types";
 import { lookFromCarousel } from "@/lib/carousel-looks";
@@ -95,6 +96,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   const [warning, setWarning] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
+  const [structure, setStructure] = useState<CarouselStructure | null>(null);
   const [concise, setConcise] = useState(false);
   const [variants, setVariants] = useState<CarouselContent[]>([]);
   const [selectedVariant, setSelectedVariant] = useState(0);
@@ -118,6 +120,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setLoadedId(initialCarousel.id);
     setTopic(initialCarousel.topic);
     setHookTone(initialCarousel.hookTone);
+    setStructure(initialCarousel.structure ?? structureFromLegacy(initialCarousel.hookTone, initialCarousel.format, initialCarousel.stylePreset));
     setVariants([initialCarousel.content]);
     setSelectedVariant(0);
     setSelectedHook(initialCarousel.selectedHook ?? 0);
@@ -185,6 +188,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       if (!hasWork) return;
       if (typeof d.topic === "string") setTopic(d.topic);
       if (d.hookTone) setHookTone(d.hookTone);
+      if (d.structure) setStructure(d.structure);
       if (typeof d.concise === "boolean") setConcise(d.concise);
       if (Array.isArray(d.variants)) setVariants(d.variants);
       if (typeof d.selectedVariant === "number") setSelectedVariant(d.selectedVariant);
@@ -218,7 +222,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   useEffect(() => {
     if (!topic && variants.length === 0 && didYouKnowVariants.length === 0) return;
     const draft = {
-      v: 1, step, topic, hookTone, concise, variants, selectedVariant, selectedHook,
+      v: 1, step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook,
       brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages,
       imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants,
       selectedDidYouKnow,
@@ -230,7 +234,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, slideImages: undefined, hookImageUrl: undefined })); } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, topic, hookTone, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow]);
+  }, [step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow]);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -323,10 +327,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number) {
+  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number, deckStructure?: CarouselStructure) {
     setPendingLook(look ?? varyLook);
     setTopic(t);
     setHookTone(tone);
+    setStructure(deckStructure ?? null);
     setConcise(conciseMode ?? false);
     setImageStyle(style ?? "realistic");
     setCarouselFormat(format ?? "standard");
@@ -361,6 +366,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           includeSeoFooter: seoFooter ?? true,
           ...(varyFrom ? { structureFrom: { documentId: varyFrom.id } } : {}),
           ...(slideCount ? { slideCount } : {}),
+          ...(deckStructure ? { structure: deckStructure } : {}),
         }),
       });
       const data = await res.json();
@@ -565,7 +571,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           {loading && <CarouselLoader />}
 
           {!loading && !error && step === 1 && (
-            <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
+            <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} initialStructure={varyFrom?.structure ?? undefined} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
           )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
             <DidYouKnowPreviewStep
@@ -597,6 +603,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               key={loadedId ?? "draft"}
               config={config}
               hookTone={hookTone}
+              structure={structure}
               onRestart={handleRestart}
               onSelectHook={setSelectedHook}
               initialImageStyle={imageStyle}
