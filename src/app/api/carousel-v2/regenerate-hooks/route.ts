@@ -32,7 +32,8 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "topic or content required" }, { status: 400 });
     }
 
-    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines);
+    const spine = body.content?.spine && typeof body.content.spine === "object" ? body.content.spine : null;
+    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine);
 
     const msg = await createContentMessage({
       model: DRAFT_MODEL,

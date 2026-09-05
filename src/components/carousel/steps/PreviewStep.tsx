@@ -1428,6 +1428,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           stylePreset,
           comment,
           current: content.slides[slideIndex],
+          spine: content.spine ?? null,
+          prev: content.slides[slideIndex - 1] ?? null,
+          next: content.slides[slideIndex + 1] ?? null,
         }),
       });
       if (!res.ok) {

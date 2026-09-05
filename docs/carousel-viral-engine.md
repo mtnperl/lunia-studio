@@ -114,6 +114,7 @@ Run against every drafted carousel before publishing. A fail on any line sends i
 8. Caption closes with the standard follow line: For more Sleep-Science content follow @lunia_life. The brand bridge sentence and the entity line may follow it.
 9. Fact check in the studio shows nothing to fix, or every fix applied.
 10. Plain language. No technical term in the hook. At most one technical term in the deck, glossed in plain words in the sentence where it first appears. No sentence over 16 words. The list of terms lives in src/lib/plain-language.ts.
+11. One story. The deck has a spine (moment, villain, turn, payoff, one returning image) written before the slides; every slide serves a beat, beats never run backwards, and the first line of each slide picks up a word from the last line of the one before. Checked by src/lib/story-spine.ts.
 
 ## 6. Worked example
 

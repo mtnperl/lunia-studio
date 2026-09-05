@@ -2,6 +2,7 @@ import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CON
 import { REGENERATE_SLIDE_PROMPT } from "@/lib/carousel-prompts";
 import { checkRateLimit } from "@/lib/kv";
 import { CarouselContentSlide, HookTone } from "@/lib/types";
+import { isStoryBeat, type StorySpine } from "@/lib/story-spine";
 
 export const maxDuration = 300;
 
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
     const stylePreset: string | undefined = typeof body.stylePreset === "string" ? body.stylePreset : undefined;
     const comment: string = typeof body.comment === "string" ? body.comment : "";
     const current = body.current && typeof body.current === "object" ? body.current as CarouselContentSlide : undefined;
+    const spine = body.spine && typeof body.spine === "object" ? body.spine as StorySpine : null;
+    const prev = body.prev && typeof body.prev === "object" ? body.prev as { headline?: string; body?: string } : null;
+    const next = body.next && typeof body.next === "object" ? body.next as { headline?: string; body?: string } : null;
 
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
@@ -42,7 +46,7 @@ export async function POST(req: Request) {
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
       messages: [
-        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal }) },
+        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal, spine, prev, next }) },
       ],
     });
 
@@ -68,6 +72,7 @@ export async function POST(req: Request) {
       const e = slide.emphasis.trim();
       slide.emphasis = e.length > 0 && (slide.body ?? "").includes(e) ? e : undefined;
     }
+    if (!isStoryBeat(slide.beat)) slide.beat = current?.beat;
     // A rewrite that dropped the citation but kept a claim keeps the old one
     // rather than shipping an unsourced figure.
     if (current?.citation && !slide.citation) slide.citation = current.citation;

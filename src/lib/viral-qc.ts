@@ -2,6 +2,7 @@ import type { CarouselContent, VerificationRecord } from "./types";
 import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
 import { summarize } from "./verification-status";
 import { plainLanguageCheck, describeIssues } from "./plain-language";
+import { storyCheck, describeStoryIssues } from "./story-spine";
 
 /**
  * The pre-publish checklist from docs/carousel-viral-engine.md, section 5.
@@ -71,6 +72,10 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   // and glossed where it first appears, no sentence over the phone limit.
   const pl = plainLanguageCheck(`${hook?.headline ?? ""} ${hook?.subline ?? ""}`, slides.map((s, i) => ({ label: `slide ${i + 2}`, text: `${s.headline}. ${s.body}` })));
   rows.push({ id: "plain", label: "Plain language: a reader with no sleep knowledge follows every slide", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `One term taught: ${pl.terms[0]}` : "No technical terms") : describeIssues(pl) });
+
+  // 11. One story: a spine, beats in order, and every handoff carried.
+  const st = storyCheck(content);
+  rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: st.ok ? "pass" : "fail", detail: st.ok ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues(st) });
 
   return rows;
 }

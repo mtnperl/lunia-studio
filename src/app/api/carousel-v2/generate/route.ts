@@ -1,3 +1,4 @@
+import { isStoryBeat } from "@/lib/story-spine";
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
@@ -170,8 +171,19 @@ export async function POST(req: Request) {
           // Validate every graphic shape now, not just at render time — a
           // mismatch between what Claude sent and the component's real data
           // contract otherwise ships silently and only blanks out later.
+          // The story spine: four short strings, or nothing. A partial spine is
+          // worse than none, because rewrites would write inside a broken story.
+          const sp = (parsed as { spine?: unknown }).spine;
+          if (sp && typeof sp === "object") {
+            const o = sp as Record<string, unknown>;
+            const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim().slice(0, 240) : "");
+            const spine = { moment: str("moment"), villain: str("villain"), turn: str("turn"), payoff: str("payoff"), image: str("image") || undefined };
+            if (spine.moment && spine.villain && spine.turn && spine.payoff) parsed.spine = spine;
+            else delete parsed.spine;
+          } else delete parsed.spine;
           if (Array.isArray(parsed.slides)) {
             for (const slide of parsed.slides) {
+              if (!isStoryBeat(slide.beat)) delete slide.beat;
               if (slide.graphic) {
                 slide.graphic = validateOrFallbackGraphic(slide.graphic, slide.body ?? slide.headline);
               }

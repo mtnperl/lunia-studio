@@ -2,6 +2,7 @@ import type { BrandStyle, CarouselTemplate } from "./types";
 import { LUNIA_BRAND } from "./lunia-brand";
 import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
 import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
+import { spinePromptBlock, type StorySpine } from "./story-spine";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -174,6 +175,7 @@ export const REGENERATE_HOOKS_PROMPT = (
   hookTone = "educational",
   slides: { headline: string; body: string }[] = [],
   guidelines = "",
+  spine: StorySpine | null = null,
 ): string => {
   const deck = slides
     .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
@@ -182,7 +184,7 @@ export const REGENERATE_HOOKS_PROMPT = (
 
 Topic: ${topic}
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-${PLAIN_LANGUAGE_BLOCK}
+${PLAIN_LANGUAGE_BLOCK}${spinePromptBlock(spine)}${spine ? "The hook IS the moment above, in eight words or fewer: the scene, not the lesson.\n" : ""}
 The deck the hook must introduce:
 ${deck || "(no slide content provided — base hooks on the topic)"}
 ${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}\n` : ""}
@@ -235,8 +237,8 @@ Return EXACTLY ${slots.length} objects in "slides", in this order. Each slide ha
 ${rows}
 The hook is slide 1 and the CTA is slide ${total}. Do NOT return a "takeaway" object.
 
-Every viral slide object has two extra fields: "figure" and "emphasis".
-{ "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": null, "figure": "string", "emphasis": "string" }
+Every viral slide object has three extra fields: "beat", "figure" and "emphasis".
+{ "beat": "moment|villain|turn|payoff", "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": null, "figure": "string", "emphasis": "string" }
 
 How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it is lines, not a paragraph:
 - "headline": the hero line, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps, whatever the rules below say), no full stop. One idea.
@@ -270,6 +272,21 @@ WHO IS READING. Someone scrolling on a phone who has never read about sleep. The
 Terms that count as technical (whole words): ${TECHNICAL_TERMS.join(", ")}.
 `;
 
+
+/** One story, not ten cards. Applies to every preset. */
+export const STORY_BLOCK = `
+ONE STORY, NOT A LIST. Before you write a single slide, write the "spine": four beats the whole deck serves, in this order.
+  moment: the scene the reader has lived, second person, present tense, with one concrete detail (a time, an object, a place).
+  villain: the habit or belief the reader trusts that is quietly causing the problem.
+  turn: why the villain fails, in one sentence.
+  payoff: what the reader does tonight instead, in one sentence.
+  image: the concrete detail from the moment (the clock at 3:11, the cold coffee), five words or fewer.
+Then give every content slide a "beat": which of moment, villain, turn or payoff it serves. Beats run in that order across the deck and never go backwards. Several slides may share a beat; every deck reaches the payoff. The tips are steps of the payoff, not a list.
+
+THE RELAY. Each slide answers the one before it. The first line of a slide picks up a word from the last line of the previous slide, so the open loop is paid, not dropped. Never start a slide cold.
+THE RETURNING IMAGE. The image from the moment appears again on the turn and on the payoff, in the reader's words. That recurrence is what makes the deck feel like one thing.
+`;
+
 export const GENERATE_CAROUSEL_PROMPT = (
   topic: string,
   hookTone = "educational",
@@ -298,20 +315,22 @@ export const GENERATE_CAROUSEL_PROMPT = (
 
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
 ${PLAIN_LANGUAGE_BLOCK}
+${STORY_BLOCK}
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
+  "spine": { "moment": "string", "villain": "string", "turn": "string", "payoff": "string", "image": "string" },
   "hooks": [
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" }
   ],
   "slides": [
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
-    { "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" }
+    { "beat": "moment|villain|turn|payoff", "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
+    { "beat": "moment|villain|turn|payoff", "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" },
+    { "beat": "moment|villain|turn|payoff", "headline": "string", "body": "string", "citation": "string", "graphic": "string", "graphicImagePrompt": "string or null" }
   ],
   "cta": {
     "headline": "string",
@@ -476,13 +495,19 @@ export const REGENERATE_SLIDE_PROMPT = (
   hookTone = "educational",
   slideIndex: number,
   opts: {
-    current?: { headline?: string; body?: string; citation?: string; figure?: string; emphasis?: string };
+    current?: { headline?: string; body?: string; citation?: string; figure?: string; emphasis?: string; beat?: string };
     comment?: string;
     stylePreset?: string;
     slideTotal?: number;
+    /** The deck's story, and the slides either side, so the rewrite keeps the relay. */
+    spine?: StorySpine | null;
+    prev?: { headline?: string; body?: string } | null;
+    next?: { headline?: string; body?: string } | null;
   } = {},
 ) => {
-  const { current, comment, stylePreset, slideTotal } = opts;
+  const { current, comment, stylePreset, slideTotal, spine, prev, next } = opts;
+  const lastLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean).slice(-1)[0] ?? "";
+  const firstLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean)[0] ?? "";
   const isViral = stylePreset === "viral";
   const total = slideTotal ?? 3;
   const slot = isViral ? viralSlotFor(slideIndex, total) : null;
@@ -497,6 +522,10 @@ THE SLIDE AS IT STANDS. Rewrite THIS slide. Keep what works, change what the not
   body: "${(current.body ?? "").replace(/\n/g, "\\n")}"
   citation: "${current.citation ?? ""}"${current.figure ? `\n  figure: "${current.figure}"` : ""}${current.emphasis ? `\n  emphasis: "${current.emphasis}"` : ""}
 ` : ""}${note ? `
+${spinePromptBlock(spine)}${current?.beat ? `This slide serves the "${current.beat}" beat. Keep it there.\n` : ""}${prev ? `
+THE RELAY. The slide before this one ends: "${lastLine(prev.body)}". Your first line must pick up a word from it.` : ""}${next ? `
+The slide after this one begins: "${next.headline ?? ""}. ${firstLine(next.body)}". Your last line must hand off to it: end on a short open-loop line that its first line answers.
+` : ""}
 THE WRITER'S NOTE. This is the instruction. Follow it exactly, even where it overrides a style preference below. It never overrides the accuracy rules:
 "${note}"
 ` : ""}${slot ? `
@@ -504,7 +533,7 @@ This is the "${slot.name}" slot of a viral deck. Its job: ${slot.job}
 The body's LAST line is the open loop, verbatim or in the same spirit: "${slot.openLoop}"
 ` : ""}
 Return ONLY valid JSON in this exact format, no other text:
-{ "headline": "string", "body": "string", "citation": "string"${isViral ? ', "figure": "string", "emphasis": "string"' : ', "graphic": "string"'} }
+{ "beat": "${current?.beat ?? "moment|villain|turn|payoff"}", "headline": "string", "body": "string", "citation": "string"${isViral ? ', "figure": "string", "emphasis": "string"' : ', "graphic": "string"'} }
 
 Brand rules (follow exactly):
 - No em dashes anywhere.

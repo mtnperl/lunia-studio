@@ -108,10 +108,13 @@ export type CarouselContentSlide = {
   figure?: string;
   /** Viral preset: an exact substring of body drawn as the highlighted phrase. */
   emphasis?: string;
+  /** Which beat of the story spine this slide serves. See src/lib/story-spine.ts. */
+  beat?: StoryBeat;
 };
 
 // ─── GraphicSpec — curated infographic component selection ────────────────────
 import { z } from 'zod';
+import type { StoryBeat, StorySpine } from './story-spine';
 
 const versusItem = z.object({ label: z.string(), value: z.string(), note: z.string().optional() });
 
@@ -320,6 +323,9 @@ export type EditorialHookImageSpec = {
 export type CarouselContent = {
   hooks: Hook[];
   slides: CarouselContentSlide[];
+  /** The story the deck tells, written before the slides. Rewrites and new
+   *  hooks read it so they stay inside the same story. */
+  spine?: StorySpine;
   /** The closing CTA slide. `graphic` is optional — when set, it carries the
    *  same GraphicSpec JSON used by content slides (currently only iconLayout
    *  is rendered on the CTA). Lets the user attach a row of icons to the
