@@ -58,6 +58,10 @@ export async function POST(req: Request): Promise<Response> {
 
     const message = await createContentMessage({
       model: CONTENT_MODEL,
+      // Brand-judged, so it stays on Opus and keeps thinking, at medium
+      // effort: the old cap of a few thousand tokens said this was never a
+      // long-reasoning job.
+      output_config: { effort: "medium" },
       max_tokens: 2048,
       system: UGC_SCRIPT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

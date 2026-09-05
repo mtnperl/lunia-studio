@@ -113,6 +113,7 @@ Run against every drafted carousel before publishing. A fail on any line sends i
 7. CTA to lunialife.com appears exactly once, on the last slide.
 8. Caption closes with the standard follow line: For more Sleep-Science content follow @lunia_life. The brand bridge sentence and the entity line may follow it.
 9. Fact check in the studio shows nothing to fix, or every fix applied.
+10. Plain language. No technical term in the hook. At most one technical term in the deck, glossed in plain words in the sentence where it first appears. No sentence over 16 words. The list of terms lives in src/lib/plain-language.ts.
 
 ## 6. Worked example
 

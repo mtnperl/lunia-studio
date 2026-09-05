@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
 
@@ -71,7 +71,7 @@ CTA: ${script.cta}
 Return the heading only.`;
 
     const message = await createContentMessage({
-      model: CONTENT_MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 60,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { findAngle } from "@/lib/angleLibrary";
 import { clientIp, logEntry, logExit } from "@/lib/ugc-api";
@@ -63,7 +63,7 @@ export async function POST(req: Request): Promise<Response> {
       .join("\n");
 
     const message = await createContentMessage({
-      model: CONTENT_MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 512,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

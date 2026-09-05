@@ -1,4 +1,4 @@
-import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 60;
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const message = await createContentMessage({
-          model: CRAFT_MODEL,
+          model: DRAFT_MODEL,
           max_tokens: 512,
           system: attempt === 1 ? SYSTEM_PROMPT : SYSTEM_PROMPT + "\n\nCRITICAL: Output ONLY the JSON object.",
           messages: [{ role: "user", content: userMessage }],

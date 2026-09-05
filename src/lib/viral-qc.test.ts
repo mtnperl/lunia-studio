@@ -24,6 +24,7 @@ describe("viralChecklist", () => {
     expect(byId.caption).toBe("pass");
     expect(byId.facts).toBe("manual");
     expect(byId.tension).toBe("manual");
+    expect(byId.plain).toBeDefined();
   });
   it("fails a nine-word hook, a banned phrase and a stray CTA", () => {
     const bad = { ...content, hooks: [{ headline: "Three signs your low drive is sleep, not stress", subline: "", sourceNote: "" }], slides: [{ ...content.slides[0], body: "This clinically dosed stack fixes your sleep. Visit lunialife.com now. Loop." }] } as CarouselContent;

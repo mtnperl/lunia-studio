@@ -114,6 +114,10 @@ Return exactly the JSON shape defined in the system prompt. Exactly 5 primary te
 
     const message = await createContentMessage({
       model: CONTENT_MODEL,
+      // Brand-judged, so it stays on Opus and keeps thinking, at medium
+      // effort: the old cap of a few thousand tokens said this was never a
+      // long-reasoning job.
+      output_config: { effort: "medium" },
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

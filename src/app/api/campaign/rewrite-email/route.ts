@@ -51,6 +51,10 @@ Return ONLY minified JSON of this exact shape, no markdown, no em dashes:
 
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
+      // Brand-judged, so it stays on Opus and keeps thinking, at medium
+      // effort: the old cap of a few thousand tokens said this was never a
+      // long-reasoning job.
+      output_config: { effort: "medium" },
       max_tokens: 2000,
       messages: [{ role: "user", content: prompt }],
     });

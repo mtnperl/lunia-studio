@@ -1,4 +1,4 @@
-import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { randomUUID } from "crypto";
 
@@ -73,7 +73,7 @@ Return ONLY valid JSON with this exact structure (no markdown):
 }`;
 
     const response = await createContentMessage({
-      model: CONTENT_MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });

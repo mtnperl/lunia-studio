@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { extractText, createContentMessage, CONTENT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import {
   clientIp,
@@ -56,7 +56,7 @@ Brief: ${briefLabel || "(not specified)"}
 Write two distinct captions for this creator's UGC post. Vary the hook between the two.`;
 
     const message = await createContentMessage({
-      model: CONTENT_MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

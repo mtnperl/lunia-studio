@@ -1,4 +1,4 @@
-import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 import { VideoAdScene, VideoAdSceneType } from "@/lib/types";
 
@@ -48,7 +48,7 @@ Omit stat and caption if not relevant to this scene type.`;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const message = await createContentMessage({
-          model: CRAFT_MODEL,
+          model: DRAFT_MODEL,
           max_tokens: 256,
           system: attempt === 1 ? system : system + "\n\nCRITICAL: Output ONLY the JSON object.",
           messages: [{ role: "user", content: userMessage }],

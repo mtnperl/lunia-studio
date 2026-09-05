@@ -1,4 +1,4 @@
-import { extractText, createContentMessage, CRAFT_MODEL } from "@/lib/anthropic";
+import { extractText, createContentMessage, DRAFT_MODEL } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 30;
@@ -34,7 +34,7 @@ Return ONLY a JSON array of 3 strings, no markdown fences:
 ["prompt one", "prompt two", "prompt three"]`;
 
     const response = await createContentMessage({
-      model: CRAFT_MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 500,
       messages: [{ role: "user", content: prompt }],
     });

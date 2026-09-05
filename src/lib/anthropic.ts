@@ -13,21 +13,39 @@ export const anthropic = new Anthropic({
  * tokens safe to ask for at all.
  *
  * Applies the default effort centrally. A caller that passes its own
- * `output_config` keeps it untouched, and the draft tier never receives one —
- * Haiku 4.5 rejects `effort`, so injecting it there would turn every cheap
- * route into a 400.
+ * `output_config` keeps it untouched.
+ *
+ * Why this matters for the bill (2026-09-05): Opus 5 thinks by default when
+ * `thinking` is omitted, where Opus 4.7 did not. The move to Opus 5 on
+ * 2026-08-23 therefore switched reasoning on for every route at once, and the
+ * 8,000-token floor below lifted the ceiling on routes that used to cap at
+ * 60 to 600 tokens. The draft branch and the thinking-off exemption here are
+ * the fix: mechanical routes are cheap again, judgement routes still think.
  */
 export async function createContentMessage(params: MessageCreateParamsNonStreaming): Promise<Message> {
-  const usesDraftTier = params.model === DRAFT_MODEL;
-  if (usesDraftTier) return anthropic.messages.stream(params).finalMessage();
+  // The draft tier is mechanical work: the answer is already on screen, or it
+  // is a pick from a fixed set. It runs on Sonnet 5 with thinking off and low
+  // effort, and keeps the caller's own max_tokens, because on this tier a
+  // ceiling of 250 tokens is a ceiling of 250 tokens again.
+  if (params.model === DRAFT_MODEL) {
+    const draft: MessageCreateParamsNonStreaming = {
+      ...params,
+      thinking: params.thinking ?? DRAFT_THINKING,
+      output_config: params.output_config ?? { effort: EFFORT_LIGHT },
+    };
+    return anthropic.messages.stream(draft).finalMessage();
+  }
 
   // Thinking and the visible answer share max_tokens, so a route that wants
   // effort must also have room to think. Both are applied here together —
-  // separating them is what broke verification.
+  // separating them is what broke verification. A route that switches
+  // thinking off explicitly keeps its own ceiling: there is nothing to make
+  // room for.
+  const thinkingOff = params.thinking?.type === "disabled";
   const tuned: MessageCreateParamsNonStreaming = {
     ...params,
     output_config: params.output_config ?? { effort: EFFORT_STANDARD },
-    max_tokens: Math.max(params.max_tokens, MIN_MAX_TOKENS_WITH_THINKING),
+    max_tokens: thinkingOff ? params.max_tokens : Math.max(params.max_tokens, MIN_MAX_TOKENS_WITH_THINKING),
   };
   return anthropic.messages.stream(tuned).finalMessage();
 }
@@ -53,10 +71,16 @@ export const CONTENT_MODEL = "claude-opus-5";
 export const CRAFT_MODEL = "claude-sonnet-5";
 
 /** Mechanical. Rewrites with the answer already on screen, picks from a fixed
- *  set, one-line drafts. Fast and cheap, and correct for the job. */
-export const DRAFT_MODEL = "claude-haiku-4-5-20251001";
+ *  set, one-line drafts. Sonnet 5 rather than Haiku by decision (2026-09-05):
+ *  the floor on quality matters more than the last dollar. createContentMessage
+ *  runs this tier with thinking off and low effort. */
+export const DRAFT_MODEL = "claude-sonnet-5";
 
 export const CONTENT_THINKING = { type: "adaptive" as const };
+/** Thinking off. On Sonnet 5 this is clean; on Opus 5 the API warns that
+ *  disabled thinking can leak tool calls into text, so Opus routes lower
+ *  effort instead of switching thinking off. */
+export const DRAFT_THINKING = { type: "disabled" as const };
 
 // ─── Effort ───────────────────────────────────────────────────────────────
 //
@@ -67,9 +91,7 @@ export const CONTENT_THINKING = { type: "adaptive" as const };
 // createContentMessage rather than per route, so a new route gets sensible
 // spend without remembering to ask for it.
 //
-// NOT VALID ON THE DRAFT TIER. Haiku 4.5 rejects `effort` outright, which is
-// why createContentMessage skips it for that model rather than trusting each
-// caller to remember.
+// The draft tier gets EFFORT_LIGHT centrally, with thinking off.
 //
 // The installed SDK (0.80.0) types effort as low | medium | high | max. Newer
 // SDKs add "xhigh", which is the recommended setting for the hardest

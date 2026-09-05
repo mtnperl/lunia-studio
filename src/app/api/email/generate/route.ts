@@ -133,6 +133,10 @@ Generate 3 to 5 sections. Each section must have an imagePrompt (or empty string
 
     const response = await createContentMessage({
       model: CONTENT_MODEL,
+      // Brand-judged, so it stays on Opus and keeps thinking, at medium
+      // effort: the old cap of a few thousand tokens said this was never a
+      // long-reasoning job.
+      output_config: { effort: "medium" },
       max_tokens: 3000,
       messages: [{ role: "user", content: messageContent }],
     });

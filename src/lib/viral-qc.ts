@@ -1,6 +1,7 @@
 import type { CarouselContent, VerificationRecord } from "./types";
 import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
 import { summarize } from "./verification-status";
+import { plainLanguageCheck, describeIssues } from "./plain-language";
 
 /**
  * The pre-publish checklist from docs/carousel-viral-engine.md, section 5.
@@ -65,6 +66,11 @@ export function viralChecklist(content: CarouselContent, selectedHook: number, r
   // 9. Fact check.
   if (!record) rows.push({ id: "facts", label: "Fact check clean", state: "manual", detail: "Runs with the fact check above." });
   else { const s = summarize(record); rows.push({ id: "facts", label: "Fact check clean", state: s.findings === 0 ? "pass" : "fail", detail: s.findings === 0 ? "Nothing to fix" : `${s.findings} to fix above` }); }
+
+  // 10. Plain language: no technical term in the hook, at most one per deck
+  // and glossed where it first appears, no sentence over the phone limit.
+  const pl = plainLanguageCheck(`${hook?.headline ?? ""} ${hook?.subline ?? ""}`, slides.map((s, i) => ({ label: `slide ${i + 2}`, text: `${s.headline}. ${s.body}` })));
+  rows.push({ id: "plain", label: "Plain language: a reader with no sleep knowledge follows every slide", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `One term taught: ${pl.terms[0]}` : "No technical terms") : describeIssues(pl) });
 
   return rows;
 }

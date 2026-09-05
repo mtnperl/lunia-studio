@@ -1,6 +1,7 @@
 import type { BrandStyle, CarouselTemplate } from "./types";
 import { LUNIA_BRAND } from "./lunia-brand";
 import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
+import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -181,7 +182,7 @@ export const REGENERATE_HOOKS_PROMPT = (
 
 Topic: ${topic}
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
-
+${PLAIN_LANGUAGE_BLOCK}
 The deck the hook must introduce:
 ${deck || "(no slide content provided — base hooks on the topic)"}
 ${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}\n` : ""}
@@ -255,6 +256,20 @@ Retention rules, all mandatory:
 `;
 }
 
+
+/** The reader knows nothing about sleep or science. Applies to every preset
+ *  and every hook tone; it sits above the format rules, not below them. */
+export const PLAIN_LANGUAGE_BLOCK = `
+WHO IS READING. Someone scrolling on a phone who has never read about sleep. They know how a bad night feels; they do not know what causes it or what any of it is called. Write for them, as a good storyteller would, and nothing below relaxes the accuracy rules.
+
+1. Lead with the moment, not the mechanism. The hook is a scene the reader has lived, in second person, present tense: what happened, when, how it felt. "You wake at 3am and your brain starts doing math." The explanation of WHY arrives later in the deck, after they are in. No technical word in any hook headline or subline. A plain-language cause is fine ("your body clock", "the hormone that wakes you"); its name is not.
+2. One new word per deck, and it is taught where it appears. Across all slides you may use at most ONE term from the list below. Where it first appears, gloss it in the same sentence in plain words, e.g. "cortisol, the hormone that wakes you" or "REM (the dreaming stage)". Every other idea is said in words the reader already owns: "the hormone that wakes you" instead of cortisol, "deep sleep" instead of slow-wave, "your body clock" instead of circadian.
+3. Short sentences. No sentence over ${MAX_SENTENCE_WORDS} words. One idea per sentence.
+4. Numbers get a handle. Keep the sourced figure exactly as the study states it, and add a plain comparison the reader can feel ("26 minutes, about one episode of your show"). The comparison is added, never substituted, and never changes the number.
+
+Terms that count as technical (whole words): ${TECHNICAL_TERMS.join(", ")}.
+`;
+
 export const GENERATE_CAROUSEL_PROMPT = (
   topic: string,
   hookTone = "educational",
@@ -282,6 +297,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
 
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
+${PLAIN_LANGUAGE_BLOCK}
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
@@ -472,6 +488,7 @@ export const REGENERATE_SLIDE_PROMPT = (
   const slot = isViral ? viralSlotFor(slideIndex, total) : null;
   const note = (comment ?? "").trim().slice(0, 600);
   return `You are a content strategist for Lunia Life, a sleep supplement brand. Rewrite slide ${slideIndex + 2} of a carousel about: "${topic}"
+${PLAIN_LANGUAGE_BLOCK}
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 ${current ? `
