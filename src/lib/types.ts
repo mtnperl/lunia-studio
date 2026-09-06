@@ -1149,6 +1149,8 @@ export type SavedCampaign = {
 
 // ─── Claims ledger ────────────────────────────────────────────────────────────
 export type FactStatus = "verified" | "pending" | "retracted";
+/** How the subject's headline claim holds up against the facts on file. */
+export type HeadlineVerdict = "supported" | "partly" | "no_evidence" | "contradicted";
 
 /** One sourced fact, keyed to a subject. See src/lib/facts.ts. */
 export type Fact = {
@@ -1172,6 +1174,13 @@ export type Fact = {
   /** Earlier statements, kept so an old value can be hunted down. */
   previous?: { statement: string; changedAt: string }[];
   note?: string;
+  /** Review verdict on the subject's headline claim, carried by every fact
+   *  filed for it. Missing means the claim has not been reviewed. */
+  claimVerdict?: HeadlineVerdict;
+  /** False when the headline cannot be published as written. */
+  safeForCopy?: boolean;
+  /** How to state the claim honestly: the frame generation writes to. */
+  claimCorrection?: string;
 };
 
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────

@@ -1,10 +1,20 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { Fact, FactStatus, Subject } from "@/lib/types";
+import type { HeadlineVerdict, Fact, FactStatus, Subject } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, IconButton, Tooltip, Badge, Input, Textarea, Select, Field, Dialog, EmptyState, Skeleton, Tabs, useToast, useConfirm, IcRefresh, IcTrash, IcCopy, IcPlus } from "@/components/ui";
 
 type Carrier = { kind: "carousel" | "email"; id: string; title: string; snippets: string[] };
+type StatusFilter = "all" | "review" | FactStatus;
+
+const VERDICT_LABEL: Record<HeadlineVerdict, { label: string; tone: "success" | "warning" | "danger" | "neutral" }> = {
+  supported: { label: "Supported", tone: "success" },
+  partly: { label: "Partly supported", tone: "warning" },
+  no_evidence: { label: "No evidence", tone: "neutral" },
+  contradicted: { label: "Contradicted", tone: "danger" },
+};
+/** Pending and the headline was judged unsafe to publish: the review queue. */
+const needsReview = (f: Fact) => f.status === "pending" && f.safeForCopy === false;
 
 /** The claims ledger. Every number the studio publishes should be here with
  *  its source. Verified facts are quoted at generation time; pending ones wait
@@ -13,7 +23,7 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
   const [facts, setFacts] = useState<Fact[] | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"all" | FactStatus>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [editing, setEditing] = useState<Fact | null>(null);
   const [adding, setAdding] = useState(false);
   const [researchOpen, setResearchOpen] = useState(false);
@@ -33,14 +43,14 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return (facts ?? []).filter((f) => (status === "all" || f.status === status) && (!needle || `${f.subjectText} ${f.statement} ${f.value ?? ""} ${f.source.citation ?? ""}`.toLowerCase().includes(needle)));
+    return (facts ?? []).filter((f) => (status === "all" || (status === "review" ? needsReview(f) : f.status === status)) && (!needle || `${f.subjectText} ${f.statement} ${f.value ?? ""} ${f.source.citation ?? ""}`.toLowerCase().includes(needle)));
   }, [facts, q, status]);
   const groups = useMemo(() => {
     const m = new Map<string, Fact[]>();
     for (const f of filtered) { const k = f.subjectText || "Unfiled"; (m.get(k) ?? m.set(k, []).get(k)!).push(f); }
     return [...m.entries()];
   }, [filtered]);
-  const counts = useMemo(() => ({ verified: (facts ?? []).filter((f) => f.status === "verified").length, pending: (facts ?? []).filter((f) => f.status === "pending").length, retracted: (facts ?? []).filter((f) => f.status === "retracted").length }), [facts]);
+  const counts = useMemo(() => ({ verified: (facts ?? []).filter((f) => f.status === "verified").length, pending: (facts ?? []).filter((f) => f.status === "pending").length, retracted: (facts ?? []).filter((f) => f.status === "retracted").length, review: (facts ?? []).filter(needsReview).length }), [facts]);
   const subjectsWithoutFacts = useMemo(() => { const have = new Set((facts ?? []).map((f) => f.subjectId).filter(Boolean)); return subjects.filter((s) => !have.has(s.id)); }, [facts, subjects]);
 
   const patch = async (id: string, p: Partial<Fact>) => {
@@ -49,6 +59,15 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
     const next = (await r.json()) as Fact;
     setFacts((fs) => (fs ?? []).map((f) => (f.id === id ? next : f)));
     return next;
+  };
+  const approveAll = async (items: Fact[]) => {
+    const todo = items.filter((f) => f.status === "pending");
+    if (todo.length === 0) return;
+    setBusy(`approve-${todo[0].subjectId ?? todo[0].subjectText}`);
+    let n = 0;
+    for (const f of todo) { if (await patch(f.id, { status: "verified" })) n++; }
+    setBusy(null);
+    toast({ title: `${n} fact${n === 1 ? "" : "s"} verified`, kind: "success" });
   };
   const remove = async (f: Fact) => {
     if (!(await confirm({ title: "Delete this fact?", description: "Retract it instead if a document might still carry the value.", confirmLabel: "Delete", tone: "danger" }))) return;
@@ -120,7 +139,7 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
       )}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
         <div style={{ flex: "1 1 260px" }}><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search facts, subjects, sources" aria-label="Search facts" /></div>
-        <Tabs value={status} onChange={setStatus} ariaLabel="Status" items={[{ value: "all", label: `All ${(facts ?? []).length}` }, { value: "verified", label: `Verified ${counts.verified}` }, { value: "pending", label: `Pending ${counts.pending}` }, { value: "retracted", label: `Retracted ${counts.retracted}` }]} />
+        <Tabs value={status} onChange={(v) => setStatus(v as StatusFilter)} ariaLabel="Status" items={[{ value: "all", label: `All ${(facts ?? []).length}` }, ...(counts.review > 0 ? [{ value: "review", label: `Needs review ${counts.review}` }] : []), { value: "verified", label: `Verified ${counts.verified}` }, { value: "pending", label: `Pending ${counts.pending}` }, { value: "retracted", label: `Retracted ${counts.retracted}` }]} />
       </div>
 
       {facts === null ? (
@@ -133,9 +152,25 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {groups.map(([subject, items]) => (
+          {groups.map(([subject, items]) => {
+            const lead = items.find((f) => f.claimVerdict) ?? items[0];
+            const verdict = lead.claimVerdict ? VERDICT_LABEL[lead.claimVerdict] : null;
+            const pendingHere = items.filter((f) => f.status === "pending").length;
+            const key = lead.subjectId ?? subject;
+            return (
             <section key={subject}>
-              <h2 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "baseline", gap: 8 }}>{subject}<span style={{ fontFamily: "var(--ui-font-mono)", fontSize: 11, color: "var(--ui-text-3)" }}>{items.length}</span></h2>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, margin: "0 0 8px" }}>
+                <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <h2 style={{ fontSize: 14, fontWeight: 600, margin: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {subject}
+                    <span style={{ fontFamily: "var(--ui-font-mono)", fontSize: 11, color: "var(--ui-text-3)" }}>{items.length}</span>
+                    {verdict && <Badge tone={verdict.tone}>{verdict.label}</Badge>}
+                    {lead.safeForCopy === false && <span style={{ fontSize: 11, color: "var(--ui-danger)" }}>not safe as written</span>}
+                  </h2>
+                  {lead.claimCorrection && <div style={{ fontSize: 13, color: "var(--ui-text-2)", lineHeight: 1.45 }}><span style={{ color: "var(--ui-text-3)" }}>{lead.safeForCopy === false ? "Write it as: " : "Caveat: "}</span>{lead.claimCorrection}</div>}
+                </div>
+                {pendingHere > 1 && <Button size="sm" onClick={() => approveAll(items)} busy={busy === `approve-${key}`}>Approve all {pendingHere}</Button>}
+              </div>
               <div style={{ border: "1px solid var(--ui-border)", borderRadius: 8, overflow: "hidden" }}>
                 {items.map((f) => (
                   <div key={f.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, padding: "12px 14px", borderBottom: "1px solid var(--ui-border)", background: f.status === "retracted" ? "var(--ui-surface)" : "var(--ui-bg)", opacity: f.status === "retracted" ? 0.75 : 1 }}>
@@ -160,7 +195,8 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
                 ))}
               </div>
             </section>
-          ))}
+            );
+          })}
         </div>
       )}
 

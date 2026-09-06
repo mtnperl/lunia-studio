@@ -36,6 +36,9 @@ export async function POST(req: Request): Promise<Response> {
         verifiedAt: f.status === "verified" ? (f.verifiedAt ?? now) : f.verifiedAt,
         previous: f.previous,
         note: f.note,
+        ...(f.claimVerdict ? { claimVerdict: f.claimVerdict } : {}),
+        ...(typeof f.safeForCopy === "boolean" ? { safeForCopy: f.safeForCopy } : {}),
+        ...(f.claimCorrection ? { claimCorrection: f.claimCorrection } : {}),
       }));
     const existing = await getFacts();
     const { facts, added, updated } = mergeFacts(existing, incoming);

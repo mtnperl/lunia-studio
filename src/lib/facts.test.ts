@@ -31,6 +31,21 @@ describe("factsPromptBlock", () => {
     expect(block).toContain("NOT YET REVIEWED");
     expect(block.indexOf("8 mg of L-theanine")).toBeLessThan(block.indexOf("Pending thing"));
   });
+  it("tells the writer when the headline claim is unsafe, with the correction to write to", () => {
+    const block = factsPromptBlock([fact({ status: "pending", claimVerdict: "contradicted", safeForCopy: false, claimCorrection: "Sleep was most efficient at 20 to 25 C, not 18 to 19 C." })]);
+    expect(block).toContain("CLAIM CHECK");
+    expect(block).toContain("contradicted");
+    expect(block).toContain("Do not publish the headline as written");
+    expect(block).toContain("20 to 25 C");
+    expect(block.indexOf("CLAIM CHECK")).toBeLessThan(block.indexOf("NOT YET REVIEWED"));
+  });
+  it("carries a supported claim's caveat without forbidding the headline", () => {
+    const block = factsPromptBlock([fact({ claimVerdict: "supported", safeForCopy: true, claimCorrection: "The causal evidence is in mice." })]);
+    expect(block).toContain("is supported");
+    expect(block).toContain("caveat in view: The causal evidence is in mice.");
+    expect(block).not.toContain("Do not publish");
+    expect(factsPromptBlock([fact({ claimVerdict: "supported", safeForCopy: true })])).not.toContain("CLAIM CHECK");
+  });
   it("is empty with nothing on file, and never quotes retracted facts", () => {
     expect(factsPromptBlock([])).toBe("");
     expect(factsPromptBlock([fact({ status: "retracted" })])).toBe("");

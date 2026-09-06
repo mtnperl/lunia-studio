@@ -10,7 +10,7 @@
  *
  * Pure functions only; storage lives in kv.ts and the routes.
  */
-import type { Fact, SavedCarousel, SavedCampaign, VerificationRecord } from "./types";
+import type { HeadlineVerdict, Fact, SavedCarousel, SavedCampaign, VerificationRecord } from "./types";
 import { effectiveVerdict } from "./types";
 import { extractCarouselUnits, hashUnitText } from "./verification-status";
 
@@ -59,7 +59,7 @@ export function factsPromptBlock(facts: Fact[]): string {
     const src = f.source.citation || f.source.title || f.source.url || "source on file";
     return `- ${f.statement}${f.value ? ` (${f.value})` : ""} [Source: ${src}]`;
   };
-  let out = "";
+  let out = claimVerdictBlock(facts);
   if (verified.length) {
     out += `\n\nVERIFIED FACTS FOR THIS TOPIC. These figures and attributions were checked against their sources. Use them exactly as written where they apply, and cite the source given. Do not substitute a number from memory for one listed here.\n${verified.map(line).join("\n")}\n`;
   }
@@ -67,6 +67,36 @@ export function factsPromptBlock(facts: Fact[]): string {
     out += `\n\nSOURCED FACTS NOT YET REVIEWED. Each carries a primary source. Prefer these to anything you recall, keep the figure with its stated condition, and cite the source given. If a figure you need is in neither list, say so in the citation rather than inventing one.\n${pending.map(line).join("\n")}\n`;
   }
   return out;
+}
+
+const VERDICT_WORDING: Record<HeadlineVerdict, string> = {
+  supported: "is supported by the facts on file",
+  partly: "is only partly supported: part of it holds, part does not",
+  no_evidence: "has no evidence on file: the sources cited do not test it",
+  contradicted: "is contradicted by the facts on file",
+};
+
+/** The reviewed verdict on the headline claim, when the matched facts carry
+ *  one. The verdict lives on every fact filed for the subject, so the most
+ *  common one wins. Unsafe claims get an instruction to write to the
+ *  correction instead of the headline; safe ones get the caveat. */
+export function claimVerdictBlock(facts: Fact[]): string {
+  const withVerdict = facts.filter((f) => f.status !== "retracted" && f.claimVerdict);
+  if (withVerdict.length === 0) return "";
+  const tally = new Map<string, { n: number; f: Fact }>();
+  for (const f of withVerdict) {
+    const key = `${f.subjectId ?? f.subjectText}|${f.claimVerdict}`;
+    const cur = tally.get(key);
+    if (cur) cur.n++; else tally.set(key, { n: 1, f });
+  }
+  const top = [...tally.values()].sort((a, b) => b.n - a.n)[0].f;
+  const verdict = top.claimVerdict as HeadlineVerdict;
+  const correction = (top.claimCorrection ?? "").trim();
+  const claim = top.subjectText ? `"${top.subjectText}"` : "The headline claim";
+  if (verdict === "supported" || top.safeForCopy) {
+    return correction ? `\n\nCLAIM CHECK. ${claim} ${VERDICT_WORDING[verdict]}. Keep this caveat in view: ${correction}\n` : "";
+  }
+  return `\n\nCLAIM CHECK. ${claim} ${VERDICT_WORDING[verdict]}. Do not publish the headline as written. Write to what the evidence shows instead: ${correction || "state only what the facts below support"}. The hook may name the popular belief, but the deck must land on the corrected version.\n`;
 }
 
 /** Numbers and units inside a statement, for hunting an old value in other
