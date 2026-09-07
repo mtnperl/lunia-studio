@@ -21,6 +21,12 @@ const PUBLIC_PREFIXES = [
   // Needed by public share pages for CORS-safe PNG export. The endpoint itself
   // enforces a hardcoded allowlist of upstream hosts (fal.media, etc).
   "/api/carousel/image-proxy",
+  // Static slide assets (the essay paper grain). The public share page draws
+  // them on screen and fetches them for the PNG export; behind auth, a phone
+  // with no cookie got the login page's HTML in place of the texture, so the
+  // paper rendered flat and the export had no grain. Same-origin static files,
+  // nothing user-specific.
+  "/textures/",
 ];
 
 export const config = {
