@@ -4,7 +4,7 @@ import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
 import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
 import { spinePromptBlock, type StorySpine } from "./story-spine";
 import { structurePromptBlock, slotFor, STRUCTURES, type CarouselStructure } from "./carousel-structures";
-import { briefPromptBlock, type CarouselBrief } from "./carousel-brief";
+import { briefPromptBlock, craftBlock, type CarouselBrief } from "./carousel-brief";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -240,7 +240,7 @@ VIRAL LOOK. Every slide object has three extra fields: "beat", "figure" and "emp
 
 How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it is lines, not a paragraph:
 - "headline": the FIRST LINE of the slide's thought, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps, whatever the rules below say), no full stop. The body continues it, so a reader who reads only the headline knows what the slide claims. Never a detail lifted out of the scene with no claim in it: "The hallway light stays on" says nothing; "Eight hours and you still wake flat" starts something the body has to finish.
-- "body": 2 to 4 short lines separated by a newline character (\\n). The first line picks up where the headline left off, never restates it. Each line is a complete sentence of 9 words or fewer. No line is a paragraph. The LAST line does the slot's "End on" job, under 10 words. 20 to 40 words in total.
+- "body": 2 to 4 short lines separated by a newline character (\\n). The first line picks up where the headline left off, never restates it. Each line is a complete sentence of 9 words or fewer. No line is a paragraph. The LAST line does the slot's "End on" job as one full sentence, never a telegraphic fragment ("Stage, not duration, carried it" fails). 20 to 40 words in total.
 - "emphasis": the one phrase in the body that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines (same characters, same case). It is drawn in yellow. Never the last line. "" when nothing earns it.
 - "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, never on a "moment" slide, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
 - "graphic": "" except on the slots the structure marks as allowed, and only for a sourced comparison worth drawing. A slide with a figure needs no graphic.
@@ -283,7 +283,7 @@ THE LAST SLIDE IS THE TAKEAWAY (mandatory: populate the "takeaway" object). Slid
 export const PLAIN_LANGUAGE_BLOCK = `
 WHO IS READING. A curious adult who reads well: the person who reads the science pages of a good newspaper on their phone. They have not studied sleep, so nothing is assumed. Nothing is dumbed down either. Write the way a good science journalist writes for them, and nothing below relaxes the accuracy rules.
 
-1. Use the real word, and teach it in passing. "REM, the stage of sleep where most dreaming happens" once, then "REM". Never a nursery substitute in its place ("dreaming sleep", "the wake-up hormone" as a standing name). A term you have defined belongs to the reader now; use it. Up to three such terms per deck, each glossed where it first appears, none in the hook headline.
+1. Use the real word, and teach it in passing. "REM, the stage of sleep where most dreaming happens" once, then "REM". Teaching means saying what it is for the reader, never expanding the acronym: "REM, the rapid eye movement stage" explains nothing. Never a nursery substitute in its place ("dreaming sleep", "the wake-up hormone" as a standing name). A term you have defined belongs to the reader now; use it. Up to three such terms per deck, each glossed where it first appears, none in the hook headline.
 2. Sentences vary in length the way prose does. Most run 12 to 22 words; a short one lands a point. A slide of eight-word sentences in a row reads as a primer for children and fails, however correct it is.
 3. The hook leads with the moment, not the mechanism: a scene the reader has lived, second person, present tense. The explanation arrives on the slides.
 4. Every headline is a complete claim a stranger understands with no body under it. "LIGHT SWITCHED OFF ONE WAVE" is a fragment that means nothing alone; "SILENCE ONE BRAIN RHYTHM AND THE MEMORY GOES" is a sentence. The body then says how.
@@ -345,10 +345,8 @@ export const GENERATE_CAROUSEL_PROMPT = (
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
 
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
-${PLAIN_LANGUAGE_BLOCK}${briefPromptBlock(brief)}
-${STORY_BLOCK}
-
-Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}${structured ? `\nTHE HOOK'S JOB IN THIS STRUCTURE (outranks the tone's formula where they differ): ${STRUCTURES[structure!].hookJob}` : ""}
+${brief ? craftBlock(brief) : `${PLAIN_LANGUAGE_BLOCK}\n${STORY_BLOCK}`}
+${brief ? "" : `Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}`}${structured ? `\nTHE HOOK'S JOB IN THIS STRUCTURE: ${STRUCTURES[structure!].hookJob}` : ""}
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
@@ -401,7 +399,7 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
 
 The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
-` : ""}${isEssay ? essayLookBlock() : ""}${structured ? structurePromptBlock(structure!, total) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
+` : ""}${isEssay ? essayLookBlock() : ""}${structured ? structurePromptBlock(structure!, total, { light: !!brief }) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE
@@ -505,11 +503,11 @@ ${isEditorial ? `- hookImageSpec (Editorial Scientific only — MANDATORY):
   • checklist slide about hidden sleep debt → "Cross-section of dark water, a small form above the waterline and a far larger mass below, deep blues fading to black, crisp edges, scientific illustration style, no labels"
   • vector slide about circadian rhythm → "Sine wave arc representing day-night cycle, sun and moon at opposite peaks, gradient from warm amber to deep midnight blue, minimal geometric, no text"
 
-=== TONE LOCK (read last, obey first) ===
+${brief ? "" : `=== TONE LOCK (read last, obey first) ===
 Before you finalise the 3 hooks, re-read the hook tone you were given and make every hook unmistakably that tone:
 ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 HARD RULE: a reader shown only the 3 hooks must be able to name the tone without being told. If a hook would read identically under a different tone, it has failed — rewrite it until the chosen tone is the thing that makes it work. The format rules above (uppercase, 8-word limit, sourceNote) are constraints, not the voice. The voice is the tone.
-===`;
+===`}`;
 };
 
 /** Rewrite one content slide in place. Unlike the old regenerate prompt this

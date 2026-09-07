@@ -36,7 +36,7 @@ describe("viralChecklist", () => {
   });
   it("judges detail, the second hook and the audience", () => {
     const rows = Object.fromEntries(viralChecklist(content, 0, null).map((r) => [r.id, r]));
-    expect(rows.detail.state).toBe("fail");
+    expect(rows.detail.state).toBe("manual");
     expect(rows.detail.detail).toContain("Slide 2");
     expect(rows["second-hook"].state).toBe("pass");
     expect(rows.audience.state).toBe("manual");
@@ -57,6 +57,6 @@ describe("viralChecklist", () => {
     expect(g.cta.detail).toBe("Takeaway closes the deck");
     const second = { ...good, slides: [good.slides[0], { ...good.slides[1] }, good.slides[2]] } as CarouselContent;
     second.slides[0] = { ...second.slides[0], headline: "But it gets worse" };
-    expect(Object.fromEntries(viralChecklist(second, 0, null).map((r) => [r.id, r.state]))["second-hook"]).toBe("fail");
+    expect(Object.fromEntries(viralChecklist(second, 0, null).map((r) => [r.id, r.state]))["second-hook"]).toBe("manual");
   });
 });

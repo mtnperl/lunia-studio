@@ -317,11 +317,19 @@ export function structureFromLegacy(hookTone?: HookTone | null, format?: Carouse
 
 /** The prompt block for a structure: the value move, the hook's job, the
  *  slots, and the retention rules that apply to every structure. */
-export function structurePromptBlock(id: CarouselStructure, total: 5 | 10): string {
+export function structurePromptBlock(id: CarouselStructure, total: 5 | 10, opts: { light?: boolean } = {}): string {
   const spec = STRUCTURES[id];
   const plan = spec.slots[total === 10 ? 8 : 3];
+  if (opts.light) {
+    // The brief carries the argument; this is only the running order.
+    const outline = plan.map((sl, i) => `  Slide ${i + 2}, ${sl.name} (beat "${sl.beat}"): ${sl.job}`).join("\n");
+    return `
+RUNNING ORDER: ${spec.label.toUpperCase()}. This deck exists to ${VALUE_MOVE_TEXT[spec.valueMove]}. Return EXACTLY ${plan.length} objects in "slides", in this order; the hook is slide 1 and the takeaway is slide ${total}.
+${outline}
+`;
+  }
   const rows = plan.map((sl, i) =>
-    `  Slide ${i + 2} (${sl.name}, beat "${sl.beat}"): ${sl.job}\n    End on: ${sl.endOn} Under 10 words.` +
+    `  Slide ${i + 2} (${sl.name}, beat "${sl.beat}"): ${sl.job}\n    End on: ${sl.endOn} One full sentence, never a fragment.` +
     `${sl.proof ? "\n    Must carry a real citation." : ""}${sl.graphic ? "\n    May carry one infographic." : ""}${sl.product ? "\n    The product may be named here, as the mechanism, never the promise." : ""}`,
   ).join("\n");
   const firstPayoff = plan.findIndex((sl) => sl.beat === "payoff");

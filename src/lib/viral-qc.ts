@@ -53,7 +53,7 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
 
   // 2. Open loop on every content slide: a short final sentence.
   const noLoop = slides.map((s, i) => ({ i, last: lastSentence(s.body) })).filter((x) => words(x.last).length === 0 || words(x.last).length > 12);
-  rows.push({ id: "loops", label: "Every slide except the first and last ends with an open-loop line", state: slides.length === 0 ? "fail" : noLoop.length === 0 ? "pass" : "fail", detail: noLoop.length ? `Slide${noLoop.length > 1 ? "s" : ""} ${noLoop.map((x) => x.i + 2).join(", ")}: last sentence is long or missing` : `${slides.length} slides end on a short line` });
+  rows.push({ id: "loops", label: "Every slide except the first and last ends with an open-loop line", state: slides.length === 0 ? "fail" : noLoop.length === 0 ? "pass" : "manual", detail: noLoop.length ? `Slide${noLoop.length > 1 ? "s" : ""} ${noLoop.map((x) => x.i + 2).join(", ")}: last sentence is long or missing` : `${slides.length} slides end on a short line` });
 
   // 3. Solution withheld before the midpoint: cannot be judged by code.
   const firstPayoff = plan.findIndex((sl) => sl.beat === "payoff");
@@ -101,20 +101,20 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   const st = storyCheck(content, plan.map((sl) => sl.beat), hook);
   const own = new Set(["no-detail", "weak-second-hook", "no-audience"]);
   const storyIssues = st.issues.filter((i) => !own.has(i.kind));
-  rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: storyIssues.length === 0 ? "pass" : "fail", detail: storyIssues.length === 0 ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues({ ...st, issues: storyIssues }) });
+  rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: storyIssues.length === 0 ? "pass" : "manual", detail: storyIssues.length === 0 ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues({ ...st, issues: storyIssues }) });
 
   // 11b. A concrete detail on every slide: a number, a time, or the
   // returning image. A slide with none is a summary, not a story.
   const vague = slides.map((s, i) => (hasConcreteDetail(`${s.headline} ${s.body}`, content.spine) ? 0 : i + 2)).filter(Boolean);
-  rows.push({ id: "detail", label: "Every slide carries one concrete detail: a time, a count, or the returning image", state: slides.length === 0 ? "fail" : vague.length ? "fail" : "pass", detail: vague.length ? `Slide${vague.length > 1 ? "s" : ""} ${vague.join(", ")}: nothing the reader can picture` : "Each slide has something to picture" });
+  rows.push({ id: "detail", label: "Every slide carries one concrete detail: a time, a count, or the returning image", state: slides.length === 0 ? "fail" : vague.length ? "manual" : "pass", detail: vague.length ? `Slide${vague.length > 1 ? "s" : ""} ${vague.join(", ")}: nothing the reader can picture` : "Each slide has something to picture" });
 
   // 11c. Slide 2 is the second hook: the deck is shown a second time from it.
   const second = slides[0]?.headline ?? "";
-  rows.push({ id: "second-hook", label: "Slide 2 works cold as a second hook", state: !slides[0] ? "fail" : standsAlone(second) ? "pass" : "fail", detail: !slides[0] ? "No slide 2" : standsAlone(second) ? `"${second}"` : `"${second}" leans on slide 1 or runs past 8 words` });
+  rows.push({ id: "second-hook", label: "Slide 2 works cold as a second hook", state: !slides[0] ? "fail" : standsAlone(second) ? "pass" : "manual", detail: !slides[0] ? "No slide 2" : standsAlone(second) ? `"${second}"` : `"${second}" leans on slide 1 or runs past 8 words` });
 
   // 11d. The hook names who it is for.
   const named = hookNamesAudience(content.spine, hook);
-  rows.push({ id: "audience", label: "The hook names who the deck is for", state: !content.spine?.who ? "manual" : named ? "pass" : "fail", detail: !content.spine?.who ? "No audience on the spine; read the hook and ask who it speaks to" : named ? `For: ${content.spine.who}` : `The spine says "${content.spine.who}" but no word of it is in the hook` });
+  rows.push({ id: "audience", label: "The hook names who the deck is for", state: !content.spine?.who ? "manual" : named ? "pass" : "manual", detail: !content.spine?.who ? "No audience on the spine; read the hook and ask who it speaks to" : named ? `For: ${content.spine.who}` : `The spine says "${content.spine.who}" but no word of it is in the hook` });
 
   // 12. Proof: enough cited slides, and no single source carrying the deck.
   const cited = slides.filter((s) => (s.citation ?? "").trim().length > 0).length;

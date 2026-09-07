@@ -99,16 +99,18 @@ Who reads it: a curious adult who reads well, the reader of a good newspaper's s
 What the brief must do:
 - Make ONE claim and carry it. A carousel is one argument, not a review. Choose the single finding the deck exists to deliver, then use only the evidence that proves it: at most three comparisons. Everything else the facts show is left out, however true and well sourced. A brief that walks through five studies gives the cut five stories, and the slides stop following one another.
 - State the belief before it is overturned. If the reader holds a belief the finding contradicts, the argument says that belief in the reader's words first, then shows the evidence against it. A turn against a belief the reader was never shown holding lands on nothing.
+- Tell what happened, not what was measured. For each study the argument uses, say who did what to whom and what they saw, in words a reader can picture: "researchers put electrodes on sleepers' scalps and nudged the brain into deeper slow waves for the first hours of the night; next morning those sleepers remembered more of the word pairs they had learned". Never "stimulation at 0.75 Hz improved declarative memory". A frequency, a dose, a p-value, a sample size or an SEM is not a fact a reader can feel; it belongs in "comparisons" for the fact check, not in the argument.
 - Say what was compared. A study compares two things; name both. "8.5 hours in bed versus 5.5" is a comparison; "5.5 hours of sleep" alone is not.
 - Put every number next to its baseline. "55% less fat lost on the short-sleep schedule than on the long one." Never a figure floating on its own. The metric is the DIFFERENCE, so say what it is a difference between.
 - Explain an idea before you name it. Say "the weight they lost was muscle, not fat" and then, if useful, "researchers call this body composition". Never swap a plain word for a clumsy paraphrase to avoid a term; explain it instead.
 - Only claim what the facts below support, or what you are certain of. Where a mechanism is uncertain, say what is known and stop. Nothing here is decoration; a wrong sentence in the brief becomes a wrong slide.
+- Earn the action. "Tonight" must follow from the evidence in the argument. If it needs one more fact to follow (for instance, that deep slow-wave sleep is concentrated in the first half of the night, so a late bedtime cuts it), the argument states that fact with its source; an action the evidence does not reach is left out.
 - Do not invent a villain. If the reader holds a belief the finding overturns, name it. If they do not, leave "overturns" empty. A study of two sleep schedules does not mean the reader "cut sleep to fit the diet in".
 ${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\n${ledgerBlock}\n` : ""}${recentBlock}
 Return ONLY valid JSON in this exact format, no other text:
 {
   "claim": "the one sentence the reader walks away with, plain English, with its comparison in it",
-  "argument": "about 120 words of prose. What was studied, what was compared, what was found with the numbers against their baselines, why it happens as far as is known, and what the reader does about it. Complete sentences a native reader would write.",
+  "argument": "about 120 words of prose a science journalist would file. Who did what to whom and what they saw, the one or two figures a reader can feel with their baselines, why it happens as far as is known, and what the reader does about it. No units a reader cannot picture.",
   "comparisons": [
     { "measure": "what was measured", "a": "condition A", "b": "condition B", "result": "the number, its direction, and which condition it favours" }
   ],
@@ -149,7 +151,7 @@ export function briefPromptBlock(brief: CarouselBrief | null | undefined): strin
   if (!brief) return "";
   const comps = brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n");
   return `
-THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two of the brief, given a headline. Keep the brief's sentences as written wherever they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may reorder. You may not add a claim, a number, a mechanism or a motive that is not in the brief, and every number keeps the baseline the brief gives it ("55% less than on 8.5 hours", never "55% less" alone). The takeaway restates the claim. If a slide needs something the brief does not say, the slide says less, not more.
+THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two of the brief, given a headline. A slide tells what happened, not what was measured: who did what and what they saw. Figures a reader cannot feel (a frequency, a dose, a p-value, a sample size, an SEM) never appear on a slide; the citation carries them. Keep the brief's sentences as written wherever they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may reorder. You may not add a claim, a number, a mechanism or a motive that is not in the brief, and every number keeps the baseline the brief gives it ("55% less than on 8.5 hours", never "55% less" alone). The takeaway restates the claim. If a slide needs something the brief does not say, the slide says less, not more.
 
   Claim: ${brief.claim}
   Argument: ${brief.argument}
@@ -158,6 +160,27 @@ ${comps ? `  Comparisons:\n${comps}\n` : ""}  Who it is for: ${brief.who}
   Tonight: ${brief.tonight}${brief.leftOut ? `\n  Left out on purpose, do not reach for it: ${brief.leftOut}` : ""}
 
 THE HOOKS OPEN THIS DECK. All three hooks pose the question the takeaway answers, from three angles. A hook about a fact the deck does not resolve fails, however striking.
+`;
+}
+
+/** The writing step when a brief exists. Replaces the plain-language rules,
+ *  the spine mechanism, the relay and the slot "End on" lines with a short
+ *  guide. The writer is trusted to execute; the editor read catches misses. */
+export function craftBlock(brief: CarouselBrief): string {
+  const comps = brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n");
+  return `
+WHO IS READING. A curious adult who reads the science pages of a good newspaper on their phone. They have not studied sleep; nothing is assumed and nothing is dumbed down. Write the way a good science journalist writes for them: real terms, each explained in passing the first time (what it is for the reader, not an acronym expansion), sentences of the length prose has, and a story of what people did and what they saw rather than what was measured.
+
+THE BRIEF. Everything the deck says is here. Cut it into slides; do not add a claim, a number, a mechanism or a motive that is not in it. Figures a reader cannot feel (a frequency, a dose, a p-value, a sample size) stay in the citation, not on the slide.
+  Claim: ${brief.claim}
+  Argument: ${brief.argument}
+${comps ? `  Comparisons, for your own accuracy:\n${comps}\n` : ""}  Who it is for: ${brief.who}
+  ${brief.overturns ? `Belief this overturns: ${brief.overturns}` : "There is no villain in this deck; do not write one."}
+  Tonight: ${brief.tonight}${brief.leftOut ? `\n  Left out on purpose: ${brief.leftOut}` : ""}
+
+HOW A GOOD CAROUSEL READS. Write the whole thing as one short piece first, then cut it into slides, so a reader who reads the slides in a row reads an article, not a list. One thought per slide, said fully. Each slide makes the reader want the next one because of what it says, not because a line tells them to keep going. The hook is the promise, in the reader's language. The first slide opens the scene or the problem. The middle tells what was found as what happened: who did what, what they saw. If the reader holds a belief the finding overturns, say the belief in their words before you overturn it. The last slide says what to do tonight and what to remember. Headlines are complete sentences a stranger understands with nothing under them. Numbers only where the reader can feel them, always against their baseline. All three hooks open this same argument from different angles.
+
+Also return the "spine" (moment, villain or "", turn, payoff, who) as a summary of the deck you wrote, and on each slide a "beat" naming the part it serves: moment, villain, turn or payoff.
 `;
 }
 
@@ -181,16 +204,9 @@ ${hooks}
 ${slides}
 ${tk}
 
-Answer four questions about the deck, and fix what fails:
-1. Does each slide follow from the one before it? The deck is a relay: the last line of each content slide leaves the reader one specific question, and the next slide's first line answers it. A slide that arrives from nowhere, repeats the previous one, or adds nothing to the argument fails. So does a slide that overturns a belief the reader was never shown holding: the belief must be stated on that slide, in the reader's words, before the evidence against it.
-0. Does the selected hook (hook 1) open the argument this deck answers? A hook that promises a fact the slides never resolve fails, however striking.
-2. Is every number stated against its baseline? "55% less fat" fails; "55% less fat than on 8.5 hours" passes. A figure whose source condition is never named on that slide fails.
-3. Does every sentence read as English a native writer would produce? "What that lost weight was made of", "food was matched", "different body" are the kind of thing that fails: a paraphrase where a plain explanation belongs. Fix by saying the thing plainly.
-4. Does the takeaway say what the brief's claim says, and is each point true to the brief? A point that asserts a motive or a cause the brief does not contain fails.
-5. Is this written for an adult? The reader is a curious adult who reads the science pages of a good newspaper. A run of eight-word sentences, a nursery substitute for a real term ("dreaming sleep" for REM, "the wake-up hormone" for cortisol), or an explanation pitched at a ten-year-old fails. Real terms, defined once in passing, pass.
-6. Does every headline mean something to a stranger who reads nothing else on the slide? "LIGHT SWITCHED OFF ONE WAVE" fails; a complete claim passes.
+Read it the way a good editor reads a draft, and fix what an editor would fix. You are looking for: a slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a slide that recites a measurement (a frequency, a dose, a p-value) instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that says something other than the brief's claim; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
 
-When something fails, write the fix. When the register fails (questions 5 and 6), rewrite the whole unit in adult prose; do not patch a word. Otherwise a fix is a replacement for that unit only, in the same shape. Whenever you rewrite a body, keep the relay: its first line picks up the previous slide's last line, and its last line is the question the next slide answers. A rewrite that closes the slide on a bare fact breaks the deck. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
+A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the brief rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
 
 Return ONLY valid JSON in this exact format, no other text:
 {
