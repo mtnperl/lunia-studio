@@ -28,7 +28,7 @@
       "maxDuration": 30
     },
     "src/app/api/carousel-v2/generate/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 800
     },
     "src/app/api/carousel-v2/generate-image/route.ts": {
       "maxDuration": 300

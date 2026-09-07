@@ -102,6 +102,8 @@ export type Effort = "low" | "medium" | "high" | "max";
 export const EFFORT_PRECISE: Effort = "max";
 /** The default. Real judgement, normal stakes. */
 export const EFFORT_STANDARD: Effort = "high";
+/** Long structured output where the prompt already does the planning. */
+export const EFFORT_MEDIUM: Effort = "medium";
 /** Shaped but not subtle — a rewrite, a summary, a prompt draft. */
 export const EFFORT_LIGHT: Effort = "low";
 

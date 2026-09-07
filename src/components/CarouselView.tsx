@@ -454,7 +454,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           moodId,
         });
       } else {
-        setError("The connection to the server dropped and the deck did not arrive within eight minutes. If it was still being written it will appear in the library. Try again to write a new one.");
+        setError("The connection to the server dropped and the deck did not arrive within fourteen minutes. If it was still being written it will appear in the library. Try again to write a new one.");
       }
     } finally {
       setLoading(false);
@@ -462,11 +462,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     }
   }
 
-  /** Poll for a deck the server may still be writing. Up to eight minutes. */
+  /** Poll for a deck the server may still be writing. Up to fourteen minutes, past the 800 s function limit. */
   async function waitForSavedDeck(id: string): Promise<SavedCarousel | null> {
     const started = Date.now();
     let tries = 0;
-    while (Date.now() - started < 8 * 60_000) {
+    while (Date.now() - started < 14 * 60_000) {
       tries++;
       setLoaderNote(tries === 1
         ? "The connection dropped while the server was still writing. Waiting for the deck to land, it will open here."

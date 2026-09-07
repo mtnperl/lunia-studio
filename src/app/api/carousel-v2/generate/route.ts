@@ -1,6 +1,6 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, EFFORT_MEDIUM } from "@/lib/anthropic";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
@@ -15,7 +15,10 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 // function off mid-generation: the model call was billed, the client saw
 // "Network error", and the deck was gone. Both now say 300, and the
 // server-side save below is the second half of the fix.
-export const maxDuration = 300;
+// Pro plan with fluid compute allows 800 s. A ten-slide structured deck on
+// Opus at effort medium lands in two to four minutes; high effort crossed
+// five minutes and the platform cut it.
+export const maxDuration = 800;
 
 // Convert any failure (Anthropic SDK error, JSON parse, Zod validation) into a
 // human-readable label that's safe to surface to the user. Keeps the raw error
@@ -131,6 +134,10 @@ export async function POST(req: Request) {
             model: CONTENT_MODEL,
             max_tokens: CONTENT_MAX_TOKENS_LONG,
             thinking: CONTENT_THINKING,
+            // Medium effort: the prompt already carries the structure, the
+            // ledger and the claim check, so the model has little to work out.
+            // High effort pushed a structured deck past the function limit.
+            output_config: { effort: EFFORT_MEDIUM },
             messages,
           });
           const raw = extractText(msg);
