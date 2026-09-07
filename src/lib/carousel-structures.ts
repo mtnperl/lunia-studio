@@ -267,7 +267,7 @@ export const STRUCTURES: Record<CarouselStructure, StructureSpec> = {
     slots: {
       3: [
         s("Stakes", "Confirm the hook. The scene, and what it costs. The reader must think this is worth their time in one second.", "Promise the usual fix fails.", "moment"),
-        s("Turn", "The habit they trust, why it fails, the pivot. Do not deliver the solution.", "Promise the fix is smaller than they think.", "turn", "navy"),
+        s("Turn", "State the belief they hold, in their words, on this slide. Then why it fails, and the pivot. Do not deliver the solution.", "Promise the fix is smaller than they think.", "turn", "navy"),
         s("Solution", "One idea, one easy step toward a result, with its proof. A beginner could do it tonight.", "Say one more thing decides whether it holds.", "payoff", "ivory", { graphic: true, proof: true, product: true }),
       ],
       8: [

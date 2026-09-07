@@ -430,7 +430,7 @@ Brand rules (follow exactly):
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
-- Hook headlines: uppercase, punchy, max 8 words
+- Hook headlines: uppercase, punchy, max 8 words. All three hooks open the SAME argument: the question this deck's takeaway answers, from three angles. A hook about a fact the slides do not resolve fails.
 - Hook sublines: max 10 words, no period at the end. The subline completes the headline: it names the comparison the headline's number comes from, or who the deck is for. Never a slogan ("same diet, different body"); a fact the headline needs.
 - Hook sourceNote: the trust liner shown at the bottom of the hook slide. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook renders without a trust liner. Inventing, guessing, or approximating a source is a serious error and is worse than leaving it empty.

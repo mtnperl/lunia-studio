@@ -40,6 +40,8 @@ export type CarouselBrief = {
   overturns: string;
   /** What the reader does tonight, one sentence. */
   tonight: string;
+  /** Findings the deck deliberately does not carry. */
+  leftOut?: string;
 };
 
 export type EditorNote = {
@@ -66,6 +68,8 @@ Before any slide exists, write the ARGUMENT, in plain English, as if explaining 
 Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, theta rhythm) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words.
 
 What the brief must do:
+- Make ONE claim and carry it. A carousel is one argument, not a review. Choose the single finding the deck exists to deliver, then use only the evidence that proves it: at most three comparisons. Everything else the facts show is left out, however true and well sourced. A brief that walks through five studies gives the cut five stories, and the slides stop following one another.
+- State the belief before it is overturned. If the reader holds a belief the finding contradicts, the argument says that belief in the reader's words first, then shows the evidence against it. A turn against a belief the reader was never shown holding lands on nothing.
 - Say what was compared. A study compares two things; name both. "8.5 hours in bed versus 5.5" is a comparison; "5.5 hours of sleep" alone is not.
 - Put every number next to its baseline. "55% less fat lost on the short-sleep schedule than on the long one." Never a figure floating on its own. The metric is the DIFFERENCE, so say what it is a difference between.
 - Explain an idea before you name it. Say "the weight they lost was muscle, not fat" and then, if useful, "researchers call this body composition". Never swap a plain word for a clumsy paraphrase to avoid a term; explain it instead.
@@ -79,6 +83,7 @@ Return ONLY valid JSON in this exact format, no other text:
   "comparisons": [
     { "measure": "what was measured", "a": "condition A", "b": "condition B", "result": "the number, its direction, and which condition it favours" }
   ],
+  "leftOut": "one sentence naming the true, sourced findings this deck deliberately does not carry, so the cut does not reach for them",
   "who": "who this is for, in their own words, eight words or fewer",
   "overturns": "the belief this overturns, or an empty string",
   "tonight": "what the reader does tonight, one sentence, concrete"
@@ -99,9 +104,9 @@ export function parseBrief(raw: string): CarouselBrief | null {
             result: String(c.result ?? "").trim().slice(0, 300),
           }))
           .filter((c) => c.measure && c.result)
-          .slice(0, 8)
+          .slice(0, 3)
       : [];
-    const brief: CarouselBrief = { claim: str("claim", 400), argument: str("argument", 2000), comparisons, who: str("who", 160), overturns: str("overturns", 400), tonight: str("tonight", 400) };
+    const brief: CarouselBrief = { claim: str("claim", 400), argument: str("argument", 2000), comparisons, who: str("who", 160), overturns: str("overturns", 400), tonight: str("tonight", 400), leftOut: str("leftOut", 400) || undefined };
     if (!brief.claim || !brief.argument) return null;
     return brief;
   } catch {
@@ -120,8 +125,10 @@ THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two o
   Claim: ${brief.claim}
   Argument: ${brief.argument}
 ${comps ? `  Comparisons:\n${comps}\n` : ""}  Who it is for: ${brief.who}
-  ${brief.overturns ? `Belief this overturns: ${brief.overturns}` : "There is no villain in this deck. Do not write one."}
-  Tonight: ${brief.tonight}
+  ${brief.overturns ? `Belief this overturns: ${brief.overturns}\n  The slide that overturns this belief states it first, in the reader's words, then shows the evidence against it.` : "There is no villain in this deck. Do not write one."}
+  Tonight: ${brief.tonight}${brief.leftOut ? `\n  Left out on purpose, do not reach for it: ${brief.leftOut}` : ""}
+
+THE HOOKS OPEN THIS DECK. All three hooks pose the question the takeaway answers, from three angles. A hook about a fact the deck does not resolve fails, however striking.
 `;
 }
 
@@ -146,14 +153,15 @@ ${slides}
 ${tk}
 
 Answer four questions about the deck, and fix what fails:
-1. Does each slide follow from the one before it? A slide that arrives from nowhere, repeats the previous one, or adds nothing to the argument fails.
+1. Does each slide follow from the one before it? The deck is a relay: the last line of each content slide leaves the reader one specific question, and the next slide's first line answers it. A slide that arrives from nowhere, repeats the previous one, or adds nothing to the argument fails. So does a slide that overturns a belief the reader was never shown holding: the belief must be stated on that slide, in the reader's words, before the evidence against it.
+0. Does the selected hook (hook 1) open the argument this deck answers? A hook that promises a fact the slides never resolve fails, however striking.
 2. Is every number stated against its baseline? "55% less fat" fails; "55% less fat than on 8.5 hours" passes. A figure whose source condition is never named on that slide fails.
 3. Does every sentence read as English a native writer would produce? "What that lost weight was made of", "food was matched", "different body" are the kind of thing that fails: a paraphrase where a plain explanation belongs. Fix by saying the thing plainly.
 4. Does the takeaway say what the brief's claim says, and is each point true to the brief? A point that asserts a motive or a cause the brief does not contain fails.
 5. Is this written for an adult? The reader is a curious adult who reads the science pages of a good newspaper. A run of eight-word sentences, a nursery substitute for a real term ("dreaming sleep" for REM, "the wake-up hormone" for cortisol), or an explanation pitched at a ten-year-old fails. Real terms, defined once in passing, pass.
 6. Does every headline mean something to a stranger who reads nothing else on the slide? "LIGHT SWITCHED OFF ONE WAVE" fails; a complete claim passes.
 
-When something fails, write the fix. When the register fails (questions 5 and 6), rewrite the whole unit in adult prose; do not patch a word. Otherwise a fix is a replacement for that unit only, in the same shape: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
+When something fails, write the fix. When the register fails (questions 5 and 6), rewrite the whole unit in adult prose; do not patch a word. Otherwise a fix is a replacement for that unit only, in the same shape. Whenever you rewrite a body, keep the relay: its first line picks up the previous slide's last line, and its last line is the question the next slide answers. A rewrite that closes the slide on a bare fact breaks the deck. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
 
 Return ONLY valid JSON in this exact format, no other text:
 {
