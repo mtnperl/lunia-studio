@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, describeEditorRead } from "./carousel-brief";
-import type { CarouselContent } from "./types";
+import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, describeEditorRead, recentDecksBlock } from "./carousel-brief";
+import type { CarouselContent, SavedCarousel } from "./types";
 
 const brief = {
   claim: "Cutting sleep from 8.5 to 5.5 hours cut fat loss by more than half on the same diet.",
@@ -71,5 +71,18 @@ describe("editor read", () => {
   it("treats a clean verdict with fixes as revised", () => {
     const read = parseEditorRead(JSON.stringify({ verdict: "clean", notes: [{ where: "slide 3", problem: "x", fix: { headline: "SAME FOOD, DIFFERENT SLEEP" } }] }));
     expect(read?.verdict).toBe("revised");
+  });
+  it("remembers what recent decks led with", () => {
+    const recent = [
+      { id: "a", topic: "Slow-wave sleep: the stage that repairs your body", selectedHook: 0, content: { ...deck, hooks: [{ headline: "DEEP SLEEP FALLS FROM 18.9% TO 3.4%", subline: "men 16-25 vs 36-50" }], spine: { moment: "It is 6:40am and you slept seven hours", villain: "", turn: "t", payoff: "p" } } },
+      { id: "b", topic: "Same request", selectedHook: 0, content: { ...deck, hooks: [{ headline: "IGNORED", subline: "" }] } },
+    ] as unknown as SavedCarousel[];
+    const block = recentDecksBlock(recent, { excludeId: "b" });
+    expect(block).toContain("ALREADY PUBLISHED");
+    expect(block).toContain("DEEP SLEEP FALLS FROM 18.9% TO 3.4%");
+    expect(block).toContain("6:40am");
+    expect(block).toContain("18.9%");
+    expect(block).not.toContain("IGNORED");
+    expect(recentDecksBlock([])).toBe("");
   });
 });

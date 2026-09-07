@@ -1,12 +1,12 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
-import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, type CarouselBrief } from "@/lib/carousel-brief";
+import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, type CarouselBrief } from "@/lib/carousel-brief";
 import { STRUCTURES } from "@/lib/carousel-structures";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
-import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, saveCarousel } from "@/lib/kv";
+import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, getCarousels, saveCarousel } from "@/lib/kv";
 import { structurePromptBlock } from "@/lib/carousel-looks";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
 import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone, SavedCarousel } from "@/lib/types";
@@ -103,12 +103,16 @@ export async function POST(req: Request) {
     const structureSource = structureFromId ? await getCarouselById(structureFromId).catch(() => null) : null;
     const structureBlock = structureSource ? structurePromptBlock(structureSource) : "";
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
+    // What ran recently, so this deck does not reprint last week's hook,
+    // scene or lead figure. Read once, given to the brief and to the cut.
+    const recentBlock = recentDecksBlock((await getCarousels().catch(() => [])) as SavedCarousel[], { excludeId: requestId });
+    if (recentBlock) console.log(`[generate] memory: ${recentBlock.split("\n").filter((l) => l.startsWith("- ")).length} recent decks attached`);
     // Stage 1: the brief. The argument in prose, before any slide exists.
     // Engagement decks keep their own prompt and skip it.
-    const brief = format === "standard" ? await writeBrief(topic, ledgerBlock, structure) : null;
+    const brief = format === "standard" ? await writeBrief(topic, ledgerBlock, structure, recentBlock) : null;
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock + recentBlock;
 
     // Build message content
     type ContentBlock =
@@ -402,7 +406,7 @@ function sentenceCase(text: string): string {
 
 /** Stage 1. Null when the model returns nothing usable, in which case the
  *  deck is written the old way, from the topic and the ledger. */
-async function writeBrief(topic: string, ledgerBlock: string, structure?: CarouselStructure): Promise<CarouselBrief | null> {
+async function writeBrief(topic: string, ledgerBlock: string, structure?: CarouselStructure, recentBlock = ""): Promise<CarouselBrief | null> {
   try {
     const hint = structure ? `${STRUCTURES[structure].label}: ${STRUCTURES[structure].info.what}` : undefined;
     const msg = await createContentMessage({
@@ -410,7 +414,7 @@ async function writeBrief(topic: string, ledgerBlock: string, structure?: Carous
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
       output_config: { effort: EFFORT_MEDIUM },
-      messages: [{ role: "user", content: BRIEF_PROMPT(topic, ledgerBlock, hint) }],
+      messages: [{ role: "user", content: BRIEF_PROMPT(topic, ledgerBlock, hint, recentBlock) }],
     });
     const brief = parseBrief(extractText(msg));
     console.log(brief ? `[generate] brief: ${brief.comparisons.length} comparison(s), claim "${brief.claim.slice(0, 80)}"` : "[generate] brief: unusable, writing without it");

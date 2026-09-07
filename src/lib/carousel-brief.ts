@@ -15,7 +15,36 @@
 //      native English reader with no access to the rules, and answers four
 //      questions. It returns rewrites, which are applied here.
 
-import type { CarouselContent } from "./types";
+import type { CarouselContent, SavedCarousel } from "./types";
+
+// ─── Memory of recent decks ──────────────────────────────────────────────────
+//
+// Two decks on neighbouring topics converge on the same lead: the ledger's
+// strongest figure, the model's default scene, the same hook. A human editor
+// remembers what ran last week. This block is that memory, given to the
+// brief and to the cut.
+
+/** What the last few decks led with: topic, hook, opening scene, figures. */
+export function recentDecksBlock(recent: SavedCarousel[], opts: { excludeId?: string; limit?: number } = {}): string {
+  const rows = recent
+    .filter((c) => c.id !== opts.excludeId && c.content?.hooks?.length)
+    .slice(0, opts.limit ?? 12)
+    .map((c) => {
+      const hook = c.content.hooks[c.selectedHook] ?? c.content.hooks[0];
+      const figures = new Set<string>();
+      for (const t of [hook?.headline, hook?.subline, ...(c.content.slides ?? []).map((s) => s.headline)]) {
+        for (const m of (t ?? "").match(/\d[\d.,:]*\s?(?:%|percent|minutes?|min|hours?|h|bpm|°[CF]|mg|x)?/gi) ?? []) figures.add(m.trim());
+      }
+      const moment = c.content.spine?.moment ? ` Scene: ${c.content.spine.moment.slice(0, 120)}` : "";
+      const figs = figures.size ? ` Figures: ${[...figures].slice(0, 6).join(", ")}` : "";
+      return `- "${c.topic.slice(0, 80)}": hook "${hook?.headline ?? ""}".${moment}${figs}`;
+    });
+  if (rows.length === 0) return "";
+  return `
+ALREADY PUBLISHED. These decks ran recently. This deck is a new issue, not a reprint: do not open on a hook, a scene or a lead figure that appears below. If the strongest fact on file was the lead of one of these, build this deck around a different finding, or a different angle on the same one, and say so in the brief. A reader who follows the account sees them in a row.
+${rows.join("\n")}
+`;
+}
 
 export type BriefComparison = {
   /** What was measured. "fat lost over 14 days" */
@@ -61,7 +90,7 @@ export type EditorRead = {
 
 // ─── Stage 1: the brief ──────────────────────────────────────────────────────
 
-export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?: string): string => `You are writing the brief for an Instagram carousel by Lunia Life, a sleep supplement brand. Topic: "${topic}"
+export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?: string, recentBlock = ""): string => `You are writing the brief for an Instagram carousel by Lunia Life, a sleep supplement brand. Topic: "${topic}"
 
 Before any slide exists, write the ARGUMENT, in plain English, as if explaining this to a smart friend over coffee. There are no slide rules here: no word counts, no hooks, no loops. Just be right and be clear.
 
@@ -75,7 +104,7 @@ What the brief must do:
 - Explain an idea before you name it. Say "the weight they lost was muscle, not fat" and then, if useful, "researchers call this body composition". Never swap a plain word for a clumsy paraphrase to avoid a term; explain it instead.
 - Only claim what the facts below support, or what you are certain of. Where a mechanism is uncertain, say what is known and stop. Nothing here is decoration; a wrong sentence in the brief becomes a wrong slide.
 - Do not invent a villain. If the reader holds a belief the finding overturns, name it. If they do not, leave "overturns" empty. A study of two sleep schedules does not mean the reader "cut sleep to fit the diet in".
-${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\n${ledgerBlock}\n` : ""}
+${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\n${ledgerBlock}\n` : ""}${recentBlock}
 Return ONLY valid JSON in this exact format, no other text:
 {
   "claim": "the one sentence the reader walks away with, plain English, with its comparison in it",
