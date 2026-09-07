@@ -4,6 +4,7 @@ import { viralSlotFor, VIRAL_SLOTS } from "./carousel-style-presets";
 import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
 import { spinePromptBlock, type StorySpine } from "./story-spine";
 import { structurePromptBlock, slotFor, STRUCTURES, type CarouselStructure } from "./carousel-structures";
+import { briefPromptBlock, type CarouselBrief } from "./carousel-brief";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -204,7 +205,7 @@ Output STRICT JSON, no markdown, no commentary, exactly this shape:
 Hook format rules (hard):
 - headline: UPPERCASE, punchy, max 8 words${isEssay ? `
 - emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline. It is drawn in a filled box. The verb, the number or the villain; never the product, never "you".` : ""}
-- subline: italic-style sentence fragment, max 10 words, creates mild tension or curiosity. No period at the end.
+- subline: max 10 words, no period at the end. It completes the headline: the comparison its number comes from, or who the deck is for. Never a slogan.
 - sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook simply renders without a trust liner. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty. Never pad this field to satisfy the format.`;
 };
@@ -266,8 +267,8 @@ ESSAY LOOK. The deck is type on paper with one engraving on the cover. Every hoo
 function takeawayBlock(total: 5 | 10): string {
   return `
 THE LAST SLIDE IS THE TAKEAWAY (mandatory: populate the "takeaway" object). Slide ${total} is not a "read more" card. It is the slide the reader screenshots, and it carries the follow line, so there is no separate CTA slide. Build it so a reader who saw nothing else still gets the value, and a reader who saw everything gets the answer they were owed.
-  takeaway.headline: the payoff in the reader's words. UPPERCASE, max 6 words, not a question. It answers the question the hook asked and, where it fits, names the returning image ("GET UP AT 3:11" beats "FIX YOUR SLEEP").
-  takeaway.points: exactly 3 lines, each max 12 words, no period. They are the story's three beats paid off, not three facts: point 1 is the villain named (what they were doing), point 2 is the turn (why it failed), point 3 is the payoff (what they do tonight, with its concrete detail: the time, the count, the object). Plain words a reader repeats to a friend. No citations, no hedging, no "may support" padding here.
+  takeaway.headline: the claim in the reader's words. UPPERCASE, max 6 words, not a question. It says what the deck showed ("LESS SLEEP, LESS FAT LOST"), never a riddle about it ("THE SCALE HIDES WHAT YOU LOSE").
+  takeaway.points: exactly 3 lines, each max 12 words, no period. Point 1 is the finding with its comparison, point 2 is why it happens as far as is known, point 3 is what the reader does tonight. Every point is true to the brief; never a motive or a cause the evidence does not contain. Plain words a reader repeats to a friend. No citations, no hedging.
   takeaway.interaction: ONE explicit ask, matched to the deck:
     - type "save" when the deck is a routine or how-to the reader will act on later (default for actionable topics).
     - type "send" when the deck is relatable or diagnostic, something the reader knows applies to one friend or partner.
@@ -283,7 +284,7 @@ export const PLAIN_LANGUAGE_BLOCK = `
 WHO IS READING. Someone scrolling on a phone who has never read about sleep. They know how a bad night feels; they do not know what causes it or what any of it is called. Write for them, as a good storyteller would, and nothing below relaxes the accuracy rules.
 
 1. Lead with the moment, not the mechanism. The hook is a scene the reader has lived, in second person, present tense: what happened, when, how it felt. "You wake at 3am and your brain starts doing math." The explanation of WHY arrives later in the deck, after they are in. No technical word in any hook headline or subline. A plain-language cause is fine ("your body clock", "the hormone that wakes you"); its name is not.
-2. One new word per deck, and it is taught where it appears. Across all slides you may use at most ONE term from the list below. Where it first appears, gloss it in the same sentence in plain words, e.g. "cortisol, the hormone that wakes you" or "REM (the dreaming stage)". Every other idea is said in words the reader already owns: "the hormone that wakes you" instead of cortisol, "deep sleep" instead of slow-wave, "your body clock" instead of circadian.
+2. Explain the idea, then you may name it. Say "the weight they lost was muscle, not fat", and only then, if it helps, "what researchers call body composition". At most ONE term from the list below per deck, and it is taught in the sentence where it appears. Never swap a term for a clumsy paraphrase ("what the lost weight was made of"): a plain explanation is the goal, not the absence of a word.
 3. Short sentences. No sentence over ${MAX_SENTENCE_WORDS} words. One idea per sentence.
 4. Numbers get a handle. Keep the sourced figure exactly as the study states it, and add a plain comparison the reader can feel ("26 minutes, about one episode of your show"). The comparison is added, never substituted, and never changes the number.
 
@@ -291,27 +292,22 @@ Terms that count as technical (whole words): ${TECHNICAL_TERMS.join(", ")}.
 `;
 
 
-/** One story, not ten cards. Applies to every preset. */
+/** One story, not ten cards. Applies to every preset. The brief (when
+ *  there is one) carries the argument; this block only says how to cut it. */
 export const STORY_BLOCK = `
-ONE STORY, NOT A LIST. Before you write a single slide, write the "spine": four beats the whole deck serves, in this order.
+ONE STORY, NOT A LIST. Before you write a single slide, write the "spine": the beats the whole deck serves, in this order.
   moment: the scene the reader has lived, second person, present tense, with one concrete detail (a time, an object, a place).
-  villain: the habit or belief the reader trusts that is quietly causing the problem.
-  turn: why the villain fails, in one sentence.
+  villain: the belief the finding overturns, IF the brief names one. Otherwise "". Never invent a habit or a motive the evidence does not contain.
+  turn: what the evidence shows, in one sentence, with its comparison.
   payoff: what the reader does tonight instead, in one sentence.
-  image: the concrete detail from the moment (the clock at 3:11, the cold coffee), five words or fewer.
-  who: the one person this deck is for, in their own words, eight words or fewer ("people who wake at 3am and cannot drop off again"). Not "everyone", not "sleepers".
-Then give every content slide a "beat": which of moment, villain, turn or payoff it serves. Beats run in that order across the deck and never go backwards. Several slides may share a beat; every deck reaches the payoff. The tips are steps of the payoff, not a list.
+  who: the one person this deck is for, in their own words, eight words or fewer.
+Then give every content slide a "beat": which of moment, villain, turn or payoff it serves. Beats run in that order and never go backwards. Every deck reaches the payoff.
 
-THE RELAY. Each slide answers the one before it. The first line of a slide picks up a word from the last line of the previous slide, so the open loop is paid, not dropped. Never start a slide cold.
-THE RETURNING IMAGE. The image from the moment appears again on the turn and on the payoff, in the reader's words. That recurrence is what makes the deck feel like one thing.
+EACH SLIDE FOLLOWS FROM THE LAST. The first line of a slide picks up where the previous slide stopped, and the last line of every content slide leaves the reader one specific question the next slide answers. Written for THIS deck; a line that could close any sleep deck is a stock line and fails. The last slide answers the hook's question outright.
 
-WHO IT IS FOR. The hook speaks to the "who" above and to nobody else. A word from "who" appears in the hook headline or subline, so the right reader thinks "that is me" and the wrong reader scrolls on. A hook for everyone reaches no one.
+THE SECOND HOOK. Instagram shows a carousel twice: first from slide 1, then from slide 2. Slide 2's headline must work cold, as a hook in its own right: a complete statement, eight words or fewer, never starting with "and", "but", "so", "because", "this", "it" or "they".
 
-ONE CONCRETE DETAIL PER SLIDE. Every content slide carries something the reader can picture: a clock time, a count, a length of time, or the returning image. "My first launch didn't go well" is a summary; "six weeks of prep, three sales" is a story. The detail is a thing, never a statistic you cannot source: "the third night", "the 4:50 alarm", "the second coffee" are details; an invented percentage is a lie.
-
-THE READER'S QUESTION. The last line of every content slide leaves the reader asking one specific question, and the first line of the next slide answers it. Write the question for THIS deck's villain and image; a line that could close any sleep deck ("here is why", "the real reason") is a stock line and fails. "Only 3 sales came in" leaves "what went wrong?"; "she asked one question I could not answer" leaves "what did she ask?". The last slide answers the hook's question outright.
-
-THE SECOND HOOK. Instagram shows a carousel twice: first from slide 1, then from slide 2. Slide 2's headline must work cold, as a hook in its own right: a complete statement or scene, eight words or fewer, that never starts with "and", "but", "so", "because", "this", "it", "they" or any word that leans on the slide before it.
+A NUMBER NEVER TRAVELS ALONE. Every figure on a slide sits next to what it is compared against, on that slide. "55% less fat" is not a fact; "55% less fat than on 8.5 hours" is.
 `;
 
 export const GENERATE_CAROUSEL_PROMPT = (
@@ -334,6 +330,8 @@ export const GENERATE_CAROUSEL_PROMPT = (
   slideCount?: number,
   /** How the deck argues. See src/lib/carousel-structures.ts. */
   structure?: CarouselStructure,
+  /** The argument the deck is cut from. See src/lib/carousel-brief.ts. */
+  brief?: CarouselBrief | null,
 ) => {
   const isViral = stylePreset === "viral";
   const total: 5 | 10 = slideCount === 10 ? 10 : 5;
@@ -346,14 +344,14 @@ export const GENERATE_CAROUSEL_PROMPT = (
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
 
   return `${template ? buildTemplateSection(template) : ""}${hasStyleRef ? STYLE_REFERENCE_PREFIX : ""}You are a UGC scriptwriter and content strategist for Lunia Life, a sleep supplement brand. Generate carousel content for this topic: "${topic}"
-${PLAIN_LANGUAGE_BLOCK}
+${PLAIN_LANGUAGE_BLOCK}${briefPromptBlock(brief)}
 ${STORY_BLOCK}
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}${structured ? `\nTHE HOOK'S JOB IN THIS STRUCTURE (outranks the tone's formula where they differ): ${STRUCTURES[structure!].hookJob}` : ""}
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
-  "spine": { "moment": "string", "villain": "string", "turn": "string", "payoff": "string", "image": "string", "who": "string" },
+  "spine": { "moment": "string", "villain": "string or \"\"", "turn": "string", "payoff": "string", "who": "string" },
   "hooks": [
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
@@ -432,7 +430,7 @@ Brand rules (follow exactly):
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Tone: dry, science-forward, minimal, confident. Never motivational or cheesy.
 - Hook headlines: uppercase, punchy, max 8 words
-- Hook sublines: italic-style sentence fragments, max 10 words, create mild tension or curiosity. No period at end.
+- Hook sublines: max 10 words, no period at the end. The subline completes the headline: it names the comparison the headline's number comes from, or who the deck is for. Never a slogan ("same diet, different body"); a fact the headline needs.
 - Hook sourceNote: the trust liner shown at the bottom of the hook slide. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook renders without a trust liner. Inventing, guessing, or approximating a source is a serious error and is worse than leaving it empty.
 - Body copy: 2-3 sentences MAX. First sentence is a bold punchy statement (the core insight). Remaining 1-2 sentences add specific factual support. Total under 60 words. References the cited research.
@@ -531,9 +529,10 @@ export const REGENERATE_SLIDE_PROMPT = (
     prev?: { headline?: string; body?: string } | null;
     next?: { headline?: string; body?: string } | null;
     structure?: CarouselStructure | null;
+    brief?: CarouselBrief | null;
   } = {},
 ) => {
-  const { current, comment, stylePreset, slideTotal, spine, prev, next, structure } = opts;
+  const { current, comment, stylePreset, slideTotal, spine, prev, next, structure, brief } = opts;
   const lastLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean).slice(-1)[0] ?? "";
   const firstLine = (b?: string) => (b ?? "").split(/\n+|(?<=[.!?])\s+/).map((l) => l.trim()).filter(Boolean)[0] ?? "";
   const isViral = stylePreset === "viral";
@@ -541,7 +540,7 @@ export const REGENERATE_SLIDE_PROMPT = (
   const slot = structure ? slotFor(structure, slideIndex, total) : isViral ? viralSlotFor(slideIndex, total) : null;
   const note = (comment ?? "").trim().slice(0, 600);
   return `You are a content strategist for Lunia Life, a sleep supplement brand. Rewrite slide ${slideIndex + 2} of a carousel about: "${topic}"
-${PLAIN_LANGUAGE_BLOCK}
+${PLAIN_LANGUAGE_BLOCK}${briefPromptBlock(brief)}
 
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 ${current ? `
@@ -568,7 +567,7 @@ Brand rules (follow exactly):
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Keep the citation above unchanged unless the claim it supports has changed; never invent a study, and never keep a citation that no longer matches the copy.
 - Accuracy outranks the note and the word counts. A qualifier that makes a claim true is not padding. If the note asks for something the evidence does not support, write the narrower true version instead.
-- One concrete detail on the slide: a clock time, a count, a length of time, or the deck's returning image. A thing, never an invented figure.
+- Every figure on the slide sits next to what it is compared against. Nothing that is not in the brief.
 - The last line leaves the reader one specific question the next slide answers. Written for this deck; never a stock line that would close any sleep deck.${slideIndex === 0 ? `
 - This is slide 2, the second hook: Instagram shows the deck a second time starting here. The headline must work cold, eight words or fewer, never opening on "and", "but", "so", "because", "this", "it" or "they".` : ""}
 ${isViral ? `- "headline": the first line of the slide's thought, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps), no full stop. The body continues it; a reader who reads only the headline knows the claim. Never a scene detail with no claim in it ("The hallway light stays on").

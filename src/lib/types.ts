@@ -118,6 +118,7 @@ export type CarouselContentSlide = {
 // ─── GraphicSpec — curated infographic component selection ────────────────────
 import { z } from 'zod';
 import type { StoryBeat, StorySpine } from './story-spine';
+import type { CarouselBrief, EditorRead } from './carousel-brief';
 import type { CarouselStructure } from './carousel-structures';
 
 const versusItem = z.object({ label: z.string(), value: z.string(), note: z.string().optional() });
@@ -330,6 +331,10 @@ export type CarouselContent = {
   /** The story the deck tells, written before the slides. Rewrites and new
    *  hooks read it so they stay inside the same story. */
   spine?: StorySpine;
+  /** The argument the deck was cut from. See src/lib/carousel-brief.ts. */
+  brief?: CarouselBrief;
+  /** What a cold reader said about the finished deck, and which fixes were applied. */
+  editorRead?: EditorRead;
   /** The closing CTA slide. `graphic` is optional — when set, it carries the
    *  same GraphicSpec JSON used by content slides (currently only iconLayout
    *  is rendered on the CTA). Lets the user attach a row of icons to the

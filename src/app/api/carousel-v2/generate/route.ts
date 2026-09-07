@@ -1,6 +1,8 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, type CarouselBrief } from "@/lib/carousel-brief";
+import { STRUCTURES } from "@/lib/carousel-structures";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
@@ -101,9 +103,12 @@ export async function POST(req: Request) {
     const structureSource = structureFromId ? await getCarouselById(structureFromId).catch(() => null) : null;
     const structureBlock = structureSource ? structurePromptBlock(structureSource) : "";
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
+    // Stage 1: the brief. The argument in prose, before any slide exists.
+    // Engagement decks keep their own prompt and skip it.
+    const brief = format === "standard" ? await writeBrief(topic, ledgerBlock, structure) : null;
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure)) + ledgerBlock + structureBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock;
 
     // Build message content
     type ContentBlock =
@@ -208,7 +213,7 @@ export async function POST(req: Request) {
             const o = sp as Record<string, unknown>;
             const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim().slice(0, 240) : "");
             const spine = { moment: str("moment"), villain: str("villain"), turn: str("turn"), payoff: str("payoff"), image: str("image") || undefined, who: str("who") || undefined };
-            if (spine.moment && spine.villain && spine.turn && spine.payoff) parsed.spine = spine;
+            if (spine.moment && spine.turn && spine.payoff) parsed.spine = spine;
             else delete parsed.spine;
           } else delete parsed.spine;
           if (Array.isArray(parsed.slides)) {
@@ -239,7 +244,10 @@ export async function POST(req: Request) {
             // force an unsupported fallback component onto that slide.
             parsed.cta.graphic = validateOrFallbackGraphic(parsed.cta.graphic);
           }
-          return parsed;
+          if (brief) parsed.brief = brief;
+          // Stage 3: the editor read. A cold reader judges the cut against the
+          // brief and its fixes are written in. A failed read keeps the deck.
+          return await editorRead(parsed, brief, stylePreset);
         } catch (err) {
           if (firstError === null) firstError = err;
           console.error("[generate] variant failed:", err instanceof Error ? err.message : err);
@@ -390,4 +398,48 @@ function sentenceCase(text: string): string {
   });
   const out = words.join("");
   return out.charAt(0).toUpperCase() + out.slice(1);
+}
+
+/** Stage 1. Null when the model returns nothing usable, in which case the
+ *  deck is written the old way, from the topic and the ledger. */
+async function writeBrief(topic: string, ledgerBlock: string, structure?: CarouselStructure): Promise<CarouselBrief | null> {
+  try {
+    const hint = structure ? `${STRUCTURES[structure].label}: ${STRUCTURES[structure].info.what}` : undefined;
+    const msg = await createContentMessage({
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
+      output_config: { effort: EFFORT_MEDIUM },
+      messages: [{ role: "user", content: BRIEF_PROMPT(topic, ledgerBlock, hint) }],
+    });
+    const brief = parseBrief(extractText(msg));
+    console.log(brief ? `[generate] brief: ${brief.comparisons.length} comparison(s), claim "${brief.claim.slice(0, 80)}"` : "[generate] brief: unusable, writing without it");
+    return brief;
+  } catch (err) {
+    console.warn("[generate] brief failed, writing without it:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/** Stage 3. Returns the deck with the editor's fixes applied and the read
+ *  recorded; on any failure, the deck as it was. */
+async function editorRead(content: CarouselContent, brief: CarouselBrief | null, stylePreset?: string): Promise<CarouselContent> {
+  try {
+    const msg = await createContentMessage({
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
+      output_config: { effort: EFFORT_MEDIUM },
+      messages: [{ role: "user", content: EDITOR_READ_PROMPT(brief, content, { viral: stylePreset === "viral", essay: stylePreset === "essay" }) }],
+    });
+    const read = parseEditorRead(extractText(msg));
+    if (!read) { console.warn("[generate] editor read: unusable response, deck kept as written"); return content; }
+    const out = applyEditorRead(content, read);
+    const applied = out.editorRead?.notes.filter((n) => n.applied).length ?? 0;
+    console.log(`[generate] editor read: ${read.verdict}, ${applied} fix(es) applied`);
+    return out;
+  } catch (err) {
+    console.warn("[generate] editor read failed, deck kept as written:", err instanceof Error ? err.message : err);
+    return content;
+  }
 }

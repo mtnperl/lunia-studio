@@ -18,7 +18,7 @@ export type StoryBeat = (typeof STORY_BEATS)[number];
 export type StorySpine = {
   /** The scene, second person, present tense. "You wake at 3:11 and start doing math." */
   moment: string;
-  /** The habit or belief the reader trusts. "Trying harder to fall back asleep." */
+  /** The belief the finding overturns, when there is one. "" otherwise; never invented. */
   villain: string;
   /** Why the villain fails. "Effort is arousal; it wakes the body further." */
   turn: string;
@@ -174,8 +174,7 @@ export function spinePromptBlock(spine?: StorySpine | null): string {
   return `
 THE STORY THIS DECK TELLS. Every slide serves one of these beats, in this order. Write inside it:
   Moment: ${spine.moment}
-  Villain: ${spine.villain}
-  Turn: ${spine.turn}
+${spine.villain ? `  Belief this overturns: ${spine.villain}\n` : ""}  Turn: ${spine.turn}
   Payoff: ${spine.payoff}${spine.image ? `\n  Returning image: ${spine.image}` : ""}${spine.who ? `\n  Who it is for: ${spine.who}` : ""}
 `;
 }

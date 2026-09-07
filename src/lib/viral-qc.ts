@@ -3,6 +3,7 @@ import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
 import { summarize } from "./verification-status";
 import { plainLanguageCheck, describeIssues } from "./plain-language";
 import { storyCheck, describeStoryIssues, hasConcreteDetail, standsAlone, hookNamesAudience } from "./story-spine";
+import { describeEditorRead } from "./carousel-brief";
 import { structurePlan, STRUCTURES, type CarouselStructure } from "./carousel-structures";
 
 /**
@@ -39,6 +40,11 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   const slides = content.slides ?? [];
   const total = slides.length + 2;
   const rows: QcRow[] = [];
+
+  // 0. The editor read: a cold reader judged the deck against the brief.
+  // This is the quality gate; the regex rows below are shape and advice.
+  const er = content.editorRead;
+  rows.push({ id: "editor", label: "Editor read: a cold reader checked flow, baselines, English and the takeaway", state: !er ? "manual" : "pass", detail: !content.brief && !er ? "Written before the brief existed; regenerate to get one" : describeEditorRead(er) });
 
   // 1. Hook: 8 words or fewer, a number or a promise.
   const hookWords = hook ? words(hook.headline).length : 0;

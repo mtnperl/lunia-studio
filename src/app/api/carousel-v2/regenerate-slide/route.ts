@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
       messages: [
-        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal, spine, prev, next, structure }) },
+        { role: "user", content: REGENERATE_SLIDE_PROMPT(topic, hookTone, slideIndex, { current, comment, stylePreset, slideTotal, spine, prev, next, structure, brief: body.brief && typeof body.brief === "object" ? body.brief : null }) },
       ],
     });
 
