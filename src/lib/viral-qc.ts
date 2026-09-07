@@ -93,7 +93,7 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   // 10. Plain language: no technical term in the hook, at most one per deck
   // and glossed where it first appears, no sentence over the phone limit.
   const pl = plainLanguageCheck(`${hook?.headline ?? ""} ${hook?.subline ?? ""}`, slides.map((s, i) => ({ label: `slide ${i + 2}`, text: `${s.headline}. ${s.body}` })));
-  rows.push({ id: "plain", label: "Plain language: a reader with no sleep knowledge follows every slide", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `One term taught: ${pl.terms[0]}` : "No technical terms") : describeIssues(pl) });
+  rows.push({ id: "plain", label: "Register: real terms defined once, sentences an adult reads without effort", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `Terms taught: ${pl.terms.join(", ")}` : "No technical terms") : describeIssues(pl) });
 
   // 11. One story: a spine, beats in order, and every handoff carried. The
   // detail, second-hook and audience rules get their own rows below, so they

@@ -257,7 +257,7 @@ ESSAY LOOK. The deck is type on paper with one engraving on the cover. Every hoo
 - hooks[].emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline, same characters. It is drawn in a filled box, so choose the word a reader would circle: the verb, the number, the villain. "NOBODY" in "CONTENT I SEE NOBODY CREATING"; "STOP" in "STOP CREATING EDUCATIONAL CONTENT". Never the product, never "you". Every hook has one.
 - slides[].emphasis: one phrase of 2 to 6 words copied EXACTLY from the body, the phrase that carries the slide. Never the last line. "" when nothing earns it.
 - slides[].graphic: "" for every slide. The essay look draws no infographic; the picture is the cover engraving.
-- Slide headlines: UPPERCASE, 3 to 6 words, a complete thought. They are set very large in a condensed face, so a long headline shrinks the body.
+- Slide headlines: UPPERCASE, 4 to 9 words, a complete claim a stranger understands without the body. They are set large in a condensed face, so they are short, but they are never a fragment ("LIGHT SWITCHED OFF ONE WAVE" fails; "ONE BRAIN RHYTHM CARRIES THE MEMORY" passes).
 `;
 }
 
@@ -281,14 +281,15 @@ THE LAST SLIDE IS THE TAKEAWAY (mandatory: populate the "takeaway" object). Slid
 /** The reader knows nothing about sleep or science. Applies to every preset
  *  and every hook tone; it sits above the format rules, not below them. */
 export const PLAIN_LANGUAGE_BLOCK = `
-WHO IS READING. Someone scrolling on a phone who has never read about sleep. They know how a bad night feels; they do not know what causes it or what any of it is called. Write for them, as a good storyteller would, and nothing below relaxes the accuracy rules.
+WHO IS READING. A curious adult who reads well: the person who reads the science pages of a good newspaper on their phone. They have not studied sleep, so nothing is assumed. Nothing is dumbed down either. Write the way a good science journalist writes for them, and nothing below relaxes the accuracy rules.
 
-1. Lead with the moment, not the mechanism. The hook is a scene the reader has lived, in second person, present tense: what happened, when, how it felt. "You wake at 3am and your brain starts doing math." The explanation of WHY arrives later in the deck, after they are in. No technical word in any hook headline or subline. A plain-language cause is fine ("your body clock", "the hormone that wakes you"); its name is not.
-2. Explain the idea, then you may name it. Say "the weight they lost was muscle, not fat", and only then, if it helps, "what researchers call body composition". At most ONE term from the list below per deck, and it is taught in the sentence where it appears. Never swap a term for a clumsy paraphrase ("what the lost weight was made of"): a plain explanation is the goal, not the absence of a word.
-3. Short sentences. No sentence over ${MAX_SENTENCE_WORDS} words. One idea per sentence.
-4. Numbers get a handle. Keep the sourced figure exactly as the study states it, and add a plain comparison the reader can feel ("26 minutes, about one episode of your show"). The comparison is added, never substituted, and never changes the number.
+1. Use the real word, and teach it in passing. "REM, the stage of sleep where most dreaming happens" once, then "REM". Never a nursery substitute in its place ("dreaming sleep", "the wake-up hormone" as a standing name). A term you have defined belongs to the reader now; use it. Up to three such terms per deck, each glossed where it first appears, none in the hook headline.
+2. Sentences vary in length the way prose does. Most run 12 to 22 words; a short one lands a point. A slide of eight-word sentences in a row reads as a primer for children and fails, however correct it is.
+3. The hook leads with the moment, not the mechanism: a scene the reader has lived, second person, present tense. The explanation arrives on the slides.
+4. Every headline is a complete claim a stranger understands with no body under it. "LIGHT SWITCHED OFF ONE WAVE" is a fragment that means nothing alone; "SILENCE ONE BRAIN RHYTHM AND THE MEMORY GOES" is a sentence. The body then says how.
+5. Numbers keep the exact figure the study states and travel with their baseline. A comparison the reader can feel may be added, never substituted.
 
-Terms that count as technical (whole words): ${TECHNICAL_TERMS.join(", ")}.
+Terms that count as technical, and so need a gloss on first use (whole words): ${TECHNICAL_TERMS.join(", ")}.
 `;
 
 

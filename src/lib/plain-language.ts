@@ -1,8 +1,9 @@
 // Plain-language gate for carousel copy.
 //
-// The reader is someone who does not know what cortisol or REM is. A deck may
-// teach them ONE such word, glossed in plain words where it first appears, and
-// never in the hook. Everything else is said in the words they already have.
+// The reader is a curious adult who has not studied sleep. A deck may use up
+// to three technical terms, each glossed where it first appears, none in the
+// hook headline. The gate exists to catch an unexplained term, not to keep
+// real words out: a substitute like "dreaming sleep" for REM is the failure.
 // Shared by the generator prompt (so the model knows the list) and the
 // checklist (so the writer sees what slipped through).
 
@@ -60,7 +61,9 @@ const sentences = (s: string) => s.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim(
 const wordCount = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
 /** Longest sentence a phone reader gets through without re-reading. */
-export const MAX_SENTENCE_WORDS = 16;
+export const MAX_SENTENCE_WORDS = 28;
+/** Terms a deck may name, each glossed on first use. */
+export const MAX_TERMS_PER_DECK = 3;
 
 /**
  * Run the gate over a deck. `hook` is the hook headline and subline; `slides`
@@ -84,7 +87,7 @@ export function plainLanguageCheck(hook: string, slides: { label: string; text: 
     }
   }
   const terms = [...seen.keys()];
-  if (terms.length > 1) issues.push({ kind: "too-many-terms", terms });
+  if (terms.length > MAX_TERMS_PER_DECK) issues.push({ kind: "too-many-terms", terms });
   return { ok: issues.length === 0, issues, terms };
 }
 
@@ -93,7 +96,7 @@ export function describeIssues(r: PlainLanguageReport): string {
   return r.issues.map((i) => {
     switch (i.kind) {
       case "term-in-hook": return `"${i.term}" is in the hook`;
-      case "too-many-terms": return `${i.terms.length} technical terms (${i.terms.join(", ")}); one per deck`;
+      case "too-many-terms": return `${i.terms.length} technical terms (${i.terms.join(", ")}); at most ${MAX_TERMS_PER_DECK} per deck`;
       case "unglossed": return `"${i.term}" on ${i.where} is not explained where it first appears`;
       case "long-sentence": return `${i.where}: a ${i.words}-word sentence`;
     }

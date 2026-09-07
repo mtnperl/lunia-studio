@@ -25,17 +25,24 @@ describe("plain language gate", () => {
     expect(bad.issues.map((i) => i.kind)).toEqual(["unglossed"]);
   });
 
-  it("rejects a second term even when glossed", () => {
-    const r = plainLanguageCheck("You wake at 3am", [
-      { label: "Slide 4", text: "Cortisol, the wake-up hormone, climbs." },
-      { label: "Slide 6", text: "REM, the dreaming stage, is where mood resets." },
+  it("allows up to three glossed terms and rejects a fourth", () => {
+    const three = plainLanguageCheck("You wake at 3am", [
+      { label: "Slide 4", text: "Cortisol, the hormone that wakes you, climbs." },
+      { label: "Slide 6", text: "REM, the stage where most dreaming happens, is where mood resets." },
+      { label: "Slide 7", text: "Melatonin, the hormone of darkness, opens the door to it." },
     ]);
-    expect(r.issues.some((i) => i.kind === "too-many-terms")).toBe(true);
+    expect(three.issues.some((i) => i.kind === "too-many-terms")).toBe(false);
+    const four = plainLanguageCheck("You wake at 3am", [
+      { label: "Slide 4", text: "Cortisol, the hormone that wakes you, climbs. Adenosine, the pressure to sleep, falls." },
+      { label: "Slide 6", text: "REM, the stage where most dreaming happens, is where mood resets." },
+      { label: "Slide 7", text: "Melatonin, the hormone of darkness, opens the door to it." },
+    ]);
+    expect(four.issues.some((i) => i.kind === "too-many-terms")).toBe(true);
   });
 
   it("flags a long sentence", () => {
     const r = plainLanguageCheck("Short", [
-      { label: "Slide 3", text: "This sentence keeps going and going and going without ever quite getting to the point it wanted to make." },
+      { label: "Slide 3", text: "This sentence keeps going and going and going and going and going and going without ever quite getting to the point it wanted to make, which is a shame." },
     ]);
     expect(r.issues.some((i) => i.kind === "long-sentence")).toBe(true);
   });

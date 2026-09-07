@@ -63,6 +63,8 @@ export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?:
 
 Before any slide exists, write the ARGUMENT, in plain English, as if explaining this to a smart friend over coffee. There are no slide rules here: no word counts, no hooks, no loops. Just be right and be clear.
 
+Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, theta rhythm) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words.
+
 What the brief must do:
 - Say what was compared. A study compares two things; name both. "8.5 hours in bed versus 5.5" is a comparison; "5.5 hours of sleep" alone is not.
 - Put every number next to its baseline. "55% less fat lost on the short-sleep schedule than on the long one." Never a figure floating on its own. The metric is the DIFFERENCE, so say what it is a difference between.
@@ -113,7 +115,7 @@ export function briefPromptBlock(brief: CarouselBrief | null | undefined): strin
   if (!brief) return "";
   const comps = brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n");
   return `
-THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two of the brief, given a headline. You may shorten, split and reorder sentences. You may not add a claim, a number, a mechanism or a motive that is not in the brief, and every number keeps the baseline the brief gives it ("55% less than on 8.5 hours", never "55% less" alone). The takeaway restates the claim. If a slide needs something the brief does not say, the slide says less, not more.
+THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two of the brief, given a headline. Keep the brief's sentences as written wherever they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may reorder. You may not add a claim, a number, a mechanism or a motive that is not in the brief, and every number keeps the baseline the brief gives it ("55% less than on 8.5 hours", never "55% less" alone). The takeaway restates the claim. If a slide needs something the brief does not say, the slide says less, not more.
 
   Claim: ${brief.claim}
   Argument: ${brief.argument}
@@ -148,8 +150,10 @@ Answer four questions about the deck, and fix what fails:
 2. Is every number stated against its baseline? "55% less fat" fails; "55% less fat than on 8.5 hours" passes. A figure whose source condition is never named on that slide fails.
 3. Does every sentence read as English a native writer would produce? "What that lost weight was made of", "food was matched", "different body" are the kind of thing that fails: a paraphrase where a plain explanation belongs. Fix by saying the thing plainly.
 4. Does the takeaway say what the brief's claim says, and is each point true to the brief? A point that asserts a motive or a cause the brief does not contain fails.
+5. Is this written for an adult? The reader is a curious adult who reads the science pages of a good newspaper. A run of eight-word sentences, a nursery substitute for a real term ("dreaming sleep" for REM, "the wake-up hormone" for cortisol), or an explanation pitched at a ten-year-old fails. Real terms, defined once in passing, pass.
+6. Does every headline mean something to a stranger who reads nothing else on the slide? "LIGHT SWITCHED OFF ONE WAVE" fails; a complete claim passes.
 
-When something fails, write the fix. A fix is a replacement for that unit only, in the same shape: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are. Prefer the smallest change that makes the unit right.
+When something fails, write the fix. When the register fails (questions 5 and 6), rewrite the whole unit in adult prose; do not patch a word. Otherwise a fix is a replacement for that unit only, in the same shape: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
 
 Return ONLY valid JSON in this exact format, no other text:
 {
