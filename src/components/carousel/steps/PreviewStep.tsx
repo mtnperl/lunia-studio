@@ -810,7 +810,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     exportH: number,
   ): Promise<File> {
     const elRect = el.getBoundingClientRect();
-    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string; objectPosition: string };
+    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string; objectPosition: string; blend: string; opacity: number };
     const infos: ImgInfo[] = [];
 
     for (const img of imgEls) {
@@ -831,6 +831,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         h: r.height,
         objectFit: getComputedStyle(img).objectFit || "fill",
         objectPosition: getComputedStyle(img).objectPosition || "50% 50%",
+        // The essay engraving sits on the paper with multiply, so its white
+        // ground disappears in the page; drawn opaque it is a white card.
+        blend: getComputedStyle(img).mixBlendMode || "normal",
+        opacity: Number(getComputedStyle(img).opacity) || 1,
       });
     }
 
@@ -840,8 +844,25 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
     const savedDisplays = imgEls.map((img) => img.style.display);
     const savedWrapperBg = innerWrapper?.style.background ?? "";
+    // The ground the slide paints under everything. Read before it is
+    // cleared: the canvas is filled with it first, so a slide whose images
+    // do not cover the whole frame (the essay cover's engraving sits on
+    // paper) does not export with a transparent, viewer-white ground.
+    const groundRaw = innerWrapper ? getComputedStyle(innerWrapper).backgroundColor : "";
+    const ground = groundRaw && groundRaw !== "transparent" && !/^rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\)$/.test(groundRaw) ? groundRaw : null;
+    // Paper layers (essay grain, vignette) blend with multiply. Captured over
+    // a transparent backdrop they come out as grey grain, so they are hidden
+    // for the capture and redrawn on the canvas over the ground.
+    type PaperLayer = { kind: string; src: string; tile: number; opacity: number; x: number; y: number; w: number; h: number };
+    const paperEls = Array.from(el.querySelectorAll<HTMLElement>("[data-export-paper]"));
+    const paperLayers: PaperLayer[] = paperEls.map((pe) => {
+      const r = pe.getBoundingClientRect();
+      return { kind: pe.dataset.exportPaper ?? "", src: pe.dataset.exportSrc ?? "", tile: Number(pe.dataset.exportTile) || 512, opacity: Number(pe.dataset.exportOpacity) || 1, x: r.x - elRect.x, y: r.y - elRect.y, w: r.width, h: r.height };
+    });
+    const savedPaperDisplays = paperEls.map((pe) => pe.style.display);
 
     imgEls.forEach((img) => { img.style.display = "none"; });
+    paperEls.forEach((pe) => { pe.style.display = "none"; });
     if (innerWrapper) innerWrapper.style.background = "transparent";
 
     let fgDataUrl: string;
@@ -852,6 +873,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       });
     } finally {
       imgEls.forEach((img, i) => { img.style.display = savedDisplays[i] ?? ""; });
+      paperEls.forEach((pe, i) => { pe.style.display = savedPaperDisplays[i] ?? ""; });
       if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
     }
 
@@ -860,6 +882,47 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     const canvas = document.createElement("canvas");
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d")!;
+
+    if (ground) {
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, 0, W, H);
+    }
+    for (const layer of paperLayers) {
+      if (layer.kind === "texture" && layer.src) {
+        let dataUrl: string | null = null;
+        try { dataUrl = await loadDataUrl(layer.src); } catch { dataUrl = null; }
+        if (!dataUrl) continue;
+        await new Promise<void>((resolve) => {
+          const im = new Image();
+          im.onload = () => {
+            ctx.save();
+            ctx.globalCompositeOperation = "multiply";
+            ctx.globalAlpha = layer.opacity;
+            const t = layer.tile * PR;
+            for (let y = layer.y * PR; y < (layer.y + layer.h) * PR; y += t) {
+              for (let x = layer.x * PR; x < (layer.x + layer.w) * PR; x += t) ctx.drawImage(im, x, y, t, t);
+            }
+            ctx.restore();
+            resolve();
+          };
+          im.onerror = () => resolve();
+          im.src = dataUrl!;
+        });
+      } else if (layer.kind === "vignette") {
+        // radial-gradient(ellipse at 50% 40%, transparent 55%, ink 7% at 100%)
+        const lw = layer.w * PR, lh = layer.h * PR;
+        ctx.save();
+        ctx.translate(layer.x * PR, layer.y * PR);
+        ctx.scale(1, lh / lw);
+        const cx = lw / 2, cy = (0.4 * lh) * (lw / lh), r = lw / 2;
+        const g = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
+        g.addColorStop(0, "rgba(16,38,53,0)");
+        g.addColorStop(1, "rgba(16,38,53,0.07)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, lw, lh * (lw / lh));
+        ctx.restore();
+      }
+    }
 
     // Draw each image at its actual on-page position (in DOM order = z-order).
     for (const info of infos) {
@@ -870,6 +933,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           const dy = info.y * PR;
           const dw = info.w * PR;
           const dh = info.h * PR;
+          ctx.save();
+          if (info.blend && info.blend !== "normal") ctx.globalCompositeOperation = info.blend as GlobalCompositeOperation;
+          ctx.globalAlpha = info.opacity;
           if (info.objectFit === "cover") {
             const scale = Math.max(dw / im.width, dh / im.height);
             const sw = dw / scale, sh = dh / scale;
@@ -886,6 +952,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           } else {
             ctx.drawImage(im, dx, dy, dw, dh);
           }
+          ctx.restore();
           resolve();
         };
         im.onerror = () => resolve();

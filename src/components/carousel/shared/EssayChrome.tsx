@@ -17,15 +17,22 @@ export function essayAccent(accent: EssayAccent | undefined) {
   return ESSAY_COLORS.accent[accent === "red" ? "red" : "yellow"];
 }
 
-/** Paper grain over the ground. An <img>, not a CSS background, so
- *  html-to-image keeps it on mobile Safari; multiply so it darkens the
- *  ivory into fibre rather than greying it. A faint vignette on top reads as
- *  a scanned sheet rather than a flat fill. */
+/** Paper grain over the ground, multiplied so it darkens the ivory into
+ *  fibre rather than greying it, and a faint vignette on top so the sheet
+ *  reads as scanned rather than flat. Both carry data-export-paper: the PNG
+ *  export composites slides with images on a canvas, and a multiply layer
+ *  captured over a transparent backdrop comes out as grey grain, so the
+ *  compositor hides these during capture and redraws them itself
+ *  (PreviewStep.compositeWithImages). */
 export function PaperTexture({ opacity = 0.9 }: { opacity?: number }) {
   return (
     <>
       <div
         aria-hidden
+        data-export-paper="texture"
+        data-export-src={ESSAY_PAPER_TEXTURE}
+        data-export-tile="512"
+        data-export-opacity={opacity}
         style={{
           position: "absolute", inset: 0,
           backgroundImage: `url(${ESSAY_PAPER_TEXTURE})`,
@@ -38,6 +45,7 @@ export function PaperTexture({ opacity = 0.9 }: { opacity?: number }) {
       />
       <div
         aria-hidden
+        data-export-paper="vignette"
         style={{
           position: "absolute", inset: 0,
           background: "radial-gradient(ellipse at 50% 40%, rgba(16,38,53,0) 55%, rgba(16,38,53,0.07) 100%)",
