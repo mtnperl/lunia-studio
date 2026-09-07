@@ -1,12 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, describeEditorRead, recentDecksBlock } from "./carousel-brief";
+import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, craftBlock, describeEditorRead, recentDecksBlock, EDITOR_READ_PROMPT } from "./carousel-brief";
 import type { CarouselContent, SavedCarousel } from "./types";
 
 const brief = {
-  claim: "Cutting sleep from 8.5 to 5.5 hours cut fat loss by more than half on the same diet.",
-  argument: "Ten overweight adults dieted twice for two weeks. Once they slept 8.5 hours a night, once 5.5. They ate the same food both times. They lost about the same weight, but on 5.5 hours only a quarter of it was fat; on 8.5 hours, more than half was.",
-  comparisons: [{ measure: "fat lost in 14 days", a: "8.5 hours in bed", b: "5.5 hours in bed", result: "55% less fat lost on 5.5 hours" }],
+  question: "Does sleeping less hurt my diet?",
   who: "dieters who sleep short",
+  kind: "finding" as const,
+  owes: ["what happened when someone tested it", "what it means for the reader"],
+  claim: "Cutting sleep from 8.5 to 5.5 hours cut fat loss by more than half on the same diet.",
+  argument: "Ten overweight adults dieted twice for two weeks. Once they slept 8.5 hours a night, once 5.5. They ate the same food both times.\n\nThey lost about the same weight, but on 5.5 hours only a quarter of it was fat; on 8.5 hours, more than half was.",
+  loop: { promise: "the scale moved the same both times", carried: "so what was the weight made of?", lands: "the second paragraph says it was muscle" },
+  backing: [{ statement: "55% less fat lost on 5.5 hours than on 8.5", source: "Nedeltcheva 2010", backs: "only a quarter of it was fat" }],
   overturns: "",
   tonight: "Move bedtime earlier before cutting calories further.",
 };
@@ -23,16 +27,34 @@ const deck = {
 } as unknown as CarouselContent;
 
 describe("brief", () => {
-  it("parses a brief and rejects one without a claim", () => {
-    expect(parseBrief(JSON.stringify(brief))?.comparisons).toHaveLength(1);
+  it("parses a piece with its assignment and rejects one without a claim", () => {
+    const parsed = parseBrief(JSON.stringify(brief));
+    expect(parsed?.backing).toHaveLength(1);
+    expect(parsed?.owes).toHaveLength(2);
+    expect(parsed?.kind).toBe("finding");
+    expect(parsed?.loop.carried).toBe(brief.loop.carried);
     expect(parseBrief("```json\n" + JSON.stringify(brief) + "\n```")?.claim).toBe(brief.claim);
+    expect(parseBrief(JSON.stringify({ ...brief, kind: "sonnet" }))?.kind).toBe("explainer");
     expect(parseBrief(JSON.stringify({ argument: "x" }))).toBeNull();
     expect(parseBrief("not json")).toBeNull();
   });
-  it("tells the cut there is no villain when the brief has none", () => {
-    expect(briefPromptBlock(brief)).toContain("There is no villain in this deck");
+  it("carries the assignment and the backing into the cut, and tolerates an old brief", () => {
+    const block = briefPromptBlock(brief);
+    expect(block).toContain("The question: Does sleeping less hurt my diet?");
+    expect(block).toContain("what happened when someone tested it");
+    expect(block).toContain("[Nedeltcheva 2010]");
+    expect(block).toContain("There is no villain in this deck");
     expect(briefPromptBlock({ ...brief, overturns: "more sleep means more weight" })).toContain("Belief this overturns");
     expect(briefPromptBlock(null)).toBe("");
+    const old = { claim: "c", argument: "a", who: "w", overturns: "", tonight: "", comparisons: [{ measure: "fat lost", a: "8.5 h", b: "5.5 h", result: "55% less" }] } as unknown as Parameters<typeof briefPromptBlock>[0];
+    expect(briefPromptBlock(old)).toContain("fat lost: 8.5 h vs 5.5 h. 55% less");
+    expect(craftBlock(old!)).toContain("The question: (as the topic asks)");
+  });
+  it("puts the title test first in the editor read", () => {
+    const prompt = EDITOR_READ_PROMPT(brief, deck, { essay: true });
+    expect(prompt.indexOf("THE TITLE TEST")).toBeLessThan(prompt.indexOf("THE SWIPE"));
+    expect(prompt).toContain('wanted to know: "Does sleeping less hurt my diet?"');
+    expect(prompt).toContain("a slide with no citation is not a fault");
   });
 });
 

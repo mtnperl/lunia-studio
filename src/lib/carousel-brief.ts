@@ -1,28 +1,36 @@
-// The brief, the cut, and the editor read.
+// The assignment, the piece, the cut, and the editor read.
 //
 // A deck used to be written straight from a topic under thirty slide rules,
 // and the model satisfied the rules one slide at a time while the argument
-// fell apart: a number without its baseline, a villain the study never had,
-// a paraphrase where a plain explanation belonged. So writing is now three
-// stages with one job each:
+// fell apart. Then the deck was written from a "brief" that had one shape,
+// a study report: pick the strongest finding on file, name its comparison,
+// find a belief to overturn. That shape answered "does short sleep cost fat
+// loss" well and "what is sleep architecture" not at all: the deck never
+// said what sleep architecture was, because no finding on file said so.
 //
-//   1. THE BRIEF. The argument in plain prose, as if explaining the study to
-//      a smart friend. No slide rules. Every number next to what it is
-//      compared against. Verified facts come in from the ledger.
-//   2. THE CUT. Slides are lifted from the brief, not written fresh. The
-//      generator may shape, never add. (carousel-prompts.ts, briefPromptBlock)
-//   3. THE EDITOR READ. A second call reads the finished deck cold, as a
-//      native English reader with no access to the rules, and answers four
-//      questions. It returns rewrites, which are applied here.
+// So writing now starts from the question, not from the facts:
+//
+//   1. THE ASSIGNMENT AND THE PIECE (one call). The writer first reads the
+//      topic as the question a reader typed, names who is asking, and lists
+//      what a satisfying answer owes them. Then they write the piece: a
+//      short essay that answers that question, told as a story where it can
+//      be. Research backs sentences; it never chooses them.
+//   2. THE CUT. Slides are lifted from the piece. Slide 2 is a second hook.
+//      Every slide leaves the reader wanting the next one because of what it
+//      says, and coherence wins over suspense. (carousel-prompts.ts)
+//   3. THE EDITOR READ. A second call reads the finished deck cold and asks,
+//      first, whether a stranger could answer the title from the slides;
+//      then whether each slide earns the swipe; then the line-level things
+//      an editor fixes. It returns rewrites, which are applied here.
 
 import type { CarouselContent, SavedCarousel } from "./types";
 
 // ─── Memory of recent decks ──────────────────────────────────────────────────
 //
-// Two decks on neighbouring topics converge on the same lead: the ledger's
-// strongest figure, the model's default scene, the same hook. A human editor
-// remembers what ran last week. This block is that memory, given to the
-// brief and to the cut.
+// Two decks on neighbouring topics converge on the same lead. A human editor
+// remembers what ran last week. This block is that memory. It governs how a
+// deck OPENS, never what it is allowed to explain: a deck about sleep
+// architecture defines sleep architecture even if last week's did too.
 
 /** What the last few decks led with: topic, hook, opening scene, figures. */
 export function recentDecksBlock(recent: SavedCarousel[], opts: { excludeId?: string; limit?: number } = {}): string {
@@ -41,40 +49,62 @@ export function recentDecksBlock(recent: SavedCarousel[], opts: { excludeId?: st
     });
   if (rows.length === 0) return "";
   return `
-ALREADY PUBLISHED. These decks ran recently. This deck is a new issue, not a reprint: do not open on a hook, a scene or a lead figure that appears below. If the strongest fact on file was the lead of one of these, build this deck around a different finding, or a different angle on the same one, and say so in the brief. A reader who follows the account sees them in a row.
+ALREADY PUBLISHED. These decks ran recently, and a reader who follows the account sees them in a row. Do not OPEN this deck on a hook, a scene or a lead figure that appears below; find a different way in. This is about the opening only. Whatever the question needs said gets said, even if an earlier deck said it too.
 ${rows.join("\n")}
 `;
 }
 
-export type BriefComparison = {
-  /** What was measured. "fat lost over 14 days" */
-  measure: string;
-  /** The two conditions. "8.5 hours in bed" / "5.5 hours in bed" */
-  a: string;
-  b: string;
-  /** The result, with the number and its direction. "55% less fat lost on 5.5 hours" */
-  result: string;
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type BriefKind = "explainer" | "finding" | "myth" | "how-to" | "story" | "list";
+
+export const BRIEF_KINDS: readonly BriefKind[] = ["explainer", "finding", "myth", "how-to", "story", "list"];
+
+/** A fact that backs a sentence of the piece. For the fact check and the
+ *  citation on the slide that carries the sentence. */
+export type BriefBacking = {
+  /** The fact as the piece uses it, with its baseline. */
+  statement: string;
+  /** Where it comes from. "" when it is textbook and the writer is certain. */
+  source: string;
+  /** The sentence or claim of the piece it backs, in a few words. */
+  backs: string;
 };
 
+/** Kept for decks saved before the piece existed. */
+export type BriefComparison = { measure: string; a: string; b: string; result: string };
+
 export type CarouselBrief = {
-  /** The one sentence the reader walks away with. */
-  claim: string;
-  /** The argument in plain prose, about 120 words. */
-  argument: string;
-  /** Every figure in the deck, with what it is compared against. */
-  comparisons: BriefComparison[];
-  /** Who this is for, in their words. */
+  // The assignment.
+  /** The question the reader typed, in their words. */
+  question: string;
+  /** One group of people, in their words. Never everyone. */
   who: string;
-  /** The belief the finding overturns, or "" when there is none. Never invented. */
+  /** What kind of piece answers this question. */
+  kind: BriefKind;
+  /** What a satisfying answer owes the reader. The deck fails if one is missing. */
+  owes: string[];
+  // The piece.
+  /** The one sentence the reader can say afterwards that answers the question. */
+  claim: string;
+  /** The piece itself, in prose. */
+  argument: string;
+  /** The loop: what the opening promises, the question the reader carries, and where it lands. */
+  loop: { promise: string; carried: string; lands: string };
+  /** Facts that back sentences of the piece. */
+  backing: BriefBacking[];
+  /** The belief the piece overturns, or "". Never invented. */
   overturns: string;
-  /** What the reader does tonight, one sentence. */
+  /** What the reader does with this, one sentence, or "" when the piece is not a how-to. */
   tonight: string;
-  /** Findings the deck deliberately does not carry. */
+  /** Findings the piece deliberately does not carry. */
   leftOut?: string;
+  /** Decks saved before the piece existed carry these instead of backing. */
+  comparisons?: BriefComparison[];
 };
 
 export type EditorNote = {
-  /** "hook 1", "slide 2", "takeaway". Slides are numbered as the reader sees them: slide 2 is the first content slide. */
+  /** "deck", "hook 1", "slide 2", "takeaway". Slides are numbered as the reader sees them: slide 2 is the first content slide. */
   where: string;
   problem: string;
   fix?: { headline?: string; subline?: string; body?: string; points?: string[] };
@@ -88,36 +118,51 @@ export type EditorRead = {
   readAt: string;
 };
 
-// ─── Stage 1: the brief ──────────────────────────────────────────────────────
+// ─── Stage 1: the assignment and the piece ───────────────────────────────────
 
-export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?: string, recentBlock = ""): string => `You are writing the brief for an Instagram carousel by Lunia Life, a sleep supplement brand. Topic: "${topic}"
+export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?: string, recentBlock = ""): string => `You are writing a short piece for an Instagram carousel by Lunia Life, a sleep supplement brand. Topic: "${topic}"
 
-Before any slide exists, write the ARGUMENT, in plain English, as if explaining this to a smart friend over coffee. There are no slide rules here: no word counts, no hooks, no loops. Just be right and be clear.
+Work in two parts. There are no slide rules here: no word counts, no hooks, no loops between slides. That comes later, from what you write now.
 
-Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, theta rhythm) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words.
+PART ONE, THE ASSIGNMENT. What an editor writes on the top of the page before a writer starts.
+- The question. Read the topic as a question a reader typed into a search box. "What is sleep architecture and why it matters" is two questions: what is it, and why should I care. "Does magnesium help sleep" is one. Write the question in the reader's words.
+- Who is asking. One group of people, in their own words: "people who sleep eight hours and still wake tired", not "anyone interested in sleep". A piece for everyone reaches no one.
+- What the answer owes. A satisfying answer to that question has to contain certain things, and you list them before you write so none goes missing. "What is X and why it matters" owes a plain definition, a picture of X the reader can hold, and the consequence that makes it matter. "Does X help Y" owes what happened when someone tested it and what that means for the reader. "How do I X" owes the steps and why each one. Three to five items. The deck fails if one is missing, whatever else it says well.
+- The kind of piece: explainer, finding, myth, how-to, story or list.
 
-What the brief must do:
-- Make ONE claim and carry it. A carousel is one argument, not a review. Choose the single finding the deck exists to deliver, then use only the evidence that proves it: at most three comparisons. Everything else the facts show is left out, however true and well sourced. A brief that walks through five studies gives the cut five stories, and the slides stop following one another.
-- State the belief before it is overturned. If the reader holds a belief the finding contradicts, the argument says that belief in the reader's words first, then shows the evidence against it. A turn against a belief the reader was never shown holding lands on nothing.
-- Tell what happened, not what was measured. For each study the argument uses, say who did what to whom and what they saw, in words a reader can picture: "researchers put electrodes on sleepers' scalps and nudged the brain into deeper slow waves for the first hours of the night; next morning those sleepers remembered more of the word pairs they had learned". Never "stimulation at 0.75 Hz improved declarative memory". A frequency, a dose, a p-value, a sample size or an SEM is not a fact a reader can feel; it belongs in "comparisons" for the fact check, not in the argument.
-- Say what was compared. A study compares two things; name both. "8.5 hours in bed versus 5.5" is a comparison; "5.5 hours of sleep" alone is not.
-- Put every number next to its baseline. "55% less fat lost on the short-sleep schedule than on the long one." Never a figure floating on its own. The metric is the DIFFERENCE, so say what it is a difference between.
-- Explain an idea before you name it. Say "the weight they lost was muscle, not fat" and then, if useful, "researchers call this body composition". Never swap a plain word for a clumsy paraphrase to avoid a term; explain it instead.
-- Only claim what the facts below support, or what you are certain of. Where a mechanism is uncertain, say what is known and stop. Nothing here is decoration; a wrong sentence in the brief becomes a wrong slide.
-- Earn the action. "Tonight" must follow from the evidence in the argument. If it needs one more fact to follow (for instance, that deep slow-wave sleep is concentrated in the first half of the night, so a late bedtime cuts it), the argument states that fact with its source; an action the evidence does not reach is left out.
-- Do not invent a villain. If the reader holds a belief the finding overturns, name it. If they do not, leave "overturns" empty. A study of two sleep schedules does not mean the reader "cut sleep to fit the diet in".
-${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\n${ledgerBlock}\n` : ""}${recentBlock}
+PART TWO, THE PIECE. About 150 to 220 words of prose a good science journalist would file, answering the question in the order the assignment sets. It is told, not reported: where research appears, it is what someone did and what they saw, in words the reader can picture. Never a frequency, a dose, a p-value or a sample size in the prose; those go in "backing" for the fact check.
+
+The story leads and the research backs it. Build the piece around the question, then reach for a fact where a sentence would otherwise ask the reader to take your word for it. A sentence that explains, defines or tells a story needs no citation, and the piece is not made of citations. The research notes below are notes, not an outline: use what backs something you are saying, and ignore the rest however striking it is. A note is never the reason a paragraph exists.
+
+The loop. A carousel is read one slide at a time, and at each slide the reader decides whether to swipe. The piece gives them a reason, and it comes from what the piece says, never from a line telling them to keep reading:
+- Open on something specific and concrete that raises a question in the reader's head. "I spent six weeks preparing for my first launch. When it went live, three sales came in" makes the reader ask what went wrong; "my first launch didn't go well" makes them ask nothing. A number, a moment, a contradiction, a specific detail.
+- The second paragraph is a second opening. Instagram shows a carousel twice, once on slide one and once on slide two, so the second paragraph has to work for a stranger who sees nothing before it.
+- The answer to the question lands late, and the last paragraph says what the reader now knows and what to do with it.
+- Suspense never costs coherence. Every paragraph says its whole thought. A reader who reads the piece in a row reads an article, not a trail of teasers.
+
+Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, slow-wave sleep) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words, with a short one where a point lands.
+
+Be right. Only say what the notes support or what you are certain of; where a mechanism is uncertain, say what is known and stop. Every number sits next to its baseline. If the reader holds a belief the piece overturns, say that belief in their words before you overturn it, and if they hold none, do not invent one.
+${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\nRESEARCH NOTES, for backing, not for outline:\n${ledgerBlock}\n` : ""}${recentBlock}
 Return ONLY valid JSON in this exact format, no other text:
 {
-  "claim": "the one sentence the reader walks away with, plain English, with its comparison in it",
-  "argument": "about 120 words of prose a science journalist would file. Who did what to whom and what they saw, the one or two figures a reader can feel with their baselines, why it happens as far as is known, and what the reader does about it. No units a reader cannot picture.",
-  "comparisons": [
-    { "measure": "what was measured", "a": "condition A", "b": "condition B", "result": "the number, its direction, and which condition it favours" }
+  "question": "the question the reader typed, in their words",
+  "who": "one group, in their own words, ten words or fewer",
+  "kind": "explainer | finding | myth | how-to | story | list",
+  "owes": ["what the answer must contain, one item per line, three to five items"],
+  "claim": "the one sentence the reader can say afterwards that answers the question",
+  "argument": "the piece, 150 to 220 words of prose, paragraphs separated by a blank line",
+  "loop": {
+    "promise": "what the opening makes the reader want to know, one sentence",
+    "carried": "the question the reader carries from slide to slide, in their words",
+    "lands": "where and how the piece answers it, one sentence"
+  },
+  "backing": [
+    { "statement": "the fact with its baseline, as the piece uses it", "source": "authors, journal, year, or a textbook, or empty when it is common knowledge you are certain of", "backs": "the sentence of the piece it backs, in a few words" }
   ],
-  "leftOut": "one sentence naming the true, sourced findings this deck deliberately does not carry, so the cut does not reach for them",
-  "who": "who this is for, in their own words, eight words or fewer",
-  "overturns": "the belief this overturns, or an empty string",
-  "tonight": "what the reader does tonight, one sentence, concrete"
+  "overturns": "the belief this overturns, in the reader's words, or an empty string",
+  "tonight": "what the reader does with this, one sentence, or an empty string when the piece is not a how-to",
+  "leftOut": "one sentence naming the true findings from the notes this piece deliberately does not carry"
 }`;
 
 export function parseBrief(raw: string): CarouselBrief | null {
@@ -125,19 +170,31 @@ export function parseBrief(raw: string): CarouselBrief | null {
     const text = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     const o = JSON.parse(text) as Record<string, unknown>;
     const str = (k: string, max = 1200) => (typeof o[k] === "string" ? (o[k] as string).trim().slice(0, max) : "");
-    const comparisons = Array.isArray(o.comparisons)
-      ? (o.comparisons as Record<string, unknown>[])
-          .filter((c) => c && typeof c === "object")
-          .map((c) => ({
-            measure: String(c.measure ?? "").trim().slice(0, 200),
-            a: String(c.a ?? "").trim().slice(0, 200),
-            b: String(c.b ?? "").trim().slice(0, 200),
-            result: String(c.result ?? "").trim().slice(0, 300),
-          }))
-          .filter((c) => c.measure && c.result)
-          .slice(0, 3)
+    const strs = (v: unknown, max: number, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim().slice(0, max)).slice(0, n) : []);
+    const backing: BriefBacking[] = Array.isArray(o.backing)
+      ? (o.backing as Record<string, unknown>[])
+          .filter((b) => b && typeof b === "object")
+          .map((b) => ({ statement: String(b.statement ?? "").trim().slice(0, 400), source: String(b.source ?? "").trim().slice(0, 300), backs: String(b.backs ?? "").trim().slice(0, 200) }))
+          .filter((b) => b.statement)
+          .slice(0, 8)
       : [];
-    const brief: CarouselBrief = { claim: str("claim", 400), argument: str("argument", 2000), comparisons, who: str("who", 160), overturns: str("overturns", 400), tonight: str("tonight", 400), leftOut: str("leftOut", 400) || undefined };
+    const loopRaw = o.loop && typeof o.loop === "object" ? (o.loop as Record<string, unknown>) : {};
+    const loop = { promise: String(loopRaw.promise ?? "").trim().slice(0, 300), carried: String(loopRaw.carried ?? "").trim().slice(0, 300), lands: String(loopRaw.lands ?? "").trim().slice(0, 300) };
+    const kindRaw = str("kind", 20).toLowerCase() as BriefKind;
+    const kind: BriefKind = BRIEF_KINDS.includes(kindRaw) ? kindRaw : "explainer";
+    const brief: CarouselBrief = {
+      question: str("question", 300),
+      who: str("who", 160),
+      kind,
+      owes: strs(o.owes, 200, 6),
+      claim: str("claim", 400),
+      argument: str("argument", 2400),
+      loop,
+      backing,
+      overturns: str("overturns", 400),
+      tonight: str("tonight", 400),
+      leftOut: str("leftOut", 400) || undefined,
+    };
     if (!brief.claim || !brief.argument) return null;
     return brief;
   } catch {
@@ -145,40 +202,66 @@ export function parseBrief(raw: string): CarouselBrief | null {
   }
 }
 
-/** The brief as the generator sees it. This block replaces most of the old
- *  slide rules: the slides are cut from this text. */
+/** The backing facts as one indented list, for any prompt that carries the piece. */
+function backingLines(brief: CarouselBrief): string {
+  const rows = (brief.backing ?? []).map((b) => `  - ${b.statement}${b.source ? ` [${b.source}]` : ""}${b.backs ? ` (backs: ${b.backs})` : ""}`);
+  for (const c of brief.comparisons ?? []) rows.push(`  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`);
+  return rows.join("\n");
+}
+
+/** The assignment as one block: question, who, what the answer owes. */
+function assignmentLines(brief: CarouselBrief): string {
+  const owes = (brief.owes ?? []).map((o) => `    - ${o}`).join("\n");
+  return `  The question: ${brief.question || "(as the topic asks)"}
+  Who is asking: ${brief.who}
+  Kind of piece: ${brief.kind ?? "explainer"}${owes ? `\n  What the answer owes the reader:\n${owes}` : ""}`;
+}
+
+/** The piece as a regeneration prompt sees it (one slide rewritten in the
+ *  context of the whole). The cut uses craftBlock below. */
 export function briefPromptBlock(brief: CarouselBrief | null | undefined): string {
   if (!brief) return "";
-  const comps = brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n");
+  const backs = backingLines(brief);
   return `
-THE BRIEF. This is the argument. Every slide is CUT from it: a sentence or two of the brief, given a headline. A slide tells what happened, not what was measured: who did what and what they saw. Figures a reader cannot feel (a frequency, a dose, a p-value, a sample size, an SEM) never appear on a slide; the citation carries them. Keep the brief's sentences as written wherever they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may reorder. You may not add a claim, a number, a mechanism or a motive that is not in the brief, and every number keeps the baseline the brief gives it ("55% less than on 8.5 hours", never "55% less" alone). The takeaway restates the claim. If a slide needs something the brief does not say, the slide says less, not more.
+THE PIECE. This is what the deck says. Every slide is CUT from it: a sentence or two, given a headline. Keep the piece's sentences where they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may not add a claim, a number, a mechanism or a motive that is not in the piece, and every number keeps the baseline the piece gives it. A slide that carries a sentence the piece backs with a fact carries that source as its citation; a slide of story or explanation carries none, and an empty citation is correct.
 
-  Claim: ${brief.claim}
-  Argument: ${brief.argument}
-${comps ? `  Comparisons:\n${comps}\n` : ""}  Who it is for: ${brief.who}
-  ${brief.overturns ? `Belief this overturns: ${brief.overturns}\n  The slide that overturns this belief states it first, in the reader's words, then shows the evidence against it.` : "There is no villain in this deck. Do not write one."}
-  Tonight: ${brief.tonight}${brief.leftOut ? `\n  Left out on purpose, do not reach for it: ${brief.leftOut}` : ""}
+THE ASSIGNMENT:
+${assignmentLines(brief)}
 
-THE HOOKS OPEN THIS DECK. All three hooks pose the question the takeaway answers, from three angles. A hook about a fact the deck does not resolve fails, however striking.
+  What the reader can say afterwards: ${brief.claim}
+  The piece:
+${brief.argument.split(/\n+/).map((p) => `    ${p.trim()}`).filter((p) => p.trim()).join("\n\n")}
+${backs ? `  Backing, for citations and accuracy:\n${backs}\n` : ""}  ${brief.overturns ? `Belief this overturns: ${brief.overturns}` : "There is no villain in this deck. Do not write one."}${brief.tonight ? `\n  What the reader does with it: ${brief.tonight}` : ""}${brief.leftOut ? `\n  Left out on purpose, do not reach for it: ${brief.leftOut}` : ""}
 `;
 }
 
-/** The writing step when a brief exists. Replaces the plain-language rules,
+/** The writing step when a piece exists. Replaces the plain-language rules,
  *  the spine mechanism, the relay and the slot "End on" lines with a short
  *  guide. The writer is trusted to execute; the editor read catches misses. */
 export function craftBlock(brief: CarouselBrief): string {
-  const comps = brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n");
+  const backs = backingLines(brief);
+  const loop = brief.loop ?? { promise: "", carried: "", lands: "" };
   return `
-WHO IS READING. A curious adult who reads the science pages of a good newspaper on their phone. They have not studied sleep; nothing is assumed and nothing is dumbed down. Write the way a good science journalist writes for them: real terms, each explained in passing the first time (what it is for the reader, not an acronym expansion), sentences of the length prose has, and a story of what people did and what they saw rather than what was measured.
+WHO IS READING. ${brief.who || "A curious adult who reads well"}. They read the science pages of a good newspaper on their phone; nothing is assumed and nothing is dumbed down. Write the way a good science journalist writes for them: real terms, each explained in passing the first time, sentences of the length prose has, and a story of what people did and what they saw rather than what was measured.
 
-THE BRIEF. Everything the deck says is here. Cut it into slides; do not add a claim, a number, a mechanism or a motive that is not in it. Figures a reader cannot feel (a frequency, a dose, a p-value, a sample size) stay in the citation, not on the slide.
-  Claim: ${brief.claim}
-  Argument: ${brief.argument}
-${comps ? `  Comparisons, for your own accuracy:\n${comps}\n` : ""}  Who it is for: ${brief.who}
-  ${brief.overturns ? `Belief this overturns: ${brief.overturns}` : "There is no villain in this deck; do not write one."}
-  Tonight: ${brief.tonight}${brief.leftOut ? `\n  Left out on purpose: ${brief.leftOut}` : ""}
+THE ASSIGNMENT. The deck exists to answer this question, and the slides together must deliver everything the answer owes. A deck that says true things and leaves one of these out has failed.
+${assignmentLines(brief)}
 
-HOW A GOOD CAROUSEL READS. Write the whole thing as one short piece first, then cut it into slides, so a reader who reads the slides in a row reads an article, not a list. One thought per slide, said fully. Each slide makes the reader want the next one because of what it says, not because a line tells them to keep going. The hook is the promise, in the reader's language. The first slide opens the scene or the problem. The middle tells what was found as what happened: who did what, what they saw. If the reader holds a belief the finding overturns, say the belief in their words before you overturn it. The last slide says what to do tonight and what to remember. Headlines are complete sentences a stranger understands with nothing under them. Numbers only where the reader can feel them, always against their baseline. All three hooks open this same argument from different angles.
+THE PIECE. Everything the deck says is here. Cut it into slides; do not add a claim, a number, a mechanism or a motive that is not in it. Figures a reader cannot feel (a frequency, a dose, a p-value, a sample size) stay in the citation, not on the slide.
+  What the reader can say afterwards: ${brief.claim}
+
+${brief.argument.split(/\n+/).map((p) => `    ${p.trim()}`).filter((p) => p.trim()).join("\n\n")}
+
+${backs ? `  Backing. Where a slide carries one of these sentences, that slide's citation is its source. A slide of story or explanation carries no citation, and an empty citation is correct; the research is there to make a claim trustworthy, not to lead the deck.\n${backs}\n` : ""}  ${brief.overturns ? `Belief this overturns: ${brief.overturns}. The slide that overturns it says the belief first, in the reader's words.` : "There is no villain in this deck; do not write one."}${brief.tonight ? `\n  What the reader does with it: ${brief.tonight}` : ""}${brief.leftOut ? `\n  Left out on purpose: ${brief.leftOut}` : ""}
+
+HOW A GOOD CAROUSEL READS. The reader sees one slide at a time and decides at each one whether to swipe, so the deck is an essay with a pull at every cut.
+  The hook is the opening of the piece: specific, concrete, a moment or a claim that raises a question. ${loop.promise ? `Here it promises: ${loop.promise}` : ""} All three hooks open the same piece from three angles.
+  Slide 2 is a second hook. Instagram shows a carousel twice to a follower, once on slide 1 and once on slide 2, so slide 2 must work for a stranger who saw nothing before it: a complete claim in its headline and a reason to want slide 3 in its body.
+  ${loop.carried ? `The question the reader carries from slide to slide: ${loop.carried}. ${loop.lands ? `It lands: ${loop.lands}` : ""}` : ""}
+  Every slide says one thought, fully, and leaves the reader wanting the next one because of what it says, never because a line tells them to keep going. No "but there's more", no "here's the twist". If a slide only makes sense once you have read the next, it is a fragment, and it fails; coherence wins over suspense every time.
+  Headlines are complete sentences a stranger understands with nothing under them.
+  Numbers only where the reader can feel them, always against their baseline.
+  The last slide answers the question in the reader's words and says what to do with the answer.
 
 Also return the "spine" (moment, villain or "", turn, payoff, who) as a summary of the deck you wrote, and on each slide a "beat" naming the part it serves: moment, villain, turn or payoff.
 `;
@@ -193,20 +276,32 @@ export const EDITOR_READ_PROMPT = (brief: CarouselBrief | null, content: Carouse
   const bodyShape = opts.viral
     ? "a body is 2 to 4 short lines separated by \" / \" in this listing; return it with real newlines (\\n) between lines, each line 9 words or fewer"
     : "a body is 2 or 3 sentences, under 60 words";
-  return `You are a careful native English reader. You have not seen any writing rules and you must not invent any. Read this Instagram carousel cold, the way a stranger would on a phone, and judge it against the brief it was cut from.
+  const question = brief?.question || "the question the topic asks";
+  const owes = brief?.owes?.length ? brief.owes.map((o) => `    - ${o}`).join("\n") : "";
+  return `You are a careful native English reader. You have not seen any writing rules and you must not invent any. Read this Instagram carousel cold, the way a stranger would on a phone.
 ${brief ? `
-THE BRIEF (the argument the deck must carry):
-  Claim: ${brief.claim}
-  Argument: ${brief.argument}
-${brief.comparisons.length ? `  Comparisons:\n${brief.comparisons.map((c) => `  - ${c.measure}: ${c.a} vs ${c.b}. ${c.result}`).join("\n")}\n` : ""}` : ""}
+THE ASSIGNMENT this deck was made for:
+  The question the reader is asking: ${question}
+  Who is asking: ${brief.who}${owes ? `\n  What the answer owes them:\n${owes}` : ""}
+  What they should be able to say afterwards: ${brief.claim}
+
+THE PIECE the deck was cut from:
+${brief.argument.split(/\n+/).map((p) => `  ${p.trim()}`).filter((p) => p.trim()).join("\n\n")}
+${brief.backing?.length ? `\n  Backing:\n${brief.backing.map((b) => `  - ${b.statement}${b.source ? ` [${b.source}]` : ""}`).join("\n")}\n` : ""}` : ""}
 THE DECK:
 ${hooks}
 ${slides}
 ${tk}
 
-Read it the way a good editor reads a draft, and fix what an editor would fix. You are looking for: a slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a slide that recites a measurement (a frequency, a dose, a p-value) instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that says something other than the brief's claim; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
+Read it in three passes.
 
-A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the brief rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer that completes the headline's comparison or says who it is for; a slide headline is 8 words or fewer${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the brief. Keep citations as they are.
+FIRST, THE TITLE TEST. A reader tapped this deck because they wanted to know: "${question}". Using only what the slides say, answer that question in one sentence. If you cannot, or the slides answer a different question, or one of the things the answer owes is missing, that is the first and most important note: say what is missing, and put the fix on the slide that should carry it, rewriting that slide whole so it says the missing thing in the register of the rest. A deck that says true things and does not answer its title has failed.
+
+SECOND, THE SWIPE. Does slide 2 stand alone for a stranger who sees it first, and does it make them want slide 3? At each slide, is there a reason to see the next one that comes from what the slide says? A deck that reads as a list of true facts in any order has no pull; a slide that is a fragment to create suspense, or that only makes sense once you have read the next, is worse. Fix by rewriting the slide so it says its whole thought and the thought itself leads on.
+
+THIRD, WHAT AN EDITOR FIXES. A slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a slide that recites a measurement instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that answers something other than the question; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
+
+A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the piece rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer; a slide headline is ${opts.essay ? "UPPERCASE, 4 to 9 words, a complete claim" : "8 words or fewer"}${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the piece. Keep citations as they are; a slide with no citation is not a fault.
 
 Return ONLY valid JSON in this exact format, no other text:
 {

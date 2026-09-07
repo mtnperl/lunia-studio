@@ -324,7 +324,7 @@ export function structurePromptBlock(id: CarouselStructure, total: 5 | 10, opts:
     // The brief carries the argument; this is only the running order.
     const outline = plan.map((sl, i) => `  Slide ${i + 2}, ${sl.name} (beat "${sl.beat}"): ${sl.job}`).join("\n");
     return `
-RUNNING ORDER: ${spec.label.toUpperCase()}. This deck exists to ${VALUE_MOVE_TEXT[spec.valueMove]}. Return EXACTLY ${plan.length} objects in "slides", in this order; the hook is slide 1 and the takeaway is slide ${total}.
+RUNNING ORDER: ${spec.label.toUpperCase()}. This deck exists to ${VALUE_MOVE_TEXT[spec.valueMove]}. Return EXACTLY ${plan.length} objects in "slides"; the hook is slide 1 and the takeaway is slide ${total}. The order of the slides comes from the piece and from what the answer owes. The slots below describe the usual shape of a ${spec.label.toLowerCase()} deck: follow them where the piece fits them, and follow the piece where it does not. A slot is never a reason to leave out something the answer owes.
 ${outline}
 `;
   }

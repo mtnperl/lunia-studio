@@ -268,7 +268,7 @@ function takeawayBlock(total: 5 | 10): string {
   return `
 THE LAST SLIDE IS THE TAKEAWAY (mandatory: populate the "takeaway" object). Slide ${total} is not a "read more" card. It is the slide the reader screenshots, and it carries the follow line, so there is no separate CTA slide. Build it so a reader who saw nothing else still gets the value, and a reader who saw everything gets the answer they were owed.
   takeaway.headline: the claim in the reader's words. UPPERCASE, max 6 words, not a question. It says what the deck showed ("LESS SLEEP, LESS FAT LOST"), never a riddle about it ("THE SCALE HIDES WHAT YOU LOSE").
-  takeaway.points: exactly 3 lines, each max 12 words, no period. Point 1 is the finding with its comparison, point 2 is why it happens as far as is known, point 3 is what the reader does tonight. Every point is true to the brief; never a motive or a cause the evidence does not contain. Plain words a reader repeats to a friend. No citations, no hedging.
+  takeaway.points: exactly 3 lines, each max 12 words, no period. Point 1 answers the question the deck was made for, in the reader's words; point 2 is the thing to remember, the reason the answer is true as far as is known; point 3 is what the reader does with it. Every point is true to the piece; never a motive or a cause the evidence does not contain. Plain words a reader repeats to a friend. No citations, no hedging.
   takeaway.interaction: ONE explicit ask, matched to the deck:
     - type "save" when the deck is a routine or how-to the reader will act on later (default for actionable topics).
     - type "send" when the deck is relatable or diagnostic, something the reader knows applies to one friend or partner.

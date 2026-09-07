@@ -417,7 +417,7 @@ async function writeBrief(topic: string, ledgerBlock: string, structure?: Carous
       messages: [{ role: "user", content: BRIEF_PROMPT(topic, ledgerBlock, hint, recentBlock) }],
     });
     const brief = parseBrief(extractText(msg));
-    console.log(brief ? `[generate] brief: ${brief.comparisons.length} comparison(s), claim "${brief.claim.slice(0, 80)}"` : "[generate] brief: unusable, writing without it");
+    console.log(brief ? `[generate] piece: ${brief.kind}, ${brief.owes.length} owed, ${brief.backing.length} backing fact(s), question "${brief.question.slice(0, 80)}"` : "[generate] piece: unusable, writing without it");
     return brief;
   } catch (err) {
     console.warn("[generate] brief failed, writing without it:", err instanceof Error ? err.message : err);
