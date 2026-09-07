@@ -7,6 +7,8 @@ import { BrandStyle, CarouselStylePreset, HookHeadlineWeight } from '@/lib/types
 import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, buildColorGradeFilter, type HookOverlaySettings } from '@/components/carousel/shared/HookOverlays';
 import { BRAND_FONT_FAMILY, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
+import { EssayHookCover, essayNumberFrom, essayDate } from '@/components/carousel/shared/EssayChrome';
+import { ESSAY_COLORS, type EssayAccent } from '@/lib/brand-tokens';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
 const SLIDE_PADDING = { x: 72, y: 80 };
@@ -44,6 +46,11 @@ type Props = {
   showCitationBars?: boolean;
   /** Headline boldness — "default" is today's weight (400, or 300 under Editorial Scientific). */
   headlineWeight?: HookHeadlineWeight;
+  /** Essay preset: the boxed word (exact substring of headline), the accent, and the serial chrome. */
+  emphasis?: string;
+  essayAccent?: EssayAccent;
+  essayNumber?: string;
+  essayDate?: string;
 };
 
 // Headline font-weight per boldness level, keyed by style preset (each preset has its own baseline).
@@ -54,15 +61,16 @@ const HEADLINE_WEIGHTS = {
   black: { default: 900, editorial: 900 },
 } as const;
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default" }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default", emphasis, essayAccent, essayNumber, essayDate: essayDateText }: Props) {
   const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
+  const isEssay = stylePreset === "essay";
   const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
   const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
   // Hook stays dark by default so white text reads cleanly; users can override via brandStyle.hookBackground.
-  const bg = brandStyle?.hookBackground ?? '#01253f';
+  const bg = isEssay ? ESSAY_COLORS.paper : (brandStyle?.hookBackground ?? '#01253f');
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#F7F4EF';
   const arrowColor = brandStyle?.secondary ?? 'rgba(247,244,239,0.55)';
@@ -73,7 +81,9 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           all subsequent elements stack above without needing explicit z-index.
           Use <img> instead of CSS background-image so html-to-image captures it
           correctly on mobile Safari (getComputedStyle drops large data URLs). */}
-      {backgroundImageUrl ? (
+      {isEssay ? (
+        <EssayHookCover headline={headline} subline={subline} sourceNote={sourceNote} emphasis={emphasis} accent={essayAccent} imageUrl={backgroundImageUrl} shimmer={shimmer} slideH={slideH} reels={reels} essayNumber={essayNumber ?? essayNumberFrom(headline)} date={essayDateText ?? essayDate()} showSourceNote={showCitationBars} />
+      ) : backgroundImageUrl ? (
         <>
           <img
             src={backgroundImageUrl}
@@ -136,7 +146,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         avoid duplicated text. If the image is still generating or failed, we
         fall through to the HTML overlay so the editor preview isn't empty.
       */}
-      {isFreePress ? (
+      {isEssay ? null : isFreePress ? (
         /* Cover type. Headline low and centred, kicker beneath it — the whole
            frame above is the photograph. No subline: the FP cover carries one
            line of argument, not two. */
@@ -260,7 +270,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
       </div>
       )}
 
-      {showLuniaLifeWatermark && (
+      {showLuniaLifeWatermark && !isEssay && (
         <div style={{
           position: 'absolute',
           bottom: prominentWatermark ? 30 : 24,
@@ -280,12 +290,14 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           LUNIA LIFE
         </div>
       )}
-      <LuniaLogo
-        variant="light"
-        sizeScale={logoScale}
-        placement={isFreePress ? 'top-left' : 'bottom-left'}
-        opacity={isFreePress ? 0.85 : 0.5}
-      />
+      {!isEssay && (
+        <LuniaLogo
+          variant="light"
+          sizeScale={logoScale}
+          placement={isFreePress ? 'top-left' : 'bottom-left'}
+          opacity={isFreePress ? 0.85 : 0.5}
+        />
+      )}
     </SlideWrapper>
   );
 }

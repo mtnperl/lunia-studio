@@ -20,7 +20,10 @@ import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
 import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
-import { FP_COLORS } from "@/lib/brand-tokens";
+import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
+import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
+import HookSlide from "@/components/carousel/slides/HookSlide";
+import { FP_COLORS, ESSAY_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
 import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
@@ -42,6 +45,21 @@ export type RenderSlideProps = {
   logoScale?: number;
   arrowScale?: number;
   stylePreset?: CarouselStylePreset;
+  /** Which slide to draw. Content by default; "hook" and "takeaway" render
+   *  the deck's first and last slides so the visual suite covers them too. */
+  kind?: "content" | "hook" | "takeaway";
+  subline?: string;
+  sourceNote?: string;
+  backgroundImageUrl?: string;
+  points?: string[];
+  interaction?: { type: "save" | "send" | "comment"; label: string };
+  followLine?: string;
+  emphasis?: string;
+  essayAccent?: EssayAccent;
+  essayNumber?: string;
+  essayDate?: string;
+  slideIndex?: number;
+  slideTotal?: number;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
@@ -185,10 +203,16 @@ export default function RenderSlideClient(props: RenderSlideProps) {
         overflow: "hidden",
         background:
           props.slideBgColor ??
-          (props.stylePreset === "free-press" ? FP_COLORS.paper : "#01253f"),
+          (props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : "#01253f"),
       }}
     >
-      {props.stylePreset === "free-press" ? (
+      {props.kind === "hook" ? (
+        <HookSlide {...scaled} subline={props.subline ?? ""} scale={1} />
+      ) : props.kind === "takeaway" && props.stylePreset === "essay" ? (
+        <EssayTakeawaySlide {...scaled} points={props.points ?? []} interaction={props.interaction ?? { type: "save", label: "" }} scale={1} />
+      ) : props.stylePreset === "essay" ? (
+        <EssayContentSlide {...scaled} scale={1} />
+      ) : props.stylePreset === "free-press" ? (
         <FreePressContentSlide {...scaled} scale={1} />
       ) : props.stylePreset === "viral" ? (
         <ViralContentSlide {...scaled} scale={1} />

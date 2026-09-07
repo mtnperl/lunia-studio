@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
       format, engagementSubType, didYouKnowContent,
-      hookHeadlineWeight, hookImagesByWeight,
+      hookHeadlineWeight, hookImagesByWeight, essayAccent,
     } = body;
 
     if (!topic) {
@@ -116,6 +116,7 @@ export async function POST(req: Request) {
       bodyScale: bodyScale ?? undefined,
       iconScale: iconScale ?? undefined,
       hookHeadlineWeight: hookHeadlineWeight ?? undefined,
+      essayAccent: essayAccent === "red" || essayAccent === "yellow" ? essayAccent : undefined,
       hookImagesByWeight: mirroredHookImagesByWeight,
       savedAt: new Date().toISOString(),
     };

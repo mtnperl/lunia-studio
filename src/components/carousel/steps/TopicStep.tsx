@@ -795,6 +795,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
             { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
             { val: "free-press" as CarouselStylePreset, label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
             { val: "viral" as CarouselStylePreset, label: "Viral", desc: "Editorial look, slot-built for swipe depth. 5 or 10 slides" },
+            { val: "essay" as CarouselStylePreset, label: "Essay", desc: "Paper, one boxed word, engraving cover, serial chrome. Reads hand-made" },
           ]).map((opt) => {
             const sel = stylePreset === opt.val;
             return (

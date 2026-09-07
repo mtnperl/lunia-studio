@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       format, engagementSubType, didYouKnowContent,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
-      hookHeadlineWeight, hookImagesByWeight,
+      hookHeadlineWeight, hookImagesByWeight, essayAccent,
     } = body;
 
     if (!topic) {
@@ -137,6 +137,7 @@ export async function POST(req: Request) {
       showSlideNumbers: typeof showSlideNumbers === "boolean" ? showSlideNumbers : undefined,
       showCitationBars: typeof showCitationBars === "boolean" ? showCitationBars : undefined,
       hookHeadlineWeight: hookHeadlineWeight ?? undefined,
+      essayAccent: essayAccent === "red" || essayAccent === "yellow" ? essayAccent : undefined,
       hookImagesByWeight: mirroredHookImagesByWeight,
       // Carry any existing fact-verification record forward. This object is
       // rebuilt from the request body on every save, so a field the client

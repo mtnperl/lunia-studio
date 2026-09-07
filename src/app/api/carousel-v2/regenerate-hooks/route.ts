@@ -35,7 +35,8 @@ export async function POST(req: Request): Promise<Response> {
 
     const spine = body.content?.spine && typeof body.content.spine === "object" ? body.content.spine : null;
     const structure = isCarouselStructure(body.structure) ? body.structure : null;
-    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine, structure);
+    const stylePreset = typeof body.stylePreset === "string" ? body.stylePreset : null;
+    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine, structure, stylePreset);
 
     const msg = await createContentMessage({
       model: DRAFT_MODEL,
@@ -54,10 +55,14 @@ export async function POST(req: Request): Promise<Response> {
       const arr = Array.isArray(obj) ? obj : obj?.hooks;
       if (!Array.isArray(arr)) return [];
       return arr
-        .map((h: { headline?: string; subline?: string; sourceNote?: string }) => ({
+        .map((h: { headline?: string; subline?: string; sourceNote?: string; emphasis?: string }) => ({
           headline: String(h?.headline ?? "").trim(),
           subline: String(h?.subline ?? "").trim(),
           sourceNote: String(h?.sourceNote ?? "").trim(),
+          // Essay preset: the boxed word, kept only when it is in the headline.
+          ...(typeof h?.emphasis === "string" && h.emphasis.trim() && String(h?.headline ?? "").toLowerCase().includes(h.emphasis.trim().toLowerCase())
+            ? { emphasis: h.emphasis.trim() }
+            : {}),
         }))
         .filter((h: Hook) => h.headline && h.subline);
     };

@@ -55,6 +55,9 @@ export function chooseImageEngine(opts: ChooseEngineInput): ImageEngine {
   // mix below rolls engines that routinely paint incidental signage and
   // lettering; gpt-image-2 is the one that reliably honours the constraint.
   if (opts.stylePreset === "free-press") return "gpt-image-2";
+  // Essay covers are engravings on a white ground, printed onto the paper
+  // with multiply. gpt-image-2 holds the medium and keeps text out.
+  if (opts.stylePreset === "essay") return "gpt-image-2";
   if (opts.textInImage) return "ideogram";
   // Hook slide gets a weighted mix; CTA and content slides stick with Recraft
   // for atmospheric backgrounds when they generate (today only slide 0 does).

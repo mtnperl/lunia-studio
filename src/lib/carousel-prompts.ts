@@ -178,7 +178,9 @@ export const REGENERATE_HOOKS_PROMPT = (
   guidelines = "",
   spine: StorySpine | null = null,
   structure: CarouselStructure | null = null,
+  stylePreset: string | null = null,
 ): string => {
+  const isEssay = stylePreset === "essay";
   const deck = slides
     .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
     .join("\n");
@@ -193,14 +195,15 @@ ${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}
 Output STRICT JSON, no markdown, no commentary, exactly this shape:
 {
   "hooks": [
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one" }
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} },
+    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} }
   ]
 }
 
 Hook format rules (hard):
-- headline: UPPERCASE, punchy, max 8 words
+- headline: UPPERCASE, punchy, max 8 words${isEssay ? `
+- emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline. It is drawn in a filled box. The verb, the number or the villain; never the product, never "you".` : ""}
 - subline: italic-style sentence fragment, max 10 words, creates mild tension or curiosity. No period at the end.
 - sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook simply renders without a trust liner. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty. Never pad this field to satisfy the format.`;
@@ -241,6 +244,19 @@ How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it
 - "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, never on a "moment" slide, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
 - "graphic": "" except on the slots the structure marks as allowed, and only for a sourced comparison worth drawing. A slide with a figure needs no graphic.
 - Hook headline: 8 words or fewer, one sentence, a promise or a number. Never the product.
+`;
+}
+
+/** How the Essay look is written: one boxed word in the hook, one accent
+ *  phrase per slide, no graphics. The order of the deck still comes from the
+ *  structure block. */
+function essayLookBlock(): string {
+  return `
+ESSAY LOOK. The deck is type on paper with one engraving on the cover. Every hook object and every slide object carries an "emphasis" field:
+- hooks[].emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline, same characters. It is drawn in a filled box, so choose the word a reader would circle: the verb, the number, the villain. "NOBODY" in "CONTENT I SEE NOBODY CREATING"; "STOP" in "STOP CREATING EDUCATIONAL CONTENT". Never the product, never "you". Every hook has one.
+- slides[].emphasis: one phrase of 2 to 6 words copied EXACTLY from the body, the phrase that carries the slide. Never the last line. "" when nothing earns it.
+- slides[].graphic: "" for every slide. The essay look draws no infographic; the picture is the cover engraving.
+- Slide headlines: UPPERCASE, 3 to 6 words, a complete thought. They are set very large in a condensed face, so a long headline shrinks the body.
 `;
 }
 
@@ -324,6 +340,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
   const structured = !!structure;
   const isEditorial = stylePreset === "editorial-scientific" || isViral;
   const isFreePress = stylePreset === "free-press";
+  const isEssay = stylePreset === "essay";
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
@@ -361,6 +378,9 @@ Return ONLY valid JSON in this exact format, no other text:
   "hookImageSpec": {
     "concept": "ONE sentence (max 30 words) capturing the science / concept this hook is about. Do NOT prescribe scene details, props, camera angles, lighting, or composition — we give only the concept and the exact text to the image engine and let it interpret freely.",
     "overlay": "OPTIONAL short tagline (≤ 6 words) baked into the image as an editorial accent above the headline. Omit field if nothing meaningful adds."
+  }` : isEssay ? `,
+  "hookImageSpec": {
+    "concept": "ONE sentence (max 25 words) naming the single SUBJECT of the cover engraving and what it is doing, specific to THIS hook: an animal, an object, a figure, a plant. It is drawn as a 19th-century engraving on white paper, so name something with a body and texture, never an abstraction, never a bed, never a bottle. Nothing else in the frame. NO text."
   }` : isFreePress ? `,
   "hookImageSpec": {
     "concept": "ONE sentence (max 30 words) naming what the cover PHOTOGRAPH shows, and it must be specific to THIS topic. The generic fallback for any sleep topic is an empty bed in morning light, and that is exactly what to avoid: if the topic is pregnancy sleep, shift work, menopause, altitude, or anything else with a subject of its own, the photograph must show THAT. Name a subject and a setting. Do NOT prescribe camera angles, lighting or palette. NO text of any kind appears in this image."
@@ -382,7 +402,7 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
 
 The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
-` : ""}${structured ? structurePromptBlock(structure!, total) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
+` : ""}${isEssay ? essayLookBlock() : ""}${structured ? structurePromptBlock(structure!, total) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE

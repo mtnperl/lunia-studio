@@ -683,6 +683,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialShowSlideNumbers={initialCarousel?.showSlideNumbers ?? pendingLook?.showSlideNumbers}
               initialShowCitationBars={initialCarousel?.showCitationBars ?? pendingLook?.showCitationBars}
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight ?? pendingLook?.hookHeadlineWeight}
+              initialEssayAccent={initialCarousel?.essayAccent ?? pendingLook?.essayAccent}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={loadedId}
               onSaved={onSaved}

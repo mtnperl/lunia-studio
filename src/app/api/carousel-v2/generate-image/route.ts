@@ -53,6 +53,7 @@ export async function POST(req: Request) {
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
     const isEditorial = stylePreset === 'editorial-scientific' || stylePreset === 'viral';
     const isFreePress = stylePreset === 'free-press';
+    const isEssay = stylePreset === 'essay';
 
     // Editorial extras: interpretive lane + paper tone. Both only meaningful
     // when isEditorial. Defaults preserve the previous behavior:
@@ -216,6 +217,12 @@ export async function POST(req: Request) {
           subline:  hookSubline,
           overlay:  hookImageSpec?.overlay,
           headlineWeight,
+        })
+      : slideIndex === 0 && isEssay
+      ? buildEssayHookPrompt({
+          concept: hookImageSpec?.concept,
+          topic,
+          userPrompt: imagePrompt,
         })
       : slideIndex === 0 && isFreePress
       ? buildFreePressHookPrompt({
@@ -520,6 +527,50 @@ function buildFreePressHookPrompt(args: {
     '- NO text, letters, numbers, words, captions, watermarks, logos or signage anywhere in the image. The headline is added afterwards in HTML and any baked text would collide with it.',
     '- NO supplement bottles, pill jars, capsules or packaging.',
     '- NO collage, no split screens, no borders, no frames, no UI, no charts.',
+  ].join('\n');
+}
+
+/**
+ * Essay cover illustration.
+ *
+ * The Essay preset draws its headline in HTML and prints the picture onto
+ * paper with a multiply blend, so the image must be an engraving on a pure
+ * white ground with nothing else in it: white disappears in the blend and the
+ * ink lines read as printed on the sheet. A photograph or a coloured ground
+ * would show as a rectangle. One subject, drawn as a 19th-century engraver
+ * would, is what makes the cover look chosen rather than generated.
+ */
+function buildEssayHookPrompt(args: {
+  concept?: string;
+  topic?: string;
+  userPrompt?: string;
+}): string {
+  const { concept, topic, userPrompt } = args;
+  const subject =
+    userPrompt?.trim() ||
+    concept?.trim() ||
+    topic?.trim() ||
+    'a barn owl turning its head at night';
+
+  return [
+    'A single-subject illustration in the style of a 19th-century steel engraving, for the cover of a printed essay.',
+    '',
+    `SUBJECT, and nothing else in the frame: ${subject}`,
+    '',
+    'MEDIUM',
+    '- Fine black ink line work: hatching and cross-hatching for tone, stipple for skin and fur, confident contour lines. The look of a Victorian natural-history plate or a banknote engraving.',
+    '- Monochrome black ink only. No colour, no grey washes, no gradients, no shading outside the hatching.',
+    '- The subject is fully rendered, large in the frame, and faces the viewer or three-quarter. It is a portrait of the subject, not a scene.',
+    '',
+    'GROUND',
+    '- Pure white paper (#FFFFFF), completely empty. No background, no horizon, no ground line, no vignette, no frame, no border, no plate mark, no texture. The white must be flat white to the edges: the image is printed onto paper afterwards and any tint would show as a rectangle.',
+    '- Leave the top 40% of the frame empty white. A headline is set over it in HTML.',
+    '- Portrait orientation. The subject sits in the lower two thirds and may rise into the headline zone at one point only.',
+    '',
+    'HARD CONSTRAINTS',
+    '- NO text, letters, numbers, signatures, captions, watermarks or logos anywhere in the image.',
+    '- NO supplement bottles, pills, capsules, jars or packaging.',
+    '- NO photograph, no 3D render, no digital painting, no colour.',
   ].join('\n');
 }
 

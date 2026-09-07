@@ -14,6 +14,10 @@ import { FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
+import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
+import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
+import { essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
+import { ESSAY_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
@@ -100,6 +104,8 @@ type Props = {
   initialShowSlideNumbers?: boolean;
   initialShowCitationBars?: boolean;
   initialHookHeadlineWeight?: HookHeadlineWeight;
+  /** Essay preset: the colour of the boxed word. */
+  initialEssayAccent?: EssayAccent;
   /** Editorial Scientific only — hook image URLs pregenerated per boldness level, keyed
    *  by weight. Lets "Hook weight" swap the displayed image instantly instead of
    *  regenerating (see "Generate other weights" in the Refine image panel). */
@@ -353,7 +359,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, initialEssayAccent, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -426,27 +432,36 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const isEditorial = isEditorialPreset(stylePreset);
   const isViral = isViralPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
+  const isEssay = stylePreset === "essay";
   // Editorial Scientific renders content slides with a bespoke layout —
   // logo top, big editorial headline + rule, body, optional icon-stat rows,
   // optional product photo. Drop-in compatible with ContentSlide's props.
   // Viral has its own slide (ivory or navy per slot, stacked lines, a
   // figure, the open-loop line in yellow); it takes the same props plus the
   // slide's position and the two viral-only fields.
-  const ContentSlideComponent = isFreePress
+  const ContentSlideComponent = isEssay
+    ? EssayContentSlide
+    : isFreePress
     ? FreePressContentSlide
     : isViral
       ? ViralContentSlide
       : isEditorial
         ? EditorialContentSlide
         : ContentSlide;
-  const TakeawaySlideComponent = isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
+  const TakeawaySlideComponent = isEssay ? EssayTakeawaySlide : isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
   // Editorial Scientific: default the slide bg to Soft Ivory if no saved color.
-  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isFreePress ? FP_COLORS.paper : isViral ? PALETTE.softIvory : isEditorial ? "#EFEFF4" : undefined));
+  const [slideBgColor, setSlideBgColor] = useState<string | undefined>(initialSlideBgColor ?? (isEssay ? ESSAY_COLORS.paper : isFreePress ? FP_COLORS.paper : isViral ? PALETTE.softIvory : isEditorial ? "#EFEFF4" : undefined));
   // Decoration toggles — default true to preserve every existing carousel's look.
   const [showSlideArrows, setShowSlideArrows] = useState(initialShowSlideArrows ?? true);
   const [showSlideNumbers, setShowSlideNumbers] = useState(initialShowSlideNumbers ?? true);
   const [showCitationBars, setShowCitationBars] = useState(initialShowCitationBars ?? true);
   const [hookHeadlineWeight, setHookHeadlineWeight] = useState<HookHeadlineWeight>(initialHookHeadlineWeight ?? "default");
+  // Essay preset: yellow is the brand book's Signal Yellow; red is the essay-poster option.
+  const [essayAccent, setEssayAccent] = useState<EssayAccent>(initialEssayAccent ?? "yellow");
+  // Serial chrome. The number is stable per saved deck (and per topic before
+  // the first save); the date is the day it is rendered.
+  const essayNumber = essayNumberFrom(initialSavedId ?? config.topic ?? "");
+  const essayDateText = essayDate();
   // Tracks the weight actually baked into the current hook image (Editorial Scientific
   // only) so we can flag when the setting has drifted from what's on-screen and a
   // regenerate is needed. Best-effort: assumes the loaded/initial image matches the
@@ -469,7 +484,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [showLuniaLifeWatermark, setShowLuniaLifeWatermark] = useState(initialShowLuniaLifeWatermark ?? true);
   // Editorial preset defaults: citation = M (26), headline = L (1.15).
   // Other presets keep the previous defaults (citation L = 36, headline M = 1).
-  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isFreePress ? FP_TYPE.source : isEditorial ? 26 : 36));
+  const [citationFontSize, setCitationFontSize] = useState(initialCitationFontSize ?? (isEssay ? 22 : isFreePress ? FP_TYPE.source : isEditorial ? 26 : 36));
   const [headlineScale, setHeadlineScale] = useState(initialHeadlineScale ?? (isEditorial ? 1.15 : 1));
   const [bodyScale, setBodyScale] = useState(initialBodyScale ?? 1.2); // default "L"
   const [iconScale, setIconScale] = useState(initialIconScale ?? 1); // icon-layout graphic size, default "M"
@@ -573,7 +588,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   function captureLook(): CarouselLookSettings {
     return {
       stylePreset, imageStyle, reelsMode, darkBackground, slideBgColor, logoScale, arrowScale, citationFontSize, headlineScale, bodyScale, iconScale,
-      showLuniaLifeWatermark, hookOverlays, showSlideArrows, showSlideNumbers, showCitationBars, hookHeadlineWeight, contentBgOverlayOpacity,
+      showLuniaLifeWatermark, hookOverlays, showSlideArrows, showSlideNumbers, showCitationBars, hookHeadlineWeight, contentBgOverlayOpacity, essayAccent,
     };
   }
   /** Everything a look carries except the style preset and image engine,
@@ -594,6 +609,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     if (s.showSlideNumbers !== undefined) setShowSlideNumbers(s.showSlideNumbers);
     if (s.showCitationBars !== undefined) setShowCitationBars(s.showCitationBars);
     if (s.hookHeadlineWeight !== undefined) setHookHeadlineWeight(s.hookHeadlineWeight);
+    if (s.essayAccent !== undefined) setEssayAccent(s.essayAccent);
     if (s.contentBgOverlayOpacity !== undefined) setContentBgOverlayOpacity(s.contentBgOverlayOpacity);
   }
   async function saveLook() {
@@ -1169,6 +1185,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           showCitationBars,
           hookHeadlineWeight,
           hookImagesByWeight,
+          essayAccent: isEssay ? essayAccent : undefined,
         }),
       });
       if (!res.ok) return;
@@ -1907,6 +1924,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Bg dim</span>
                 <input type="range" min={0} max={0.9} step={0.05} value={contentBgOverlayOpacity} onChange={(e) => setContentBgOverlayOpacity(parseFloat(e.target.value))} style={{ width: 110 }} />
                 <span style={{ fontSize: 10, color: "var(--muted)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
+              </div>
+            )}
+            {isEssay && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Accent</span>
+                {([{ value: "yellow", label: "Yellow", swatch: "#FFD800" }, { value: "red", label: "Red", swatch: "#D8321E" }] as const).map(({ value, label, swatch }) => (
+                  <button key={value} onClick={() => setEssayAccent(value)} title={value === "yellow" ? "Signal Yellow, from the brand book" : "Essay-poster red"} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    background: essayAccent === value ? "var(--text)" : "var(--surface)",
+                    color: essayAccent === value ? "var(--bg)" : "var(--muted)",
+                    border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+                  }}><span style={{ width: 10, height: 10, borderRadius: 2, background: swatch, display: "inline-block" }} />{label}</button>
+                ))}
               </div>
             )}
             {/* Hook slide only — boldness of the first-slide headline text. "Default" preserves today's weight. */}
@@ -2849,9 +2879,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={PREVIEW_SCALE} brandStyle={bs}
       backgroundImageUrl={imgs[0] ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale}
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText}
         onSelectElement={(el) => selectElement(i + 1, el)}
         selectedElement={focusedSlide === i + 1 ? selectedElement : null}
         editingElement={editing?.slide === i + 1 ? editing.element : null}
@@ -2860,7 +2890,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         onCancelEditElement={() => setEditing(null)} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} slideTotal={content.slides.length} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={reelsMode} />]
       : [carouselFormat === "engagement" && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={reelsMode} />]),
@@ -2871,12 +2901,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     <HookSlide key={0} headline={hook.headline} subline={hook.subline} sourceNote={hook.sourceNote} topic={topic} scale={1} brandStyle={bs}
       backgroundImageUrl={proxyUrl(imgs[0]) ?? hookImageUrl ?? undefined}
       isFalImage={!!imgs[0]}
-      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={slideFrameH} headlineWeight={hookHeadlineWeight} />,
+      logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={slideFrameH} headlineWeight={hookHeadlineWeight} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={slideFrameH} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} slideTotal={content.slides.length} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={slideFrameH} />]
       : [carouselFormat === "engagement" && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={slideFrameH} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} reels={frameReels} frameH={slideFrameH} />]),

@@ -1,6 +1,6 @@
 # Human-made carousels + magnetic storytelling
 
-Status: PROPOSED (2026-09-06). Not started. Approve steps before building.
+Status: steps 1 to 3 SHIPPED 2026-09-06 on redesign/phase-2-design-system. Decisions: new "essay" preset (not a change to Editorial Scientific); Anton + Caveat approved (DESIGN.md log); accent is Signal Yellow by default with a red option per deck (essayAccent). Step 4 (benchmark deck) and step 5 remain.
 
 ## Diagnosis (from the reference screenshots vs. our decks)
 

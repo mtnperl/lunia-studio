@@ -95,6 +95,9 @@ export type Hook = {
   headline: string;
   subline: string;
   sourceNote?: string;
+  /** Essay preset: the one word or short phrase of the headline drawn in the
+   *  accent box. An exact substring of headline; dropped otherwise. */
+  emphasis?: string;
 };
 
 export type CarouselContentSlide = {
@@ -381,7 +384,10 @@ export type BrandStyle = {
 export type CarouselContrastMode = "standard" | "high";
 
 /** "viral" shares the editorial look and swaps the slide architecture for the slot engine in docs/carousel-viral-engine.md. */
-export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press" | "viral";
+export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press" | "viral" | "essay";
+
+/** Essay preset: the colour of the boxed word and the emphasis phrase. */
+export type EssayAccent = "yellow" | "red";
 
 /** Hook slide headline boldness. "default" preserves the original weight (400 / 300 editorial). */
 export type HookHeadlineWeight = "default" | "medium" | "bold" | "black";
@@ -417,7 +423,7 @@ export type SavedHookOverlays = {
 export type CarouselLookSettings = Pick<SavedCarousel,
   "stylePreset" | "imageStyle" | "reelsMode" | "darkBackground" | "slideBgColor" | "logoScale" | "arrowScale" |
   "citationFontSize" | "headlineScale" | "bodyScale" | "iconScale" | "showLuniaLifeWatermark" | "hookOverlays" |
-  "showSlideArrows" | "showSlideNumbers" | "showCitationBars" | "hookHeadlineWeight" | "contentBgOverlayOpacity">;
+  "showSlideArrows" | "showSlideNumbers" | "showCitationBars" | "hookHeadlineWeight" | "contentBgOverlayOpacity" | "essayAccent">;
 
 export type CarouselLook = {
   id: string;
@@ -482,6 +488,8 @@ export type SavedCarousel = {
   showCitationBars?: boolean;
   /** Hook slide headline boldness — "default" preserves today's weight (400 / 300 editorial). */
   hookHeadlineWeight?: HookHeadlineWeight;
+  /** Essay preset only: yellow (brand book) or red for the boxed word. */
+  essayAccent?: EssayAccent;
   /** Editorial Scientific only — hook image URLs pregenerated per boldness level via
    *  "Generate other weights" (edit-based, same composition as the source image), so
    *  switching Hook weight in the editor can swap instantly instead of regenerating. */

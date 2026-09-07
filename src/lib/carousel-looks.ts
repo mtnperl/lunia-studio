@@ -7,7 +7,7 @@ export function lookFromCarousel(c: SavedCarousel): CarouselLookSettings {
   const keys: (keyof CarouselLookSettings)[] = [
     "stylePreset", "imageStyle", "reelsMode", "darkBackground", "slideBgColor", "logoScale", "arrowScale",
     "citationFontSize", "headlineScale", "bodyScale", "iconScale", "showLuniaLifeWatermark", "hookOverlays",
-    "showSlideArrows", "showSlideNumbers", "showCitationBars", "hookHeadlineWeight", "contentBgOverlayOpacity",
+    "showSlideArrows", "showSlideNumbers", "showCitationBars", "hookHeadlineWeight", "contentBgOverlayOpacity", "essayAccent",
   ];
   for (const k of keys) {
     const v = c[k];

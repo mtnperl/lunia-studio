@@ -67,8 +67,9 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
         body: JSON.stringify({
           topic: topic ?? "",
           hookTone,
-          content: { slides: content.slides },
+          content: { slides: content.slides, spine: content.spine },
           guidelines: hooksGuidelines.trim(),
+          stylePreset,
         }),
       });
       const data = await res.json();

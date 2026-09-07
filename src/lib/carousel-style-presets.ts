@@ -1,7 +1,7 @@
 // Carousel v2 style presets. A preset bundles BrandStyle + typography + image
 // engine direction so the whole carousel takes on a single coherent look.
 import { PALETTE } from "@/lib/lunia-brand-guidelines";
-import { FP_COLORS } from "./brand-tokens";
+import { FP_COLORS, ESSAY_COLORS } from "./brand-tokens";
 import type { BrandStyle, CarouselStylePreset } from "./types";
 
 /** Editorial Scientific brand palette — explicit user direction.
@@ -33,7 +33,25 @@ export const EDITORIAL_MOOD_ID = "editorial-scientific";
 export function getStylePresetBrandStyle(p?: CarouselStylePreset): BrandStyle | undefined {
   if (p === "editorial-scientific" || p === "viral") return EDITORIAL_BRAND_STYLE;
   if (p === "free-press") return FREE_PRESS_BRAND_STYLE;
+  if (p === "essay") return ESSAY_BRAND_STYLE;
   return undefined;
+}
+
+/** Essay palette: paper and deep navy ink. The accent is chosen per deck
+ *  (essayAccent) and drawn by the essay slides, so the BrandStyle carries the
+ *  navy for shared chrome only. */
+export const ESSAY_BRAND_STYLE: BrandStyle = {
+  background:     ESSAY_COLORS.paper,
+  hookBackground: ESSAY_COLORS.paper,
+  headline:       ESSAY_COLORS.ink,
+  hookHeadline:   ESSAY_COLORS.ink,
+  body:           ESSAY_COLORS.ink,
+  accent:         ESSAY_COLORS.ink,
+  secondary:      ESSAY_COLORS.inkMuted,
+};
+
+export function isEssayPreset(p?: CarouselStylePreset | null): boolean {
+  return p === "essay";
 }
 
 /** True for every preset drawn with the editorial components: Editorial

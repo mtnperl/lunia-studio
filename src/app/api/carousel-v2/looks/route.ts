@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const KEYS: (keyof CarouselLookSettings)[] = [
   "stylePreset", "imageStyle", "reelsMode", "darkBackground", "slideBgColor", "logoScale", "arrowScale",
   "citationFontSize", "headlineScale", "bodyScale", "iconScale", "showLuniaLifeWatermark", "hookOverlays",
-  "showSlideArrows", "showSlideNumbers", "showCitationBars", "hookHeadlineWeight", "contentBgOverlayOpacity",
+  "showSlideArrows", "showSlideNumbers", "showCitationBars", "hookHeadlineWeight", "contentBgOverlayOpacity", "essayAccent",
 ];
 
 /** Keep only the known style keys, so a look can never smuggle content. */

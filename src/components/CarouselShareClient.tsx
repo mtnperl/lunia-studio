@@ -10,6 +10,9 @@ import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeaw
 import CTASlide from "@/components/carousel/slides/CTASlide";
 import CommentCTASlide from "@/components/carousel/slides/CommentCTASlide";
 import TakeawaySlide from "@/components/carousel/slides/TakeawaySlide";
+import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
+import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
+import { essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import { SavedCarousel, BrandStyle } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
@@ -77,21 +80,27 @@ export default function CarouselShareClient({ carousel }: Props) {
     showSlideNumbers = true,
     showCitationBars = true,
     hookHeadlineWeight = "default",
+    essayAccent,
   } = carousel;
   const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
+  const isEssay = stylePreset === "essay";
+  const essayNumber = essayNumberFrom(carousel.id);
+  const essayDateText = essayDate(carousel.savedAt);
   // Editorial slides use the dedicated editorial layout component (suppresses
   // duplicate HTML text overlay, renders icon bullets, etc.). Default carousels
   // continue to use the standard ContentSlide.
   const isViral = stylePreset === "viral";
-  const ContentSlideComponent = isFreePress
+  const ContentSlideComponent = isEssay
+    ? EssayContentSlide
+    : isFreePress
     ? FreePressContentSlide
     : isViral
       ? ViralContentSlide
       : isEditorial
         ? EditorialContentSlide
         : ContentSlide;
-  const TakeawaySlideComponent = isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
+  const TakeawaySlideComponent = isEssay ? EssayTakeawaySlide : isFreePress ? FreePressTakeawaySlide : TakeawaySlide;
 
   const hook = content.hooks[selectedHook];
   const imgs = slideImages ?? [null, null, null, null, null];
@@ -535,12 +544,12 @@ export default function CarouselShareClient({ carousel }: Props) {
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode}
       overlays={hookOverlays}
-      stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} />,
+      stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages?.[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} slideTotal={content.slides.length} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
       : [isEngagement && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />]),
@@ -552,12 +561,12 @@ export default function CarouselShareClient({ carousel }: Props) {
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode}
       overlays={hookOverlays}
-      stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} />,
+      stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} headlineWeight={hookHeadlineWeight} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages?.[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} figure={s.figure} emphasis={s.emphasis} slideIndex={i} slideTotal={content.slides.length} />
     )),
     ...(hasTakeaway && content.takeaway
-      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
+      ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} points={content.takeaway.points} interaction={content.takeaway.interaction} followLine={content.cta.followLine} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} slideTotal={content.slides.length} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} />]
       : [isEngagement && content.commentKeyword
           ? <CommentCTASlide key="cta" headline={content.cta.headline} commentKeyword={content.commentKeyword} followLine={content.cta.followLine} scale={1} brandStyle={bs} logoScale={logoScale} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} />
           : <CTASlide key="cta" headline={content.cta.headline} followLine={content.cta.followLine} graphic={content.cta.graphic} scale={1} brandStyle={bs} logoScale={logoScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} reels={reelsMode} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} />]),

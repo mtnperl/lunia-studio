@@ -156,6 +156,17 @@ export async function POST(req: Request) {
           // the UI, where the hook renders without a trust liner and the verification
           // layer flags it. Never re-add a fallback here.
           if (parsed.hooks) {
+            // Essay preset: the boxed word must be a substring of the headline
+            // or the cover has nothing to draw. Case-insensitive, then stored
+            // as the headline's own casing.
+            for (const h of parsed.hooks) {
+              const hh = h as { headline?: string; emphasis?: unknown };
+              if (typeof hh.emphasis === "string" && typeof hh.headline === "string") {
+                const e = hh.emphasis.trim();
+                const at = e.length > 0 ? hh.headline.toLowerCase().indexOf(e.toLowerCase()) : -1;
+                hh.emphasis = at >= 0 ? hh.headline.slice(at, at + e.length) : undefined;
+              } else delete hh.emphasis;
+            }
             const unsourced = parsed.hooks.filter(
               (h) => !h.sourceNote || h.sourceNote.trim().length === 0
             ).length;
