@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { compositeSlideWithImages } from "@/lib/slide-export";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
@@ -183,130 +184,11 @@ export default function CarouselShareClient({ carousel }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /**
-   * Canvas compositing for any slide containing <img>s. Same proven pattern
-   * as the old hook-only path, generalised to handle multiple images per
-   * slide (V2 content slides have a bg <img>; some may have a graphic <img>
-   * in the graphic zone too).
-   *
-   * 1. For each <img>: capture its bounding rect relative to `el` and resolve
-   *    its src to a data URL.
-   * 2. Hide every <img> + clear SlideWrapper inner background so toPng
-   *    captures a transparent-backdrop foreground.
-   * 3. Draw each image at its actual position on a 2x canvas with
-   *    object-fit-aware fitting (cover / contain / fill).
-   * 4. Draw the foreground PNG on top.
-   */
-  async function compositeWithImages(
-    el: HTMLElement,
-    imgEls: HTMLImageElement[],
-    filename: string,
-    exportH: number,
-  ): Promise<File> {
-    const elRect = el.getBoundingClientRect();
-    type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; objectFit: string };
-    const infos: ImgInfo[] = [];
-
-    for (const img of imgEls) {
-      const src = img.getAttribute("src");
-      if (!src) continue;
-      let dataUrl: string;
-      try {
-        dataUrl = await loadDataUrl(src);
-      } catch {
-        continue; // skip this image; fg capture will still produce something
-      }
-      const r = img.getBoundingClientRect();
-      infos.push({
-        dataUrl,
-        x: r.x - elRect.x,
-        y: r.y - elRect.y,
-        w: r.width,
-        h: r.height,
-        objectFit: getComputedStyle(img).objectFit || "fill",
-      });
-    }
-
-    // Hide every <img> + clear the SlideWrapper inner background so toPng
-    // captures only the foreground.
-    // el > SlideWrapper outer > SlideWrapper inner (has the user-supplied
-    // `style={{ background: bg }}` from HookSlide / ContentSlide).
-    const innerWrapper = el.firstElementChild?.firstElementChild as HTMLElement | null;
-    const savedDisplays = imgEls.map((img) => img.style.display);
-    const savedSrcs = imgEls.map((img) => img.getAttribute("src") ?? "");
-    const savedWrapperBg = innerWrapper?.style.background ?? "";
-
-    // Erase src AND hide — html-to-image crawls every img src it finds in the
-    // cloned DOM (including favicons referenced in computed CSS) and throws a
-    // DOM error event if any fails to load. Clearing src prevents those probes.
-    imgEls.forEach((img) => { img.style.display = "none"; img.removeAttribute("src"); });
-    if (innerWrapper) innerWrapper.style.background = "transparent";
-
-    let fgDataUrl: string;
-    try {
-      fgDataUrl = await toPng(el, {
-        width: 1080, height: exportH, pixelRatio: 2,
-        cacheBust: false, backgroundColor: "transparent",
-        // Also tell html-to-image to skip <img> nodes entirely in its clone —
-        // belt-and-suspenders against any img injected outside our imgEls list.
-        filter: (n: Node) => !(n instanceof HTMLImageElement),
-      });
-    } finally {
-      imgEls.forEach((img, i) => {
-        img.style.display = savedDisplays[i] ?? "";
-        if (savedSrcs[i]) img.setAttribute("src", savedSrcs[i]);
-      });
-      if (innerWrapper) innerWrapper.style.background = savedWrapperBg;
-    }
-
-    const PR = 2;
-    const W = 1080 * PR, H = exportH * PR;
-    const canvas = document.createElement("canvas");
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-
-    // Draw each image at its actual on-page position (DOM order = z-order).
-    for (const info of infos) {
-      await new Promise<void>((resolve) => {
-        const im = new Image();
-        im.onload = () => {
-          const dx = info.x * PR;
-          const dy = info.y * PR;
-          const dw = info.w * PR;
-          const dh = info.h * PR;
-          if (info.objectFit === "cover") {
-            const scale = Math.max(dw / im.width, dh / im.height);
-            const sw = dw / scale, sh = dh / scale;
-            const sx = (im.width - sw) / 2;
-            const sy = (im.height - sh) / 2;
-            ctx.drawImage(im, sx, sy, sw, sh, dx, dy, dw, dh);
-          } else if (info.objectFit === "contain") {
-            const scale = Math.min(dw / im.width, dh / im.height);
-            const dwc = im.width * scale, dhc = im.height * scale;
-            ctx.drawImage(im, dx + (dw - dwc) / 2, dy + (dh - dhc) / 2, dwc, dhc);
-          } else {
-            ctx.drawImage(im, dx, dy, dw, dh);
-          }
-          resolve();
-        };
-        im.onerror = () => resolve();
-        im.src = info.dataUrl;
-      });
-    }
-
-    // Draw the foreground (text, arrows, color overlay div, decorations) over the images.
-    await new Promise<void>((resolve) => {
-      const fg = new Image();
-      fg.onload = () => { ctx.drawImage(fg, 0, 0, W, H); resolve(); };
-      fg.onerror = () => resolve();
-      fg.src = fgDataUrl;
-    });
-
-    const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
-    );
-    return new File([blob], filename, { type: "image/png" });
+  /** Canvas compositing for any slide containing <img>s; see src/lib/slide-export.ts. */
+  function compositeWithImages(el: HTMLElement, imgEls: HTMLImageElement[], filename: string, exportH: number): Promise<File> {
+    return compositeSlideWithImages(el, imgEls, { filename, exportH, loadDataUrl });
   }
+
 
   async function buildSlideFile(index: number): Promise<File> {
     const el = exportRefs.current[index];
