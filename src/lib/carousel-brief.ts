@@ -275,7 +275,9 @@ export const EDITOR_READ_PROMPT = (brief: CarouselBrief | null, content: Carouse
   const tk = content.takeaway ? `takeaway:\n  headline: ${content.takeaway.headline}\n  points: ${content.takeaway.points.map((p) => `"${p}"`).join(", ")}` : "";
   const bodyShape = opts.viral
     ? "a body is 2 to 4 short lines separated by \" / \" in this listing; return it with real newlines (\\n) between lines, each line 9 words or fewer"
-    : "a body is 2 or 3 sentences, under 60 words";
+    : opts.essay
+      ? "a body is 2 or 3 sentences under 60 words, or a lead sentence followed by 2 to 4 list lines each starting with \"- \" (shown here after \" / \"); a list is a correct shape for a set, return it with real newlines (\\n) and keep the \"- \" markers"
+      : "a body is 2 or 3 sentences, under 60 words";
   const question = brief?.question || "the question the topic asks";
   const owes = brief?.owes?.length ? brief.owes.map((o) => `    - ${o}`).join("\n") : "";
   return `You are a careful native English reader. You have not seen any writing rules and you must not invent any. Read this Instagram carousel cold, the way a stranger would on a phone.
@@ -390,4 +392,41 @@ export function describeEditorRead(read: EditorRead | undefined): string {
   const applied = read.notes.filter((n) => n.applied);
   if (applied.length === 0) return "Read cold: nothing failed";
   return `${applied.length} fix${applied.length > 1 ? "es" : ""} applied: ${applied.map((n) => `${n.where}, ${n.problem}`).join("; ")}`;
+}
+
+// ─── The takeaway, repaired rather than dropped ──────────────────────────────
+//
+// The takeaway is the last slide of every deck. The model sometimes returns
+// it with a missing interaction or an empty label, and the route used to
+// drop the whole object, which put the old "read more" card on the end of
+// the deck. Now what is missing is filled from what the deck already says,
+// and only a takeaway with no points at all is dropped.
+
+type TakeawayLike = { headline?: unknown; points?: unknown; interaction?: unknown };
+type Repaired = { headline: string; points: string[]; interaction: { type: "save" | "send" | "comment"; label: string } };
+
+export function repairTakeaway(raw: TakeawayLike | null | undefined, ctx: { brief?: CarouselBrief | null; hookHeadline?: string; ctaHeadline?: string }): { takeaway: Repaired | null; repaired: string[] } {
+  const repaired: string[] = [];
+  const tk = raw && typeof raw === "object" ? raw : {};
+  let points = Array.isArray(tk.points) ? (tk.points as unknown[]).filter((p): p is string => typeof p === "string" && p.trim().length > 0).map((p) => p.trim()) : [];
+  if (points.length === 0) {
+    const fromBrief = [ctx.brief?.claim, ctx.brief?.tonight].filter((p): p is string => !!p && p.trim().length > 0);
+    if (fromBrief.length === 0) return { takeaway: null, repaired: ["no points and nothing to build them from"] };
+    points = fromBrief;
+    repaired.push("points from the piece");
+  }
+  let headline = typeof tk.headline === "string" ? tk.headline.trim() : "";
+  if (!headline) {
+    headline = (ctx.ctaHeadline || ctx.hookHeadline || points[0]).toUpperCase();
+    repaired.push("headline from the deck");
+  }
+  const ir = tk.interaction && typeof tk.interaction === "object" ? (tk.interaction as { type?: unknown; label?: unknown }) : null;
+  const type: Repaired["interaction"]["type"] = ir && ["save", "send", "comment"].includes(ir.type as string) ? (ir.type as Repaired["interaction"]["type"]) : "save";
+  let label = ir && typeof ir.label === "string" ? ir.label.trim() : "";
+  if (!ir || !["save", "send", "comment"].includes(ir.type as string)) repaired.push("interaction type");
+  if (!label) {
+    label = ctx.brief?.tonight ? "Save this for tonight" : "Save this for the next bad night";
+    repaired.push("interaction label");
+  }
+  return { takeaway: { headline, points: points.slice(0, 3), interaction: { type, label } }, repaired };
 }

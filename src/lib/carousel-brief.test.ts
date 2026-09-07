@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, craftBlock, describeEditorRead, recentDecksBlock, EDITOR_READ_PROMPT } from "./carousel-brief";
+import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, craftBlock, describeEditorRead, recentDecksBlock, repairTakeaway, EDITOR_READ_PROMPT } from "./carousel-brief";
+import { splitEssayBody, keepOneEssayGraphic, isEssayGraphic } from "./essay-body";
 import type { CarouselContent, SavedCarousel } from "./types";
 
 const brief = {
@@ -106,5 +107,50 @@ describe("editor read", () => {
     expect(block).toContain("18.9%");
     expect(block).not.toContain("IGNORED");
     expect(recentDecksBlock([])).toBe("");
+  });
+});
+
+describe("takeaway repair", () => {
+  it("keeps a good takeaway as it is", () => {
+    const { takeaway, repaired } = repairTakeaway({ headline: "H", points: ["a", "b"], interaction: { type: "send", label: "Send it" } }, {});
+    expect(repaired).toEqual([]);
+    expect(takeaway?.interaction.type).toBe("send");
+  });
+  it("fills a missing interaction and headline instead of dropping the slide", () => {
+    const { takeaway, repaired } = repairTakeaway({ points: ["a"] }, { hookHeadline: "the hook" });
+    expect(takeaway?.headline).toBe("THE HOOK");
+    expect(takeaway?.interaction).toEqual({ type: "save", label: "Save this for the next bad night" });
+    expect(repaired).toContain("interaction type");
+  });
+  it("builds points from the piece when the model sent none, and drops only when there is nothing", () => {
+    expect(repairTakeaway({}, { brief: { ...brief, kind: "finding", loop: brief.loop, backing: [] } }).takeaway?.points).toEqual([brief.claim, brief.tonight]);
+    expect(repairTakeaway(null, {}).takeaway).toBeNull();
+  });
+});
+
+describe("essay body shapes", () => {
+  it("reads a lead sentence over list lines, and leaves prose alone", () => {
+    expect(splitEssayBody("The night has three parts.\n- Light sleep, the doorway\n- Deep sleep, early\n- REM, toward morning")).toEqual({ lead: "The night has three parts.", items: ["Light sleep, the doorway", "Deep sleep, early", "REM, toward morning"] });
+    expect(splitEssayBody("One dash - inside a sentence.\n- only one item")).toEqual({ lead: "One dash - inside a sentence.\n- only one item", items: [] });
+    expect(splitEssayBody("- a\n- b").lead).toBe("");
+  });
+});
+
+describe("essay figure", () => {
+  const bars = JSON.stringify({ component: "bars", data: { items: [{ label: "8.5 H", value: "1.4 kg" }, { label: "5.5 H", value: "0.6 kg" }] } });
+  const wordBars = JSON.stringify({ component: "bars", data: { items: [{ label: "SLOW", value: "MORE RECALLED" }, { label: "REM", value: "NO CHANGE" }] } });
+  const split = JSON.stringify({ component: "split", data: { parts: [{ label: "NON-REM", percent: 78 }, { label: "REM", percent: 22 }] } });
+  it("accepts numbers and refuses words, waves and grids", () => {
+    expect(isEssayGraphic(bars)).toBe(true);
+    expect(isEssayGraphic(split)).toBe(true);
+    expect(isEssayGraphic(wordBars)).toBe(false);
+    expect(isEssayGraphic(JSON.stringify({ component: "wave", data: { labels: ["A", "B"] } }))).toBe(false);
+    expect(isEssayGraphic(JSON.stringify({ component: "iconGrid", data: { items: [{ label: "A" }] } }))).toBe(false);
+    expect(isEssayGraphic("")).toBe(false);
+  });
+  it("keeps the first real figure and clears the rest", () => {
+    const { slides, cleared } = keepOneEssayGraphic([{ graphic: JSON.stringify({ component: "wave", data: { labels: ["A"] } }) }, { graphic: split }, { graphic: bars }]);
+    expect(slides.map((s) => !!s.graphic)).toEqual([false, true, false]);
+    expect(cleared).toBe(2);
   });
 });

@@ -256,8 +256,18 @@ function essayLookBlock(): string {
 ESSAY LOOK. The deck is type on paper with one engraving on the cover. Every hook object and every slide object carries an "emphasis" field:
 - hooks[].emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline, same characters. It is drawn in a filled box, so choose the word a reader would circle: the verb, the number, the villain. "NOBODY" in "CONTENT I SEE NOBODY CREATING"; "STOP" in "STOP CREATING EDUCATIONAL CONTENT". Never the product, never "you". Every hook has one.
 - slides[].emphasis: one phrase of 2 to 6 words copied EXACTLY from the body, the phrase that carries the slide. Never the last line. "" when nothing earns it.
-- slides[].graphic: "" for every slide. The essay look draws no infographic; the picture is the cover engraving.
 - Slide headlines: UPPERCASE, 4 to 9 words, a complete claim a stranger understands without the body. They are set large in a condensed face, so they are short, but they are never a fragment ("LIGHT SWITCHED OFF ONE WAVE" fails; "ONE BRAIN RHYTHM CARRIES THE MEMORY" passes).
+
+Two shapes beyond the paragraph help a reader on a phone get through the deck, and both are set in the same ink and accent on the paper. Use each only where the content has that shape; a deck of three paragraphs is right when the piece is three paragraphs.
+- A LIST. When a slide's content is a set (the stages of a night, the steps of a routine, the two arms of a study, the three things that change), write the body as one lead sentence, then a newline, then 2 to 4 lines each starting with "- ". Each line is a complete short clause, 12 words or fewer, that reads on its own; the rows render numbered on hairlines. The lead sentence is optional and says what the set is. At most two list slides per deck, never two in a row.
+- A FIGURE. THIS OVERRIDES EVERY OTHER GRAPHIC RULE IN THIS PROMPT, including tier diversity and classification. slides[].graphic is "" on every slide except at most ONE per deck, and that one only where the reader sees a comparison or a proportion faster than they can read it: two conditions side by side, a night split into its parts, one number that carries the slide. It is drawn in ink and accent, so it needs no colour to work. Use only these, with the slide's real numbers, compact single-line JSON:
+  {"component":"bars","data":{"items":[{"label":"8.5 H IN BED","value":"1.4 kg"},{"label":"5.5 H IN BED","value":"0.6 kg"}]}}  two to four values side by side
+  {"component":"split","data":{"parts":[{"label":"NON-REM","percent":78},{"label":"REM","percent":22}]}}  a whole divided into parts
+  {"component":"stackedBar","data":{"segments":[{"label":"LIGHT","percent":55},{"label":"DEEP","percent":22},{"label":"REM","percent":23}]}}  a composition of 2 to 5 parts
+  {"component":"stat","data":{"stat":"55%","unit":"","label":"LESS FAT LOST ON 5.5 HOURS"}}  one hero number with what it means
+  {"component":"spectrum","data":{"min":0,"max":12,"from":7,"to":9,"label":"OPTIMAL SLEEP","unit":"h"}}  a range on a scale
+  {"component":"timeline","data":{"events":[{"time":"0 H","label":"Deep sleep"},{"time":"2 H","label":"First REM"}]}}  2 to 6 moments in order
+  Labels are 4 words or fewer. Every value in a graphic is a number from the slide or its citation; a bar chart of words ("MORE RECALLED" vs "NO CHANGE") is the body drawn again and is not a figure, return "" instead. No other component (no wave, no iconGrid, no checklist, no steps, no vector) is ever used in this look. A slide with a graphic keeps its body short (under 45 words) so both fit. graphicImagePrompt is null on every slide.
 `;
 }
 

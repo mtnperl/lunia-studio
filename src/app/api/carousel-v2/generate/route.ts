@@ -1,11 +1,12 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
-import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, type CarouselBrief } from "@/lib/carousel-brief";
+import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief } from "@/lib/carousel-brief";
 import { STRUCTURES } from "@/lib/carousel-structures";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
+import { keepOneEssayGraphic } from "@/lib/essay-body";
 import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, getCarousels, saveCarousel } from "@/lib/kv";
 import { structurePromptBlock } from "@/lib/carousel-looks";
 import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
@@ -185,27 +186,24 @@ export async function POST(req: Request) {
               );
             }
           }
-          // Normalize the optional Takeaway slide. The model occasionally returns
-          // a partial object (missing points/interaction); the renderers read
-          // those fields directly, so an incomplete shape crashes the content
-          // stage. Drop a malformed takeaway entirely — every consumer guards on
-          // its truthiness and falls back to the 5-slide deck.
-          const tk = parsed.takeaway;
-          if (tk) {
-            const points = Array.isArray(tk.points)
-              ? tk.points.filter((p) => typeof p === "string" && p.trim().length > 0)
-              : [];
-            const interactionOk =
-              !!tk.interaction &&
-              typeof tk.interaction.label === "string" &&
-              tk.interaction.label.trim().length > 0 &&
-              ["save", "send", "comment"].includes(tk.interaction.type as string);
-            if (!tk.headline || typeof tk.headline !== "string" || points.length === 0 || !interactionOk) {
-              console.warn("[generate] malformed takeaway dropped");
-              delete parsed.takeaway;
+          // The takeaway is the last slide of every deck. Repair what the
+          // model left out from what the deck already says; drop it only
+          // when there are no points at all (see repairTakeaway).
+          {
+            const { takeaway, repaired } = repairTakeaway(parsed.takeaway, { brief, hookHeadline: parsed.hooks?.[0]?.headline, ctaHeadline: parsed.cta?.headline });
+            if (takeaway) {
+              parsed.takeaway = takeaway;
+              if (repaired.length) console.warn(`[generate] takeaway repaired: ${repaired.join(", ")}`);
             } else {
-              tk.points = points;
+              console.warn(`[generate] takeaway dropped: ${repaired.join(", ")}`);
+              delete parsed.takeaway;
             }
+          }
+          // The essay look carries one figure per deck, in ink and accent.
+          if (stylePreset === "essay" && Array.isArray(parsed.slides)) {
+            const { slides, cleared } = keepOneEssayGraphic(parsed.slides);
+            parsed.slides = slides;
+            if (cleared) console.info(`[generate] essay: cleared ${cleared} graphic(s), kept ${slides.some((s) => s.graphic) ? "one" : "none"}`);
           }
           // Validate every graphic shape now, not just at render time — a
           // mismatch between what Claude sent and the component's real data
