@@ -196,7 +196,7 @@ export async function POST(req: Request) {
           if (sp && typeof sp === "object") {
             const o = sp as Record<string, unknown>;
             const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim().slice(0, 240) : "");
-            const spine = { moment: str("moment"), villain: str("villain"), turn: str("turn"), payoff: str("payoff"), image: str("image") || undefined };
+            const spine = { moment: str("moment"), villain: str("villain"), turn: str("turn"), payoff: str("payoff"), image: str("image") || undefined, who: str("who") || undefined };
             if (spine.moment && spine.villain && spine.turn && spine.payoff) parsed.spine = spine;
             else delete parsed.spine;
           } else delete parsed.spine;

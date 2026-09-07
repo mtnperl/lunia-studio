@@ -332,7 +332,7 @@ THE VALUE MOVE. This deck exists to ${VALUE_MOVE_TEXT[spec.valueMove]}. If a rea
 
 Return EXACTLY ${plan.length} objects in "slides", in this order. Each slide has ONE job, and its "beat" field is the beat named for it here.
 ${rows}
-The hook is slide 1 and the CTA is slide ${total}.${total === 5 ? " Do NOT return a \"takeaway\" object." : ""}
+The hook is slide 1 and the takeaway is slide ${total}: it pays the deck's open loops in three lines and carries the follow line. There is no separate "read more" slide.
 
 Retention rules, all mandatory:
 - Every content slide ends owing the reader something: its final line does the "End on" job above, in words that fit THIS topic. Never reuse a stock line; never use the words "half", "lever" or "upstream" unless they name a concrete thing on the slide.
@@ -340,6 +340,6 @@ Retention rules, all mandatory:
 - No wordplay, no doubled verbs ("runs late, runs flat"), no word whose referent is not on the same slide ("twice", "the other half").
 - One idea per slide. A slide that does another slot's job fails.
 - Every figure needs a real source in "citation" or must be hedged in words. Never invent a study. At least ${Math.round(spec.minCited * 100)}% of the content slides carry a citation, and no single source carries more than two slides.
-- CTA headline: one ask to lunialife.com, sentence case, max 6 words. Nothing else on that slide.
+- The last slide answers the hook's question outright, in the reader's words. "cta.headline" is one calm line for older layouts, max 6 words.
 `;
 }

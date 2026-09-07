@@ -241,7 +241,23 @@ How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it
 - "figure": the slide's visual. A sourced number with its unit, 1 to 6 characters, e.g. "40%", "3 h", "2x", "90 min". Use it on at most ${total === 10 ? "three" : "two"} slides, never on a "moment" slide, only when the number is in "body" and has a real "citation". "" otherwise. Never a figure on the slide right after another figure.
 - "graphic": "" except on the slots the structure marks as allowed, and only for a sourced comparison worth drawing. A slide with a figure needs no graphic.
 - Hook headline: 8 words or fewer, one sentence, a promise or a number. Never the product.
-- Do NOT return a "takeaway" object.
+`;
+}
+
+/** The last slide of every v2 deck: the takeaway. It replaces the old
+ *  "read more" CTA slide, carries the follow line, and pays the deck's open
+ *  loops instead of listing three facts. */
+function takeawayBlock(total: 5 | 10): string {
+  return `
+THE LAST SLIDE IS THE TAKEAWAY (mandatory: populate the "takeaway" object). Slide ${total} is not a "read more" card. It is the slide the reader screenshots, and it carries the follow line, so there is no separate CTA slide. Build it so a reader who saw nothing else still gets the value, and a reader who saw everything gets the answer they were owed.
+  takeaway.headline: the payoff in the reader's words. UPPERCASE, max 6 words, not a question. It answers the question the hook asked and, where it fits, names the returning image ("GET UP AT 3:11" beats "FIX YOUR SLEEP").
+  takeaway.points: exactly 3 lines, each max 12 words, no period. They are the story's three beats paid off, not three facts: point 1 is the villain named (what they were doing), point 2 is the turn (why it failed), point 3 is the payoff (what they do tonight, with its concrete detail: the time, the count, the object). Plain words a reader repeats to a friend. No citations, no hedging, no "may support" padding here.
+  takeaway.interaction: ONE explicit ask, matched to the deck:
+    - type "save" when the deck is a routine or how-to the reader will act on later (default for actionable topics).
+    - type "send" when the deck is relatable or diagnostic, something the reader knows applies to one friend or partner.
+    - type "comment" when the deck poses a question or invites the reader to self-identify.
+    label: a short, specific, second-person instruction that names WHY, max 12 words, and it carries the deck's image ("Save this for the next 3:11 wake-up"). Never a generic "save this post".
+  "cta.headline" is still returned for older layouts: one calm line, uppercase, max 6 words. "cta.followLine" stays exactly "Follow @lunia_life for science-based sleep strategies."
 `;
 }
 
@@ -267,10 +283,19 @@ ONE STORY, NOT A LIST. Before you write a single slide, write the "spine": four 
   turn: why the villain fails, in one sentence.
   payoff: what the reader does tonight instead, in one sentence.
   image: the concrete detail from the moment (the clock at 3:11, the cold coffee), five words or fewer.
+  who: the one person this deck is for, in their own words, eight words or fewer ("people who wake at 3am and cannot drop off again"). Not "everyone", not "sleepers".
 Then give every content slide a "beat": which of moment, villain, turn or payoff it serves. Beats run in that order across the deck and never go backwards. Several slides may share a beat; every deck reaches the payoff. The tips are steps of the payoff, not a list.
 
 THE RELAY. Each slide answers the one before it. The first line of a slide picks up a word from the last line of the previous slide, so the open loop is paid, not dropped. Never start a slide cold.
 THE RETURNING IMAGE. The image from the moment appears again on the turn and on the payoff, in the reader's words. That recurrence is what makes the deck feel like one thing.
+
+WHO IT IS FOR. The hook speaks to the "who" above and to nobody else. A word from "who" appears in the hook headline or subline, so the right reader thinks "that is me" and the wrong reader scrolls on. A hook for everyone reaches no one.
+
+ONE CONCRETE DETAIL PER SLIDE. Every content slide carries something the reader can picture: a clock time, a count, a length of time, or the returning image. "My first launch didn't go well" is a summary; "six weeks of prep, three sales" is a story. The detail is a thing, never a statistic you cannot source: "the third night", "the 4:50 alarm", "the second coffee" are details; an invented percentage is a lie.
+
+THE READER'S QUESTION. The last line of every content slide leaves the reader asking one specific question, and the first line of the next slide answers it. Write the question for THIS deck's villain and image; a line that could close any sleep deck ("here is why", "the real reason") is a stock line and fails. "Only 3 sales came in" leaves "what went wrong?"; "she asked one question I could not answer" leaves "what did she ask?". The last slide answers the hook's question outright.
+
+THE SECOND HOOK. Instagram shows a carousel twice: first from slide 1, then from slide 2. Slide 2's headline must work cold, as a hook in its own right: a complete statement or scene, eight words or fewer, that never starts with "and", "but", "so", "because", "this", "it", "they" or any word that leans on the slide before it.
 `;
 
 export const GENERATE_CAROUSEL_PROMPT = (
@@ -311,7 +336,7 @@ Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educati
 ${concise ? '\nCONCISE MODE — MANDATORY: Each slide body MUST be 1-2 sentences maximum (30 words max). No secondary claims. One punch per slide. This OVERRIDES the default 3-5 sentence rule.\nBrevity is about cutting padding, NOT about cutting accuracy. A qualifier that makes a claim true is not padding, it is part of the claim. If a statement only fits in 30 words by becoming false, state the narrower true version instead. Never buy punchiness with precision.' : ''}
 Return ONLY valid JSON in this exact format, no other text:
 {
-  "spine": { "moment": "string", "villain": "string", "turn": "string", "payoff": "string", "image": "string" },
+  "spine": { "moment": "string", "villain": "string", "turn": "string", "payoff": "string", "image": "string", "who": "string" },
   "hooks": [
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
     { "headline": "string", "subline": "string", "sourceNote": "Based on [Journal Name] research, [Year] — or \"\" if no real source" },
@@ -325,7 +350,7 @@ Return ONLY valid JSON in this exact format, no other text:
   "cta": {
     "headline": "string",
     "followLine": "Follow @lunia_life for science-based sleep strategies."
-  },${v2Mode && !isViral && total === 5 ? `
+  },${v2Mode ? `
   "takeaway": {
     "headline": "string",
     "points": ["string", "string", "string"],
@@ -379,15 +404,7 @@ The 3 slides MUST NOT all read as statements of fact. Slide 1 surprises, slide 2
 
 FORWARD-REFERENCE TEASE (mandatory): the LAST sentence of Slide 3's body must plant a soft pull toward the final slide — a one-line promise that the distilled version / the full recap is coming next. Keep it calm and specific, never "swipe up!!". Examples: "The full routine is on the last slide." / "Here's the whole thing in three lines, next." Do not over-hype; one quiet sentence.
 
-TAKEAWAY SLIDE (mandatory for v2 — populate the "takeaway" object): a penultimate payoff slide shown BETWEEN the content and the CTA. It pays off the tease and earns the save. Build it so a reader who saw nothing else still gets the value.
-  takeaway.headline: the single sharpest payoff line. UPPERCASE, max 6 words. Not a question. This is the "why I saved this" line.
-  takeaway.points: 2-3 items, each ONE line, max 12 words, NO period. Distil the arc — point 1 from the surprise, point 2 from the mechanism, point 3 from the action — into plain, do-it-tonight language. Each point must stand alone and be skimmable. These are what the reader screenshots. No citations, no hedging, no "may support" padding here — just the takeaway.
-  takeaway.interaction: ONE explicit ask, matched to the content:
-    - type "save" when the deck is a routine/checklist/how-to the reader will act on later (default for actionable topics).
-    - type "send" when the deck is relatable or diagnostic — something the reader knows applies to a specific friend/partner.
-    - type "comment" when the deck poses a question or invites the reader to self-identify.
-    label: a short, specific, second-person instruction that names WHY (max 12 words). Examples: "Save this for your next 3am wake-up", "Send this to someone who's always tired", "Comment your bedtime and I'll tell you what to fix". Match the verb to the chosen type. Do not default to a generic "save this post".
-` : ""}
+` : ""}${v2Mode ? takeawayBlock(total) : ""}
 Brand rules (follow exactly):
 - ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. This content is fact-checked against real sources before it ships, and invented specifics get caught and sent back.
 - Do not assert a mechanism, timing, dose or percentage you are not confident is correct. Describe the direction of the effect instead. "Magnesium is associated with faster sleep onset" is publishable; "magnesium cuts sleep onset by 17 minutes" is not, unless that figure is real.
@@ -531,6 +548,9 @@ Brand rules (follow exactly):
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
 - Citations: ONLY real peer-reviewed papers. Format: Author FM, et al. Title. Journal. Year;Vol(Issue):Pages. Keep the citation above unchanged unless the claim it supports has changed; never invent a study, and never keep a citation that no longer matches the copy.
 - Accuracy outranks the note and the word counts. A qualifier that makes a claim true is not padding. If the note asks for something the evidence does not support, write the narrower true version instead.
+- One concrete detail on the slide: a clock time, a count, a length of time, or the deck's returning image. A thing, never an invented figure.
+- The last line leaves the reader one specific question the next slide answers. Written for this deck; never a stock line that would close any sleep deck.${slideIndex === 0 ? `
+- This is slide 2, the second hook: Instagram shows the deck a second time starting here. The headline must work cold, eight words or fewer, never opening on "and", "but", "so", "because", "this", "it" or "they".` : ""}
 ${isViral ? `- "headline": the hero line, 3 to 7 words, SENTENCE CASE (only the first letter capitalised, never all caps), no full stop. One idea.
 - "body": 2 to 4 short lines separated by a newline character (\\n). Each line is a complete sentence of 9 words or fewer. 20 to 40 words in total. The last line is the open loop above.
 - "emphasis": the one phrase that carries the slide, 2 to 6 words, copied EXACTLY from one of the body lines. Never the open-loop line. "" when nothing earns it.

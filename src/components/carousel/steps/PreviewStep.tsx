@@ -656,7 +656,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // carousels keep their comment-CTA, and decks saved before this slide existed
   // have no `takeaway`. When present the carousel is 6 slides instead of 5, so
   // labels, loop bounds, and the CTA index are all derived from here.
-  const hasTakeaway = isV2 && !isViral && carouselFormat !== "engagement"
+  const hasTakeaway = isV2 && carouselFormat !== "engagement"
     && !!content.takeaway
     && Array.isArray(content.takeaway.points) && content.takeaway.points.length > 0
     && !!content.takeaway.interaction;

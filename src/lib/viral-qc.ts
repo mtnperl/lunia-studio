@@ -2,7 +2,7 @@ import type { CarouselContent, VerificationRecord } from "./types";
 import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
 import { summarize } from "./verification-status";
 import { plainLanguageCheck, describeIssues } from "./plain-language";
-import { storyCheck, describeStoryIssues } from "./story-spine";
+import { storyCheck, describeStoryIssues, hasConcreteDetail, standsAlone, hookNamesAudience } from "./story-spine";
 import { structurePlan, STRUCTURES, type CarouselStructure } from "./carousel-structures";
 
 /**
@@ -68,9 +68,11 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   const found = [...hits, ...patternHits];
   rows.push({ id: "compliance", label: "Compliance: no banned phrase or pattern", state: found.length ? "fail" : "pass", detail: found.length ? found.slice(0, 4).join(", ") : "Nothing from the banned list" });
 
-  // 7. CTA exactly once.
+  // 7. The deck closes once: a takeaway that carries the follow line, or a
+  // CTA slide on older decks, and lunialife.com nowhere else.
   const ctaMentions = slides.filter((s) => /lunialife\.com/i.test(`${s.headline} ${s.body}`)).length;
-  rows.push({ id: "cta", label: "One CTA to lunialife.com, on the last slide only", state: content.cta?.headline && ctaMentions === 0 ? "pass" : "fail", detail: !content.cta?.headline ? "No CTA slide" : ctaMentions ? `lunialife.com also appears on ${ctaMentions} content slide${ctaMentions > 1 ? "s" : ""}` : "CTA slide only" });
+  const closes = !!(content.takeaway?.points?.length || content.cta?.headline);
+  rows.push({ id: "cta", label: "One closing slide: the takeaway with the follow line, lunialife.com nowhere else", state: closes && ctaMentions === 0 ? "pass" : "fail", detail: !closes ? "No takeaway or CTA slide" : ctaMentions ? `lunialife.com also appears on ${ctaMentions} content slide${ctaMentions > 1 ? "s" : ""}` : content.takeaway?.points?.length ? "Takeaway closes the deck" : "CTA slide closes the deck; regenerate for a takeaway" });
 
   // 8. Caption follow line.
   // The caption standard is the generator's own closing line; the CTA slide's
@@ -87,9 +89,26 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   const pl = plainLanguageCheck(`${hook?.headline ?? ""} ${hook?.subline ?? ""}`, slides.map((s, i) => ({ label: `slide ${i + 2}`, text: `${s.headline}. ${s.body}` })));
   rows.push({ id: "plain", label: "Plain language: a reader with no sleep knowledge follows every slide", state: pl.ok ? "pass" : "fail", detail: pl.ok ? (pl.terms.length ? `One term taught: ${pl.terms[0]}` : "No technical terms") : describeIssues(pl) });
 
-  // 11. One story: a spine, beats in order, and every handoff carried.
-  const st = storyCheck(content, plan.map((sl) => sl.beat));
-  rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: st.ok ? "pass" : "fail", detail: st.ok ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues(st) });
+  // 11. One story: a spine, beats in order, and every handoff carried. The
+  // detail, second-hook and audience rules get their own rows below, so they
+  // are filtered out of this one.
+  const st = storyCheck(content, plan.map((sl) => sl.beat), hook);
+  const own = new Set(["no-detail", "weak-second-hook", "no-audience"]);
+  const storyIssues = st.issues.filter((i) => !own.has(i.kind));
+  rows.push({ id: "story", label: "One story: spine, beats in order, every slide answers the one before", state: storyIssues.length === 0 ? "pass" : "fail", detail: storyIssues.length === 0 ? `${st.carried} of ${st.handoffs} handoffs carry a word forward` : describeStoryIssues({ ...st, issues: storyIssues }) });
+
+  // 11b. A concrete detail on every slide: a number, a time, or the
+  // returning image. A slide with none is a summary, not a story.
+  const vague = slides.map((s, i) => (hasConcreteDetail(`${s.headline} ${s.body}`, content.spine) ? 0 : i + 2)).filter(Boolean);
+  rows.push({ id: "detail", label: "Every slide carries one concrete detail: a time, a count, or the returning image", state: slides.length === 0 ? "fail" : vague.length ? "fail" : "pass", detail: vague.length ? `Slide${vague.length > 1 ? "s" : ""} ${vague.join(", ")}: nothing the reader can picture` : "Each slide has something to picture" });
+
+  // 11c. Slide 2 is the second hook: the deck is shown a second time from it.
+  const second = slides[0]?.headline ?? "";
+  rows.push({ id: "second-hook", label: "Slide 2 works cold as a second hook", state: !slides[0] ? "fail" : standsAlone(second) ? "pass" : "fail", detail: !slides[0] ? "No slide 2" : standsAlone(second) ? `"${second}"` : `"${second}" leans on slide 1 or runs past 8 words` });
+
+  // 11d. The hook names who it is for.
+  const named = hookNamesAudience(content.spine, hook);
+  rows.push({ id: "audience", label: "The hook names who the deck is for", state: !content.spine?.who ? "manual" : named ? "pass" : "fail", detail: !content.spine?.who ? "No audience on the spine; read the hook and ask who it speaks to" : named ? `For: ${content.spine.who}` : `The spine says "${content.spine.who}" but no word of it is in the hook` });
 
   // 12. Proof: enough cited slides, and no single source carrying the deck.
   const cited = slides.filter((s) => (s.citation ?? "").trim().length > 0).length;

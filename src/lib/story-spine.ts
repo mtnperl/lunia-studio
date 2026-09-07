@@ -6,6 +6,11 @@
 // serves one beat, in that order. The relay is the seam between slides: the
 // first line of a slide picks up a word from the last line of the one before,
 // so the open loop is answered instead of dropped.
+//
+// Three more rules make a deck read as written by one person about one
+// night: every slide carries a concrete detail, slide 2 stands on its own as a
+// second hook (Instagram shows a carousel twice, the second time from slide
+// 2), and the hook names who the deck is for.
 
 export const STORY_BEATS = ["moment", "villain", "turn", "payoff"] as const;
 export type StoryBeat = (typeof STORY_BEATS)[number];
@@ -21,6 +26,8 @@ export type StorySpine = {
   payoff: string;
   /** One concrete image from the moment that returns on the turn and the payoff. */
   image?: string;
+  /** Who this deck is for, in the reader's words. "People who wake at 3am." */
+  who?: string;
 };
 
 export type StoryIssue =
@@ -28,7 +35,13 @@ export type StoryIssue =
   | { kind: "no-beat"; where: string }
   | { kind: "out-of-order"; where: string; beat: StoryBeat; after: StoryBeat }
   | { kind: "missing-beat"; beat: StoryBeat }
-  | { kind: "dropped-handoff"; from: string; to: string };
+  | { kind: "dropped-handoff"; from: string; to: string }
+  /** A slide with no concrete detail: no number, no time, no object from the moment. */
+  | { kind: "no-detail"; where: string }
+  /** Slide 2's headline leans on the hook instead of standing alone. */
+  | { kind: "weak-second-hook"; headline: string }
+  /** The hook names nobody, or not the person the spine says it is for. */
+  | { kind: "no-audience" };
 
 export type StoryReport = { ok: boolean; issues: StoryIssue[]; handoffs: number; carried: number };
 
@@ -59,15 +72,59 @@ export function handoffCarries(prevBody: string, nextHeadline: string, nextBody:
   return false;
 }
 
+
+const NUMBER_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|half|twice|double|dozen|hundred|thousand)\b/i;
+const TIME_WORDS = /\b(\d{1,2}(:\d{2})?\s?(am|pm)|minutes?|mins?|hours?|hrs?|nights?|days?|weeks?|months?|years?|seconds?|midnight|noon|dawn|morning|evening|tonight)\b/i;
+
+/** Whether the text carries something a reader can picture: a figure, a
+ *  clock time or unit of time, or the returning image from the spine. */
+export function hasConcreteDetail(text: string, spine?: StorySpine | null): boolean {
+  if (/\d/.test(text) || NUMBER_WORDS.test(text) || TIME_WORDS.test(text)) return true;
+  if (spine?.image) {
+    const img = contentWords(spine.image);
+    for (const w of contentWords(text)) if (img.has(w)) return true;
+  }
+  return false;
+}
+
+/** Openers that make a headline a continuation of the slide before it. A
+ *  second hook is read cold, so it cannot start on one of these. */
+const LEANING_OPENERS = new Set(["and", "but", "so", "because", "which", "that", "this", "these", "those", "it", "its", "they", "then", "also", "or", "nor", "yet", "instead", "still", "here", "there", "meanwhile", "however", "plus", "same"]);
+
+/** Whether a headline works as a hook on its own: one to eight words, and
+ *  not leaning on a slide the reader has not seen. */
+export function standsAlone(headline: string): boolean {
+  const w = headline.trim().split(/\s+/).filter(Boolean);
+  if (w.length === 0 || w.length > 8) return false;
+  const first = w[0].toLowerCase().replace(/[^a-z]/g, "");
+  return !LEANING_OPENERS.has(first);
+}
+
+/** Whether the hook carries a word from the spine's "who". */
+export function hookNamesAudience(spine: StorySpine | null | undefined, hook: { headline: string; subline?: string } | null | undefined): boolean {
+  if (!spine?.who || !hook) return false;
+  const who = contentWords(spine.who);
+  for (const w of contentWords(`${hook.headline} ${hook.subline ?? ""}`)) if (who.has(w)) return true;
+  return false;
+}
+
 /**
  * `expected` is the structure's beat sequence. With it, each slide must serve
  * the beat its slot names (so Myth, Fact, Myth, Fact is valid). Without it,
  * beats may only move forward.
  */
-export function storyCheck(content: { spine?: StorySpine | null; slides: { headline: string; body: string; beat?: string }[] }, expected?: StoryBeat[]): StoryReport {
+export function storyCheck(
+  content: { spine?: StorySpine | null; slides: { headline: string; body: string; beat?: string }[] },
+  expected?: StoryBeat[],
+  /** The selected hook. With it, the audience rule is judged. */
+  hook?: { headline: string; subline?: string } | null,
+): StoryReport {
   const issues: StoryIssue[] = [];
   const slides = content.slides ?? [];
   if (!content.spine) issues.push({ kind: "no-spine" });
+  else if (hook && !hookNamesAudience(content.spine, hook)) issues.push({ kind: "no-audience" });
+  slides.forEach((s, i) => { if (!hasConcreteDetail(`${s.headline} ${s.body}`, content.spine)) issues.push({ kind: "no-detail", where: `slide ${i + 2}` }); });
+  if (slides[0] && !standsAlone(slides[0].headline)) issues.push({ kind: "weak-second-hook", headline: slides[0].headline });
 
   let prevIdx = -1;
   const seen = new Set<StoryBeat>();
@@ -101,6 +158,9 @@ export function describeStoryIssues(r: StoryReport): string {
       case "no-beat": return `${i.where} has no beat`;
       case "out-of-order": return `${i.where} is a ${i.beat} beat where the structure wants ${i.after}`;
       case "missing-beat": return `no ${i.beat} beat`;
+      case "no-detail": return `${i.where} has no concrete detail (a number, a time, or the returning image)`;
+      case "weak-second-hook": return `slide 2 does not stand alone as a second hook: "${i.headline}"`;
+      case "no-audience": return "the hook names nobody: put a word from the spine's who in the headline or subline";
       default: return "";
     }
   }).filter(Boolean);
@@ -116,6 +176,6 @@ THE STORY THIS DECK TELLS. Every slide serves one of these beats, in this order.
   Moment: ${spine.moment}
   Villain: ${spine.villain}
   Turn: ${spine.turn}
-  Payoff: ${spine.payoff}${spine.image ? `\n  Returning image: ${spine.image}` : ""}
+  Payoff: ${spine.payoff}${spine.image ? `\n  Returning image: ${spine.image}` : ""}${spine.who ? `\n  Who it is for: ${spine.who}` : ""}
 `;
 }
