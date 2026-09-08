@@ -1,6 +1,7 @@
 import { isCarouselStructure } from "@/lib/carousel-structures";
 import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 import { REGENERATE_HOOKS_PROMPT } from "@/lib/carousel-prompts";
+import type { CarouselBrief } from "@/lib/carousel-brief";
 import { checkRateLimit } from "@/lib/kv";
 
 export const maxDuration = 300;
@@ -36,7 +37,14 @@ export async function POST(req: Request): Promise<Response> {
     const spine = body.content?.spine && typeof body.content.spine === "object" ? body.content.spine : null;
     const structure = isCarouselStructure(body.structure) ? body.structure : null;
     const stylePreset = typeof body.stylePreset === "string" ? body.stylePreset : null;
-    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine, structure, stylePreset);
+    // The hooks already on the deck, so new ones take new angles instead of
+    // rewriting the same three; and how many to write (default 3, max 5).
+    const existing: { headline: string; subline?: string }[] = Array.isArray(body.existing)
+      ? body.existing.filter((h: unknown) => h && typeof h === "object").map((h: { headline?: string; subline?: string }) => ({ headline: String(h.headline ?? "").slice(0, 200), subline: String(h.subline ?? "").slice(0, 200) })).slice(0, 20)
+      : [];
+    const count = Math.max(1, Math.min(5, Number(body.count) || 3));
+    const brief = body.brief && typeof body.brief === "object" ? (body.brief as CarouselBrief) : null;
+    const prompt = REGENERATE_HOOKS_PROMPT(topic, hookTone, slides, guidelines, spine, structure, stylePreset, { existing, count, brief });
 
     const msg = await createContentMessage({
       model: DRAFT_MODEL,

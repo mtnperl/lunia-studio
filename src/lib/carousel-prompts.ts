@@ -180,25 +180,27 @@ export const REGENERATE_HOOKS_PROMPT = (
   spine: StorySpine | null = null,
   structure: CarouselStructure | null = null,
   stylePreset: string | null = null,
+  opts: { existing?: { headline: string; subline?: string }[]; count?: number; brief?: CarouselBrief | null } = {},
 ): string => {
   const isEssay = stylePreset === "essay";
+  const count = Math.max(1, Math.min(5, opts.count ?? 3));
   const deck = slides
     .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
     .join("\n");
-  return `You are a content strategist for Lunia Life, a sleep supplement brand. Write 3 NEW, distinct hook options (the opening slide of an Instagram carousel) for the carousel below. The content slides and CTA are FIXED — your hooks must set up THIS exact deck, stay on-topic, and not promise content the slides don't deliver. The 3 hooks should be genuinely different angles, not rewordings of one idea.
+  const existing = (opts.existing ?? []).filter((h) => h.headline).map((h) => `  - ${h.headline}${h.subline ? ` / ${h.subline}` : ""}`).join("\n");
+  const hookShape = `    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \\"\\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} }`;
+  return `You are a content strategist for Lunia Life, a sleep supplement brand. Write ${count} NEW, distinct hook options (the opening slide of an Instagram carousel) for the carousel below. The content slides and CTA are FIXED — your hooks must set up THIS exact deck, stay on-topic, and not promise content the slides don't deliver. The 3 hooks should be genuinely different angles, not rewordings of one idea.
 
 Topic: ${topic}
 Hook tone: ${HOOK_TONE_INSTRUCTIONS[hookTone] ?? HOOK_TONE_INSTRUCTIONS["educational"]}
 ${PLAIN_LANGUAGE_BLOCK}${spinePromptBlock(spine)}${structure ? `THE HOOK'S JOB (${STRUCTURES[structure].label}): ${STRUCTURES[structure].hookJob}\n` : ""}${spine ? "The hook IS the moment above, in eight words or fewer: the scene, not the lesson.\n" : ""}
 The deck the hook must introduce:
 ${deck || "(no slide content provided — base hooks on the topic)"}
-${guidelines ? `\nExtra direction from the user (apply to all 3):\n${guidelines}\n` : ""}
-Output STRICT JSON, no markdown, no commentary, exactly this shape:
+${opts.brief ? `\nTHE PIECE the deck was cut from. Every hook opens THIS argument with a sentence the piece contains; a hook that promises something the slides do not deliver, or adds a detail the piece does not have, fails.\n  The question: ${opts.brief.question || topic}\n  What the reader can say afterwards: ${opts.brief.claim}\n  Who is asking: ${opts.brief.who}\n  The piece: ${opts.brief.argument.replace(/\n+/g, " ")}\n` : ""}${existing ? `\nALREADY ON THE TABLE. These hooks exist for this deck. Do not repeat one, paraphrase one, or reuse its lead figure or scene; each new hook takes an angle none of these takes (a different moment, a different sentence of the piece, a question instead of a claim, the reader's belief before it is overturned):\n${existing}\n` : ""}${guidelines ? `\nExtra direction from the user (apply to all ${count}):\n${guidelines}\n` : ""}
+Output STRICT JSON, no markdown, no commentary, exactly this shape with exactly ${count} objects:
 {
   "hooks": [
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} },
-    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \"\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} }
+${Array.from({ length: count }, () => hookShape).join(",\n")}
   ]
 }
 
@@ -766,4 +768,31 @@ HARD RULES (violating any of these is failure):
 10. Caption: 3 short paragraphs. Open with the most striking line. Middle paragraph adds depth. Close with a question or call to save the post. No hashtags. No em dashes.
 
 Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};
+
+/** Alternative headlines for one slide (or the takeaway), written from the
+ *  slide's own body and the piece. Nothing else on the slide changes. */
+export const REGENERATE_HEADLINES_PROMPT = (
+  topic: string,
+  opts: { headline: string; body: string; label: string; isTakeaway?: boolean; stylePreset?: string | null; brief?: CarouselBrief | null; existing?: string[]; count?: number },
+): string => {
+  const count = Math.max(1, Math.min(8, opts.count ?? 4));
+  const isEssay = opts.stylePreset === "essay";
+  const isViral = opts.stylePreset === "viral";
+  const shape = isViral
+    ? "sentence case, 3 to 7 words, no full stop, the first line of the slide's thought that the body continues"
+    : isEssay
+      ? "UPPERCASE, 4 to 9 words, a complete claim a stranger understands with nothing under it, never a fragment"
+      : "UPPERCASE, 8 words or fewer, a complete claim a stranger understands with nothing under it";
+  const existing = (opts.existing ?? []).filter(Boolean).map((h) => `  - ${h}`).join("\n");
+  return `You are a content strategist for Lunia Life, a sleep supplement brand. Write ${count} alternative headlines for one slide of an Instagram carousel about: "${topic}". The slide's body stays exactly as it is; only the headline changes.
+
+${opts.brief ? `THE PIECE the deck was cut from:\n  The question the reader is asking: ${opts.brief.question || topic}\n  What the reader can say afterwards: ${opts.brief.claim}\n  ${opts.brief.argument.replace(/\n+/g, " ")}\n\n` : ""}THE SLIDE (${opts.label}${opts.isTakeaway ? ", the last slide, the one the reader screenshots" : ""}):
+  headline now: ${opts.headline}
+  ${opts.isTakeaway ? "points" : "body"}: ${opts.body.replace(/\n/g, " / ")}
+${existing ? `\nALREADY OFFERED, do not repeat or paraphrase:\n${existing}\n` : ""}
+Each headline is ${shape}. It says what THIS slide says, in the reader's words, and could not sit on a different slide of the deck. The ${count} take different angles: the finding as a claim, the moment the reader has lived, the belief overturned, the number with its baseline, the consequence. No wordplay, no doubled verbs, no word whose referent is not on the slide. Only facts the body carries; never a number or a study the slide does not have. Sentences of the length a science journalist writes; nothing pitched at a child.
+
+Return ONLY valid JSON, no other text:
+{ "headlines": [${Array.from({ length: count }, () => '"string"').join(", ")}] }`;
 };

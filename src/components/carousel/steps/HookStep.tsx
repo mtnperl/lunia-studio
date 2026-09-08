@@ -70,13 +70,16 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           content: { slides: content.slides, spine: content.spine },
           guidelines: hooksGuidelines.trim(),
           stylePreset,
+          existing: content.hooks,
+          brief: content.brief ?? null,
         }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
         setHooksRegenError(data.error ?? "Failed to regenerate hooks");
       } else if (Array.isArray(data.hooks) && data.hooks.length > 0) {
-        onHooksChange?.(data.hooks);
+        // New hooks join the pool; the ones already written stay on the table.
+        onHooksChange?.([...content.hooks, ...data.hooks].slice(0, 12));
         setAlternatives([]);
       } else {
         setHooksRegenError("No hooks returned — please try again");

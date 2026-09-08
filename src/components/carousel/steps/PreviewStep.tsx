@@ -19,7 +19,7 @@ import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
 import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
 import { essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
 import { ESSAY_COLORS, type EssayAccent } from "@/lib/brand-tokens";
-import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type VerificationRecord } from "@/lib/types";
+import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type Hook, type VerificationRecord } from "@/lib/types";
 import VerificationPanel from "@/components/carousel/VerificationPanel";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
@@ -417,6 +417,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [editorW, setEditorW] = useState(0);
   const [editorH, setEditorH] = useState(0);
   const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption" | "check">("slide");
+  // More hooks (appended to the pool) and more titles (offered for one slide).
+  const HOOK_POOL_MAX = 12;
+  const [hookBusy, setHookBusy] = useState(false);
+  const [hookError, setHookError] = useState<string | null>(null);
+  const [titleOptions, setTitleOptions] = useState<{ key: string; items: string[] } | null>(null);
+  const [titleBusy, setTitleBusy] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
   // v2-only: graphic type picker — which slide's picker is open (or null)
   // v2-only: graphic data editor — which slide's editor is open (or null)
   const [exportError, setExportError] = useState<string | null>(null);
@@ -509,6 +516,102 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // Patch the optional Takeaway slide. Merges over the current takeaway so
   // callers can update one field (headline / points / interaction) at a time.
   // No-op when the carousel has no takeaway (renderers already guard on it).
+  /** Edit one hook in place. The essay's boxed word goes when it is edited out. */
+  function updateHook(i: number, patch: Partial<Hook>) {
+    const hooks = content.hooks.map((h, j) => (j === i ? { ...h, ...patch } : h));
+    const h = hooks[i];
+    if (h?.emphasis && !h.headline.toLowerCase().includes(h.emphasis.toLowerCase())) delete h.emphasis;
+    onContentChange({ ...config, content: { ...content, hooks } });
+  }
+
+  /** Three more hooks, written against the piece and the hooks already on
+   *  the table, appended to the pool. Nothing already written is lost. */
+  async function moreHooks() {
+    if (hookBusy || content.hooks.length >= HOOK_POOL_MAX) return;
+    setHookBusy(true);
+    setHookError(null);
+    try {
+      const res = await fetch(`${apiBase}/regenerate-hooks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic, hookTone, stylePreset, structure: structure ?? undefined,
+          content: { slides: content.slides, spine: content.spine },
+          existing: content.hooks, brief: content.brief ?? null, count: 3,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "Could not write hooks");
+      const fresh = (Array.isArray(data.hooks) ? data.hooks : []) as Hook[];
+      if (fresh.length === 0) throw new Error("No hooks returned");
+      onContentChange({ ...config, content: { ...content, hooks: [...content.hooks, ...fresh].slice(0, HOOK_POOL_MAX) } });
+    } catch (err) {
+      setHookError(err instanceof Error ? err.message : "Could not write hooks");
+    } finally {
+      setHookBusy(false);
+    }
+  }
+
+  /** Four alternative headlines for one slide or the takeaway. Offered as a
+   *  list; the body does not change until one is picked. */
+  async function moreTitles(key: string, kind: "slide" | "takeaway", slideIdx?: number) {
+    if (titleBusy) return;
+    const cur = kind === "takeaway" ? content.takeaway : content.slides[slideIdx ?? -1];
+    if (!cur) return;
+    const headline = cur.headline ?? "";
+    const bodyText = kind === "takeaway" ? (content.takeaway?.points ?? []).join("\n") : (content.slides[slideIdx!]?.body ?? "");
+    const already = titleOptions?.key === key ? titleOptions.items : [];
+    setTitleBusy(key);
+    setTitleError(null);
+    try {
+      const res = await fetch(`${apiBase}/regenerate-headline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, headline, body: bodyText, kind, label: kind === "takeaway" ? "the takeaway" : `slide ${(slideIdx ?? 0) + 2}`, stylePreset, brief: content.brief ?? null, existing: already, count: 4 }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "Could not write titles");
+      const items = (Array.isArray(data.headlines) ? data.headlines : []) as string[];
+      if (items.length === 0) throw new Error("No titles returned");
+      setTitleOptions({ key, items: [...already, ...items].slice(0, 12) });
+    } catch (err) {
+      setTitleError(err instanceof Error ? err.message : "Could not write titles");
+    } finally {
+      setTitleBusy(null);
+    }
+  }
+
+  /** The "More titles" control and its pick-list, for one headline field. */
+  function titlePicker(key: string, onMore: () => void, onPick: (t: string) => void) {
+    const items = titleOptions?.key === key ? titleOptions.items : [];
+    const busy = titleBusy === key;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <UiButton size="sm" variant="secondary" disabled={busy} onClick={onMore}>{busy ? "Writing…" : items.length ? "✨ 4 more titles" : "✨ More titles"}</UiButton>
+          {titleError && titleBusy === null && <span style={{ fontSize: 12, color: "var(--error)" }}>{titleError}</span>}
+        </div>
+        {items.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {items.map((t, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onPick(t)}
+                title="Use this title"
+                style={{ textAlign: "left", padding: "7px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, lineHeight: 1.35 }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function updateTakeaway(patch: Partial<NonNullable<typeof content.takeaway>>) {
     if (!content.takeaway) return;
     onContentChange({
@@ -1905,6 +2008,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               <div style={{ marginTop: 8 }}>
                 <RewriteBar text={slide.headline} context={`Slide ${slideIdx + 1} of a carousel about "${topic}". Headline: ${slide.headline}. Body: ${slide.body}`} onResult={(t) => updateSlideField(slideIdx, "headline", t)} />
               </div>
+              <div style={{ marginTop: 10 }}>
+                {titlePicker(`slide-${slideIdx}`, () => moreTitles(`slide-${slideIdx}`, "slide", slideIdx), (t) => updateSlideField(slideIdx, "headline", t))}
+              </div>
             </div>
             <div>
               {groupLabel("Size")}
@@ -2094,6 +2200,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                 onChange={(e) => updateTakeaway({ headline: e.target.value })}
                 style={fieldStyle}
               />
+              <div style={{ marginTop: 8 }}>
+                {titlePicker("takeaway", () => moreTitles("takeaway", "takeaway"), (t) => updateTakeaway({ headline: t }))}
+              </div>
             </div>
 
             <div>
@@ -2878,7 +2987,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
             {railTab === "style" && settingsInspector && <UiPanel title="Settings">{settingsInspector.body}</UiPanel>}
             {railTab === "brief" && (
               <UiPanel title="Brief">
-                {onSelectHook && content.hooks.length > 1 ? (
+                {onSelectHook && content.hooks.length > 0 ? (
                   <div>
                     <Label kind="section">Hook</Label>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2904,6 +3013,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                           </button>
                         );
                       })}
+                    </div>
+                    {hook && (
+                      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <Label kind="section">Edit hook {selectedHook + 1}</Label>
+                        <UiInput value={hook.headline} onChange={(e) => updateHook(selectedHook, { headline: e.target.value })} aria-label="Hook headline" placeholder="Headline" />
+                        <UiInput value={hook.subline} onChange={(e) => updateHook(selectedHook, { subline: e.target.value })} aria-label="Hook subline" placeholder="Subline" />
+                      </div>
+                    )}
+                    <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <UiButton size="sm" variant="secondary" disabled={hookBusy || content.hooks.length >= HOOK_POOL_MAX} onClick={moreHooks}>{hookBusy ? "Writing…" : "✨ More hooks"}</UiButton>
+                      <span style={{ fontSize: 12, color: hookError ? "var(--error)" : "var(--ui-text-3)" }}>{hookError ?? `${content.hooks.length} of ${HOOK_POOL_MAX} in the pool`}</span>
                     </div>
                     <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
                       Switching the hook changes the first slide&apos;s text. The image already
