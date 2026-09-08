@@ -50,6 +50,8 @@ describe("brief", () => {
     const old = { claim: "c", argument: "a", who: "w", overturns: "", tonight: "", comparisons: [{ measure: "fat lost", a: "8.5 h", b: "5.5 h", result: "55% less" }] } as unknown as Parameters<typeof briefPromptBlock>[0];
     expect(briefPromptBlock(old)).toContain("fat lost: 8.5 h vs 5.5 h. 55% less");
     expect(craftBlock(old!)).toContain("The question: (as the topic asks)");
+    expect(craftBlock(brief)).toContain("Literal verbs, no metaphors");
+    expect(craftBlock(brief)).toContain("One study per slide at most");
   });
   it("puts the title test first in the editor read", () => {
     const prompt = EDITOR_READ_PROMPT(brief, deck, { essay: true });
@@ -83,6 +85,12 @@ describe("editor read", () => {
     expect(out.editorRead?.notes.filter((n) => n.applied)).toHaveLength(3);
     expect(describeEditorRead(out.editorRead)).toContain("3 fixes applied");
     expect(deck.hooks[0].headline).toBe("SLEEP 5.5 HOURS, LOSE 55% LESS FAT");
+  });
+  it("turns the listing's slash separators back into line breaks", () => {
+    const read = parseEditorRead(JSON.stringify({ verdict: "revised", notes: [{ where: "slide 2", problem: "p", fix: { body: "First thought. /  / Second thought. / Third line." } }] }));
+    expect(read?.notes[0].fix?.body).toBe("First thought.\n\nSecond thought.\nThird line.");
+    const kept = parseEditorRead(JSON.stringify({ verdict: "revised", notes: [{ where: "slide 2", problem: "p", fix: { body: "Already\n\nfine / not a separator" } }] }));
+    expect(kept?.notes[0].fix?.body).toBe("Already\n\nfine / not a separator");
   });
   it("records a clean read without touching the deck", () => {
     const read = parseEditorRead(JSON.stringify({ verdict: "clean", notes: [] }));

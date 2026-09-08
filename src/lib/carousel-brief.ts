@@ -140,7 +140,7 @@ The loop. A carousel is read one slide at a time, and at each slide the reader d
 - The answer to the question lands late, and the last paragraph says what the reader now knows and what to do with it.
 - Suspense never costs coherence. Every paragraph says its whole thought. A reader who reads the piece in a row reads an article, not a trail of teasers.
 
-Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, slow-wave sleep) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words, with a short one where a point lands.
+Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, slow-wave sleep) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words, with a short one where a point lands. Literal verbs and named things: "adenosine builds up between brain cells while you are awake and clears away during sleep", never "the brain's running costs" or "the molecule"; where a plain word exists, it wins over a metaphor, and the noun is repeated rather than replaced by a stand-in.
 
 Be right. Only say what the notes support or what you are certain of; where a mechanism is uncertain, say what is known and stop. Every number sits next to its baseline. If the reader holds a belief the piece overturns, say that belief in their words before you overturn it, and if they hold none, do not invent one.
 ${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\nRESEARCH NOTES, for backing, not for outline:\n${ledgerBlock}\n` : ""}${recentBlock}
@@ -259,9 +259,16 @@ HOW A GOOD CAROUSEL READS. The reader sees one slide at a time and decides at ea
   Slide 2 is a second hook. Instagram shows a carousel twice to a follower, once on slide 1 and once on slide 2, so slide 2 must work for a stranger who saw nothing before it: a complete claim in its headline and a reason to want slide 3 in its body.
   ${loop.carried ? `The question the reader carries from slide to slide: ${loop.carried}. ${loop.lands ? `It lands: ${loop.lands}` : ""}` : ""}
   Every slide says one thought, fully, and leaves the reader wanting the next one because of what it says, never because a line tells them to keep going. No "but there's more", no "here's the twist". If a slide only makes sense once you have read the next, it is a fragment, and it fails; coherence wins over suspense every time.
-  Headlines are complete sentences a stranger understands with nothing under them.
+  Headlines are complete sentences a stranger understands with nothing under them. The slide that defines the deck's subject may carry the question itself as its headline ("What is sleep pressure?") and answer it in the first sentence.
   Numbers only where the reader can feel them, always against their baseline.
   The last slide answers the question in the reader's words and says what to do with the answer.
+
+HOW A SLIDE IS WRITTEN. These are the edits the editor makes by hand to every deck; make them before they have to.
+  Literal verbs, no metaphors. "Adenosine is a by-product of the brain's everyday activity", never "the brain's running costs". "Caffeine blocks the receptors", never "parks itself in them". "The pressure keeps building", never "rising behind the block". Where a plain word exists, it wins.
+  Name the thing every time. "The adenosine", never "the molecule"; "clears away during sleep", never "that clearing". A pronoun or a stand-in the reader has to resolve costs them the sentence. Repeating the noun costs nothing.
+  One idea per sentence. Three short sentences beat one long one on a phone. When a slide holds two thoughts (what people believe, then what is true; the finding, then what it means), separate them with a blank line so the slide reads as two short paragraphs.
+  Signpost the evidence. "In one study, researchers kept a cat awake for six hours and found..." rather than the finding stated cold. "In reality," before the correction of a belief. The reader should know a sentence is evidence before it arrives.
+  One study per slide at most, and none if the slide does not need one. The piece may carry two findings for one point; the slide carries the one that makes the point and drops the other. A slide that defines or explains needs no study and no citation.
 
 Also return the "spine" (moment, villain or "", turn, payoff, who) as a summary of the deck you wrote, and on each slide a "beat" naming the part it serves: moment, villain, turn or payoff.
 `;
@@ -301,9 +308,9 @@ FIRST, THE TITLE TEST. A reader tapped this deck because they wanted to know: "$
 
 SECOND, THE SWIPE. Does slide 2 stand alone for a stranger who sees it first, and does it make them want slide 3? At each slide, is there a reason to see the next one that comes from what the slide says? A deck that reads as a list of true facts in any order has no pull; a slide that is a fragment to create suspense, or that only makes sense once you have read the next, is worse. Fix by rewriting the slide so it says its whole thought and the thought itself leads on.
 
-THIRD, WHAT AN EDITOR FIXES. A slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a slide that recites a measurement instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that answers something other than the question; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
+THIRD, WHAT AN EDITOR FIXES. A slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a metaphor where a plain verb exists ("parks itself in the receptors" for "blocks the receptors", "running costs" for "everyday activity"); a stand-in the reader has to resolve ("the molecule", "that clearing") where the noun should be repeated (repeating the noun is never a fault here, a stand-in is); a long sentence carrying two ideas that should be two short ones, or two thoughts on one slide with no blank line between them; a finding stated cold where "In one study, researchers..." would tell the reader evidence is coming; a second study on a slide that only needed one, or a citation on a slide that only defines or explains; a slide that recites a measurement instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that answers something other than the question; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
 
-A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the piece rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer; a slide headline is ${opts.essay ? "UPPERCASE, 4 to 9 words, a complete claim" : "8 words or fewer"}${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Keep every fact inside the piece. Keep citations as they are; a slide with no citation is not a fault.
+A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the piece rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer; a slide headline is ${opts.essay ? "UPPERCASE, 4 to 9 words, a complete claim" : "8 words or fewer"}${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Paragraphs inside a body are separated by a real newline character, never by the " / " this listing uses to show them. No em dashes anywhere; use a comma, a colon or a full stop. Keep every fact inside the piece. Keep citations as they are; a slide with no citation is not a fault.
 
 Return ONLY valid JSON in this exact format, no other text:
 {
@@ -332,6 +339,11 @@ export function parseEditorRead(raw: string): Omit<EditorRead, "readAt"> | null 
                   points: Array.isArray(fixRaw.points) ? fixRaw.points.filter((p): p is string => typeof p === "string" && p.trim().length > 0).map((p) => p.trim()).slice(0, 3) : undefined,
                 }
               : undefined;
+            // The listing shows line breaks as " / ", and the model sometimes
+            // hands them back that way. Real newlines on the slide, always.
+            if (fix?.body && !fix.body.includes("\n") && / \/ /.test(fix.body)) {
+              fix.body = fix.body.replace(/\s*\/\s*\/\s*/g, "\n\n").replace(/\s+\/\s+/g, "\n").trim();
+            }
             const hasFix = !!fix && (fix.headline || fix.subline || fix.body || (fix.points && fix.points.length));
             return { where: (n.where as string).trim().toLowerCase(), problem: String(n.problem ?? "").trim().slice(0, 400), fix: hasFix ? fix : undefined };
           })
