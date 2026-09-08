@@ -1,7 +1,7 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook, HookHeadlineWeight } from '@/lib/types';
-import { chooseImageEngine, FAL_ENDPOINTS, type ImageEngine } from '@/lib/carousel-image-engine';
+import { chooseImageEngine, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     const requestedMoodId = isEditorial ? 'editorial-scientific' : body.moodId;
     const mood: VisualMood = getMoodById(requestedMoodId) ?? pickRandomMood();
 
-    const explicitEngine = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2'].includes(body.imageEngine))
+    const explicitEngine = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2', 'gpt-image-2.5-sunburst'].includes(body.imageEngine))
       ? (body.imageEngine as ImageEngine)
       : undefined;
     // Lifestyle Health renders best on gpt-image-2 — sunlit DTC-wellness
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     let referenceImageUrls: string[] = [];
     if (isHeadlineWeightEdit) {
       referenceImageUrls = [editSourceImageUrl!];
-    } else if (engine === 'gpt-image-2') {
+    } else if (isGptImageEngine(engine)) {
       // Lifestyle Health = product-photography lane: bottle + logo.
       // Editorial Scientific hook = product reference ONLY when the spec
       // actually calls for it. Never the logo (user direction).
@@ -739,11 +739,11 @@ async function runEngine(engine: ImageEngine, input: RunInput): Promise<string |
     return (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
   }
 
-  if (engine === 'gpt-image-2') {
+  if (isGptImageEngine(engine)) {
     // Route to the /edit endpoint when we have reference images (logo +
     // bottle for lifestyle-health). Same pattern as email-image-engine.
     const refs = (input.referenceImageUrls ?? []).filter(Boolean);
-    const gptEndpoint = refs.length > 0 ? 'openai/gpt-image-2/edit' : endpoint;
+    const gptEndpoint = getGptImageEndpoint(engine, refs.length > 0);
     const gptInput: Record<string, unknown> = {
       prompt: input.prompt,
       image_size: input.imageSize,

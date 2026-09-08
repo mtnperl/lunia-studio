@@ -4,14 +4,27 @@
 // Ideogram and FLUX.2 [flex] are wired for slide types that render text
 // inside the image (quote cards, poster slides) when those land.
 
-export type ImageEngine = "recraft" | "ideogram" | "flux2" | "gpt-image-2";
+export type GptImageEngine = "gpt-image-2" | "gpt-image-2.5-sunburst";
+export type ImageEngine = "recraft" | "ideogram" | "flux2" | GptImageEngine;
 
 export const FAL_ENDPOINTS: Record<ImageEngine, string> = {
   recraft: "fal-ai/recraft/v4/pro/text-to-image",
   ideogram: "fal-ai/ideogram/v3",
   flux2: "fal-ai/flux-2/flex",
   "gpt-image-2": "openai/gpt-image-2",
+  "gpt-image-2.5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
 };
+
+export function isGptImageEngine(engine: ImageEngine): engine is GptImageEngine {
+  return engine === "gpt-image-2" || engine === "gpt-image-2.5-sunburst";
+}
+
+export function getGptImageEndpoint(engine: GptImageEngine, hasReferenceImages: boolean): string {
+  if (!hasReferenceImages) return FAL_ENDPOINTS[engine];
+  return engine === "gpt-image-2.5-sunburst"
+    ? "openai/gpt-image-2.5/sunburst/edit"
+    : "openai/gpt-image-2/edit";
+}
 
 export type ChooseEngineInput = {
   slideIndex: number;
