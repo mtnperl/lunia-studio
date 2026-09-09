@@ -966,7 +966,6 @@ function BatchViewInner() {
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</label>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
             {([
-              { val: "default" as CarouselStylePreset, label: "Default", desc: "Current v2 styling" },
               { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
               { val: "free-press" as CarouselStylePreset, label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
               { val: "essay" as CarouselStylePreset, label: "Essay", desc: "Paper, one boxed word, engraving cover, serial chrome. Reads hand-made" },

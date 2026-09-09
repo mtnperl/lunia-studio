@@ -339,7 +339,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setImageStyle(style ?? "realistic");
     setCarouselFormat(format ?? "standard");
     setEngagementSubType(engSubType ?? "reveal");
-    setStylePreset(preset ?? "default");
+    setStylePreset(preset ?? "editorial-scientific");
     setContrastMode(contrast ?? "standard");
     setIncludeSeoFooter(seoFooter ?? true);
     setError(null);
@@ -369,7 +369,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           concise: conciseMode ?? false,
           format: format ?? "standard",
           engagementSubType: engSubType,
-          stylePreset: preset ?? "default",
+          stylePreset: preset ?? "editorial-scientific",
           includeSeoFooter: seoFooter ?? true,
           ...(varyFrom ? { structureFrom: { documentId: varyFrom.id } } : {}),
           ...(slideCount ? { slideCount } : {}),
@@ -424,7 +424,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         hookIndex: 0,
         hookTone: tone,
         imageStyle: style ?? "realistic",
-        stylePreset: preset ?? "default",
+        stylePreset: preset ?? "editorial-scientific",
         contrastMode: contrast ?? "standard",
         moodId,
       });
@@ -449,7 +449,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           hookIndex: 0,
           hookTone: tone,
           imageStyle: style ?? "realistic",
-          stylePreset: preset ?? "default",
+          stylePreset: preset ?? "editorial-scientific",
           contrastMode: contrast ?? "standard",
           moodId,
         });
@@ -542,7 +542,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setSelectedVariant(0);
     setSelectedHook(0);
     setBrandStyle(null);
-    setStylePreset("default");
+    setStylePreset("editorial-scientific");
     setContrastMode("standard");
     setHookImageUrl(null);
     setSlideImages([null, null, null, null, null]);
