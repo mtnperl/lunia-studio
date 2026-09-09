@@ -12,12 +12,14 @@ import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import { BrandStyle, CarouselStylePreset } from "@/lib/types";
 import { SLIDE, ESSAY_COLORS, ESSAY_DISPLAY, ESSAY_TEXT, ESSAY_TYPE, type EssayAccent } from "@/lib/brand-tokens";
-import { ESSAY_PAD, PaperTexture, ChromeRow, Counter, ProgressRule, Byline, essayAccent, essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
+import { ESSAY_PAD, PaperTexture, ChromeRow, Counter, ProgressRule, Byline, BoxedHeadline, essayAccent, essayNumberFrom, essayDate, resolveEssayEmphasis } from "@/components/carousel/shared/EssayChrome";
 
 type Interaction = { type: "save" | "send" | "comment"; label: string };
 
 type Props = {
   headline: string;
+  /** The boxed word of the headline. Absent: the slide picks one. "": none. */
+  headlineEmphasis?: string;
   points: string[];
   interaction: Interaction;
   followLine?: string;
@@ -50,7 +52,7 @@ type Props = {
 const VERB: Record<Interaction["type"], string> = { save: "Save", send: "Send", comment: "Comment" };
 
 export default function EssayTakeawaySlide({
-  headline, points, interaction, followLine, scale = 1, id, brandStyle, arrowScale = 1, reels = false, frameH,
+  headline, headlineEmphasis, points, interaction, followLine, scale = 1, id, brandStyle, arrowScale = 1, reels = false, frameH,
   showSlideArrows = true, essayAccent: accentId, essayNumber, essayDate: dateText, handle = "@lunia_life", slideTotal = 3,
 }: Props) {
   const slideH = frameH ?? (reels ? SLIDE.height.reels : SLIDE.height.carousel);
@@ -73,9 +75,7 @@ export default function EssayTakeawaySlide({
           <div style={{ fontFamily: ESSAY_TEXT, fontWeight: 500, fontSize: ESSAY_TYPE.chrome, letterSpacing: "0.22em", textTransform: "uppercase", color: accent.text, marginBottom: Math.round(18 * compact) }}>
             The takeaway
           </div>
-          <div style={{ fontFamily: ESSAY_DISPLAY, fontWeight: 400, fontSize: headlineSize, lineHeight: 0.98, letterSpacing: "0.005em", textTransform: "uppercase", color: ink }}>
-            {headline}
-          </div>
+          <BoxedHeadline text={headline} emphasis={resolveEssayEmphasis(headline, headlineEmphasis)} fill={accent.fill} onFill={accent.onFill} style={{ fontSize: headlineSize, color: ink }} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: Math.round(22 * compact) }}>

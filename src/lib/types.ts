@@ -122,6 +122,9 @@ export type CarouselContentSlide = {
   figure?: string;
   /** Viral preset: an exact substring of body drawn as the highlighted phrase. */
   emphasis?: string;
+  /** Essay preset: the word of the headline drawn in the accent box. An exact
+   *  substring of headline. Absent: the slide picks one. "": no box. */
+  headlineEmphasis?: string;
   /** Which beat of the story spine this slide serves. See src/lib/story-spine.ts. */
   beat?: StoryBeat;
 };
@@ -357,6 +360,8 @@ export type CarouselContent = {
    *  carousels generated before this slide existed — renderers must guard. */
   takeaway?: {
     headline: string;                                  // short payoff headline (uppercase, ≤6 words)
+    /** Essay preset: the boxed word of the headline. Absent: auto. "": none. */
+    headlineEmphasis?: string;
     points: string[];                                  // 2-3 one-line recap takeaways
     interaction: { type: "save" | "send" | "comment"; label: string };
   };

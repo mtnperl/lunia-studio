@@ -29,7 +29,7 @@ import { renderGraphicSpec } from "@/components/carousel/graphics/graphicCompone
 import { splitEssayBody } from "@/lib/essay-body";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
-import { ESSAY_PAD, PaperTexture, ChromeRow, Counter, ProgressRule, EmphasisText, essayAccent, essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
+import { ESSAY_PAD, PaperTexture, ChromeRow, Counter, ProgressRule, EmphasisText, BoxedHeadline, essayAccent, essayNumberFrom, essayDate, resolveEssayEmphasis } from "@/components/carousel/shared/EssayChrome";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const FIT_STEP = 0.96;
@@ -39,6 +39,8 @@ type Props = {
   body: string;
   citation: string;
   emphasis?: string;
+  /** The boxed word of the headline. Absent: the slide picks one. "": none. */
+  headlineEmphasis?: string;
   slideIndex?: number;
   slideTotal?: number;
   scale?: number;
@@ -84,7 +86,7 @@ type Props = {
 };
 
 export default function EssayContentSlide({
-  headline, body, citation, emphasis, slideIndex = 0, slideTotal = 3,
+  headline, body, citation, emphasis, headlineEmphasis, slideIndex = 0, slideTotal = 3,
   scale = 1, id, brandStyle, arrowScale = 1, citationFontSize, reels = false, frameH,
   headlineScale = 1, bodyScale = 1, showSlideArrows = true, showSlideNumbers = true, showCitationBars = true,
   essayAccent: accentId, essayNumber, essayDate: dateText, handle = "@lunia_life", graphic,
@@ -168,7 +170,9 @@ export default function EssayContentSlide({
         <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: Math.round(bodySize * 0.9), flexShrink: 0 }}>
           <div>
             <div {...zh} style={{ fontFamily: ESSAY_DISPLAY, fontWeight: 400, fontSize: headlineSize, lineHeight: 0.98, letterSpacing: "0.005em", textTransform: "uppercase", color: ink, ...zh.style }}>
-              {headline}
+              {editingElement === "headline"
+                ? headline
+                : <BoxedHeadline text={headline} emphasis={resolveEssayEmphasis(headline, headlineEmphasis)} fill={accent.fill} onFill={accent.onFill} style={{ fontSize: headlineSize, color: ink }} />}
             </div>
             <div style={{ width: 96, height: 5, background: accent.fill, marginTop: Math.round(headlineSize * 0.3) }} />
           </div>

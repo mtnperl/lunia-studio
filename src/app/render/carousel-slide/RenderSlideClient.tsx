@@ -63,6 +63,8 @@ export type RenderSlideProps = {
   interaction?: { type: "save" | "send" | "comment"; label: string };
   followLine?: string;
   emphasis?: string;
+  /** Essay: the boxed word of the headline. Absent: auto. "": none. */
+  headlineEmphasis?: string;
   essayAccent?: EssayAccent;
   essayNumber?: string;
   essayDate?: string;

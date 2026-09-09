@@ -116,6 +116,36 @@ export function Byline({ text = "by Lunia", size = ESSAY_TYPE.byline, color = ES
   );
 }
 
+const EMPHASIS_STOPWORDS = new Set([
+  "a", "an", "the", "of", "in", "on", "at", "to", "for", "by", "with", "and", "or", "but", "as", "is", "are", "was", "were", "be", "been",
+  "it", "its", "this", "that", "these", "those", "you", "your", "we", "our", "i", "my", "how", "why", "what", "when", "not", "no", "do", "does",
+  "did", "can", "cannot", "will", "just", "than", "then", "from", "into", "about", "one", "all", "some", "every", "before", "after", "first",
+]);
+
+/** The word the box goes on when nobody chose one: a number if the headline
+ *  has one, else the longest word that is not a stopword. The headline's
+ *  own spelling is returned, so it is always an exact substring. */
+export function pickEssayEmphasis(headline: string): string | undefined {
+  const words = headline.split(/\s+/).map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}%]+$/gu, "")).filter(Boolean);
+  if (words.length < 2) return undefined;
+  const numeric = words.find((w) => /\d/.test(w));
+  if (numeric) return numeric;
+  let best: string | undefined;
+  for (const w of words) {
+    if (EMPHASIS_STOPWORDS.has(w.toLowerCase())) continue;
+    if (!best || w.length > best.length) best = w;
+  }
+  return best;
+}
+
+/** What to box on an essay headline. A chosen word wins when it is still in
+ *  the headline; "" means no box; nothing chosen means the slide picks. */
+export function resolveEssayEmphasis(headline: string, chosen: string | undefined): string | undefined {
+  if (chosen === "") return undefined;
+  if (chosen && headline.toLowerCase().includes(chosen.toLowerCase())) return chosen;
+  return pickEssayEmphasis(headline);
+}
+
 /** The headline with one word boxed. `emphasis` must be an exact substring
  *  of `text` (the generator and the route guarantee that); anything else
  *  renders the text plain. Box breaks are cloned so a two-word phrase that
@@ -196,7 +226,7 @@ export function EssayHookCover({ headline, subline, sourceNote, emphasis, accent
         <div style={{ position: "absolute", left: "11%", right: "11%", bottom: Math.round(150 * compact), height: Math.round(slideH * 0.42), background: "linear-gradient(90deg, rgba(16,38,53,0.03) 0%, rgba(16,38,53,0.08) 50%, rgba(16,38,53,0.03) 100%)", backgroundSize: "200% 100%", animation: "shimmer 1.6s ease-in-out infinite" }} />
       ) : null}
       <div style={{ position: "absolute", left: ESSAY_PAD.x, right: ESSAY_PAD.x, top, display: "flex", flexDirection: "column", gap: Math.round(34 * compact) }}>
-        <BoxedHeadline text={headline} emphasis={emphasis} fill={accent.fill} onFill={accent.onFill} style={{ fontSize: size, color: ESSAY_COLORS.ink, maxWidth: "94%" }} />
+        <BoxedHeadline text={headline} emphasis={resolveEssayEmphasis(headline, emphasis)} fill={accent.fill} onFill={accent.onFill} style={{ fontSize: size, color: ESSAY_COLORS.ink, maxWidth: "94%" }} />
         {subline && (
           <div style={{ fontFamily: ESSAY_TEXT, fontWeight: 300, fontSize: Math.round(ESSAY_TYPE.coverSubline * compact), lineHeight: 1.35, color: ESSAY_COLORS.ink, maxWidth: "88%" }}>
             {subline}
