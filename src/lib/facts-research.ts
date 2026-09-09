@@ -1,4 +1,4 @@
-import { anthropic, CONTENT_MODEL } from "./anthropic";
+import { createModelMessage, CONTENT_MODEL } from "./anthropic";
 import { getFacts, saveFacts, redis } from "./kv";
 import { mergeFacts } from "./facts";
 import type { Fact, Subject } from "./types";
@@ -78,7 +78,7 @@ export async function researchSubject(subject: Pick<Subject, "id" | "text">): Pr
   let content: Array<{ type: string; text?: string }> = [];
   let continued = false;
   for (let turn = 0; turn < 5; turn++) {
-    const msg = await anthropic.messages.create({
+    const msg = await createModelMessage({
       model: CONTENT_MODEL,
       max_tokens: 16_000,
       system: SYSTEM,

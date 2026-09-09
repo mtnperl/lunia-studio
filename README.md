@@ -16,6 +16,24 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Content-model providers
+
+Claude is the primary content provider. DeepSeek is the automatic fallback for
+exhausted Anthropic credit, rate limits, provider/server failures, and network
+timeouts. It is also used directly when no Anthropic key is configured.
+
+```bash
+ANTHROPIC_API_KEY=...
+DEEPSEEK_API_KEY=...
+```
+
+At least one key is required for content generation. The fallback uses
+DeepSeek's Anthropic-compatible endpoint and maps Opus work to
+`deepseek-v4-pro`, Sonnet work to `deepseek-v4-flash`, and requests containing
+images to `deepseek-v4-flash-vision-exp`. For a proxy or private endpoint, set
+`DEEPSEEK_ANTHROPIC_BASE_URL`; its default is
+`https://api.deepseek.com/anthropic`.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

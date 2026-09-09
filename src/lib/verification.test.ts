@@ -14,6 +14,7 @@ vi.mock("./anthropic", async (importOriginal) => {
   return {
     ...actual,
     anthropic: { messages: { create: (...a: unknown[]) => createMock(...a) } },
+    createModelMessage: (...a: unknown[]) => createMock(...a),
   };
 });
 

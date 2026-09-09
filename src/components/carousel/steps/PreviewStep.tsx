@@ -632,8 +632,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
   // Regenerate-only override: "auto" lets the server pick (Recraft default).
-  // "gpt-image-2" forces OpenAI GPT Image 2 via fal for higher fidelity / text rendering.
-  const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2">("auto");
+  // GPT options force a specific OpenAI image model through fal.ai.
+  const [regenEngine, setRegenEngine] = useState<"auto" | "gpt-image-2" | "gpt-image-2.5-sunburst">("auto");
   // Editorial Scientific extras. Session-only — not persisted on the carousel.
   // "auto" lets the server rotate the interpretive lane per regen so the same
   // hook concept stops painting the same composition every time.
@@ -861,7 +861,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         imageStyle,
         imageAspect: targetAspectForPreview,
         ...(moodId ? { moodId } : {}),
-        ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
+        ...(regenEngine !== "auto" ? { imageEngine: regenEngine } : {}),
         ...(stylePreset !== "default" ? { stylePreset } : {}),
         ...(content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
         ...(isEditorial ? { imageDirection, paperTone, contrastMode, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
@@ -1583,7 +1583,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           imageStyle,
           imageAspect: targetAspect,
           ...(moodId ? { moodId } : {}),
-          ...(regenEngine === "gpt-image-2" ? { imageEngine: "gpt-image-2" } : {}),
+          ...(regenEngine !== "auto" ? { imageEngine: regenEngine } : {}),
           ...(stylePreset !== "default" ? { stylePreset } : {}),
           ...(content.hookImageSpec ? { hookImageSpec: content.hookImageSpec } : {}),
           ...(isEditorial ? { imageDirection, paperTone, contrastMode, imageSubject, headlineWeight: hookHeadlineWeight } : {}),
@@ -2666,8 +2666,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
               </div>
             )}
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Model</label>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              {([{ value: "auto", label: "Auto (Recraft)" }, { value: "gpt-image-2", label: "GPT Image 2" }] as const).map((opt) => {
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+              {([{
+                value: "auto",
+                label: "Auto (Recraft)",
+              }, {
+                value: "gpt-image-2",
+                label: "GPT Image 2",
+              }, {
+                value: "gpt-image-2.5-sunburst",
+                label: "GPT Image 2.5 Sunburst",
+              }] as const).map((opt) => {
                 const active = regenEngine === opt.value;
                 return (
                   <button key={opt.value} onClick={() => setRegenEngine(opt.value)} style={{

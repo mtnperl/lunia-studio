@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from "@/lib/anthropic";
 
 // ─── Request shape ────────────────────────────────────────────────────────────
 
@@ -92,35 +92,13 @@ Return ONLY valid JSON, no other text:
 // ─── Call Claude ───────────────────────────────────────────────────────────────
 
 async function generateGuide(data: PDFRequest): Promise<GeneratedGuide> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: CONTENT_MODEL,
-      max_tokens: CONTENT_MAX_TOKENS_SHORT,
-      thinking: CONTENT_THINKING,
-      messages: [{ role: "user", content: buildPrompt(data) }],
-    }),
+  const message = await createContentMessage({
+    model: CONTENT_MODEL,
+    max_tokens: CONTENT_MAX_TOKENS_SHORT,
+    thinking: CONTENT_THINKING,
+    messages: [{ role: "user", content: buildPrompt(data) }],
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${err}`);
-  }
-
-  interface AnthropicResponse {
-    content: Array<{ type: string; text?: string }>;
-  }
-  const json = await res.json() as AnthropicResponse;
-  const textBlock = json.content.find((b) => b.type === "text");
-  const raw = textBlock?.text ?? "";
+  const raw = extractText(message);
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
   return JSON.parse(cleaned) as GeneratedGuide;
 }
