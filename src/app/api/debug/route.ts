@@ -7,6 +7,7 @@ export async function GET() {
     REDIS_URL: process.env.REDIS_URL ? process.env.REDIS_URL.slice(0, 30) + "..." : "NOT SET",
     BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN ? "SET" : "NOT SET",
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? "SET" : "NOT SET",
+    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ? "SET" : "NOT SET",
   };
 
   let templates: unknown[] = [];

@@ -27,7 +27,7 @@
 import { NextRequest } from "next/server";
 import { FACT_CHECKS_PAUSED, factChecksPausedResponse } from "@/lib/fact-check-pause";
 import { z } from "zod";
-import { anthropic, CONTENT_MODEL, EFFORT_STANDARD } from "@/lib/anthropic";
+import { createModelMessage, CONTENT_MODEL, EFFORT_STANDARD } from "@/lib/anthropic";
 import { checkRateLimit, getCarouselById } from "@/lib/kv";
 import { extractJsonFromToolResponse, describeVerifyError } from "@/lib/verification";
 import { getUnitFields, coerceToCurrentShape, type UnitFields } from "@/lib/verification-status";
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       })
       .join("\n\n");
 
-    const msg = await anthropic.messages.create({
+    const msg = await createModelMessage({
       model: CONTENT_MODEL,
       output_config: { effort: EFFORT_STANDARD },
       max_tokens: MAX_TOKENS,

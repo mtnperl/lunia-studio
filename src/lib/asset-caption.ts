@@ -9,7 +9,7 @@
 // Best-effort by construction. Every failure path returns undefined rather
 // than throwing: a caption is a nicety, an upload is the user's photo, and
 // losing the second to protect the first would be a poor trade.
-import { createContentMessage, extractText, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "./anthropic";
+import { createContentMessage, extractText, hasContentModelProvider, DRAFT_MODEL, DRAFT_MAX_TOKENS_SHORT } from "./anthropic";
 
 /** MIME types the vision API accepts. SVG is uploadable but not describable,
  *  so it is skipped rather than sent and rejected. */
@@ -48,7 +48,7 @@ export async function describeAsset(opts: {
   name?: string;
 }): Promise<string | undefined> {
   if (!isVisionType(opts.type)) return undefined;
-  if (!process.env.ANTHROPIC_API_KEY) return undefined;
+  if (!hasContentModelProvider()) return undefined;
 
   try {
     const message = await createContentMessage({

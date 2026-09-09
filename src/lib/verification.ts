@@ -39,7 +39,7 @@
 // and is safe on both sides.
 import "server-only";
 import { z } from "zod";
-import { anthropic, CONTENT_MODEL, EFFORT_STANDARD } from "./anthropic";
+import { createModelMessage, CONTENT_MODEL, EFFORT_STANDARD } from "./anthropic";
 import { getCachedUnit, setCachedUnit } from "./verification-cache";
 import {
   hashUnitText,
@@ -293,7 +293,7 @@ export async function verifyUnit(unit: ExtractedUnit, useCache = true): Promise<
   }
 
   try {
-    const msg = await anthropic.messages.create({
+    const msg = await createModelMessage({
       model: CONTENT_MODEL,
       // "high" rather than "max", deliberately. Being wrong here is the whole
       // failure mode, so the depth matters — but this runs once PER UNIT with a
@@ -427,7 +427,7 @@ export async function findConflicts(units: VerifiedUnit[]): Promise<Verification
   if (factual.length < 2) return [];
 
   try {
-    const msg = await anthropic.messages.create({
+    const msg = await createModelMessage({
       model: CONTENT_MODEL,
       max_tokens: 1_500,
       system: `You check a set of claims from ONE piece of content for internal contradictions.

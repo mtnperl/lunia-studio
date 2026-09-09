@@ -5,6 +5,105 @@ export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+const DEEPSEEK_ANTHROPIC_BASE_URL =
+  process.env.DEEPSEEK_ANTHROPIC_BASE_URL ?? "https://api.deepseek.com/anthropic";
+
+const deepseek = new Anthropic({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: DEEPSEEK_ANTHROPIC_BASE_URL,
+});
+
+export const DEEPSEEK_FLASH_MODEL = "deepseek-v4-flash";
+export const DEEPSEEK_PRO_MODEL = "deepseek-v4-pro";
+export const DEEPSEEK_VISION_MODEL = "deepseek-v4-flash-vision-exp";
+
+/** True when at least one text-generation provider can serve a request. */
+export function hasContentModelProvider(): boolean {
+  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.DEEPSEEK_API_KEY);
+}
+
+function hasImageInput(params: MessageCreateParamsNonStreaming): boolean {
+  return params.messages.some(
+    (message) =>
+      Array.isArray(message.content) &&
+      message.content.some((block) => block.type === "image"),
+  );
+}
+
+/** Map the existing semantic model tiers onto DeepSeek's equivalent tier. */
+export function deepseekModelFor(params: MessageCreateParamsNonStreaming): string {
+  if (hasImageInput(params)) return DEEPSEEK_VISION_MODEL;
+  return params.model.startsWith("claude-opus") || params.model === CONTENT_MODEL
+    ? DEEPSEEK_PRO_MODEL
+    : DEEPSEEK_FLASH_MODEL;
+}
+
+/**
+ * Anthropic reports an exhausted prepaid balance as a 400, while throttling,
+ * overloads and provider incidents use 429/5xx. Network failures have no HTTP
+ * status. Invalid prompts and schema errors deliberately stay on the primary:
+ * retrying those elsewhere hides a code defect and creates a second bill.
+ */
+export function shouldUseDeepSeekFallback(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  const message = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : "";
+
+  if (status === 402 || status === 408 || status === 429 || (status !== undefined && status >= 500)) {
+    return true;
+  }
+  if (status === 400 && /credit|balance|billing|quota|spend limit|insufficient/i.test(message)) {
+    return true;
+  }
+  return /APIConnection|Timeout|AbortError/i.test(name) ||
+    /fetch failed|network|socket|timed? out|connection (?:reset|refused)/i.test(message);
+}
+
+function deepseekParams(params: MessageCreateParamsNonStreaming): MessageCreateParamsNonStreaming {
+  return { ...params, model: deepseekModelFor(params) };
+}
+
+type MessageSender = (
+  client: Anthropic,
+  params: MessageCreateParamsNonStreaming,
+) => Promise<Message>;
+
+async function sendWithFallback(
+  params: MessageCreateParamsNonStreaming,
+  send: MessageSender,
+): Promise<Message> {
+  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
+  const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
+
+  if (!hasAnthropic) {
+    // Calling the primary when neither key is configured preserves the SDK's
+    // normal authentication error and keeps the exported client mockable in
+    // unit tests. With a DeepSeek key, skip the known-doomed primary request.
+    return hasDeepSeek
+      ? send(deepseek, deepseekParams(params))
+      : send(anthropic, params);
+  }
+
+  try {
+    return await send(anthropic, params);
+  } catch (err) {
+    if (!hasDeepSeek || !shouldUseDeepSeekFallback(err)) throw err;
+    console.warn("[content-model] Anthropic unavailable; retrying once with DeepSeek", {
+      status: (err as { status?: number })?.status,
+      reason: err instanceof Error ? err.message.slice(0, 160) : String(err).slice(0, 160),
+      fallbackModel: deepseekModelFor(params),
+    });
+    return send(deepseek, deepseekParams(params));
+  }
+}
+
+/** Non-streaming Messages call for grounded/tool-using routes. */
+export async function createModelMessage(
+  params: MessageCreateParamsNonStreaming,
+): Promise<Message> {
+  return sendWithFallback(params, (client, request) => client.messages.create(request));
+}
+
 /**
  * Create a Message via the streaming API and return the final assembled Message.
  *
@@ -33,7 +132,7 @@ export async function createContentMessage(params: MessageCreateParamsNonStreami
       thinking: params.thinking ?? DRAFT_THINKING,
       output_config: params.output_config ?? { effort: EFFORT_LIGHT },
     };
-    return anthropic.messages.stream(draft).finalMessage();
+    return sendWithFallback(draft, (client, request) => client.messages.stream(request).finalMessage());
   }
 
   // Thinking and the visible answer share max_tokens, so a route that wants
@@ -47,7 +146,7 @@ export async function createContentMessage(params: MessageCreateParamsNonStreami
     output_config: params.output_config ?? { effort: EFFORT_STANDARD },
     max_tokens: thinkingOff ? params.max_tokens : Math.max(params.max_tokens, MIN_MAX_TOKENS_WITH_THINKING),
   };
-  return anthropic.messages.stream(tuned).finalMessage();
+  return sendWithFallback(tuned, (client, request) => client.messages.stream(request).finalMessage());
 }
 
 // ─── Model tiers ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from '@/lib/anthropic';
+import { createContentMessage, extractText, hasContentModelProvider, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_SHORT } from '@/lib/anthropic';
 import type { MetaData, ShopifyData, Insight, MetaCampaign, MetaAd } from '@/lib/types';
 
 export const maxDuration = 300;
@@ -12,8 +12,8 @@ Format as a JSON array: [{ "type": "positive"|"warning"|"neutral", "title": stri
 Return ONLY the JSON array. No preamble, no markdown fences, no explanation outside the JSON.`;
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json({ error: 'Anthropic API key not configured' }, { status: 503 });
+  if (!hasContentModelProvider()) {
+    return Response.json({ error: 'No content-model API key configured' }, { status: 503 });
   }
 
   let body: {

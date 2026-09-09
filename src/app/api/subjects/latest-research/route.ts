@@ -1,4 +1,4 @@
-import { anthropic, DRAFT_MODEL } from "@/lib/anthropic";
+import { createModelMessage, hasContentModelProvider, DRAFT_MODEL } from "@/lib/anthropic";
 import { getSubjects, saveSubjects } from "@/lib/kv";
 import type { Subject } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -70,13 +70,13 @@ function parseLatestItems(raw: string): LatestItem[] {
 }
 
 export async function POST() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+  if (!hasContentModelProvider()) {
+    return Response.json({ error: "No content-model API key configured" }, { status: 503 });
   }
 
   let raw: string;
   try {
-    const message = await anthropic.messages.create({
+    const message = await createModelMessage({
       model: DRAFT_MODEL,
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
