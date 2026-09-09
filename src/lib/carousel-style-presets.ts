@@ -1,7 +1,7 @@
 // Carousel v2 style presets. A preset bundles BrandStyle + typography + image
 // engine direction so the whole carousel takes on a single coherent look.
 import { PALETTE } from "@/lib/lunia-brand-guidelines";
-import { FP_COLORS, ESSAY_COLORS } from "./brand-tokens";
+import { FP_COLORS, ESSAY_COLORS, BILLBOARD_COLORS } from "./brand-tokens";
 import type { BrandStyle, CarouselStylePreset } from "./types";
 
 /** Editorial Scientific brand palette — explicit user direction.
@@ -34,7 +34,25 @@ export function getStylePresetBrandStyle(p?: CarouselStylePreset): BrandStyle | 
   if (p === "editorial-scientific" || p === "viral") return EDITORIAL_BRAND_STYLE;
   if (p === "free-press") return FREE_PRESS_BRAND_STYLE;
   if (p === "essay") return ESSAY_BRAND_STYLE;
+  if (p === "billboard") return BILLBOARD_BRAND_STYLE;
   return undefined;
+}
+
+/** Billboard palette: paper and rich navy, nothing else. The pillar labels,
+ *  the watermark and the headline pair are all the one ink at different
+ *  strengths, so the BrandStyle carries navy for every role. */
+export const BILLBOARD_BRAND_STYLE: BrandStyle = {
+  background:     BILLBOARD_COLORS.paper,
+  hookBackground: BILLBOARD_COLORS.paper,
+  headline:       BILLBOARD_COLORS.ink,
+  hookHeadline:   BILLBOARD_COLORS.ink,
+  body:           BILLBOARD_COLORS.ink,
+  accent:         BILLBOARD_COLORS.ink,
+  secondary:      BILLBOARD_COLORS.inkMuted,
+};
+
+export function isBillboardPreset(p?: CarouselStylePreset | null): boolean {
+  return p === "billboard";
 }
 
 /** Essay palette: paper and deep navy ink. The accent is chosen per deck

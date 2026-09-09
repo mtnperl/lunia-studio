@@ -183,12 +183,13 @@ export const REGENERATE_HOOKS_PROMPT = (
   opts: { existing?: { headline: string; subline?: string }[]; count?: number; brief?: CarouselBrief | null } = {},
 ): string => {
   const isEssay = stylePreset === "essay";
+  const isBillboard = stylePreset === "billboard";
   const count = Math.max(1, Math.min(5, opts.count ?? 3));
   const deck = slides
     .map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`)
     .join("\n");
   const existing = (opts.existing ?? []).filter((h) => h.headline).map((h) => `  - ${h.headline}${h.subline ? ` / ${h.subline}` : ""}`).join("\n");
-  const hookShape = `    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \\"\\" if you cannot name a real one"${isEssay ? ', "emphasis": "string"' : ""} }`;
+  const hookShape = `    { "headline": "string", "subline": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \\"\\" if you cannot name a real one"${isEssay || isBillboard ? ', "emphasis": "string"' : ""} }`;
   return `You are a content strategist for Lunia Life, a sleep supplement brand. Write ${count} NEW, distinct hook options (the opening slide of an Instagram carousel) for the carousel below. The content slides and CTA are FIXED — your hooks must set up THIS exact deck, stay on-topic, and not promise content the slides don't deliver. The 3 hooks should be genuinely different angles, not rewordings of one idea.
 
 Topic: ${topic}
@@ -206,7 +207,8 @@ ${Array.from({ length: count }, () => hookShape).join(",\n")}
 
 Hook format rules (hard):
 - headline: UPPERCASE, punchy, max 8 words${isEssay ? `
-- emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline. It is drawn in a filled box. The verb, the number or the villain; never the product, never "you".` : ""}
+- emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline. It is drawn in a filled box. The verb, the number or the villain; never the product, never "you".` : ""}${isBillboard ? `
+- BILLBOARD: the headline is set as a thin line over a HEAVY line. Write it as two halves, at most 22 characters then at most 14 characters ("THE FIRST" / "90 MINUTES"). "emphasis" is the heavy half, copied EXACTLY from the end of the headline. The subline is set the same way under the photo: two short halves, at most 5 words in all, uppercase reads fine ("DECIDE THE WHOLE NIGHT").` : ""}
 - subline: max 10 words, no period at the end. It completes the headline: the comparison its number comes from, or who the deck is for. Never a slogan.
 - sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook simply renders without a trust liner. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty. Never pad this field to satisfy the format.`;
@@ -253,6 +255,21 @@ How a viral slide is written. The slide is read in 0.5 seconds on a phone, so it
 /** How the Essay look is written: one boxed word in the hook, one accent
  *  phrase per slide, no graphics. The order of the deck still comes from the
  *  structure block. */
+/** The Billboard look: every headline is a thin line over a heavy line, the
+ *  cover wraps two such pairs around a photograph, body slides carry no
+ *  graphic. The renderer splits the headline itself (the last words go
+ *  heavy) so the model only has to keep the lines short. */
+function billboardLookBlock(): string {
+  return `
+BILLBOARD LOOK. Paper, one photograph on the cover, rich navy type. Every headline is set as a THIN line over a HEAVY condensed line, so:
+- Hook headline: two halves, thin then heavy, at most 22 characters then at most 14 ("THE FIRST" / "90 MINUTES"). hooks[].emphasis is the heavy half, copied EXACTLY from the end of the headline. The subline sits under the photograph the same way: at most 5 words in all.
+- Slide headlines: UPPERCASE, 3 to 6 words, a complete claim. The last two words are set heavy, so end on the words that carry it ("WHY THE FIRST CYCLE", "LIGHT SETS THE CLOCK").
+- "graphic": return "" for every slide. The body slides draw type only; the cover carries the picture.
+- "body": 40 to 70 words, one or two paragraphs separated by a blank line. It is set at 40px in Inter light, so 70 words fills the slide.
+- The takeaway's "points": at most 9 words each, they set on one line beside a number.
+`;
+}
+
 function essayLookBlock(): string {
   return `
 ESSAY LOOK. The deck is type on paper with one engraving on the cover. Every hook object and every slide object carries an "emphasis" field:
@@ -352,6 +369,7 @@ export const GENERATE_CAROUSEL_PROMPT = (
   const isEditorial = stylePreset === "editorial-scientific" || isViral;
   const isFreePress = stylePreset === "free-press";
   const isEssay = stylePreset === "essay";
+  const isBillboard = stylePreset === "billboard";
   const svgColors = brandStyle
     ? [brandStyle.accent, brandStyle.headline, brandStyle.background, brandStyle.secondary, brandStyle.body, "#ffffff"].join(" ")
     : "#1e7a8a #1a2535 #c8dde8 #f0ece6 #9ab0b8 #ffffff";
@@ -390,7 +408,7 @@ Return ONLY valid JSON in this exact format, no other text:
   }` : isEssay ? `,
   "hookImageSpec": {
     "concept": "ONE sentence (max 25 words) naming the single SUBJECT of the cover engraving and what it is doing, specific to THIS hook: an animal, an object, a figure, a plant. It is drawn as a 19th-century engraving on white paper, so name something with a body and texture, never an abstraction, never a bed, never a bottle. Nothing else in the frame. NO text."
-  }` : isFreePress ? `,
+  }` : isFreePress || isBillboard ? `,
   "hookImageSpec": {
     "concept": "ONE sentence (max 30 words) naming what the cover PHOTOGRAPH shows, and it must be specific to THIS topic. The generic fallback for any sleep topic is an empty bed in morning light, and that is exactly what to avoid: if the topic is pregnancy sleep, shift work, menopause, altitude, or anything else with a subject of its own, the photograph must show THAT. Name a subject and a setting. Do NOT prescribe camera angles, lighting or palette. NO text of any kind appears in this image."
   }` : ""}
@@ -411,7 +429,7 @@ The body slides in this preset render ONE centred block of copy and NOTHING else
 CONCISE MODE, if set, does NOT apply to this preset: 30 words leaves the slide looking empty. Write the full 45 to 75.
 
 The takeaway slide's "points" render as three hairline-separated lines with no numbers. Keep each to at most 10 words so it sets on one line.
-` : ""}${isEssay ? essayLookBlock() : ""}${structured ? structurePromptBlock(structure!, total, { light: !!brief }) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
+` : ""}${isEssay ? essayLookBlock() : ""}${isBillboard ? billboardLookBlock() : ""}${structured ? structurePromptBlock(structure!, total, { light: !!brief }) : ""}${isViral ? viralLookBlock(total) : ""}${v2Mode && !isViral && !structured ? `
 NARRATIVE ARC (mandatory for v2): The 3 content slides serve THREE DIFFERENT ROLES — they are NOT 3 parallel facts. Treat them as an arc:
 
 Slide 1 — THE SURPRISE

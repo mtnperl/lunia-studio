@@ -195,6 +195,7 @@ export type PaperSettings = { grain: number; vignette: number };
 export const PAPER_DEFAULTS = {
   essay: { grain: 0.9, vignette: 0.07 },
   highlighter: { grain: 0.45, vignette: 0 },
+  billboard: { grain: 0.45, vignette: 0 },
 } as const satisfies Record<string, PaperSettings>;
 /** Slider ceiling for the vignette: the Essay value is 0.07, so the control
  *  runs 0..0.2 and maps the whole range onto something visible. */
@@ -235,6 +236,57 @@ export const DYK_LAYOUT = {
 } as const;
 /** Right-hand chrome label on both slides. */
 export const DYK_CHROME_LABEL = "Sleep & longevity";
+
+// ─── Billboard preset tokens ────────────────────────────────────────────────
+// Approved 2026-09-08 after the @reputeforge watermark covers: paper, an
+// outlined LUNIA watermark peeking above and below the type, four pillar
+// labels in the corners with the deck's pillar lit, and every headline set
+// as a thin tracked line over a heavy condensed line. Rich navy is the only
+// ink; contrast comes from weight, never from a second colour.
+export const BILLBOARD_COLORS = {
+  paper: BRAND_COLORS.softIvory,
+  ink: BRAND_COLORS.richNavy,
+  inkMuted: "rgba(1,37,63,0.55)",
+  inkHairline: "rgba(1,37,63,0.14)",
+  /** Stroke-only watermark. 4px at 14% is the floor the review set so it
+   *  survives the phone without hatching the headline. */
+  watermark: "rgba(1,37,63,0.14)",
+  /** The fallback photo band and the caption scrim. */
+  band: BRAND_COLORS.richNavy,
+} as const;
+export const BILLBOARD_FONTS = {
+  thin: "Inter, system-ui, sans-serif",
+  heavy: "'Archivo Narrow', 'Arial Narrow', sans-serif",
+  watermark: "Anton, 'Arial Narrow', sans-serif",
+} as const;
+/** Type scale (px at the 1080-wide artboard). */
+export const BILLBOARD_TYPE = {
+  coverThin: 82,
+  coverHeavy: 126,
+  thin: 56,
+  heavy: 104,
+  body: 40,
+  cite: 28,
+  corner: 24,
+  caption: 26,
+  watermark: 300,
+} as const;
+export const BILLBOARD_LAYOUT = {
+  padX: 84,
+  cornerY: 72,
+  /** Cover photo band: full bleed, its top edge and height. Reels grows it. */
+  band: { top: 480, height: 520, reelsHeight: 760 },
+  /** Content slides: the headline pair starts here (the review moved it up
+   *  from 400 so the phone's first frame is not paper). */
+  contentTop: 280,
+} as const;
+/** The four corner labels, in reading order: top-left, top-right,
+ *  bottom-left, bottom-right. */
+export const BILLBOARD_PILLARS = ["Sleep", "Recovery", "Nutrition", "Longevity"] as const;
+/** The heavy line may hold about 14 uppercase characters at 126px in the
+ *  safe width; the thin line about 22 at 82px. The generator is told the
+ *  same numbers; the renderer steps the size down once when a line is over. */
+export const BILLBOARD_LINE_MAX = { heavy: 14, thin: 22 } as const;
 
 // ─── Carousel slide geometry ────────────────────────────────────────────────
 export const SLIDE = {

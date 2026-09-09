@@ -355,4 +355,48 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       citation: "",
     },
   },
+  // Billboard preset. The cover with no photo (the navy band fallback) and a
+  // heavy line at the 14-character cap; a content slide at the long end of
+  // the body range with a citation; the takeaway with three points.
+  {
+    name: "billboard-hook-no-photo",
+    props: {
+      kind: "hook",
+      stylePreset: "billboard",
+      pillar: "Sleep",
+      headline: "THE FIRST 90 MINUTES",
+      emphasis: "90 MINUTES",
+      subline: "DECIDE THE WHOLE NIGHT",
+      sourceNote: "Based on Stanford sleep research, 2021",
+      body: "",
+      citation: "",
+    },
+  },
+  {
+    name: "billboard-content-long-body",
+    props: {
+      stylePreset: "billboard",
+      pillar: "Nutrition",
+      slideIndex: 1,
+      slideTotal: 3,
+      headline: "WHY THE FIRST CYCLE",
+      body: "Slow-wave sleep is front-loaded. Roughly half of the night's deep sleep arrives in the first ninety minutes, before the first REM period.\n\nLose that window to a late meal or a warm room and the rest of the night cannot pay it back, however long you stay in bed.",
+      citation: "Carskadon and Dement, Principles and Practice of Sleep Medicine, 2017",
+    },
+  },
+  {
+    name: "billboard-takeaway",
+    props: {
+      kind: "takeaway",
+      stylePreset: "billboard",
+      pillar: "Recovery",
+      slideTotal: 3,
+      headline: "PROTECT THE FIRST CYCLE",
+      points: ["Last meal three hours before bed", "Room at eighteen degrees, not twenty-four", "Same wake time, even after a short night"],
+      interaction: { type: "save", label: "Save this for tonight" },
+      followLine: "Follow @lunia_life for science-based sleep strategies.",
+      body: "",
+      citation: "",
+    },
+  },
 ];

@@ -52,7 +52,9 @@ export async function POST(req: Request) {
     // Editorial Scientific preset locks the mood to the Lunia editorial look.
     const stylePreset: string | undefined = typeof body.stylePreset === 'string' ? body.stylePreset : undefined;
     const isEditorial = stylePreset === 'editorial-scientific' || stylePreset === 'viral';
-    const isFreePress = stylePreset === 'free-press';
+    // Billboard covers take the Free Press photograph: documentary, no text,
+    // because the headline pair is set in HTML around the band.
+    const isFreePress = stylePreset === 'free-press' || stylePreset === 'billboard';
     const isEssay = stylePreset === 'essay';
 
     // Editorial extras: interpretive lane + paper tone. Both only meaningful

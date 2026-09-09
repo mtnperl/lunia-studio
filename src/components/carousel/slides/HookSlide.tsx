@@ -8,6 +8,9 @@ import { FrameOverlay, VignetteOverlay, GrainOverlay, BackgroundWashOverlay, bui
 import { BRAND_FONT_FAMILY, FP_COLORS, FP_TYPE } from '@/lib/brand-tokens';
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 import { EssayHookCover, essayNumberFrom, essayDate } from '@/components/carousel/shared/EssayChrome';
+import { BillboardHookCover } from '@/components/carousel/shared/BillboardChrome';
+import { BILLBOARD_COLORS, type PaperSettings } from '@/lib/brand-tokens';
+import type { BillboardPillar } from '@/lib/types';
 import { ESSAY_COLORS, type EssayAccent } from '@/lib/brand-tokens';
 
 // ─── Layout tokens ────────────────────────────────────────────────────────────
@@ -51,6 +54,9 @@ type Props = {
   essayAccent?: EssayAccent;
   essayNumber?: string;
   essayDate?: string;
+  /** Billboard preset: the lit corner and the paper grain / vignette. */
+  pillar?: BillboardPillar;
+  paper?: Partial<PaperSettings>;
 };
 
 // Headline font-weight per boldness level, keyed by style preset (each preset has its own baseline).
@@ -61,16 +67,17 @@ const HEADLINE_WEIGHTS = {
   black: { default: 900, editorial: 900 },
 } as const;
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default", emphasis, essayAccent, essayNumber, essayDate: essayDateText }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default", emphasis, essayAccent, essayNumber, essayDate: essayDateText, pillar, paper }: Props) {
   const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
   const isEssay = stylePreset === "essay";
+  const isBillboard = stylePreset === "billboard";
   const headlineFontWeight = HEADLINE_WEIGHTS[headlineWeight][isEditorial ? "editorial" : "default"];
   const slideH = frameH ?? (reels ? SLIDE_H.reels : SLIDE_H.carousel);
   const py = reels ? 220 : SLIDE_PADDING.y;
   const gap = reels ? 46 : SECTION_GAP;
   // Hook stays dark by default so white text reads cleanly; users can override via brandStyle.hookBackground.
-  const bg = isEssay ? ESSAY_COLORS.paper : (brandStyle?.hookBackground ?? '#01253f');
+  const bg = isEssay ? ESSAY_COLORS.paper : isBillboard ? BILLBOARD_COLORS.paper : (brandStyle?.hookBackground ?? '#01253f');
   const headlineColor = brandStyle?.hookHeadline ?? '#ffffff';
   const sublineColor = brandStyle?.accent ?? '#F7F4EF';
   const arrowColor = brandStyle?.secondary ?? 'rgba(247,244,239,0.55)';
@@ -81,7 +88,9 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           all subsequent elements stack above without needing explicit z-index.
           Use <img> instead of CSS background-image so html-to-image captures it
           correctly on mobile Safari (getComputedStyle drops large data URLs). */}
-      {isEssay ? (
+      {isBillboard ? (
+        <BillboardHookCover headline={headline} subline={subline} sourceNote={sourceNote} heavy={emphasis} pillar={pillar} paper={paper} imageUrl={backgroundImageUrl} shimmer={shimmer} slideH={slideH} reels={reels} showSourceNote={showCitationBars} />
+      ) : isEssay ? (
         <EssayHookCover headline={headline} subline={subline} sourceNote={sourceNote} emphasis={emphasis} accent={essayAccent} imageUrl={backgroundImageUrl} shimmer={shimmer} slideH={slideH} reels={reels} essayNumber={essayNumber ?? essayNumberFrom(headline)} date={essayDateText ?? essayDate()} showSourceNote={showCitationBars} />
       ) : backgroundImageUrl ? (
         <>
@@ -146,7 +155,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
         avoid duplicated text. If the image is still generating or failed, we
         fall through to the HTML overlay so the editor preview isn't empty.
       */}
-      {isEssay ? null : isFreePress ? (
+      {isEssay || isBillboard ? null : isFreePress ? (
         /* Cover type. Headline low and centred, kicker beneath it — the whole
            frame above is the photograph. No subline: the FP cover carries one
            line of argument, not two. */
@@ -270,7 +279,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
       </div>
       )}
 
-      {showLuniaLifeWatermark && !isEssay && (
+      {showLuniaLifeWatermark && !isEssay && !isBillboard && (
         <div style={{
           position: 'absolute',
           bottom: prominentWatermark ? 30 : 24,
@@ -290,7 +299,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
           LUNIA LIFE
         </div>
       )}
-      {!isEssay && (
+      {!isEssay && !isBillboard && (
         <LuniaLogo
           variant="light"
           sizeScale={logoScale}

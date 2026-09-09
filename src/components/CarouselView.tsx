@@ -691,6 +691,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialShowCitationBars={initialCarousel?.showCitationBars ?? pendingLook?.showCitationBars}
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight ?? pendingLook?.hookHeadlineWeight}
               initialEssayAccent={initialCarousel?.essayAccent ?? pendingLook?.essayAccent}
+              initialPillar={initialCarousel?.pillar}
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
+                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.billboard.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.billboard.vignette }
+                : undefined}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}
               initialSavedId={loadedId}
               onSaved={onSaved}

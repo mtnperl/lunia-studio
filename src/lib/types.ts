@@ -405,7 +405,10 @@ export type BrandStyle = {
 export type CarouselContrastMode = "standard" | "high";
 
 /** "viral" shares the editorial look and swaps the slide architecture for the slot engine in docs/carousel-viral-engine.md. */
-export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press" | "viral" | "essay";
+export type CarouselStylePreset = "default" | "editorial-scientific" | "free-press" | "viral" | "essay" | "billboard";
+
+/** Billboard preset: the deck's pillar, lit in the corner labels. */
+export type BillboardPillar = "Sleep" | "Recovery" | "Nutrition" | "Longevity";
 
 /** Essay preset: the colour of the boxed word and the emphasis phrase. */
 export type EssayAccent = "yellow" | "red";
@@ -517,6 +520,8 @@ export type SavedCarousel = {
   hookHeadlineWeight?: HookHeadlineWeight;
   /** Essay preset only: yellow (brand book) or red for the boxed word. */
   essayAccent?: EssayAccent;
+  /** Billboard preset only: which of the four corner pillars is lit. */
+  pillar?: BillboardPillar;
   /** Editorial Scientific only — hook image URLs pregenerated per boldness level via
    *  "Generate other weights" (edit-based, same composition as the source image), so
    *  switching Hook weight in the editor can swap instantly instead of regenerating. */

@@ -71,6 +71,9 @@ export function chooseImageEngine(opts: ChooseEngineInput): ImageEngine {
   // Essay covers are engravings on a white ground, printed onto the paper
   // with multiply. gpt-image-2 holds the medium and keeps text out.
   if (opts.stylePreset === "essay") return "gpt-image-2";
+  // Billboard covers are photographs in a band with the headline in HTML
+  // above and below; like Free Press they must carry no text.
+  if (opts.stylePreset === "billboard") return "gpt-image-2";
   if (opts.textInImage) return "ideogram";
   // Hook slide gets a weighted mix; CTA and content slides stick with Recraft
   // for atmospheric backgrounds when they generate (today only slide 0 does).

@@ -24,9 +24,11 @@ import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
 import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
-import { FP_COLORS, ESSAY_COLORS, DYK_COLORS, type EssayAccent } from "@/lib/brand-tokens";
+import BillboardContentSlide from "@/components/carousel/slides/BillboardContentSlide";
+import BillboardTakeawaySlide from "@/components/carousel/slides/BillboardTakeawaySlide";
+import { FP_COLORS, ESSAY_COLORS, DYK_COLORS, BILLBOARD_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
-import type { BrandStyle, CarouselStylePreset, DidYouKnowSlideContent, DidYouKnowTreatment } from "@/lib/types";
+import type { BillboardPillar, BrandStyle, CarouselStylePreset, DidYouKnowSlideContent, DidYouKnowTreatment } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 export type RenderSlideProps = {
@@ -68,6 +70,8 @@ export type RenderSlideProps = {
   essayAccent?: EssayAccent;
   essayNumber?: string;
   essayDate?: string;
+  /** Billboard: the lit corner. Paper comes from paperGrain / paperVignette. */
+  pillar?: BillboardPillar;
   slideIndex?: number;
   slideTotal?: number;
   showSlideArrows?: boolean;
@@ -195,6 +199,7 @@ export default function RenderSlideClient(props: RenderSlideProps) {
     };
   }, [fitScale, slideH]);
 
+  const paperProp = props.paperGrain !== undefined || props.paperVignette !== undefined ? { grain: props.paperGrain, vignette: props.paperVignette } : undefined;
   const scaled = {
     ...props,
     headlineScale: (props.headlineScale ?? 1) * fitScale,
@@ -213,7 +218,7 @@ export default function RenderSlideClient(props: RenderSlideProps) {
         overflow: "hidden",
         background:
           props.slideBgColor ??
-          (props.kind === "did_you_know" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : "#01253f"),
+          (props.kind === "did_you_know" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : props.stylePreset === "billboard" ? BILLBOARD_COLORS.paper : "#01253f"),
       }}
     >
       {props.kind === "did_you_know" && props.dyk ? (
@@ -225,7 +230,11 @@ export default function RenderSlideClient(props: RenderSlideProps) {
           scale={1}
         />
       ) : props.kind === "hook" ? (
-        <HookSlide {...scaled} subline={props.subline ?? ""} scale={1} />
+        <HookSlide {...scaled} subline={props.subline ?? ""} paper={paperProp} scale={1} />
+      ) : props.kind === "takeaway" && props.stylePreset === "billboard" ? (
+        <BillboardTakeawaySlide {...scaled} paper={paperProp} points={props.points ?? []} interaction={props.interaction ?? { type: "save", label: "" }} scale={1} />
+      ) : props.stylePreset === "billboard" ? (
+        <BillboardContentSlide {...scaled} paper={paperProp} scale={1} />
       ) : props.kind === "takeaway" && props.stylePreset === "essay" ? (
         <EssayTakeawaySlide {...scaled} points={props.points ?? []} interaction={props.interaction ?? { type: "save", label: "" }} scale={1} />
       ) : props.stylePreset === "essay" ? (
