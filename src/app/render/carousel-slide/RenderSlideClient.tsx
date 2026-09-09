@@ -23,9 +23,10 @@ import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
 import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
 import HookSlide from "@/components/carousel/slides/HookSlide";
-import { FP_COLORS, ESSAY_COLORS, type EssayAccent } from "@/lib/brand-tokens";
+import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
+import { FP_COLORS, ESSAY_COLORS, DYK_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
-import type { BrandStyle, CarouselStylePreset} from "@/lib/types";
+import type { BrandStyle, CarouselStylePreset, DidYouKnowSlideContent, DidYouKnowTreatment } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 export type RenderSlideProps = {
@@ -46,8 +47,15 @@ export type RenderSlideProps = {
   arrowScale?: number;
   stylePreset?: CarouselStylePreset;
   /** Which slide to draw. Content by default; "hook" and "takeaway" render
-   *  the deck's first and last slides so the visual suite covers them too. */
-  kind?: "content" | "hook" | "takeaway";
+   *  the deck's first and last slides so the visual suite covers them too.
+   *  "did_you_know" draws one slide of the frozen two-slide format from
+   *  `dyk`, so that format is in the suite as well. */
+  kind?: "content" | "hook" | "takeaway" | "did_you_know";
+  dyk?: DidYouKnowSlideContent;
+  dykIndex?: 1 | 2;
+  didYouKnowTreatment?: DidYouKnowTreatment;
+  paperGrain?: number;
+  paperVignette?: number;
   subline?: string;
   sourceNote?: string;
   backgroundImageUrl?: string;
@@ -203,10 +211,18 @@ export default function RenderSlideClient(props: RenderSlideProps) {
         overflow: "hidden",
         background:
           props.slideBgColor ??
-          (props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : "#01253f"),
+          (props.kind === "did_you_know" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : "#01253f"),
       }}
     >
-      {props.kind === "hook" ? (
+      {props.kind === "did_you_know" && props.dyk ? (
+        <DidYouKnowSlide
+          slide={props.dyk}
+          index={props.dykIndex ?? 1}
+          treatment={props.didYouKnowTreatment}
+          paper={props.paperGrain !== undefined || props.paperVignette !== undefined ? { grain: props.paperGrain, vignette: props.paperVignette } : undefined}
+          scale={1}
+        />
+      ) : props.kind === "hook" ? (
         <HookSlide {...scaled} subline={props.subline ?? ""} scale={1} />
       ) : props.kind === "takeaway" && props.stylePreset === "essay" ? (
         <EssayTakeawaySlide {...scaled} points={props.points ?? []} interaction={props.interaction ?? { type: "save", label: "" }} scale={1} />

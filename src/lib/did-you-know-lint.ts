@@ -63,6 +63,19 @@ function lintSlide(label: string, slide: DidYouKnowSlideContent | undefined | nu
         v.push(`${label}.${name}: highlight on filler word "${h.text.trim()}"`);
       }
     }
+    // The box: exactly one marked phrase per paragraph, and it must be one of
+    // the highlights. Content from before the mark existed has none and is
+    // left alone; the slide picks the number for it.
+    const marks = tokens.filter((t) => t.mark);
+    if (marks.length > 1) {
+      v.push(`${label}.${name}: more than one mark (${marks.length}); mark exactly one phrase, the number or the claim`);
+    }
+    if (marks.some((t) => !t.highlight)) {
+      v.push(`${label}.${name}: a marked token must also be highlighted`);
+    }
+    if (marks.length === 0 && tokens.some((t) => t.mark !== undefined)) {
+      v.push(`${label}.${name}: needs exactly one mark`);
+    }
   }
   const total = tokensToString(slide.body1).length + tokensToString(slide.body2).length;
   if (total < MIN_BODY_CHARS) {

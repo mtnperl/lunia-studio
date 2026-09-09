@@ -59,7 +59,18 @@ import { z as zDyk } from 'zod';
 export const DidYouKnowTokenSchema = zDyk.object({
   text: zDyk.string(),
   highlight: zDyk.boolean(),
+  /** The one phrase per paragraph that takes the box (the number or the
+   *  claim). Highlighted tokens without it take the pen underline. Absent on
+   *  content generated before the Highlighter redesign; the slide then boxes
+   *  the first highlighted token that carries a digit. */
+  mark: zDyk.boolean().optional(),
 });
+
+/** Did you know body treatment. "navy-box": the marked phrase sits in a navy
+ *  box with ivory type and the header's last word is boxed too. "yellow-box":
+ *  the marked phrase sits in a Signal Yellow box, header plain. Both pen the
+ *  other highlighted phrases in navy. */
+export type DidYouKnowTreatment = "navy-box" | "yellow-box";
 
 export const DidYouKnowSlideContentSchema = zDyk.object({
   header: zDyk.string().min(1),
@@ -477,6 +488,12 @@ export type SavedCarousel = {
   format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
   engagementSubType?: EngagementSubType; // "reveal" | "diagnostic" — only when format is "engagement"
   didYouKnowContent?: DidYouKnowContent; // present iff format === "did_you_know"
+  /** Did you know only: which box the marked phrase takes. Absent = navy-box. */
+  didYouKnowTreatment?: DidYouKnowTreatment;
+  /** Paper ground, 0..1 each: grain opacity and vignette strength. Absent
+   *  means the style's own default (Did you know: 0.45 grain, no vignette). */
+  paperGrain?: number;
+  paperVignette?: number;
   reelsMode?: boolean;     // true = 9:16 Reels format
   citationFontSize?: number;
   headlineScale?: number;

@@ -6,6 +6,7 @@ import { lookFromCarousel } from "@/lib/carousel-looks";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
+import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -638,6 +639,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               variants={didYouKnowVariants}
               selected={selectedDidYouKnow}
               onSelect={setSelectedDidYouKnow}
+              initialSavedId={loadedId}
+              initialTreatment={initialCarousel?.didYouKnowTreatment}
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
+                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette }
+                : undefined}
+              onSaved={onSaved}
             />
           )}
           {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "loading" && (

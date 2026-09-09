@@ -186,6 +186,56 @@ export const ESSAY_TYPE = {
   takeawayPoint: 44,
 } as const;
 
+/** Paper ground settings a slide can carry: grain opacity and vignette
+ *  strength, both 0..1. Essay ships its original values; the styles built
+ *  from the Highlighter review (Did you know, Billboard, Chartbook, Primer)
+ *  default to half grain and no vignette, the phone-scale call of 9 Sep 2026.
+ *  Every one of them exposes both as sliders (PaperControls). */
+export type PaperSettings = { grain: number; vignette: number };
+export const PAPER_DEFAULTS = {
+  essay: { grain: 0.9, vignette: 0.07 },
+  highlighter: { grain: 0.45, vignette: 0 },
+} as const satisfies Record<string, PaperSettings>;
+/** Slider ceiling for the vignette: the Essay value is 0.07, so the control
+ *  runs 0..0.2 and maps the whole range onto something visible. */
+export const PAPER_VIGNETTE_MAX = 0.2;
+
+// ─── Did you know (Highlighter) tokens ──────────────────────────────────────
+// The frozen two-slide fact card, redesigned 2026-09-09 after the
+// @reputeforge reference: paper, a serif italic question, Inter light body,
+// one boxed phrase per paragraph and navy pen underlines on the rest, small
+// tracked chrome. Approved treatments: V6 (navy box) and V8 (yellow box).
+export const DYK_SERIF = "'Cormorant Garamond', Georgia, serif";
+export const DYK_COLORS = {
+  paper: BRAND_COLORS.softIvory,
+  ink: BRAND_COLORS.deepNavy,
+  inkMuted: "rgba(16,38,53,0.6)",
+  inkHairline: "rgba(16,38,53,0.16)",
+  /** The pen: navy at 85% so it reads as a stroke over paper, not a rule. */
+  pen: "rgba(16,38,53,0.85)",
+  yellow: BRAND_COLORS.signalYellow,
+  /** The counter's slash, a darker yellow that survives on ivory. */
+  yellowText: "#B8930A",
+} as const;
+/** Type scale (px at the 1080-wide artboard). Chrome is 24, not the Essay
+ *  22: the phone shows the slide at 0.36, and 24 is the floor the review set
+ *  for the new styles. */
+export const DYK_TYPE = {
+  header: 150,
+  body: 44,
+  chrome: 24,
+} as const;
+export const DYK_LAYOUT = {
+  padX: 84,
+  bodyX: 110,
+  headerTop: 320,
+  bodyTop: 580,
+  chromeTop: 110,
+  chromeBottom: 58,
+} as const;
+/** Right-hand chrome label on both slides. */
+export const DYK_CHROME_LABEL = "Sleep & longevity";
+
 // ─── Carousel slide geometry ────────────────────────────────────────────────
 export const SLIDE = {
   width: 1080,

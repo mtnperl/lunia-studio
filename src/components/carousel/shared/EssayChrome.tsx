@@ -24,34 +24,39 @@ export function essayAccent(accent: EssayAccent | undefined) {
  *  captured over a transparent backdrop comes out as grey grain, so the
  *  compositor hides these during capture and redraws them itself
  *  (PreviewStep.compositeWithImages). */
-export function PaperTexture({ opacity = 0.9 }: { opacity?: number }) {
+export function PaperTexture({ opacity = 0.9, vignette = 0.07 }: { opacity?: number; vignette?: number }) {
   return (
     <>
-      <div
-        aria-hidden
-        data-export-paper="texture"
-        data-export-src={ESSAY_PAPER_TEXTURE}
-        data-export-tile="512"
-        data-export-opacity={opacity}
-        style={{
-          position: "absolute", inset: 0,
-          backgroundImage: `url(${ESSAY_PAPER_TEXTURE})`,
-          backgroundRepeat: "repeat",
-          backgroundSize: "512px 512px",
-          mixBlendMode: "multiply",
-          opacity,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        aria-hidden
-        data-export-paper="vignette"
-        style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 40%, rgba(16,38,53,0) 55%, rgba(16,38,53,0.07) 100%)",
-          pointerEvents: "none",
-        }}
-      />
+      {opacity > 0 && (
+        <div
+          aria-hidden
+          data-export-paper="texture"
+          data-export-src={ESSAY_PAPER_TEXTURE}
+          data-export-tile="512"
+          data-export-opacity={opacity}
+          style={{
+            position: "absolute", inset: 0,
+            backgroundImage: `url(${ESSAY_PAPER_TEXTURE})`,
+            backgroundRepeat: "repeat",
+            backgroundSize: "512px 512px",
+            mixBlendMode: "multiply",
+            opacity,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {vignette > 0 && (
+        <div
+          aria-hidden
+          data-export-paper="vignette"
+          data-export-opacity={vignette}
+          style={{
+            position: "absolute", inset: 0,
+            background: `radial-gradient(ellipse at 50% 40%, rgba(16,38,53,0) 55%, rgba(16,38,53,${vignette}) 100%)`,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </>
   );
 }

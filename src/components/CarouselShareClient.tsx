@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { compositeSlideWithImages } from "@/lib/slide-export";
+import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
@@ -683,11 +684,12 @@ export default function CarouselShareClient({ carousel }: Props) {
 
 
 // ── Did You Know share view ───────────────────────────────────────────────────
-// DYK slides contain a <img src="/lunia-logo.png"> inside DidYouKnowSlide.
-// Plain toPng drops <img> contents on mobile Safari (SVG foreignObject bug),
-// so we use the same canvas-compositing pattern as the main carousel path.
+// DYK slides are paper with a multiply grain layer, so the share page exports
+// them through the same canvas compositor as the main carousel path.
 function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const dyk = carousel.didYouKnowContent!;
+  const dykTreatment = carousel.didYouKnowTreatment ?? "navy-box";
+  const dykPaper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette };
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -720,113 +722,15 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
    * mobile Safari — we handle it the same way as hook / content slides:
    * capture a transparent foreground, draw bg + images + fg on canvas.
    */
+  /**
+   * Build a PNG for a DYK slide. The slide carries no <img> since the
+   * Highlighter redesign, but its paper grain is a multiply layer, and
+   * html-to-image captures those as grey noise on mobile Safari. The shared
+   * compositor hides the paper for the capture and redraws it over the ground.
+   */
   async function buildFile(node: HTMLElement | null, filename: string): Promise<File | null> {
     if (!node) return null;
-
-    const W = 1080, H = 1350, PR = 2;
-
-    const imgEls = Array.from(node.querySelectorAll("img")) as HTMLImageElement[];
-
-    // Wait for any <img> to finish loading before we try to capture.
-    await Promise.all(imgEls.map((img) =>
-      img.complete ? Promise.resolve()
-        : new Promise<void>((res) => { img.onload = () => res(); img.onerror = () => res(); }),
-    ));
-
-    if (imgEls.length > 0) {
-      const elRect = node.getBoundingClientRect();
-      type ImgInfo = { dataUrl: string; x: number; y: number; w: number; h: number; fit: string };
-      const infos: ImgInfo[] = [];
-
-      for (const img of imgEls) {
-        const src = img.getAttribute("src");
-        if (!src) continue;
-        try {
-          const dataUrl = await loadDataUrl(src);
-          const r = img.getBoundingClientRect();
-          infos.push({ dataUrl, x: r.x - elRect.x, y: r.y - elRect.y, w: r.width, h: r.height, fit: getComputedStyle(img).objectFit || "fill" });
-        } catch { /* skip — fg capture continues */ }
-      }
-
-      // Hide <img>s + clear inner wrapper bg so toPng gets a transparent fg.
-      // SlideWrapper DOM: node > outer-div > inner-div(background: #EEEBE3).
-      const innerWrapper = node.firstElementChild?.firstElementChild as HTMLElement | null;
-      const savedDisplays = imgEls.map((img) => img.style.display);
-      const savedSrcs = imgEls.map((img) => img.getAttribute("src") ?? "");
-      const savedBg = innerWrapper?.style.background ?? "";
-
-      // Clear src AND hide — html-to-image probes every img src it finds
-      // (including framework-injected favicons referenced via CSS) and throws
-      // a DOM error event if the fetch fails. Removing src kills the probe.
-      imgEls.forEach((img) => { img.style.display = "none"; img.removeAttribute("src"); });
-      if (innerWrapper) innerWrapper.style.background = "transparent";
-
-      let fgDataUrl: string;
-      try {
-        fgDataUrl = await toPng(node, {
-          width: W, height: H, pixelRatio: PR, cacheBust: false,
-          backgroundColor: "transparent",
-          // Belt-and-suspenders: also tell html-to-image to skip <img> nodes
-          // in its clone so any injected img (extension, Next.js etc.) is ignored.
-          filter: (n: Node) => !(n instanceof HTMLImageElement),
-        });
-      } finally {
-        imgEls.forEach((img, i) => {
-          img.style.display = savedDisplays[i] ?? "";
-          if (savedSrcs[i]) img.setAttribute("src", savedSrcs[i]);
-        });
-        if (innerWrapper) innerWrapper.style.background = savedBg;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = W * PR; canvas.height = H * PR;
-      const ctx = canvas.getContext("2d")!;
-
-      // Fill the DYK brand background colour.
-      ctx.fillStyle = "#EEEBE3";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw each image at its actual on-screen position.
-      for (const info of infos) {
-        await new Promise<void>((resolve) => {
-          const im = new Image();
-          im.onload = () => {
-            const dx = info.x * PR, dy = info.y * PR, dw = info.w * PR, dh = info.h * PR;
-            if (info.fit === "cover") {
-              const scale = Math.max(dw / im.width, dh / im.height);
-              const sw = dw / scale, sh = dh / scale;
-              ctx.drawImage(im, (im.width - sw) / 2, (im.height - sh) / 2, sw, sh, dx, dy, dw, dh);
-            } else if (info.fit === "contain") {
-              const scale = Math.min(dw / im.width, dh / im.height);
-              ctx.drawImage(im, dx + (dw - im.width * scale) / 2, dy + (dh - im.height * scale) / 2, im.width * scale, im.height * scale);
-            } else {
-              ctx.drawImage(im, dx, dy, dw, dh);
-            }
-            resolve();
-          };
-          im.onerror = () => resolve();
-          im.src = info.dataUrl;
-        });
-      }
-
-      // Draw foreground (text, chevrons, etc.) on top.
-      await new Promise<void>((resolve) => {
-        const fg = new Image();
-        fg.onload = () => { ctx.drawImage(fg, 0, 0, canvas.width, canvas.height); resolve(); };
-        fg.onerror = () => resolve();
-        fg.src = fgDataUrl;
-      });
-
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
-      );
-      return new File([blob], filename, { type: "image/png" });
-    }
-
-    // No <img> elements — plain toPng is safe.
-    const dataUrl = await toPng(node, { width: W, height: H, pixelRatio: PR, cacheBust: false });
-    const blob = await (await fetch(dataUrl)).blob();
-    return new File([blob], filename, { type: "image/png" });
+    return compositeSlideWithImages(node, [], { filename, exportH: 1350, loadDataUrl });
   }
 
   async function saveFile(file: File) {
@@ -948,17 +852,17 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
         </div>
       </div>
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-        <DidYouKnowSlide slide={dyk.slide1} scale={0.5} />
-        <DidYouKnowSlide slide={dyk.slide2} scale={0.5} />
+        <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={0.5} />
+        <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={0.5} />
       </div>
 
       {/* Hidden full-size slides for canvas compositing */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={dyk.slide1} scale={1} />
+          <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={1} />
         </div>
         <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={dyk.slide2} scale={1} />
+          <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={1} />
         </div>
       </div>
 

@@ -1,11 +1,18 @@
 "use client";
 import { useRef, useState } from "react";
-import { toPng } from "html-to-image";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
-import type { DidYouKnowContent } from "@/lib/types";
+import PaperControls from "@/components/carousel/shared/PaperControls";
+import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
+import { compositeSlideWithImages } from "@/lib/slide-export";
+import type { DidYouKnowContent, DidYouKnowTreatment } from "@/lib/types";
 import { useCarouselApi } from "@/components/carousel/api-context";
 
 const PREVIEW_SCALE = 0.48;
+
+const TREATMENTS: { val: DidYouKnowTreatment; label: string; desc: string }[] = [
+  { val: "navy-box", label: "Navy box", desc: "The number in a navy box, the question's last word boxed too" },
+  { val: "yellow-box", label: "Yellow box", desc: "The number in Signal Yellow, the question plain" },
+];
 
 type Props = {
   topic: string;
@@ -13,19 +20,37 @@ type Props = {
   selected: number;
   onSelect: (i: number) => void;
   onSaved?: (id: string) => void;
+  /** Opened from the library: Save updates this record instead of minting a new one. */
+  initialSavedId?: string | null;
+  initialTreatment?: DidYouKnowTreatment;
+  initialPaper?: PaperSettings;
 };
 
-export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved }: Props) {
+/** Same-origin assets (the paper grain) as data URLs for the canvas compositor. */
+async function loadDataUrl(src: string): Promise<string> {
+  if (src.startsWith("data:")) return src;
+  const blob = await (await fetch(src)).blob();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved, initialSavedId, initialTreatment, initialPaper }: Props) {
   const apiBase = useCarouselApi();
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(initialSavedId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
   const [fontScale, setFontScale] = useState(1);
+  const [treatment, setTreatment] = useState<DidYouKnowTreatment>(initialTreatment ?? "navy-box");
+  const [paper, setPaper] = useState<PaperSettings>(initialPaper ?? PAPER_DEFAULTS.highlighter);
 
   function handleCopyShareLink() {
     if (!savedId) return;
@@ -40,25 +65,23 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
 
   async function downloadSlide(node: HTMLElement | null, filename: string) {
     if (!node) return;
-    const dataUrl = await toPng(node, {
-      width: 1080,
-      height: 1350,
-      pixelRatio: 1,
-      cacheBust: true,
-    });
+    // The paper grain is a multiply layer; the compositor hides it for the
+    // capture and redraws it over the ground, so the PNG matches the preview.
+    const file = await compositeSlideWithImages(node, [], { filename, exportH: 1350, loadDataUrl });
+    const url = URL.createObjectURL(file);
     const a = document.createElement("a");
-    a.href = dataUrl;
+    a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
   async function handleDownload() {
     setError(null);
     setDownloading(true);
     try {
-      // Load fonts before snapshotting
       if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const safeTopic = (variant.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
       await downloadSlide(exportSlide1Ref.current, `dyk-${safeTopic}-1.png`);
@@ -79,9 +102,13 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(savedId ? { id: savedId } : {}),
           topic: variant.topic || topic,
           format: "did_you_know",
           didYouKnowContent: variant,
+          didYouKnowTreatment: treatment,
+          paperGrain: paper.grain,
+          paperVignette: paper.vignette,
         }),
       });
       const data = await res.json();
@@ -104,6 +131,8 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       setTimeout(() => setCopied(false), 1600);
     }).catch(() => setError("Clipboard unavailable"));
   }
+
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" } as const;
 
   return (
     <div>
@@ -159,13 +188,43 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         </div>
       )}
 
+      {/* Treatment: which box the marked phrase takes */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+        <span style={labelStyle}>Treatment</span>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {TREATMENTS.map((opt) => {
+            const sel = treatment === opt.val;
+            return (
+              <button
+                key={opt.val}
+                onClick={() => setTreatment(opt.val)}
+                title={opt.desc}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8, padding: "8px 12px", cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: 600,
+                  color: sel ? "var(--accent)" : "var(--text)",
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Paper: grain and vignette */}
+      <PaperControls value={paper} defaults={PAPER_DEFAULTS.highlighter} onChange={setPaper} />
+
       {/* Font size control */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12, marginBottom: 16,
         padding: "10px 14px", background: "var(--surface)",
         border: "1px solid var(--border)", borderRadius: 8,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={labelStyle}>
           Font size
         </span>
         <input
@@ -193,24 +252,24 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
 
       {/* Slides preview */}
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-        <DidYouKnowSlide slide={variant.slide1} scale={PREVIEW_SCALE} fontScale={fontScale} />
-        <DidYouKnowSlide slide={variant.slide2} scale={PREVIEW_SCALE} fontScale={fontScale} />
+        <DidYouKnowSlide slide={variant.slide1} index={1} treatment={treatment} paper={paper} scale={PREVIEW_SCALE} fontScale={fontScale} />
+        <DidYouKnowSlide slide={variant.slide2} index={2} treatment={treatment} paper={paper} scale={PREVIEW_SCALE} fontScale={fontScale} />
       </div>
 
       {/* Hidden full-size slides for accurate PNG export — bypasses the inner transform: scale() on the visible preview. */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={variant.slide1} scale={1} fontScale={fontScale} />
+          <DidYouKnowSlide slide={variant.slide1} index={1} treatment={treatment} paper={paper} scale={1} fontScale={fontScale} />
         </div>
         <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={variant.slide2} scale={1} fontScale={fontScale} />
+          <DidYouKnowSlide slide={variant.slide2} index={2} treatment={treatment} paper={paper} scale={1} fontScale={fontScale} />
         </div>
       </div>
 
       {/* Caption */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Caption</div>
+          <div style={labelStyle}>Caption</div>
           <button
             onClick={copyCaption}
             style={{
@@ -225,7 +284,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       </div>
 
       {/* Actions */}
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={handleDownload}
           disabled={downloading}
@@ -237,7 +296,21 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         >
           {downloading ? "Downloading..." : "Download PNGs"}
         </button>
-        {savedId ? (
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            background: "var(--surface)",
+            color: "var(--text)",
+            border: "1.5px solid var(--border)",
+            borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
+            cursor: saving ? "wait" : "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {saving ? "Saving..." : savedId ? "Save changes" : "Save to library"}
+        </button>
+        {savedId && (
           <button
             onClick={handleCopyShareLink}
             style={{
@@ -250,23 +323,8 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
           >
             {linkCopyLabel}
           </button>
-        ) : (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              background: "var(--surface)",
-              color: "var(--text)",
-              border: "1.5px solid var(--border)",
-              borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700,
-              cursor: saving ? "wait" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {saving ? "Saving..." : "Save to library"}
-          </button>
         )}
-        {savedId && (
+        {savedId && !saving && (
           <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>✓ Saved</span>
         )}
         {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}

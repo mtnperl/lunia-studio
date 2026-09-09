@@ -285,4 +285,74 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       citation: "",
     },
   },
+  // Did you know (Highlighter redesign). Slide 1 in the navy-box treatment
+  // with an explicit mark; slide 2 in yellow-box with NO mark, so the
+  // fallback (first highlighted token with a digit) is what gets locked in.
+  // Both at the lint's long end (340 chars) so the body's step-down shows.
+  {
+    name: "dyk-slide1-navy-box",
+    props: {
+      kind: "did_you_know",
+      dykIndex: 1,
+      didYouKnowTreatment: "navy-box",
+      dyk: {
+        header: "DID YOU KNOW?",
+        body1: [
+          { text: "Women entering ", highlight: false },
+          { text: "perimenopause", highlight: true },
+          { text: " lose an average of ", highlight: false },
+          { text: "30 minutes", highlight: true, mark: true },
+          { text: " of deep sleep per night, mostly in the ", highlight: false },
+          { text: "first half", highlight: true },
+          { text: " of the night.", highlight: false },
+        ],
+        body2: [
+          { text: "That is the window when ", highlight: false },
+          { text: "growth hormone", highlight: true },
+          { text: " peaks, so the loss shows up as ", highlight: false },
+          { text: "slower recovery", highlight: true, mark: true },
+          { text: " and a ", highlight: false },
+          { text: "foggier morning", highlight: true },
+          { text: " than the clock alone would suggest.", highlight: false },
+        ],
+      },
+      headline: "",
+      body: "",
+      citation: "",
+    },
+  },
+  {
+    name: "dyk-slide2-yellow-box-legacy-marks",
+    props: {
+      kind: "did_you_know",
+      dykIndex: 2,
+      didYouKnowTreatment: "yellow-box",
+      paperGrain: 0.9,
+      paperVignette: 0.07,
+      dyk: {
+        header: "BY",
+        body1: [
+          { text: "Moving your ", highlight: false },
+          { text: "last meal", highlight: true },
+          { text: " to at least ", highlight: false },
+          { text: "three hours", highlight: true },
+          { text: " before bed, core temperature can drop on schedule and the ", highlight: false },
+          { text: "first cycle", highlight: true },
+          { text: " runs deeper.", highlight: false },
+        ],
+        body2: [
+          { text: "Studies associate an ", highlight: false },
+          { text: "earlier dinner", highlight: true },
+          { text: " with ", highlight: false },
+          { text: "more slow-wave sleep", highlight: true },
+          { text: " in the first cycle, the part perimenopause takes first, and a ", highlight: false },
+          { text: "steadier morning", highlight: true },
+          { text: " after it.", highlight: false },
+        ],
+      },
+      headline: "",
+      body: "",
+      citation: "",
+    },
+  },
 ];

@@ -131,7 +131,10 @@ export async function compositeSlideWithImages(
       }
       ctx.restore();
     } else if (layer.kind === "vignette") {
-      // radial-gradient(ellipse at 50% 40%, transparent 55%, ink at 7% 100%)
+      // radial-gradient(ellipse at 50% 40%, transparent 55%, ink at
+      // `strength` 100%). PaperTexture writes the strength to
+      // data-export-opacity; a layer without it is the Essay original.
+      const strength = Number.isFinite(layer.opacity) && layer.opacity < 1 ? layer.opacity : 0.07;
       const lw = layer.w * PR, lh = layer.h * PR;
       ctx.save();
       ctx.translate(layer.x * PR, layer.y * PR);
@@ -139,7 +142,7 @@ export async function compositeSlideWithImages(
       const cx = lw / 2, cy = 0.4 * lw, r = lw / 2;
       const g = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
       g.addColorStop(0, "rgba(16,38,53,0)");
-      g.addColorStop(1, "rgba(16,38,53,0.07)");
+      g.addColorStop(1, `rgba(16,38,53,${strength})`);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, lw, lw);
       ctx.restore();

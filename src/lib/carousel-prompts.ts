@@ -733,7 +733,7 @@ Each variant is a frozen-template carousel:
 - Slide 1: header is exactly "DID YOU KNOW?". Body presents a surprising, research-grounded fact (2 paragraphs).
 - Slide 2: header is exactly "BY". Body presents a concrete actionable takeaway tied to the slide-1 fact (2 paragraphs).
 
-Body copy is rendered as tokenized rich text. Each paragraph is an array of tokens. A token is { "text": string, "highlight": boolean }. Highlighted tokens render bold + teal-blue inline; non-highlighted tokens render charcoal regular weight.
+Body copy is rendered as tokenized rich text. Each paragraph is an array of tokens. A token is { "text": string, "highlight": boolean, "mark": boolean }. The slide is paper with a serif question on top. Exactly ONE highlighted token per paragraph also has "mark": true: it sits in a solid box, so it must be the phrase the paragraph exists for, the number when there is one, otherwise the claim. Every other highlighted token gets a hand-drawn pen underline. Non-highlighted tokens are plain. Omit "mark" or set it false on every other token.
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -742,7 +742,7 @@ Return ONLY valid JSON in this exact shape:
       "topic": "${topic}",
       "slide1": {
         "header": "DID YOU KNOW?",
-        "body1": [{"text":"Women entering ","highlight":false},{"text":"perimenopause","highlight":true},{"text":" lose an average of ","highlight":false},{"text":"30 minutes","highlight":true},{"text":" of deep sleep per night.","highlight":false}],
+        "body1": [{"text":"Women entering ","highlight":false},{"text":"perimenopause","highlight":true},{"text":" lose an average of ","highlight":false},{"text":"30 minutes","highlight":true,"mark":true},{"text":" of deep sleep per night.","highlight":false}],
         "body2": [{"text":"...","highlight":false}]
       },
       "slide2": {
@@ -760,7 +760,7 @@ HARD RULES (violating any of these is failure):
 2. NO medical claims. Forbidden words: cures, cure, treats, treat, heals, heal, prevents, prevent, diagnose, diagnoses, guaranteed, miracle. Use: "may support", "is associated with", "research suggests", "shown in studies".
 3. NO product mentions. Do NOT name Lunia or any supplement product. The fact stands on its own.
 4. Body length per slide: total characters across body1 + body2 must be 280-340. Count carefully.
-5. Highlights per paragraph: 2-4. Highlight only substantive content words: nouns, numbers, adjectives, key verbs. NEVER highlight articles (a, an, the), prepositions (of, in, on, by, with, for), conjunctions (and, or, but), or filler verbs (is, are, was, were, be, been).
+5. Highlights per paragraph: 2-4. Highlight only substantive content words: nouns, numbers, adjectives, key verbs. NEVER highlight articles (a, an, the), prepositions (of, in, on, by, with, for), conjunctions (and, or, but), or filler verbs (is, are, was, were, be, been). Exactly one of the highlights in each paragraph carries "mark": true. A marked token is 1 to 3 words; never mark a whole clause.
 6. Token spacing: each token's text includes its own surrounding spaces. Tokens are concatenated with no separator. Example: [{"text":"Sleep ","highlight":false},{"text":"5 hours","highlight":true}] renders as "Sleep 5 hours" (the space lives at the end of the first token).
 7. Slide 2 body MUST tie to Slide 1 fact. Slide 1 reveals a problem or insight; Slide 2 gives the actionable response.
 8. Facts must be plausibly research-grounded. If you state a number, it should be defensible against published literature. Do NOT fabricate citations.
