@@ -5,12 +5,13 @@
 // PNGs, save. The slides are frozen renderers of the variant's fields, so
 // there is no text editing here, the same as Did you know.
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import PaperControls from "@/components/carousel/shared/PaperControls";
 import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel/slides/ChartbookSlides";
 import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
 import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
 import { compositeSlideWithImages } from "@/lib/slide-export";
+import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import type { ChartbookContent, PrimerContent } from "@/lib/types";
 import { useCarouselApi } from "@/components/carousel/api-context";
 
@@ -73,6 +74,14 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  // The two PNGs are built ahead of the tap. iOS only opens the share sheet
+  // inside a fresh user gesture, and building a slide takes longer than a
+  // gesture lasts, so the files must already exist when the button is hit.
+  const filesRef = useRef<File[]>([]);
+  const [ready, setReady] = useState(0);
+  const [prepError, setPrepError] = useState<string | null>(null);
+  const [shareCapable, setShareCapable] = useState(false);
+  useEffect(() => { setShareCapable(deviceSharesFiles()); }, []);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +91,6 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
   const [paper, setPaper] = useState<PaperSettings>(initialPaper ?? PAPER_DEFAULTS[format]);
 
   const variant = variants[selected];
-  if (!variant) return null;
   const label = format === "chartbook" ? "Chartbook" : "Primer";
 
   function handleCopyShareLink() {
@@ -93,30 +101,59 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
     }).catch(() => setError("Clipboard unavailable"));
   }
 
-  async function downloadSlide(node: HTMLElement | null, filename: string) {
-    if (!node) return;
-    const file = await compositeSlideWithImages(node, [], { filename, exportH: 1350, loadDataUrl });
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  const safeTopic = (variant?.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
+
+  async function buildFiles(): Promise<File[]> {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const nodes = [exportSlide1Ref.current, exportSlide2Ref.current];
+    const out: File[] = [];
+    for (let i = 0; i < 2; i++) {
+      const node = nodes[i];
+      if (!node) throw new Error("Slide not mounted");
+      out.push(await compositeSlideWithImages(node, [], { filename: `${format}-${safeTopic}-${i + 1}.png`, exportH: 1350, loadDataUrl }));
+    }
+    return out;
   }
+
+  // Rebuild the PNGs whenever what they show changes. Debounced so a slider
+  // drag does not render on every tick.
+  useEffect(() => {
+    let cancelled = false;
+    filesRef.current = [];
+    setReady(0);
+    setPrepError(null);
+    const t = setTimeout(async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 150));
+        if (cancelled) return;
+        if (!variant) return;
+        const files = await buildFiles();
+        if (cancelled) return;
+        filesRef.current = files;
+        setReady(files.length);
+      } catch (err) {
+        if (cancelled) return;
+        console.error(`[${format}-preview] prepare failed`, err);
+        setPrepError(err instanceof Error ? err.message : "Export failed");
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [format, selected, variant, paper.grain, paper.vignette, fontScale]);
+
+  if (!variant) return null;
 
   async function handleDownload() {
     setError(null);
     setDownloading(true);
     try {
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
-      const safeTopic = (variant.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      await downloadSlide(exportSlide1Ref.current, `${format}-${safeTopic}-1.png`);
-      await downloadSlide(exportSlide2Ref.current, `${format}-${safeTopic}-2.png`);
+      // Cached files first: that keeps the share sheet inside the tap on iOS.
+      const files = filesRef.current.length === 2 ? filesRef.current : await buildFiles();
+      await saveFiles(files, `Lunia ${label}: ${variant.topic || topic}`);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error(err);
-      setError("Download failed. Try again.");
+      setError(`Download failed: ${err instanceof Error ? err.message : "try again"}`);
     } finally {
       setDownloading(false);
     }
@@ -234,8 +271,8 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={handleDownload} disabled={downloading} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit" }}>
-          {downloading ? "Downloading..." : "Download PNGs"}
+        <button onClick={handleDownload} disabled={downloading || (ready < 2 && !prepError)} title={ready < 2 ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || ready < 2 ? "wait" : "pointer", opacity: ready < 2 && !prepError ? 0.6 : 1, fontFamily: "inherit" }}>
+          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : ready < 2 && !prepError ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
         </button>
         <button onClick={handleSave} disabled={saving} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", fontFamily: "inherit" }}>
           {saving ? "Saving..." : savedId ? "Save changes" : "Save to library"}
@@ -246,7 +283,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
           </button>
         )}
         {savedId && !saving && <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>✓ Saved</span>}
-        {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
+        {(error || prepError) && <div style={{ fontSize: 13, color: "var(--error)" }}>{error ?? `Could not prepare the PNGs: ${prepError}`}</div>}
       </div>
     </div>
   );

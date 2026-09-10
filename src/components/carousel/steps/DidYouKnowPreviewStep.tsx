@@ -1,9 +1,10 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import PaperControls from "@/components/carousel/shared/PaperControls";
 import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
 import { compositeSlideWithImages } from "@/lib/slide-export";
+import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import type { DidYouKnowContent, DidYouKnowTreatment } from "@/lib/types";
 import { useCarouselApi } from "@/components/carousel/api-context";
 
@@ -43,6 +44,13 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  // PNGs built ahead of the tap, for the same reason as the two-slide step:
+  // iOS opens the share sheet only inside a fresh gesture.
+  const filesRef = useRef<File[]>([]);
+  const [ready, setReady] = useState(0);
+  const [prepError, setPrepError] = useState<string | null>(null);
+  const [shareCapable, setShareCapable] = useState(false);
+  useEffect(() => { setShareCapable(deviceSharesFiles()); }, []);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -61,34 +69,59 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   }
 
   const variant = variants[selected];
-  if (!variant) return null;
 
-  async function downloadSlide(node: HTMLElement | null, filename: string) {
-    if (!node) return;
-    // The paper grain is a multiply layer; the compositor hides it for the
-    // capture and redraws it over the ground, so the PNG matches the preview.
-    const file = await compositeSlideWithImages(node, [], { filename, exportH: 1350, loadDataUrl });
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  const safeTopic = (variant?.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
+
+  async function buildFiles(): Promise<File[]> {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    const nodes = [exportSlide1Ref.current, exportSlide2Ref.current];
+    const out: File[] = [];
+    for (let i = 0; i < 2; i++) {
+      const node = nodes[i];
+      if (!node) throw new Error("Slide not mounted");
+      // The paper grain is a multiply layer; the compositor hides it for the
+      // capture and redraws it over the ground, so the PNG matches the preview.
+      out.push(await compositeSlideWithImages(node, [], { filename: `dyk-${safeTopic}-${i + 1}.png`, exportH: 1350, loadDataUrl }));
+    }
+    return out;
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    filesRef.current = [];
+    setReady(0);
+    setPrepError(null);
+    const t = setTimeout(async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 150));
+        if (cancelled) return;
+        if (!variant) return;
+        const files = await buildFiles();
+        if (cancelled) return;
+        filesRef.current = files;
+        setReady(files.length);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[dyk-preview] prepare failed", err);
+        setPrepError(err instanceof Error ? err.message : "Export failed");
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, variant, treatment, paper.grain, paper.vignette, fontScale]);
+
+  if (!variant) return null;
 
   async function handleDownload() {
     setError(null);
     setDownloading(true);
     try {
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
-      const safeTopic = (variant.topic || topic).replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
-      await downloadSlide(exportSlide1Ref.current, `dyk-${safeTopic}-1.png`);
-      await downloadSlide(exportSlide2Ref.current, `dyk-${safeTopic}-2.png`);
+      const files = filesRef.current.length === 2 ? filesRef.current : await buildFiles();
+      await saveFiles(files, `Lunia Did you know: ${variant.topic || topic}`);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       console.error(err);
-      setError("Download failed. Try again.");
+      setError(`Download failed: ${err instanceof Error ? err.message : "try again"}`);
     } finally {
       setDownloading(false);
     }
@@ -287,14 +320,16 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={handleDownload}
-          disabled={downloading}
+          disabled={downloading || (ready < 2 && !prepError)}
+          title={ready < 2 ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"}
           style={{
             background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8,
-            padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading ? "wait" : "pointer",
+            padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || ready < 2 ? "wait" : "pointer",
+            opacity: ready < 2 && !prepError ? 0.6 : 1,
             fontFamily: "inherit",
           }}
         >
-          {downloading ? "Downloading..." : "Download PNGs"}
+          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : ready < 2 && !prepError ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
         </button>
         <button
           onClick={handleSave}
@@ -327,7 +362,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         {savedId && !saving && (
           <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>✓ Saved</span>
         )}
-        {error && <div style={{ fontSize: 13, color: "var(--error)" }}>{error}</div>}
+        {(error || prepError) && <div style={{ fontSize: 13, color: "var(--error)" }}>{error ?? `Could not prepare the PNGs: ${prepError}`}</div>}
       </div>
     </div>
   );
