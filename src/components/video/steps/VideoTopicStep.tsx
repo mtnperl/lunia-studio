@@ -1,4 +1,5 @@
 "use client";
+import { isSubjectUsedAnywhere } from "@/lib/subject-fit";
 
 import { useState, useEffect } from "react";
 import { Subject } from "@/lib/types";
@@ -104,7 +105,7 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
   const topic = mode === "list" ? (selectedSubject?.text ?? "") : custom.trim();
 
   const filteredSubjects = subjects.filter((s) => {
-    if (s.usedAt) return false;
+    if (isSubjectUsedAnywhere(s)) return false;
     const matchCat = category === "All" || s.category === category;
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;

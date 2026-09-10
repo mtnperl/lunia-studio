@@ -914,7 +914,18 @@ export type Subject = {
   id: string;
   text: string;
   category: string;
-  usedAt?: string;     // ISO date when last used for a carousel
+  /** ISO date when last used for anything. Kept as the "last used" stamp;
+   *  which format it was used for is in usedFor. A usedAt with no usedFor is
+   *  from before uses were recorded per format (see subject-fit.ts). */
+  usedAt?: string;
+  /** ISO date per carousel format (or "video") the subject was used for. A
+   *  subject burned on a Structured deck can still become a Did you know. */
+  usedFor?: Record<string, string>;
+  /** The frozen two-slide formats this subject fits: "did_you_know",
+   *  "chartbook", "primer". Structured and Engagement fit everything and
+   *  are not tagged. Absent means none, except that a subject in a category
+   *  named for a format fits that format (subject-fit.ts). */
+  formats?: string[];
   sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
 };
 

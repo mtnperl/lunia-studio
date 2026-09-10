@@ -379,7 +379,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       fetch(`/api/subjects/${subjectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "markUsed" }),
+        body: JSON.stringify({ action: "markUsed", format: format ?? "standard" }),
       }).catch(() => {});
     }
     if (format === "chartbook") {

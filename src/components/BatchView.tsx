@@ -7,6 +7,7 @@ import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
 import { isTwoSlideFormat } from "@/lib/types";
+import { isSubjectFormat, subjectFitsFormat, subjectUsedFor, SUBJECT_FORMATS, SUBJECT_FORMAT_CHIP, type SubjectFormat } from "@/lib/subject-fit";
 import { MiniRetroLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import {
   BrandStyle, CarouselConfig, CarouselContent, CarouselContrastMode, CarouselFormat, CarouselStylePreset,
@@ -517,7 +518,10 @@ function BatchViewInner() {
   const [addingSubject, setAddingSubject] = useState(false);
   const [newSubjectText, setNewSubjectText] = useState("");
   const [newSubjectCategory, setNewSubjectCategory] = useState("Did You Know");
+  const [newSubjectFormats, setNewSubjectFormats] = useState<SubjectFormat[]>([]);
   const [addSubjectError, setAddSubjectError] = useState<string | null>(null);
+  const frozenFormat: SubjectFormat | null = isSubjectFormat(carouselFormat) ? carouselFormat : null;
+  useEffect(() => { if (frozenFormat) setNewSubjectFormats((prev) => prev.includes(frozenFormat) ? prev : [...prev, frozenFormat]); }, [frozenFormat]);
 
   useEffect(() => {
     fetch("/api/subjects").then((r) => r.json()).then((d) => setSubjects(Array.isArray(d) ? d : [])).catch(() => {});
@@ -629,7 +633,7 @@ function BatchViewInner() {
       const res = await fetch("/api/carousel-v2/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ format: carouselFormat }),
       });
       const data = await res.json();
       if (!res.ok || data?.error) {
@@ -655,9 +659,10 @@ function BatchViewInner() {
     fetch(`/api/subjects/${s.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "markUsed" }),
+      body: JSON.stringify({ action: "markUsed", format: carouselFormat }),
     }).catch(() => {});
-    setSubjects((prev) => prev.map((su) => (su.id === s.id ? { ...su, usedAt: new Date().toISOString() } : su)));
+    const now = new Date().toISOString();
+    setSubjects((prev) => prev.map((su) => (su.id === s.id ? { ...su, usedAt: now, usedFor: { ...(su.usedFor ?? {}), [carouselFormat]: now } } : su)));
   }
 
   function pickSampleTopic() {
@@ -676,7 +681,7 @@ function BatchViewInner() {
       const res = await fetch("/api/subjects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, category: newSubjectCategory }),
+        body: JSON.stringify({ text, category: newSubjectCategory, formats: newSubjectFormats }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -856,7 +861,7 @@ function BatchViewInner() {
         fetch(`/api/subjects/${row.subjectId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "markUsed" }),
+          body: JSON.stringify({ action: "markUsed", format: carouselFormat }),
         }).catch(() => {});
       }
     }
@@ -886,8 +891,11 @@ function BatchViewInner() {
   const reviewingCount = queue.filter((i) => i.status === "reviewing").length;
 
   const draftTexts = new Set(draftTopics.map((r) => r.text));
+  // Same rule as the single builder: subjects that fit the format and have
+  // not been used for it.
   const filteredSubjects = subjects
-    .filter((s) => !s.usedAt)
+    .filter((s) => !subjectUsedFor(s, carouselFormat))
+    .filter((s) => subjectFitsFormat(s, carouselFormat))
     .filter((s) => subjectCategory === "All" || s.category === subjectCategory)
     .filter((s) => s.text.toLowerCase().includes(subjectSearch.toLowerCase()))
     .filter((s) => !draftTexts.has(s.text))
@@ -1214,6 +1222,15 @@ function BatchViewInner() {
                     <select value={newSubjectCategory} onChange={(e) => setNewSubjectCategory(e.target.value)} style={{ flex: 1, padding: "6px 8px", fontSize: 11, border: "1.5px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontFamily: "inherit", cursor: "pointer" }}>
                       {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
+                    {SUBJECT_FORMATS.map((f) => {
+                      const on = newSubjectFormats.includes(f);
+                      return (
+                        <button key={f} type="button" title="Which two-slide formats this subject fits" onClick={() => setNewSubjectFormats((prev) => on ? prev.filter((x) => x !== f) : [...prev, f])}
+                          style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent-dim)" : "var(--bg)", color: on ? "var(--accent)" : "var(--muted)" }}>
+                          {SUBJECT_FORMAT_CHIP[f]}
+                        </button>
+                      );
+                    })}
                     <button onClick={submitNewSubject} style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>Add</button>
                     <button onClick={() => { setAddingSubject(false); setAddSubjectError(null); }} style={{ padding: "6px 10px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                   </div>

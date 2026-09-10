@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, Subject, type CarouselLook, type CarouselLookSettings } from "@/lib/types";
+import { SUBJECT_FORMATS, SUBJECT_FORMAT_CHIP, SUBJECT_FORMAT_LABEL, isSubjectFormat, subjectFitsFormat, subjectFormats, subjectUsedFor, type SubjectFormat } from "@/lib/subject-fit";
+import type { ReframeProposal } from "@/lib/subject-reframe";
 import { Select as UiSelect } from "@/components/ui";
 import { STRUCTURES, STRUCTURE_IDS, structureFromLegacy, type CarouselStructure } from "@/lib/carousel-structures";
 import { Button } from "@/components/ui/Button";
@@ -105,6 +107,15 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
   }, [selectedSubject]);
   const [custom, setCustom] = useState("");
   const [carouselFormat, setCarouselFormat] = useState<CarouselFormat>(initialFormat ?? "standard");
+  // The frozen formats only list subjects tagged for them. This lifts the
+  // filter for one look; the reframe below is the better route.
+  const [showAll, setShowAll] = useState(false);
+  // Reframe: a subject rewritten for the frozen format it was picked for.
+  // The chosen line replaces the topic sent to the generator; the subject
+  // itself stays selected so it is still marked used.
+  const [reframe, setReframe] = useState<{ proposals: ReframeProposal[]; loading: boolean; error: string | null }>({ proposals: [], loading: false, error: null });
+  const [reframedTopic, setReframedTopic] = useState<string | null>(null);
+  const frozenFormat: SubjectFormat | null = isSubjectFormat(carouselFormat) ? carouselFormat : null;
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [hookTone, setHookTone] = useState<HookTone>("educational");
   // How the deck argues. One picker replaced hook tone and the Standard format.
@@ -148,7 +159,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       const res = await fetch("/api/carousel-v2/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ format: carouselFormat }),
       });
       const data = await res.json();
       if (!res.ok || data?.error) {
@@ -179,9 +190,42 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       .catch(() => setLoadingSubjects(false));
   }, []);
 
-  const topic = mode === "list"
+  const baseTopic = mode === "list"
     ? (selectedSubject?.text ?? "")
     : custom.trim();
+  const topic = reframedTopic ?? baseTopic;
+  const selectedFits = !selectedSubject || !frozenFormat || subjectFitsFormat(selectedSubject, frozenFormat);
+
+  async function fetchReframe(text: string, format: SubjectFormat, category?: string) {
+    setReframe({ proposals: [], loading: true, error: null });
+    try {
+      const res = await fetch("/api/subjects/reframe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: text, format, category }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        setReframe({ proposals: [], loading: false, error: data?.error || "Could not rewrite the subject. Try again." });
+        return;
+      }
+      setReframe({ proposals: Array.isArray(data?.proposals) ? data.proposals : [], loading: false, error: null });
+    } catch {
+      setReframe({ proposals: [], loading: false, error: "Network error. Try again." });
+    }
+  }
+
+  // A subject picked for a frozen format it does not fit gets rewritten
+  // for it straight away; the editor chooses a line or keeps the original.
+  // Switching format or subject drops the old rewrite.
+  useEffect(() => {
+    setReframedTopic(null);
+    setReframe({ proposals: [], loading: false, error: null });
+    if (mode !== "list" || !selectedSubject || !frozenFormat) return;
+    if (subjectFitsFormat(selectedSubject, frozenFormat)) return;
+    fetchReframe(selectedSubject.text, frozenFormat, selectedSubject.category);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selectedSubject?.id, frozenFormat]);
 
   const topicTooLong = topic.length > 500;
 
@@ -252,17 +296,21 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
     return result;
   }, [subjects]);
 
-  // In the carousel builder, only show unused subjects — used ones are hidden to avoid repetition.
-  // The full list (including used) is visible in the Subjects tab.
-  const filteredSubjects = interleavedSubjects.filter((s) => {
-    if (s.usedAt) return false; // hide used subjects in the builder
+  // The builder shows subjects that fit the chosen format and have not been
+  // used for it. Used for a Structured deck does not hide a subject from the
+  // Did you know list. The Subjects tab shows everything.
+  const fitsHere = (s: Subject) => showAll || !frozenFormat || subjectFitsFormat(s, frozenFormat);
+  const pool = interleavedSubjects.filter((s) => !subjectUsedFor(s, carouselFormat));
+  const fittingPool = pool.filter(fitsHere);
+  const filteredSubjects = fittingPool.filter((s) => {
     const matchCat = category === "All" || s.category === category;
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
-
-  const unusedCount = subjects.filter((s) => !s.usedAt).length;
-  const usedCount = subjects.filter((s) => s.usedAt).length;
+  const hiddenByFit = pool.length - fittingPool.length;
+  const usedCount = subjects.length - pool.length;
+  // Categories with something to show, so the dropdown never names an empty one.
+  const categoryOptions = CATEGORIES.filter((c) => c === "All" || fittingPool.some((s) => s.category === c));
 
   function handleNext() {
     if (!topic || topicTooLong) return;
@@ -282,7 +330,10 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
   const [adding, setAdding] = useState(false);
   const [newTopic, setNewTopic] = useState("");
   const [newCategory, setNewCategory] = useState("Did You Know");
+  const [newFormats, setNewFormats] = useState<SubjectFormat[]>([]);
   const [addError, setAddError] = useState<string | null>(null);
+  // Adding from inside a frozen format: the new subject is for that format.
+  useEffect(() => { if (frozenFormat) setNewFormats((prev) => prev.includes(frozenFormat) ? prev : [...prev, frozenFormat]); }, [frozenFormat]);
   async function submitNewTopic() {
     const text = newTopic.trim();
     if (text.length < 4 || text.length > 200) {
@@ -294,7 +345,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       const res = await fetch("/api/subjects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, category: newCategory }),
+        body: JSON.stringify({ text, category: newCategory, formats: newFormats }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -320,7 +371,59 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
         </div>
       )}
       <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>{varyFrom ? "Choose the new subject" : "Choose a topic"}</h2>
-      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick from your subject library or enter a custom topic.</p>
+      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick the format first: the library only offers subjects written for it.</p>
+
+      {/* Carousel format toggle */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Format</label>
+        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          {([
+            { val: "standard" as CarouselFormat, label: "Structured", desc: "Pick how the deck argues" },
+            { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
+            { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
+            { val: "chartbook" as CarouselFormat, label: "Chartbook", desc: "2 slides: a question, one figure" },
+            { val: "primer" as CarouselFormat, label: "Primer", desc: "2 slides: a cover, one reference slide" },
+          ]).map((opt) => (
+            <button
+              key={opt.val}
+              onClick={() => setCarouselFormat(opt.val)}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: carouselFormat === opt.val ? "var(--text)" : "var(--bg)",
+                color: carouselFormat === opt.val ? "var(--bg)" : "var(--muted)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {carouselFormat === "engagement" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Engagement carousels end with a comment CTA — readers comment a keyword to get a guide.
+          </p>
+        )}
+        {carouselFormat === "did_you_know" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.
+          </p>
+        )}
+        {carouselFormat === "chartbook" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.
+          </p>
+        )}
+        {carouselFormat === "primer" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.
+          </p>
+        )}
+      </div>
+
 
       {/* Mode toggle + quick-test sample-subject button */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
@@ -417,10 +520,11 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                   fetch(`/api/subjects/${match.id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "markUsed" }),
+                    body: JSON.stringify({ action: "markUsed", format: carouselFormat }),
                   }).catch(() => {});
+                  const now = new Date().toISOString();
                   setSubjects((prev) =>
-                    prev.map((su) => (su.id === match.id ? { ...su, usedAt: new Date().toISOString() } : su))
+                    prev.map((su) => (su.id === match.id ? { ...su, usedAt: now, usedFor: { ...(su.usedFor ?? {}), [carouselFormat]: now } } : su))
                   );
                 }}
                 style={{
@@ -476,13 +580,19 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                 cursor: "pointer",
               }}
             >
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>
-              {loadingSubjects ? "Loading..." : `${filteredSubjects.length} of ${unusedCount} unused subjects${usedCount > 0 ? ` · ${usedCount} used (hidden)` : ""}`}
+            <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <span>{loadingSubjects ? "Loading..." : `${filteredSubjects.length} of ${fittingPool.length} subjects${frozenFormat && !showAll ? ` for ${SUBJECT_FORMAT_LABEL[frozenFormat]}` : ""}${usedCount > 0 ? ` · ${usedCount} used for this format (hidden)` : ""}`}</span>
+              {frozenFormat && hiddenByFit > 0 && (
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} style={{ accentColor: "var(--accent)" }} />
+                  Show all ({hiddenByFit} not written for this format)
+                </label>
+              )}
             </div>
             <button
               onClick={() => { setAdding((a) => !a); setAddError(null); }}
@@ -523,6 +633,18 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                 >
                   {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
+                <div style={{ display: "flex", gap: 4 }} title="Which two-slide formats this subject fits. Structured and Engagement always do.">
+                  {SUBJECT_FORMATS.map((f) => {
+                    const on = newFormats.includes(f);
+                    return (
+                      <button key={f} type="button" onClick={() => setNewFormats((prev) => on ? prev.filter((x) => x !== f) : [...prev, f])}
+                        style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 7px", borderRadius: 4, cursor: "pointer", fontFamily: "inherit",
+                          border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent-dim)" : "var(--bg)", color: on ? "var(--accent)" : "var(--muted)" }}>
+                        {SUBJECT_FORMAT_CHIP[f]}
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   onClick={submitNewTopic}
                   style={{
@@ -546,8 +668,9 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
               </div>
             )}
             {filteredSubjects.map((s) => {
-              const used = !!s.usedAt;
+              const used = !!subjectUsedFor(s, carouselFormat);
               const isSelected = selectedSubject?.id === s.id;
+              const fits = subjectFormats(s);
               return (
                 <div
                   key={s.id}
@@ -578,6 +701,15 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                     {s.text}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                    {fits.length > 0 && (
+                      <span style={{ display: "inline-flex", gap: 3 }}>
+                        {fits.map((f) => (
+                          <span key={f} title={`Fits ${SUBJECT_FORMAT_LABEL[f]}`} style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "1px 5px", borderRadius: 3, border: `1px solid ${f === frozenFormat ? "var(--accent)" : "var(--border)"}`, color: f === frozenFormat ? "var(--accent)" : "var(--subtle)" }}>
+                            {SUBJECT_FORMAT_CHIP[f]}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                     <span style={{ fontSize: 10, color: isSelected ? "#15803d" : "var(--subtle)" }}>{s.category}</span>
                     {used && !isSelected && (
                       <span style={{
@@ -598,8 +730,20 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
           {selectedSubject && (
             <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#15803d" }}>
-              ✓ {selectedSubject.text}
+              ✓ {topic}
+              {reframedTopic && <span style={{ display: "block", marginTop: 4, fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>Rewritten from: {selectedSubject.text}</span>}
             </div>
+          )}
+          {selectedSubject && frozenFormat && (
+            <ReframePanel
+              format={frozenFormat}
+              fits={selectedFits}
+              state={reframe}
+              chosen={reframedTopic}
+              onChoose={(t) => setReframedTopic(t)}
+              onKeepOriginal={() => setReframedTopic(null)}
+              onRetry={() => fetchReframe(selectedSubject.text, frozenFormat, selectedSubject.category)}
+            />
           )}
           {selectedSubject && coverage && coverage.subjectId === selectedSubject.id && (
             <div style={{ marginTop: 6, fontSize: 12, color: coverage.verified + coverage.pending > 0 ? "var(--muted)" : "var(--warning)" }}>
@@ -634,59 +778,27 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
             }}
           />
           {topicTooLong && <div style={{ fontSize: 12, color: "#e53e3e", marginTop: 4 }}>Maximum 500 characters</div>}
+          {frozenFormat && custom.trim().length >= 8 && !topicTooLong && (
+            <div>
+              {reframedTopic && (
+                <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#15803d" }}>
+                  ✓ {reframedTopic}
+                  <span style={{ display: "block", marginTop: 4, fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>Rewritten from: {custom.trim()}</span>
+                </div>
+              )}
+              <ReframePanel
+                format={frozenFormat}
+                fits
+                state={reframe}
+                chosen={reframedTopic}
+                onChoose={(t) => setReframedTopic(t)}
+                onKeepOriginal={() => setReframedTopic(null)}
+                onRetry={() => fetchReframe(custom.trim(), frozenFormat)}
+              />
+            </div>
+          )}
         </div>
       )}
-
-      {/* Carousel format toggle */}
-      <div style={{ marginBottom: 24 }}>
-        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Format</label>
-        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
-          {([
-            { val: "standard" as CarouselFormat, label: "Structured", desc: "Pick how the deck argues" },
-            { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
-            { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
-            { val: "chartbook" as CarouselFormat, label: "Chartbook", desc: "2 slides: a question, one figure" },
-            { val: "primer" as CarouselFormat, label: "Primer", desc: "2 slides: a cover, one reference slide" },
-          ]).map((opt) => (
-            <button
-              key={opt.val}
-              onClick={() => setCarouselFormat(opt.val)}
-              style={{
-                padding: "8px 20px",
-                fontSize: 13,
-                fontWeight: 600,
-                background: carouselFormat === opt.val ? "var(--text)" : "var(--bg)",
-                color: carouselFormat === opt.val ? "var(--bg)" : "var(--muted)",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        {carouselFormat === "engagement" && (
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
-            Engagement carousels end with a comment CTA — readers comment a keyword to get a guide.
-          </p>
-        )}
-        {carouselFormat === "did_you_know" && (
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
-            Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.
-          </p>
-        )}
-        {carouselFormat === "chartbook" && (
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
-            Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.
-          </p>
-        )}
-        {carouselFormat === "primer" && (
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
-            Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.
-          </p>
-        )}
-      </div>
 
       {/* Engagement sub-type (only for engagement format) */}
       {carouselFormat === "engagement" && (
@@ -1021,6 +1133,70 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       <Button variant="primary" size="lg" disabled={!topic || topicTooLong} onClick={handleNext}>
         Generate carousel →
       </Button>
+    </div>
+  );
+}
+
+/** The rewrite panel under a chosen subject in a frozen format. When the
+ *  subject does not fit, the rewrites are already loading; when it does,
+ *  the panel is one quiet button for a different angle. */
+function ReframePanel({ format, fits, state, chosen, onChoose, onKeepOriginal, onRetry }: {
+  format: SubjectFormat;
+  fits: boolean;
+  state: { proposals: ReframeProposal[]; loading: boolean; error: string | null };
+  chosen: string | null;
+  onChoose: (text: string) => void;
+  onKeepOriginal: () => void;
+  onRetry: () => void;
+}) {
+  const label = SUBJECT_FORMAT_LABEL[format];
+  const idle = !state.loading && state.proposals.length === 0 && !state.error;
+  if (fits && idle) {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <button type="button" onClick={onRetry} style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+          Rewrite this subject for {label}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 10, padding: "12px 14px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          {fits ? `Other angles for ${label}` : `Not written for ${label}`}
+        </div>
+        {!state.loading && (
+          <button type="button" onClick={onRetry} style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+            {state.proposals.length ? "Other rewrites" : "Try again"}
+          </button>
+        )}
+      </div>
+      {!fits && (
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10, lineHeight: 1.5 }}>
+          This subject was written for a Structured deck. {format === "chartbook" ? "The Chartbook needs a comparison with published numbers." : format === "primer" ? "The Primer needs a reference: terms, a formula, a decision." : "Did you know needs one surprising, citable claim."} Pick a rewrite, or keep the original and let the generator try.
+        </div>
+      )}
+      {state.loading && <div style={{ fontSize: 12, color: "var(--muted)" }}>Rewriting for {label}...</div>}
+      {state.error && <div style={{ fontSize: 12, color: "var(--error)" }}>{state.error}</div>}
+      {state.proposals.length > 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          {state.proposals.map((p, i) => {
+            const on = chosen === p.text;
+            return (
+              <button key={i} type="button" onClick={() => onChoose(p.text)}
+                style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent-dim)" : "var(--bg)" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.text}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{p.why}</div>
+              </button>
+            );
+          })}
+          <button type="button" onClick={onKeepOriginal}
+            style={{ textAlign: "left", padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${chosen === null ? "var(--accent)" : "var(--border)"}`, background: chosen === null ? "var(--accent-dim)" : "var(--bg)", fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>
+            Keep the original subject
+          </button>
+        </div>
+      )}
     </div>
   );
 }

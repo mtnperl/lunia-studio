@@ -206,7 +206,7 @@ export default function VideoView() {
         fetch(`/api/subjects/${subjectId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "markUsed" }),
+          body: JSON.stringify({ action: "markUsed", format: "video" }),
         }).catch(() => {});
       }
 
