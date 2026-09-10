@@ -842,6 +842,95 @@ ${TWO_SLIDE_HARD_RULES}
 Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
 };
 
+// ─── Chartbook in two calls ───────────────────────────────────────────────────
+// The single-call prompt above asked for research and writing at once, and
+// the research (real numbers, real sources, five layouts, three variants)
+// used the whole thinking budget before a byte of JSON was written. These
+// two split it: FIGURES proposes the numbers and the source, the editor
+// confirms them, COMPOSE writes the cover and caption around a figure that
+// is now fixed.
+
+const CHARTBOOK_FIGURE_SPEC = `Layouts. Pick the one that fits the numbers you can actually cite:
+- "pill-bars": one measure across 3 to 5 categories. Fields: title, unit, bars[{label, value, display}], source.
+- "versus-bars": two measures for the same 2 to 4 groups. Fields: title, unit, series[2], groups[{label, values[2], displays[2]}], source.
+- "ranked": 6 to 10 items ranked by one number. Fields: title, unit, items[{label, value, display}], source.
+- "object-pair": one choice, two outcomes. Fields: title, kicker, pair[{label, figure, note}] x2, source.
+- "claim-check": a common belief against a number. Fields: title, quote (the belief, in the reader's words), kicker, small{label, value, display}, large{label, value, display}, annotation (a short note on the ratio, under 6 words), source.
+
+Field rules:
+- title: at most 34 characters, sentence case, a claim or a measure ("Deep sleep per night"). unit: the measure and its unit in plain words ("Minutes of slow-wave sleep, by decade").
+- value is a number for drawing; display is that same number as the source printed it ("1h 45", "95 mg", "0.3 mg"). Labels at most 16 characters (22 for ranked).
+- source.citation: a REAL published source, authors or institution, venue, year ("Ohayon et al., Sleep, 2004"). Every value in the figure comes from it as reported. No rounding to a nicer number.
+- If you cannot source the numbers for a layout, pick another layout or another angle on the topic. Never write "illustrative", "approximately", "typical", "estimated" or "example" anywhere; a hedged figure is a failure, a smaller true figure is not.`;
+
+const CHARTBOOK_FIGURE_RULES = `HARD RULES (violating any of these is failure):
+1. NO em dashes (—) or en dashes (–) ANYWHERE. Use commas, periods, or short sentences.
+2. NO medical claims. Forbidden: cures, cure, treats, treat, heals, heal, prevents, prevent, diagnose, diagnoses, guaranteed, miracle.
+3. NO product mentions. Do not name Lunia or any supplement product.
+4. Sentence case for every title, label and kicker. No Title Case, no ALL CAPS.
+5. Figures must be MEANINGFULLY different: different layouts where the subject allows, different measures, never the same numbers twice.`;
+
+/** Stage one: propose figures. The output is the figure and one line on
+ *  the angle, nothing else, so the model spends its budget on getting the
+ *  numbers right rather than on prose. */
+export const CHARTBOOK_FIGURES_PROMPT = (topic: string, count = 3, violations?: string[]) => {
+  const violationBlock = violations && violations.length > 0
+    ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
+    : "";
+  return `${TWO_SLIDE_VOICE}
+
+You are doing the research for a 2-slide "Chartbook" Instagram carousel about: "${topic}". Slide 1 will be a question; slide 2 is ONE figure. Propose ${count} candidate figures. An editor will check the numbers and the source before anything is written, so every value must be one they can find in the citation.
+
+${CHARTBOOK_FIGURE_SPEC}
+
+For each candidate also write "angle": one line, under 20 words, on what the figure shows and why a reader stops on it.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "figures": [
+    {
+      "angle": "Deep sleep falls by half between your twenties and your sixties.",
+      "figure": { "layout": "pill-bars", "title": "Deep sleep per night", "unit": "Minutes of slow-wave sleep, by decade of life", "bars": [{ "label": "20s", "value": 105, "display": "1h 45" }], "source": { "citation": "Ohayon et al., Sleep, 2004" } }
+    }
+  ]
+}
+
+${CHARTBOOK_FIGURE_RULES}
+
+Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};
+
+/** Stage two: the figure is fixed. Write the cover and the caption. */
+export const CHARTBOOK_COMPOSE_PROMPT = (topic: string, figureJson: string, count = 3, violations?: string[]) => {
+  const violationBlock = violations && violations.length > 0
+    ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
+    : "";
+  return `${TWO_SLIDE_VOICE}
+
+A 2-slide "Chartbook" Instagram carousel about: "${topic}". Slide 2 is the figure below. It has been checked by an editor and is FINAL: do not restate, round or reinterpret any number in it.
+
+FIGURE:
+${figureJson}
+
+Write ${count} variants of slide 1 and the caption.
+
+Slide 1 is a cover: "question" in a serif, at most 60 characters, sentence case, that the figure answers. "underline" names one or two words of the question, copied exactly, that get a pen underline. "kicker" is one short line under it (the unit or the frame of the answer, under 8 words).
+
+Return ONLY valid JSON in this exact shape:
+{
+  "variants": [
+    {
+      "cover": { "question": "How much deep sleep do you actually get?", "kicker": "One chart. One night.", "underline": ["deep sleep", "actually"] },
+      "caption": "..."
+    }
+  ]
+}
+
+${TWO_SLIDE_HARD_RULES}
+
+Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};
+
 // ─── Primer format ────────────────────────────────────────────────────────────
 // Two slides: a cover, then ONE reference slide from four frozen layouts.
 
