@@ -399,4 +399,40 @@ export const CAROUSEL_FIXTURES: SlideFixture[] = [
       citation: "",
     },
   },
+  // Chartbook: the cover and every figure layout, each at the long end of
+  // its contract (five bars, four groups, ten ranked items, long labels).
+  ...(() => {
+    const source = { citation: "Ohayon et al., Sleep, 2004" };
+    const base = { kind: "chartbook", headline: "", body: "", citation: "" };
+    const cover = { question: "How much deep sleep do you actually get?", kicker: "One chart. One night.", underline: ["deep sleep", "actually"] };
+    const mk = (name: string, figure: Record<string, unknown>, index: 1 | 2 = 2) => ({
+      name,
+      props: { ...base, twoSlideIndex: index, chartbook: { topic: "Deep sleep by decade", cover, figure, caption: "c".repeat(90) } },
+    });
+    return [
+      mk("chartbook-cover", { layout: "pill-bars", title: "Deep sleep per night", unit: "Minutes of slow-wave sleep, by decade", bars: [{ label: "20s", value: 105, display: "1h 45" }, { label: "60s", value: 35, display: "35 min" }, { label: "40s", value: 55, display: "55 min" }], source }, 1),
+      mk("chartbook-pill-bars-five", { layout: "pill-bars", title: "Deep sleep per night", unit: "Minutes of slow-wave sleep, by decade of life", bars: [{ label: "20s", value: 105, display: "1h 45" }, { label: "30s", value: 80, display: "1h 20" }, { label: "40s", value: 55, display: "55 min" }, { label: "50s", value: 45, display: "45 min" }, { label: "60s", value: 35, display: "35 min" }], source }),
+      mk("chartbook-versus-bars-four", { layout: "versus-bars", title: "Recommended vs reported", unit: "Hours per night, by age group", series: ["Recommended", "Reported"], groups: [{ label: "Teens", values: [9, 7], displays: ["9h", "7h"] }, { label: "Adults", values: [8, 6.5], displays: ["8h", "6.5h"] }, { label: "Over 50", values: [7.5, 6.2], displays: ["7.5h", "6.2h"] }, { label: "Over 65", values: [7.5, 6], displays: ["7.5h", "6h"] }], source: { citation: "National Sleep Foundation, 2015" } }),
+      mk("chartbook-ranked-ten", { layout: "ranked", title: "Drinks that carry the most caffeine", unit: "Milligrams per serving, ranked", items: [{ label: "Drip coffee", value: 95, display: "95 mg" }, { label: "Energy drink", value: 80, display: "80 mg" }, { label: "Espresso", value: 63, display: "63 mg" }, { label: "Black tea", value: 47, display: "47 mg" }, { label: "Cola", value: 34, display: "34 mg" }, { label: "Green tea", value: 28, display: "28 mg" }, { label: "Dark chocolate", value: 23, display: "23 mg" }, { label: "Matcha latte", value: 70, display: "70 mg" }, { label: "Hot chocolate", value: 5, display: "5 mg" }, { label: "Decaf coffee", value: 2, display: "2 mg" }], source: { citation: "USDA FoodData Central, 2023" } }),
+      mk("chartbook-object-pair", { layout: "object-pair", title: "Make the lighter choice", kicker: "Same hour, same bed, one difference", pair: [{ label: "Phone at 11pm", figure: "90 min", note: "later melatonin rise" }, { label: "Paper book at 11pm", figure: "0 min", note: "no measurable delay" }], source: { citation: "Chang et al., PNAS, 2015" } }),
+      mk("chartbook-claim-check", { layout: "claim-check", title: "The claim and the number", quote: "Melatonin is just a sleeping pill", kicker: "The dose studies use against the dose sold", small: { label: "Studied dose", value: 0.3, display: "0.3 mg" }, large: { label: "Shop dose", value: 10, display: "10 mg" }, annotation: "thirty times the dose", source: { citation: "Zhdanova et al., J Clin Endocrinol Metab, 2001" } }),
+    ];
+  })(),
+  // Primer: the numeral cover and every layout at the long end (eleven rows).
+  ...(() => {
+    const base = { kind: "primer", headline: "", body: "", citation: "" };
+    const rows = ["Slow-wave sleep|the deep stage, mostly in cycle one|deep stage", "Sleep pressure|adenosine building since you woke|since you woke", "Chronotype|the timing your clock prefers|clock prefers", "Sleep latency|minutes from lights out to sleep|lights out", "REM rebound|extra REM after a short night|short night", "Core temperature|the drop the body waits for|waits for", "Sleep efficiency|time asleep over time in bed|time in bed", "Caffeine half-life|five to six hours, longer with age|longer with age", "Sleep debt|the hours a week does not give back|does not give back", "Circadian phase|where your clock sits against the day|against the day", "Wake after onset|minutes awake after first falling asleep|minutes awake"].map((r) => { const [term, definition, key] = r.split("|"); return { term, definition, key }; });
+    const mk = (name: string, cover: Record<string, unknown>, slide: Record<string, unknown>, index: 1 | 2 = 2) => ({
+      name,
+      props: { ...base, twoSlideIndex: index, primer: { topic: "Sleep terms", cover, slide, caption: "c".repeat(90) } },
+    });
+    const listCover = { title: "Sleep terms worth knowing", kicker: "The words your tracker uses", underline: ["knowing"] };
+    return [
+      mk("primer-cover-numeral", listCover, { layout: "rows", title: "Sleep terms", kicker: "for a better night", rows }, 1),
+      mk("primer-rows-eleven", listCover, { layout: "rows", title: "Sleep terms", kicker: "for a better night", rows }),
+      mk("primer-definition", { title: "Sleep efficiency, the formula", kicker: "One term, one number", underline: ["formula"] }, { layout: "definition", title: "Sleep efficiency", term: "Sleep efficiency", definition: "How much of the time you gave to bed was actually spent asleep.", formula: { left: "Efficiency", numerator: "Time asleep", denominator: "Time in bed", factor: "× 100" }, threshold: { label: "Good night", value: "85% or more" }, example: { label: "7h asleep of 8h in bed", value: "87%" } }),
+      mk("primer-versus", { title: "A nap or a coffee?", kicker: "When to use each", underline: ["nap", "coffee"] }, { layout: "versus", title: "When to use", kicker: "nap or coffee", columns: [{ name: "A nap", rows: ["An afternoon slump before 3pm", "A short night you cannot fix", "A long drive ahead", "Learning something new today"], footnote: "Twenty minutes. Set an alarm." }, { name: "A coffee", rows: ["The first hour after waking", "Before a workout", "A meeting you must be sharp for", "Never after 2pm"], footnote: "Half of it is still there at 8pm." }] }),
+      mk("primer-creed", { title: "Every sleeper should know this", kicker: "Seven conditions, one outcome", underline: ["know"] }, { layout: "creed", title: "The conditions", lines: [{ condition: "darkness", consequence: "melatonin" }, { condition: "a cool room", consequence: "deep sleep" }, { condition: "a fixed wake time", consequence: "rhythm" }, { condition: "daylight by 9am", consequence: "a clock" }, { condition: "a last meal by 8pm", consequence: "a temperature drop" }, { condition: "a wind-down", consequence: "sleep pressure" }, { condition: "a caffeine cut-off", consequence: "a first cycle" }], closing: "Rest needs all the above." }),
+    ];
+  })(),
 ];

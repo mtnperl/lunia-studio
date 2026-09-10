@@ -196,7 +196,56 @@ export const PAPER_DEFAULTS = {
   essay: { grain: 0.9, vignette: 0.07 },
   highlighter: { grain: 0.45, vignette: 0 },
   billboard: { grain: 0.45, vignette: 0 },
+  chartbook: { grain: 0.45, vignette: 0 },
+  primer: { grain: 0.45, vignette: 0 },
 } as const satisfies Record<string, PaperSettings>;
+
+// ─── Pen and paper tokens (Chartbook and Primer) ────────────────────────────
+// The third grammar from the @reputeforge reference: a serif carries the
+// words, numerals are Inter tabular (Cormorant's figures are too light and a
+// display serif's 1 reads as l), key words get a hand-drawn navy pen
+// underline, one phrase per slide takes the yellow marker swipe, and the
+// chrome is a handle and an arrow. One ink, one accent.
+export const PEN_SERIF = "'Cormorant Garamond', Georgia, serif";
+export const PEN_SANS = "Inter, system-ui, sans-serif";
+export const PEN_COLORS = {
+  paper: BRAND_COLORS.softIvory,
+  ink: BRAND_COLORS.deepNavy,
+  inkMuted: "rgba(16,38,53,0.6)",
+  inkSoft: "rgba(16,38,53,0.85)",
+  hairline: "rgba(16,38,53,0.32)",
+  pen: "rgba(16,38,53,0.85)",
+  yellow: BRAND_COLORS.signalYellow,
+  /** Bars are ink; the one bar the title is about is the accent. */
+  bar: BRAND_COLORS.deepNavy,
+  barAccent: BRAND_COLORS.signalYellow,
+} as const;
+/** Type scale (px at the 1080-wide artboard), at or above the review's
+ *  legibility floor: 30 for text, 28 for sources, 24 for chrome. */
+export const PEN_TYPE = {
+  coverQuestion: 118,
+  coverKicker: 30,
+  numeral: 400,
+  title: 88,
+  kicker: 30,
+  value: 36,
+  label: 36,
+  source: 28,
+  row: 35,
+  rowNumber: 28,
+  body: 40,
+  chrome: 24,
+  arrow: 44,
+} as const;
+export const PEN_LAYOUT = {
+  padX: 84,
+  chromeBottom: 84,
+  titleTop: 120,
+  /** The figure or the rows start here on the second slide: clear of a
+   *  two-line title and its kicker. */
+  bodyTop: 400,
+  bodyBottom: 220,
+} as const;
 /** Slider ceiling for the vignette: the Essay value is 0.07, so the control
  *  runs 0..0.2 and maps the whole range onto something visible. */
 export const PAPER_VIGNETTE_MAX = 0.2;

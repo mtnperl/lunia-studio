@@ -105,13 +105,20 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c
     await fetch(`/api/carousel/${c.id}`, { method: "DELETE" });
     onDelete();
   }
-  const isDidYouKnow = c.format === "did_you_know";
+  // The three two-slide formats share the card: a paper tile with the
+  // format's name and the piece's first line, no hook image.
+  const isDidYouKnow = c.format === "did_you_know" || c.format === "chartbook" || c.format === "primer";
+  const formatLabel = c.format === "chartbook" ? "Chartbook" : c.format === "primer" ? "Primer" : "Did you know?";
   const hookImg = c.slideImages?.[0] ?? c.hookImageUrl ?? null;
-  const toneColor = isDidYouKnow ? "#1E6B8C" : (TONE_COLORS[c.hookTone] ?? "var(--accent)");
-  const caption = isDidYouKnow ? (c.didYouKnowContent?.caption ?? "") : (c.content?.caption ?? "");
+  const toneColor = isDidYouKnow ? "#102635" : (TONE_COLORS[c.hookTone] ?? "var(--accent)");
+  const caption = c.format === "chartbook" ? (c.chartbookContent?.caption ?? "")
+    : c.format === "primer" ? (c.primerContent?.caption ?? "")
+    : isDidYouKnow ? (c.didYouKnowContent?.caption ?? "") : (c.content?.caption ?? "");
   const slideCount = isDidYouKnow ? 2 : (c.content?.slides?.length ?? 0) + 2;
   const shareHref = `${typeof window !== "undefined" ? window.location.origin : ""}/carousels/${c.id}`;
-  const dykPreviewText = isDidYouKnow
+  const dykPreviewText = c.format === "chartbook" ? (c.chartbookContent?.cover.question ?? "")
+    : c.format === "primer" ? (c.primerContent?.cover.title ?? "")
+    : isDidYouKnow
     ? c.didYouKnowContent?.slide1.body1.map((t) => t.text).join("").slice(0, 100) ?? ""
     : "";
 
@@ -148,11 +155,11 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c
             padding: "24px 20px", textAlign: "center", gap: 14,
           }}>
             <div style={{
-              fontFamily: "Inter, 'Helvetica Neue', sans-serif",
-              fontStyle: "italic", fontWeight: 700, fontSize: 22,
-              color: "#1E6B8C", letterSpacing: "0.02em",
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontStyle: "italic", fontWeight: 500, fontSize: 26,
+              color: "#102635", letterSpacing: "0.01em",
             }}>
-              DID YOU KNOW?
+              {formatLabel}
             </div>
             <div style={{
               fontFamily: "Inter, 'Helvetica Neue', sans-serif",
@@ -218,7 +225,7 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary }: { c
             textTransform: "uppercase", letterSpacing: "0.1em",
             fontFamily: "var(--font-mono)",
           }}>
-            {isDidYouKnow ? "did you know" : c.hookTone.replace("-", " ")}
+            {isDidYouKnow ? formatLabel.toLowerCase().replace("?", "") : c.hookTone.replace("-", " ")}
           </span>
           <span style={{ fontSize: 10, color: "var(--subtle)", fontFamily: "var(--font-mono)" }}>
             {new Date(c.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}

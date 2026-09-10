@@ -38,6 +38,8 @@ export const ENGAGEMENT_SUBTYPE_OPTIONS: { value: EngagementSubType; label: stri
   { value: "diagnostic", label: "Diagnostic", description: "Symptom/habit check — reader self-identifies" },
 ];
 
+import { isTwoSlideFormat } from "@/lib/types";
+
 export const CATEGORIES = [
   "All",
   "Sleep Science",
@@ -51,6 +53,8 @@ export const CATEGORIES = [
   "Lifestyle & Productivity",
   "Longevity & Sleep Research",
   "Did You Know",
+  "Chartbook",
+  "Primer",
   "Latest Research",
   "Sleep Researchers",
 ];
@@ -265,11 +269,11 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
     const subjectId = mode === "list" ? selectedSubject?.id : undefined;
     const effectiveTone =
       carouselFormat === "engagement" ? ("science-backed" as HookTone)
-      : carouselFormat === "did_you_know" ? ("educational" as HookTone)
+      : isTwoSlideFormat(carouselFormat) ? ("educational" as HookTone)
       : STRUCTURES[structure].legacyTone;
     const effectiveConcise =
       carouselFormat === "engagement" ? true
-      : carouselFormat === "did_you_know" ? true
+      : isTwoSlideFormat(carouselFormat) ? true
       : concise;
     onNext(topic, effectiveTone, subjectId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings, carouselFormat === "standard" ? viralSlides : undefined, carouselFormat === "standard" ? structure : undefined);
   }
@@ -641,6 +645,8 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
             { val: "standard" as CarouselFormat, label: "Structured", desc: "Pick how the deck argues" },
             { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
             { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
+            { val: "chartbook" as CarouselFormat, label: "Chartbook", desc: "2 slides: a question, one figure" },
+            { val: "primer" as CarouselFormat, label: "Primer", desc: "2 slides: a cover, one reference slide" },
           ]).map((opt) => (
             <button
               key={opt.val}
@@ -668,6 +674,16 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
         {carouselFormat === "did_you_know" && (
           <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
             Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.
+          </p>
+        )}
+        {carouselFormat === "chartbook" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.
+          </p>
+        )}
+        {carouselFormat === "primer" && (
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.
           </p>
         )}
       </div>
@@ -774,7 +790,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
       {/* Saved looks come first: one pick sets the preset, the image engine and
           every deck-wide style knob the studio will open with. */}
-      {carouselFormat !== "did_you_know" && looks.length > 0 && (
+      {!isTwoSlideFormat(carouselFormat) && looks.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Look</label>
           <UiSelect value={lookId} onChange={(e) => chooseLook(e.target.value)} aria-label="Saved look">
@@ -786,7 +802,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       )}
       {/* Carousel style preset — re-skins the whole carousel (colors, fonts,
           image engine). "Editorial Scientific" applies the Lunia brand book. */}
-      {carouselFormat !== "did_you_know" && (
+      {!isTwoSlideFormat(carouselFormat) && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
@@ -824,7 +840,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       {/* Contrast — Editorial Scientific only, because it works by swapping that
           preset's palette block. On any other preset the setting would reach a
           code path that ignores it, so offering it there would be a dead control. */}
-      {carouselFormat !== "did_you_know" && stylePreset === "editorial-scientific" && (
+      {!isTwoSlideFormat(carouselFormat) && stylePreset === "editorial-scientific" && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Contrast</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
@@ -857,7 +873,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       )}
 
       {/* Hook image style — hidden for did_you_know (no AI imagery) */}
-      {carouselFormat !== "did_you_know" && (
+      {!isTwoSlideFormat(carouselFormat) && (
       <div style={{ marginBottom: 24 }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook image style</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>

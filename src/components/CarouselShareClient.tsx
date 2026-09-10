@@ -18,6 +18,7 @@ import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
 import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
 import { essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
+import TwoSlideShareView from "@/components/TwoSlideShareView";
 import { SavedCarousel, BrandStyle } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
@@ -71,6 +72,12 @@ function describeRejection(err: unknown): string {
 export default function CarouselShareClient({ carousel }: Props) {
   if (carousel.format === "did_you_know" && carousel.didYouKnowContent) {
     return <DidYouKnowShareView carousel={carousel} />;
+  }
+  if (carousel.format === "chartbook" && carousel.chartbookContent) {
+    return <TwoSlideShareView carousel={carousel} format="chartbook" />;
+  }
+  if (carousel.format === "primer" && carousel.primerContent) {
+    return <TwoSlideShareView carousel={carousel} format="primer" />;
   }
 
   const {

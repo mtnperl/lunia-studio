@@ -300,6 +300,32 @@ const SLEEP_TOPICS: Subject[] = [
   s("2025 study: sleep apnea accelerates biological aging by an equivalent of 7 additional years", "Latest Research"),
   s("Low-dose L-theanine before bed increases alpha wave activity and reduces nighttime awakenings", "Latest Research"),
 
+  // Chartbook — two-slide format, one figure per piece (seeded 2026-09-09)
+  s("Deep sleep per night by decade of life", "Chartbook"),
+  s("REM sleep lost per drink of alcohol before bed", "Chartbook"),
+  s("Nap length against grogginess on waking", "Chartbook"),
+  s("Recommended vs reported sleep by age group", "Chartbook"),
+  s("Weekday vs weekend sleep, by age", "Chartbook"),
+  s("Caffeine per drink, ranked", "Chartbook"),
+  s("Light at night by source, in lux", "Chartbook"),
+  s("Phone vs paper book at 11pm: the melatonin delay", "Chartbook"),
+  s("Room at 18°C vs 24°C: minutes to fall asleep", "Chartbook"),
+  s("Melatonin: the dose studied vs the dose sold", "Chartbook"),
+  s("Everyone needs eight hours: the real spread of sleep need", "Chartbook"),
+
+  // Primer — two-slide format, one reference slide per piece (seeded 2026-09-09)
+  s("Sleep terms worth knowing", "Primer"),
+  s("What a sleep tracker actually measures", "Primer"),
+  s("Supplements for sleep, ranked by the evidence", "Primer"),
+  s("Sleep efficiency: the formula", "Primer"),
+  s("Sleep debt: the formula", "Primer"),
+  s("Caffeine half-life: the arithmetic of a 4pm coffee", "Primer"),
+  s("A nap vs a coffee: when to use each", "Primer"),
+  s("Melatonin vs magnesium: when to use each", "Primer"),
+  s("Lark vs owl: working with your chronotype", "Primer"),
+  s("Every sleeper should know this", "Primer"),
+  s("Every parent of a newborn should know this", "Primer"),
+
   // Did You Know — frozen-template format (100 entries)
   s("Sleeping less than 6 hours raises cortisol the next day", "Did You Know"),
   s("Deep sleep clears beta-amyloid from the brain", "Did You Know"),

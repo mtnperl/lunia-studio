@@ -3,7 +3,9 @@ import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-stru
 import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
 import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief } from "@/lib/carousel-brief";
 import { STRUCTURES } from "@/lib/carousel-structures";
-import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT } from "@/lib/carousel-prompts";
+import { GENERATE_CAROUSEL_PROMPT, GENERATE_CHARTBOOK_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
+import { lintChartbook, lintPrimer } from "@/lib/two-slide-lint";
+import { ChartbookVariantsResponseSchema, PrimerVariantsResponseSchema, type ChartbookContent, type PrimerContent } from "@/lib/types";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { keepOneEssayGraphic } from "@/lib/essay-body";
@@ -61,6 +63,8 @@ export async function POST(req: Request) {
     const format: CarouselFormat =
       body.format === "engagement" ? "engagement"
       : body.format === "did_you_know" ? "did_you_know"
+      : body.format === "chartbook" ? "chartbook"
+      : body.format === "primer" ? "primer"
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
     const structure: CarouselStructure | undefined = isCarouselStructure(body.structure) ? body.structure : undefined;
@@ -84,6 +88,9 @@ export async function POST(req: Request) {
 
     if (format === "did_you_know") {
       return await generateDidYouKnow(topic, count);
+    }
+    if (format === "chartbook" || format === "primer") {
+      return await generateTwoSlide(format, topic, count);
     }
 
     // Fetch carousel-style reference images (up to 2)
@@ -339,6 +346,80 @@ async function callDidYouKnow(topic: string, variantCount: number, violations?: 
     throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   }
   return result.data.variants;
+}
+
+// ─── Chartbook and Primer: the same loop as Did you know ─────────────────────
+// One call for N variants, a lint per variant, one reprompt for the ones that
+// fail, the surviving violations attached so the editor can show them.
+
+type TwoSlideFormat = "chartbook" | "primer";
+type TwoSlideVariant = ChartbookContent | PrimerContent;
+
+const TWO_SLIDE = {
+  chartbook: {
+    prompt: GENERATE_CHARTBOOK_PROMPT,
+    schema: ChartbookVariantsResponseSchema,
+    lint: (v: TwoSlideVariant) => lintChartbook(v as ChartbookContent),
+  },
+  primer: {
+    prompt: GENERATE_PRIMER_PROMPT,
+    schema: PrimerVariantsResponseSchema,
+    lint: (v: TwoSlideVariant) => lintPrimer(v as PrimerContent),
+  },
+} as const;
+
+async function callTwoSlide(format: TwoSlideFormat, topic: string, variantCount: number, violations?: string[]): Promise<TwoSlideVariant[]> {
+  const spec = TWO_SLIDE[format];
+  const msg = await createContentMessage({
+    model: CONTENT_MODEL,
+    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    thinking: CONTENT_THINKING,
+    messages: [{ role: "user", content: [{ type: "text", text: spec.prompt(topic, variantCount, violations) }] }],
+  });
+  const raw = extractText(msg);
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const json = JSON.parse(text);
+  const result = spec.schema.safeParse(json);
+  if (!result.success) {
+    throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  }
+  return result.data.variants as TwoSlideVariant[];
+}
+
+async function generateTwoSlide(format: TwoSlideFormat, topic: string, count: number): Promise<Response> {
+  const variantCount = Math.max(1, Math.min(3, count || 3));
+  const spec = TWO_SLIDE[format];
+  let variants: TwoSlideVariant[] = [];
+  try {
+    variants = await callTwoSlide(format, topic, variantCount);
+  } catch (err) {
+    console.error(`[generate/${format}] first attempt failed:`, err instanceof Error ? err.message : err);
+    return Response.json({ error: describeGenerateError(err, `${format} generation`) }, { status: 500 });
+  }
+  const finalVariants = await Promise.all(
+    variants.map(async (variant): Promise<TwoSlideVariant> => {
+      const lint = spec.lint(variant);
+      if (lint.ok) return variant;
+      console.warn(`[generate/${format}] lint violations:`, lint.violations);
+      try {
+        const [fixed] = await callTwoSlide(format, variant.topic || topic, 1, lint.violations);
+        if (!fixed) return { ...variant, violations: lint.violations };
+        const recheck = spec.lint(fixed);
+        if (!recheck.ok) {
+          console.warn(`[generate/${format}] reprompt still has violations:`, recheck.violations);
+          return { ...fixed, violations: recheck.violations };
+        }
+        return fixed;
+      } catch (err) {
+        console.error(`[generate/${format}] reprompt failed:`, err instanceof Error ? err.message : err);
+        return { ...variant, violations: lint.violations };
+      }
+    })
+  );
+  if (finalVariants.length === 0) {
+    return Response.json({ error: "Generation produced no usable variants. Try again." }, { status: 500 });
+  }
+  return Response.json({ variants: finalVariants });
 }
 
 async function generateDidYouKnow(topic: string, count: number): Promise<Response> {

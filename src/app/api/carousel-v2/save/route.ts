@@ -1,6 +1,6 @@
 import { saveAssetIfNew, saveCarousel, getCarouselById } from "@/lib/kv";
 import { isCarouselStructure } from "@/lib/carousel-structures";
-import { AssetMetadata, DidYouKnowContentSchema, SavedCarousel } from "@/lib/types";
+import { AssetMetadata, ChartbookContentSchema, DidYouKnowContentSchema, PrimerContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { recordVersion } from "@/lib/versions";
 import { put } from "@vercel/blob";
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
-      format, engagementSubType, didYouKnowContent,
+      format, engagementSubType, didYouKnowContent, chartbookContent, primerContent,
       didYouKnowTreatment, paperGrain, paperVignette,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
@@ -60,6 +60,24 @@ export async function POST(req: Request) {
 
     if (!topic) {
       return Response.json({ error: "Missing required field: topic" }, { status: 400 });
+    }
+    // Chartbook and Primer: the piece is validated against its schema, the
+    // same way Did you know is, so a malformed figure never reaches a card.
+    let validatedChartbook: typeof chartbookContent | undefined;
+    if (format === "chartbook") {
+      const parsed = ChartbookContentSchema.safeParse(chartbookContent);
+      if (!parsed.success) {
+        return Response.json({ error: "Invalid chartbookContent", details: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
+      }
+      validatedChartbook = parsed.data;
+    }
+    let validatedPrimer: typeof primerContent | undefined;
+    if (format === "primer") {
+      const parsed = PrimerContentSchema.safeParse(primerContent);
+      if (!parsed.success) {
+        return Response.json({ error: "Invalid primerContent", details: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
+      }
+      validatedPrimer = parsed.data;
     }
     let validatedDyk: typeof didYouKnowContent | undefined;
     if (format === "did_you_know") {
@@ -71,7 +89,7 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
       validatedDyk = parsed.data;
-    } else {
+    } else if (format !== "chartbook" && format !== "primer") {
       if (!content || selectedHook == null) {
         return Response.json({ error: "Missing required fields" }, { status: 400 });
       }
@@ -127,6 +145,8 @@ export async function POST(req: Request) {
       format: format ?? undefined,
       engagementSubType: engagementSubType ?? undefined,
       didYouKnowContent: validatedDyk ?? undefined,
+      chartbookContent: validatedChartbook ?? undefined,
+      primerContent: validatedPrimer ?? undefined,
       didYouKnowTreatment: didYouKnowTreatment === "navy-box" || didYouKnowTreatment === "yellow-box" ? didYouKnowTreatment : undefined,
       paperGrain: typeof paperGrain === "number" && paperGrain >= 0 && paperGrain <= 1 ? paperGrain : undefined,
       paperVignette: typeof paperVignette === "number" && paperVignette >= 0 && paperVignette <= 1 ? paperVignette : undefined,

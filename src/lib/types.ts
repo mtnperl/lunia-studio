@@ -50,7 +50,14 @@ export type HookTone =
   | "symptom"
   | "paradox"
   | "tell";
-export type CarouselFormat = "standard" | "engagement" | "did_you_know";
+export type CarouselFormat = "standard" | "engagement" | "did_you_know" | "chartbook" | "primer";
+
+/** The frozen two-slide formats: a cover and one slide that does the work,
+ *  a fixed set of layouts, three variants per subject, no image engine. */
+export const TWO_SLIDE_FORMATS = ["did_you_know", "chartbook", "primer"] as const;
+export function isTwoSlideFormat(f: CarouselFormat | string | undefined | null): boolean {
+  return f === "did_you_know" || f === "chartbook" || f === "primer";
+}
 export type EngagementSubType = "reveal" | "diagnostic";
 
 // ─── Did You Know format ─────────────────────────────────────────────────────
@@ -95,6 +102,128 @@ export type DidYouKnowToken = zDyk.infer<typeof DidYouKnowTokenSchema>;
 export type DidYouKnowSlideContent = zDyk.infer<typeof DidYouKnowSlideContentSchema>;
 export type DidYouKnowContent = zDyk.infer<typeof DidYouKnowContentSchema>;
 export type DidYouKnowVariantsResponse = zDyk.infer<typeof DidYouKnowVariantsResponseSchema>;
+
+// ─── Chartbook format ────────────────────────────────────────────────────────
+// Two slides: a serif question on paper, then ONE figure from a fixed set of
+// five layouts. Every number carries a display string as the source reported
+// it and the figure names that source; the lint rejects anything hedged.
+
+const zSource = zDyk.object({
+  /** A real, published source: authors or institution, venue, year. */
+  citation: zDyk.string().min(8),
+});
+const zBar = zDyk.object({ label: zDyk.string().min(1), value: zDyk.number(), display: zDyk.string().min(1) });
+
+export const ChartbookFigureSchema = zDyk.discriminatedUnion("layout", [
+  /** A · one measure across three to five categories. */
+  zDyk.object({ layout: zDyk.literal("pill-bars"), title: zDyk.string().min(1), unit: zDyk.string().min(1), bars: zDyk.array(zBar).min(3).max(5), source: zSource }),
+  /** B · two measures for the same two to four groups. */
+  zDyk.object({
+    layout: zDyk.literal("versus-bars"), title: zDyk.string().min(1), unit: zDyk.string().min(1),
+    series: zDyk.tuple([zDyk.string().min(1), zDyk.string().min(1)]),
+    groups: zDyk.array(zDyk.object({ label: zDyk.string().min(1), values: zDyk.tuple([zDyk.number(), zDyk.number()]), displays: zDyk.tuple([zDyk.string().min(1), zDyk.string().min(1)]) })).min(2).max(4),
+    source: zSource,
+  }),
+  /** C · six to ten items ranked by one number, drawn as horizontal bars. */
+  zDyk.object({ layout: zDyk.literal("ranked"), title: zDyk.string().min(1), unit: zDyk.string().min(1), items: zDyk.array(zBar).min(6).max(10), source: zSource }),
+  /** D · one choice, two outcomes. */
+  zDyk.object({
+    layout: zDyk.literal("object-pair"), title: zDyk.string().min(1), kicker: zDyk.string().min(1),
+    pair: zDyk.tuple([
+      zDyk.object({ label: zDyk.string().min(1), figure: zDyk.string().min(1), note: zDyk.string().min(1) }),
+      zDyk.object({ label: zDyk.string().min(1), figure: zDyk.string().min(1), note: zDyk.string().min(1) }),
+    ]),
+    source: zSource,
+  }),
+  /** E · a common belief against a number: a quote, two bars at an extreme ratio. */
+  zDyk.object({
+    layout: zDyk.literal("claim-check"), title: zDyk.string().min(1), quote: zDyk.string().min(1), kicker: zDyk.string().min(1),
+    small: zBar, large: zBar, annotation: zDyk.string().min(1), source: zSource,
+  }),
+]);
+
+export const ChartbookContentSchema = zDyk.object({
+  topic: zDyk.string().min(1),
+  cover: zDyk.object({
+    /** The question, sentence case, at most 60 characters. */
+    question: zDyk.string().min(8).max(80),
+    kicker: zDyk.string().min(1),
+    /** One or two words of the question that take the pen underline, copied exactly. */
+    underline: zDyk.array(zDyk.string().min(1)).max(2),
+  }),
+  figure: ChartbookFigureSchema,
+  caption: zDyk.string().min(1),
+  violations: zDyk.array(zDyk.string()).optional(),
+});
+export const ChartbookVariantsResponseSchema = zDyk.object({
+  variants: zDyk.array(ChartbookContentSchema).min(1),
+  warning: zDyk.string().optional(),
+});
+export type ChartbookFigure = zDyk.infer<typeof ChartbookFigureSchema>;
+export type ChartbookContent = zDyk.infer<typeof ChartbookContentSchema>;
+
+// ─── Primer format ───────────────────────────────────────────────────────────
+// Two slides: a cover (a numeral beside the title for a list, the serif
+// question otherwise), then ONE reference slide from four layouts.
+
+export const PrimerSlideSchema = zDyk.discriminatedUnion("layout", [
+  /** A · numbered rows of term and definition on dashed hairlines. */
+  zDyk.object({
+    layout: zDyk.literal("rows"), title: zDyk.string().min(1), kicker: zDyk.string().min(1),
+    rows: zDyk.array(zDyk.object({
+      term: zDyk.string().min(1),
+      definition: zDyk.string().min(1),
+      /** The phrase of the definition that takes the yellow swipe, copied exactly. */
+      key: zDyk.string().optional(),
+    })).min(6).max(11),
+  }),
+  /** B · one term, a definition, a fraction formula, a threshold, an example. */
+  zDyk.object({
+    layout: zDyk.literal("definition"), title: zDyk.string().min(1), term: zDyk.string().min(1), definition: zDyk.string().min(1),
+    formula: zDyk.object({ left: zDyk.string().min(1), numerator: zDyk.string().min(1), denominator: zDyk.string().min(1), factor: zDyk.string().optional() }),
+    threshold: zDyk.object({ label: zDyk.string().min(1), value: zDyk.string().min(1) }),
+    example: zDyk.object({ label: zDyk.string().min(1), value: zDyk.string().min(1) }),
+  }),
+  /** C · two headed columns on a dashed divider, best-for rows, a footnote each. */
+  zDyk.object({
+    layout: zDyk.literal("versus"), title: zDyk.string().min(1), kicker: zDyk.string().min(1),
+    columns: zDyk.tuple([
+      zDyk.object({ name: zDyk.string().min(1), rows: zDyk.array(zDyk.string().min(1)).min(3).max(4), footnote: zDyk.string().min(1) }),
+      zDyk.object({ name: zDyk.string().min(1), rows: zDyk.array(zDyk.string().min(1)).min(3).max(4), footnote: zDyk.string().min(1) }),
+    ]),
+  }),
+  /** D · the creed, rebuilt as rows: the condition in the pen, the consequence swiped. */
+  zDyk.object({
+    layout: zDyk.literal("creed"), title: zDyk.string().min(1),
+    lines: zDyk.array(zDyk.object({ condition: zDyk.string().min(1), consequence: zDyk.string().min(1) })).min(5).max(8),
+    closing: zDyk.string().min(1),
+  }),
+]);
+
+export const PrimerContentSchema = zDyk.object({
+  topic: zDyk.string().min(1),
+  cover: zDyk.object({
+    /** Sentence case, at most 40 characters. For the rows layout the cover
+     *  shows the row count as a numeral beside it. */
+    title: zDyk.string().min(4).max(60),
+    kicker: zDyk.string().min(1),
+    underline: zDyk.array(zDyk.string().min(1)).max(2),
+  }),
+  slide: PrimerSlideSchema,
+  caption: zDyk.string().min(1),
+  violations: zDyk.array(zDyk.string()).optional(),
+});
+export const PrimerVariantsResponseSchema = zDyk.object({
+  variants: zDyk.array(PrimerContentSchema).min(1),
+  warning: zDyk.string().optional(),
+});
+export type PrimerSlideContent = zDyk.infer<typeof PrimerSlideSchema>;
+export type PrimerContent = zDyk.infer<typeof PrimerContentSchema>;
+
+/** One of the two new two-slide formats' content, tagged by format. */
+export type TwoSlideContent =
+  | { format: "chartbook"; content: ChartbookContent }
+  | { format: "primer"; content: PrimerContent };
 
 export type Topic = {
   title: string;
@@ -496,6 +625,8 @@ export type SavedCarousel = {
   format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
   engagementSubType?: EngagementSubType; // "reveal" | "diagnostic" — only when format is "engagement"
   didYouKnowContent?: DidYouKnowContent; // present iff format === "did_you_know"
+  chartbookContent?: ChartbookContent;   // present iff format === "chartbook"
+  primerContent?: PrimerContent;         // present iff format === "primer"
   /** Did you know only: which box the marked phrase takes. Absent = navy-box. */
   didYouKnowTreatment?: DidYouKnowTreatment;
   /** Paper ground, 0..1 each: grain opacity and vignette strength. Absent

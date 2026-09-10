@@ -24,11 +24,13 @@ import EssayContentSlide from "@/components/carousel/slides/EssayContentSlide";
 import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
+import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel/slides/ChartbookSlides";
+import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
 import BillboardContentSlide from "@/components/carousel/slides/BillboardContentSlide";
 import BillboardTakeawaySlide from "@/components/carousel/slides/BillboardTakeawaySlide";
 import { FP_COLORS, ESSAY_COLORS, DYK_COLORS, BILLBOARD_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
-import type { BillboardPillar, BrandStyle, CarouselStylePreset, DidYouKnowSlideContent, DidYouKnowTreatment } from "@/lib/types";
+import type { BillboardPillar, BrandStyle, CarouselStylePreset, ChartbookContent, DidYouKnowSlideContent, DidYouKnowTreatment, PrimerContent } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
 export type RenderSlideProps = {
@@ -52,9 +54,13 @@ export type RenderSlideProps = {
    *  the deck's first and last slides so the visual suite covers them too.
    *  "did_you_know" draws one slide of the frozen two-slide format from
    *  `dyk`, so that format is in the suite as well. */
-  kind?: "content" | "hook" | "takeaway" | "did_you_know";
+  kind?: "content" | "hook" | "takeaway" | "did_you_know" | "chartbook" | "primer";
   dyk?: DidYouKnowSlideContent;
   dykIndex?: 1 | 2;
+  /** Chartbook and Primer: the whole piece, and which of its two slides. */
+  chartbook?: ChartbookContent;
+  primer?: PrimerContent;
+  twoSlideIndex?: 1 | 2;
   didYouKnowTreatment?: DidYouKnowTreatment;
   paperGrain?: number;
   paperVignette?: number;
@@ -218,10 +224,18 @@ export default function RenderSlideClient(props: RenderSlideProps) {
         overflow: "hidden",
         background:
           props.slideBgColor ??
-          (props.kind === "did_you_know" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : props.stylePreset === "billboard" ? BILLBOARD_COLORS.paper : "#01253f"),
+          (props.kind === "did_you_know" || props.kind === "chartbook" || props.kind === "primer" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : props.stylePreset === "billboard" ? BILLBOARD_COLORS.paper : "#01253f"),
       }}
     >
-      {props.kind === "did_you_know" && props.dyk ? (
+      {props.kind === "chartbook" && props.chartbook ? (
+        props.twoSlideIndex === 2
+          ? <ChartbookFigureSlide content={props.chartbook} paper={paperProp} scale={1} />
+          : <ChartbookCoverSlide content={props.chartbook} paper={paperProp} scale={1} />
+      ) : props.kind === "primer" && props.primer ? (
+        props.twoSlideIndex === 2
+          ? <PrimerBodySlide content={props.primer} paper={paperProp} scale={1} />
+          : <PrimerCoverSlide content={props.primer} paper={paperProp} scale={1} />
+      ) : props.kind === "did_you_know" && props.dyk ? (
         <DidYouKnowSlide
           slide={props.dyk}
           index={props.dykIndex ?? 1}

@@ -6,7 +6,9 @@ import { lookFromCarousel } from "@/lib/carousel-looks";
 import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
+import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
+import { isTwoSlideFormat } from "@/lib/types";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -132,6 +134,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     if (initialCarousel.imageStyle) setImageStyle(initialCarousel.imageStyle as CarouselImageStyle);
     if (initialCarousel.format) setCarouselFormat(initialCarousel.format);
     if (initialCarousel.stylePreset) setStylePreset(initialCarousel.stylePreset);
+    if (initialCarousel.chartbookContent || initialCarousel.primerContent) {
+      setTwoSlideVariants([(initialCarousel.chartbookContent ?? initialCarousel.primerContent) as TwoSlideVariant]);
+      setSelectedTwoSlide(0);
+    }
     if (initialCarousel.didYouKnowContent) {
       setDidYouKnowVariants([initialCarousel.didYouKnowContent]);
       setSelectedDidYouKnow(0);
@@ -152,6 +158,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   const [engagementSubType, setEngagementSubType] = useState<EngagementSubType>("reveal");
   const [didYouKnowVariants, setDidYouKnowVariants] = useState<DidYouKnowContent[]>([]);
   const [selectedDidYouKnow, setSelectedDidYouKnow] = useState(0);
+  // Chartbook and Primer variants, one state for both (the format says which).
+  const [twoSlideVariants, setTwoSlideVariants] = useState<TwoSlideVariant[]>([]);
+  const [selectedTwoSlide, setSelectedTwoSlide] = useState(0);
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -214,8 +223,11 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       // screen restored into a blank page. The screen follows the content:
       // something to work on means the studio, nothing means the brief.
       const restoredContent = Array.isArray(d.variants) && d.variants.length > 0;
+      if (Array.isArray(d.twoSlideVariants)) setTwoSlideVariants(d.twoSlideVariants);
+      if (typeof d.selectedTwoSlide === "number") setSelectedTwoSlide(d.selectedTwoSlide);
       const restoredDyk = Array.isArray(d.didYouKnowVariants) && d.didYouKnowVariants.length > 0;
-      setStep(restoredContent || restoredDyk ? STUDIO : BRIEF);
+      const restoredTwoSlide = Array.isArray(d.twoSlideVariants) && d.twoSlideVariants.length > 0;
+      setStep(restoredContent || restoredDyk || restoredTwoSlide ? STUDIO : BRIEF);
       setRestoredDraft(true);
     } catch { /* ignore corrupt draft */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -224,12 +236,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // Persist the working state whenever it changes (skip the empty initial state
   // so we never clobber a real draft with a blank one).
   useEffect(() => {
-    if (!topic && variants.length === 0 && didYouKnowVariants.length === 0) return;
+    if (!topic && variants.length === 0 && didYouKnowVariants.length === 0 && twoSlideVariants.length === 0) return;
     const draft = {
       v: 1, step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook,
       brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages,
       imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants,
-      selectedDidYouKnow,
+      selectedDidYouKnow, twoSlideVariants, selectedTwoSlide,
     };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -366,7 +378,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           topic: t,
           ...(subjectId ? { subjectId } : {}),
           hookTone: tone,
-          count: format === "did_you_know" ? 3 : 1,
+          count: isTwoSlideFormat(format) ? 3 : 1,
           concise: conciseMode ?? false,
           format: format ?? "standard",
           engagementSubType: engSubType,
@@ -381,6 +393,20 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
+        return;
+      }
+      if (format === "chartbook" || format === "primer") {
+        const twoSlide = (data.variants ?? []) as TwoSlideVariant[];
+        if (twoSlide.length === 0) {
+          setError("No usable variants returned. Try again.");
+          return;
+        }
+        setTwoSlideVariants(twoSlide);
+        setSelectedTwoSlide(0);
+        setVariants([]);
+        setFalStatus("idle");
+        setFalCount(0);
+        setStep(4);
         return;
       }
       if (format === "did_you_know") {
@@ -554,6 +580,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setFalErrors([null, null, null, null, null]);
     setDidYouKnowVariants([]);
     setSelectedDidYouKnow(0);
+    setTwoSlideVariants([]);
+    setSelectedTwoSlide(0);
     setCarouselFormat("standard");
     clearActiveDraft();
   }
@@ -581,7 +609,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     </div>
   );
 
-  const inStudio = !loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && !!config;
+  const inStudio = !loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&(falStatus === "done" || falStatus === "idle") && !!config;
 
   return (
     // The studio is full-bleed inside the app shell: the editor shell owns its
@@ -633,6 +661,20 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           {!loading && !error && step === 1 && (
             <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} initialStructure={varyFrom?.structure ?? undefined} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
           )}
+          {!loading && !error && step === 4 && (carouselFormat === "chartbook" || carouselFormat === "primer") && twoSlideVariants.length > 0 && (
+            <TwoSlidePreviewStep
+              format={carouselFormat}
+              topic={topic}
+              variants={twoSlideVariants}
+              selected={selectedTwoSlide}
+              onSelect={setSelectedTwoSlide}
+              initialSavedId={loadedId}
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
+                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS[carouselFormat].grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS[carouselFormat].vignette }
+                : undefined}
+              onSaved={onSaved}
+            />
+          )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
             <DidYouKnowPreviewStep
               topic={topic}
@@ -647,12 +689,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSaved={onSaved}
             />
           )}
-          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "loading" && (
+          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&falStatus === "loading" && (
             <RetroImageLoader items={[
               { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
             ]} modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"} />
           )}
-          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && falStatus === "failed" && (
+          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&falStatus === "failed" && (
             <RetroImageError
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
@@ -661,7 +703,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"}
             />
           )}
-          {!loading && !error && step === 4 && carouselFormat !== "did_you_know" && (falStatus === "done" || falStatus === "idle") && config && (
+          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&(falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
               // Remount when a saved carousel loads over a restored draft, so
               // the studio's saved id, settings and verification come from the

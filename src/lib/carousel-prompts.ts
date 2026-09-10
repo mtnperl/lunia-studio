@@ -788,6 +788,100 @@ HARD RULES (violating any of these is failure):
 Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
 };
 
+// ─── Chartbook format ─────────────────────────────────────────────────────────
+// Two slides: a serif question, then ONE figure from five frozen layouts.
+// Every number is one a named published source reported. The renderer draws
+// the figure from the fields; the model never composes.
+
+const TWO_SLIDE_VOICE = `You are writing for Lunia Life, a sleep & longevity brand. Audience: health-literate adults 25-55, urban, evidence-driven. Voice: science-forward, calm, confident, never preachy. Sentence case everywhere; the slides are set in a serif on paper.`;
+
+const TWO_SLIDE_HARD_RULES = `HARD RULES (violating any of these is failure):
+1. NO em dashes (—) or en dashes (–) ANYWHERE. Use commas, periods, or short sentences.
+2. NO medical claims. Forbidden: cures, cure, treats, treat, heals, heal, prevents, prevent, diagnose, diagnoses, guaranteed, miracle. Use: "may support", "is associated with", "research suggests", "shown in studies".
+3. NO product mentions. Do not name Lunia or any supplement product.
+4. Sentence case for every title, label and kicker. No Title Case, no ALL CAPS.
+5. Variants must be MEANINGFULLY different: different layouts where the subject allows, different angles, never paraphrases.
+6. Caption: 3 short paragraphs, plain text, no hashtags, no em dashes. The first two are the post, under 80 words together, one idea per sentence; the third invites a save or a comment.`;
+
+export const GENERATE_CHARTBOOK_PROMPT = (topic: string, variantCount = 3, violations?: string[]) => {
+  const violationBlock = violations && violations.length > 0
+    ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
+    : "";
+  return `${TWO_SLIDE_VOICE}
+
+Generate ${variantCount} variants of a 2-slide "Chartbook" Instagram carousel about: "${topic}".
+
+Slide 1 is a cover: a question in a serif, at most 60 characters, sentence case, that the figure answers. "underline" names one or two words of the question, copied exactly, that get a pen underline. "kicker" is one short line under it (the unit or the frame of the answer, under 8 words).
+Slide 2 is ONE figure. Pick the layout that fits the numbers you can actually cite:
+- "pill-bars": one measure across 3 to 5 categories. Fields: title, unit, bars[{label, value, display}], source.
+- "versus-bars": two measures for the same 2 to 4 groups. Fields: title, unit, series[2], groups[{label, values[2], displays[2]}], source.
+- "ranked": 6 to 10 items ranked by one number. Fields: title, unit, items[{label, value, display}], source.
+- "object-pair": one choice, two outcomes. Fields: title, kicker, pair[{label, figure, note}] x2, source.
+- "claim-check": a common belief against a number. Fields: title, quote (the belief, in the reader's words), kicker, small{label, value, display}, large{label, value, display}, annotation (a short note on the ratio, under 6 words), source.
+
+Field rules:
+- title: at most 34 characters, sentence case, a claim or a measure ("Deep sleep per night"). unit: the measure and its unit in plain words ("Minutes of slow-wave sleep, by decade").
+- value is a number for drawing; display is that same number as the source printed it ("1h 45", "95 mg", "0.3 mg"). Labels at most 16 characters (22 for ranked).
+- source.citation: a REAL published source, authors or institution, venue, year ("Ohayon et al., Sleep, 2004"). Every value in the figure comes from it as reported. No rounding to a nicer number.
+- If you cannot source the numbers for a layout, pick another layout or another angle on the topic. Never write "illustrative", "approximately", "typical", "estimated" or "example" anywhere; a hedged figure is a failure, a smaller true figure is not.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "variants": [
+    {
+      "topic": "${topic}",
+      "cover": { "question": "How much deep sleep do you actually get?", "kicker": "One chart. One night.", "underline": ["deep sleep", "actually"] },
+      "figure": { "layout": "pill-bars", "title": "Deep sleep per night", "unit": "Minutes of slow-wave sleep, by decade of life", "bars": [{ "label": "20s", "value": 105, "display": "1h 45" }], "source": { "citation": "Ohayon et al., Sleep, 2004" } },
+      "caption": "..."
+    }
+  ]
+}
+
+${TWO_SLIDE_HARD_RULES}
+
+Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};
+
+// ─── Primer format ────────────────────────────────────────────────────────────
+// Two slides: a cover, then ONE reference slide from four frozen layouts.
+
+export const GENERATE_PRIMER_PROMPT = (topic: string, variantCount = 3, violations?: string[]) => {
+  const violationBlock = violations && violations.length > 0
+    ? `\n\nIMPORTANT: Your previous response had these violations. Fix them this time:\n${violations.map((v) => `- ${v}`).join("\n")}\n`
+    : "";
+  return `${TWO_SLIDE_VOICE}
+
+Generate ${variantCount} variants of a 2-slide "Primer" Instagram carousel about: "${topic}".
+
+Slide 1 is a cover: "title" in sentence case, at most 40 characters ("Sleep terms worth knowing"). For the rows layout the cover shows the row count as a large numeral beside the title, so do not put a number in the title. "underline" names one or two words of the title, copied exactly. "kicker" is one short line under it (under 8 words).
+Slide 2 is ONE reference slide. Pick the layout that fits the subject:
+- "rows": a glossary or a ranked list. Fields: title, kicker, rows[{term, definition, key}] with 6 to 11 rows. term at most 4 words; term plus definition at most 58 characters so the row sets on one line; key is the phrase of the definition that carries it, 1 to 3 words, copied exactly.
+- "definition": one term that needs a formula. Fields: title, term, definition (one line, under 110 characters), formula{left, numerator, denominator, factor?}, threshold{label, value}, example{label, value}.
+- "versus": an either-or with conditions. Fields: title, kicker, columns[{name, rows[3-4], footnote}] x2. Each row under 40 characters and starts with what it is best for; footnote under 48 characters.
+- "creed": the conditions for one outcome. Fields: title, lines[{condition, consequence}] with 5 to 8 lines, closing. Each line renders as "Without {condition}, no {consequence}." so condition plus consequence stay under 40 characters. closing is one line ("Rest needs all the above.").
+
+Field rules:
+- title on slide 2: at most 30 characters, sentence case ("Sleep terms", "When to use").
+- Real terms, defined once, in the words a science journalist would use for an adult reader. No nursery substitutes.
+- Numbers inside definitions or thresholds must be ones a published source reports.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "variants": [
+    {
+      "topic": "${topic}",
+      "cover": { "title": "Sleep terms worth knowing", "kicker": "The words your tracker uses", "underline": ["knowing"] },
+      "slide": { "layout": "rows", "title": "Sleep terms", "kicker": "for a better night", "rows": [{ "term": "Slow-wave sleep", "definition": "the deep stage, mostly in cycle one", "key": "deep stage" }] },
+      "caption": "..."
+    }
+  ]
+}
+
+${TWO_SLIDE_HARD_RULES}
+
+Return JSON only. No commentary, no markdown fences, no preface.${violationBlock}`;
+};
+
 /** Alternative headlines for one slide (or the takeaway), written from the
  *  slide's own body and the piece. Nothing else on the slide changes. */
 export const REGENERATE_HEADLINES_PROMPT = (

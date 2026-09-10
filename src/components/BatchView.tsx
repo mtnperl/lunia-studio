@@ -5,6 +5,8 @@ import ContentStep from "@/components/carousel/steps/ContentStep";
 import HookStep from "@/components/carousel/steps/HookStep";
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
+import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
+import { isTwoSlideFormat } from "@/lib/types";
 import { MiniRetroLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import {
   BrandStyle, CarouselConfig, CarouselContent, CarouselContrastMode, CarouselFormat, CarouselStylePreset,
@@ -42,6 +44,8 @@ type QueueItem = {
   content?: CarouselContent;
   didYouKnowVariants?: DidYouKnowContent[];
   selectedDidYouKnow?: number;
+  /** Chartbook and Primer variants; the item's format says which. */
+  twoSlideVariants?: TwoSlideVariant[];
   selectedHook: number;
   /** fal-generated hook background (slide 0). */
   imageUrl?: string;
@@ -337,6 +341,20 @@ function ReviewCard({
           <DidYouKnowPreviewStep
             topic={item.topic}
             variants={item.didYouKnowVariants}
+            selected={item.selectedDidYouKnow ?? 0}
+            onSelect={(i) => onSelectDidYouKnow(item.id, i)}
+            onSaved={(id) => onSaved(item.id, id)}
+          />
+        </div>
+      )}
+
+      {/* Chartbook / Primer — the same self-contained preview/save as Did You Know */}
+      {expanded && (item.carouselFormat === "chartbook" || item.carouselFormat === "primer") && item.twoSlideVariants && (
+        <div style={{ padding: "20px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+          <TwoSlidePreviewStep
+            format={item.carouselFormat}
+            topic={item.topic}
+            variants={item.twoSlideVariants}
             selected={item.selectedDidYouKnow ?? 0}
             onSelect={(i) => onSelectDidYouKnow(item.id, i)}
             onSaved={(id) => onSaved(item.id, id)}
@@ -679,11 +697,11 @@ function BatchViewInner() {
   function resolveItemSettings(row: DraftTopic) {
     const hookTone: HookTone =
       carouselFormat === "engagement" ? "science-backed"
-      : carouselFormat === "did_you_know" ? "educational"
+      : isTwoSlideFormat(carouselFormat) ? "educational"
       : row.hookTone;
     const effConcise =
       carouselFormat === "engagement" ? true
-      : carouselFormat === "did_you_know" ? true
+      : isTwoSlideFormat(carouselFormat) ? true
       : concise;
     return { hookTone, concise: effConcise };
   }
@@ -698,7 +716,7 @@ function BatchViewInner() {
         body: JSON.stringify({
           topic: item.topic,
           hookTone: item.hookTone,
-          count: item.carouselFormat === "did_you_know" ? 3 : 1,
+          count: isTwoSlideFormat(item.carouselFormat) ? 3 : 1,
           concise: item.concise,
           format: item.carouselFormat,
           engagementSubType: item.engagementSubType,
@@ -712,6 +730,15 @@ function BatchViewInner() {
         return;
       }
       const data = await res.json();
+      if (item.carouselFormat === "chartbook" || item.carouselFormat === "primer") {
+        const variants = (data?.variants ?? []) as TwoSlideVariant[];
+        if (variants.length === 0) {
+          updateItem(item.id, { status: "error", error: "No variants returned" });
+          return;
+        }
+        updateItem(item.id, { twoSlideVariants: variants, selectedDidYouKnow: 0, status: "done" });
+        return;
+      }
       if (item.carouselFormat === "did_you_know") {
         const variants = (data?.variants ?? []) as DidYouKnowContent[];
         if (variants.length === 0) {
@@ -867,7 +894,7 @@ function BatchViewInner() {
     .slice(0, 60);
 
   const showToneControl = carouselFormat === "standard";
-  const showStyleControls = carouselFormat !== "did_you_know";
+  const showStyleControls = !isTwoSlideFormat(carouselFormat);
   const showLengthControl = carouselFormat === "standard";
 
   return (
@@ -906,6 +933,8 @@ function BatchViewInner() {
             { val: "standard" as CarouselFormat, label: "Standard" },
             { val: "engagement" as CarouselFormat, label: "Engagement" },
             { val: "did_you_know" as CarouselFormat, label: "Did You Know" },
+            { val: "chartbook" as CarouselFormat, label: "Chartbook" },
+            { val: "primer" as CarouselFormat, label: "Primer" },
           ]).map((opt) => (
             <button
               key={opt.val}
