@@ -1,6 +1,7 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_MAX, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { parseModelJson } from "@/lib/model-json";
 import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief } from "@/lib/carousel-brief";
 import { STRUCTURES } from "@/lib/carousel-structures";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_CHARTBOOK_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
@@ -36,6 +37,9 @@ function describeGenerateError(err: unknown, context: string): string {
   if (status === 404) return "Anthropic model unavailable — check model access";
   if (status && status >= 500) return `Anthropic service error (${status}) — try again`;
   if (message.startsWith("Invalid response shape")) return `${context}: ${message}`;
+  // parseModelJson already prefixes its own context and says which of the
+  // three failures it was (no text, cut off, unparseable), so pass it through.
+  if (message.includes("ran out of output room") || message.includes("no parseable JSON") || message.includes("returned no text")) return message;
   if (message.includes("JSON")) return `${context}: model returned malformed JSON — try again`;
   return `${context}: ${message.slice(0, 160)}`;
 }
@@ -334,13 +338,11 @@ async function callDidYouKnow(topic: string, variantCount: number, violations?: 
   const prompt = GENERATE_DID_YOU_KNOW_PROMPT(topic, variantCount, violations);
   const msg = await createContentMessage({
     model: CONTENT_MODEL,
-    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    max_tokens: CONTENT_MAX_TOKENS_MAX,
     thinking: CONTENT_THINKING,
     messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
   });
-  const raw = extractText(msg);
-  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const json = JSON.parse(text);
+  const json = parseModelJson(msg, "Did-you-know generation");
   const result = DidYouKnowVariantsResponseSchema.safeParse(json);
   if (!result.success) {
     throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
@@ -370,15 +372,19 @@ const TWO_SLIDE = {
 
 async function callTwoSlide(format: TwoSlideFormat, topic: string, variantCount: number, violations?: string[]): Promise<TwoSlideVariant[]> {
   const spec = TWO_SLIDE[format];
+  // The visible JSON is small, but with adaptive thinking max_tokens is the
+  // ceiling on thinking plus output, and sourcing real numbers for three
+  // variants across five layouts is a lot of thinking. The first production
+  // chartbook hit the 24K ceiling and came back with no text at all. A
+  // ceiling is not a target, so this asks for the top tier.
   const msg = await createContentMessage({
     model: CONTENT_MODEL,
-    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    max_tokens: CONTENT_MAX_TOKENS_MAX,
     thinking: CONTENT_THINKING,
     messages: [{ role: "user", content: [{ type: "text", text: spec.prompt(topic, variantCount, violations) }] }],
   });
-  const raw = extractText(msg);
-  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const json = JSON.parse(text);
+  console.log(`[generate/${format}] stop=${msg.stop_reason} out=${msg.usage?.output_tokens ?? "?"}`);
+  const json = parseModelJson(msg, `${format} generation`);
   const result = spec.schema.safeParse(json);
   if (!result.success) {
     throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
