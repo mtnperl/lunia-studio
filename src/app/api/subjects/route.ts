@@ -1,5 +1,6 @@
 import { getSubjects, saveSubjects } from "@/lib/kv";
 import type { Subject } from "@/lib/types";
+import { isSubjectFormat } from "@/lib/subject-fit";
 import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
     if (dupe) {
       return Response.json({ error: "Topic already exists" }, { status: 409 });
     }
-    const created: Subject = { id: randomUUID(), text, category };
+    const formats = Array.isArray(body.formats) ? (body.formats as unknown[]).filter(isSubjectFormat) : [];
+    const created: Subject = { id: randomUUID(), text, category, ...(formats.length ? { formats } : {}) };
     await saveSubjects([created, ...all]);
     return Response.json(created, { status: 201 });
   } catch (err) {

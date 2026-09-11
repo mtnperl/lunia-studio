@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { Subject } from "@/lib/types";
+import { SUBJECT_FORMATS, SUBJECT_FORMAT_CHIP, SUBJECT_FORMAT_LABEL, subjectFitsFormat, subjectFormats, subjectUsedFormats, type SubjectFormat } from "@/lib/subject-fit";
 
 const CONFIRM_DELETE_MS = 2000; // hold for 2s to confirm
 
@@ -17,9 +18,13 @@ const CATEGORIES = [
   "Lifestyle & Productivity",
   "Longevity & Sleep Research",
   "Did You Know",
+  "Chartbook",
+  "Primer",
   "Latest Research",
   "Sleep Researchers",
 ];
+
+const USED_LABEL: Record<string, string> = { standard: "Structured", engagement: "Engagement", did_you_know: "DYK", chartbook: "Chart", primer: "Primer", video: "Video" };
 
 export default function SubjectsView() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -29,6 +34,8 @@ export default function SubjectsView() {
   const [pullStatus, setPullStatus] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  // Filter by the frozen format a subject fits; "any" shows everything.
+  const [fitFilter, setFitFilter] = useState<"any" | SubjectFormat>("any");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -99,12 +106,25 @@ export default function SubjectsView() {
   }
 
   async function handleMarkUnused(id: string) {
-    setSubjects((prev) => prev.map((s) => s.id === id ? { ...s, usedAt: undefined } : s));
+    setSubjects((prev) => prev.map((s) => s.id === id ? { ...s, usedAt: undefined, usedFor: undefined } : s));
     setUnmarkingId(null);
     await fetch(`/api/subjects/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "markUnused" }),
+    });
+  }
+
+  /** Toggle one format tag. A subject in a category named for a format
+   *  (Did You Know, Chartbook, Primer) always fits that one. */
+  async function toggleFormat(s: Subject, f: SubjectFormat) {
+    const current = (s.formats ?? []).filter((x): x is SubjectFormat => SUBJECT_FORMATS.includes(x as SubjectFormat));
+    const next = current.includes(f) ? current.filter((x) => x !== f) : [...current, f];
+    setSubjects((prev) => prev.map((x) => x.id === s.id ? { ...x, formats: next } : x));
+    await fetch(`/api/subjects/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formats: next }),
     });
   }
 
@@ -127,9 +147,11 @@ export default function SubjectsView() {
 
   const filtered = subjects.filter((s) => {
     const matchCat = category === "All" || s.category === category;
+    const matchFit = fitFilter === "any" || subjectFitsFormat(s, fitFilter);
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    return matchCat && matchFit && matchSearch;
   });
+  const fitCounts = Object.fromEntries(SUBJECT_FORMATS.map((f) => [f, subjects.filter((s) => subjectFitsFormat(s, f)).length])) as Record<SubjectFormat, number>;
 
   const usedCount = subjects.filter((s) => s.usedAt).length;
 
@@ -219,6 +241,25 @@ export default function SubjectsView() {
         >
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select
+          value={fitFilter}
+          onChange={(e) => setFitFilter(e.target.value as "any" | SubjectFormat)}
+          title="Show subjects that fit one two-slide format"
+          style={{
+            padding: "8px 12px",
+            fontSize: 13,
+            border: "1.5px solid var(--border)",
+            borderRadius: 7,
+            fontFamily: "inherit",
+            background: "var(--bg)",
+            color: "var(--text)",
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          <option value="any">Any format</option>
+          {SUBJECT_FORMATS.map((f) => <option key={f} value={f}>{SUBJECT_FORMAT_LABEL[f]} ({fitCounts[f]})</option>)}
+        </select>
       </div>
 
       {loading ? (
@@ -228,7 +269,7 @@ export default function SubjectsView() {
           {/* Table header */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "36px 1fr 180px 80px 52px",
+            gridTemplateColumns: "36px 1fr 150px 150px 96px 52px",
             padding: "10px 16px",
             background: "var(--surface)",
             borderBottom: "1px solid var(--border)",
@@ -241,7 +282,8 @@ export default function SubjectsView() {
             <div>#</div>
             <div>Subject</div>
             <div>Category</div>
-            <div>Status</div>
+            <div title="Which two-slide formats the subject fits. Structured and Engagement always do.">Fits</div>
+            <div>Used for</div>
             <div></div>
           </div>
 
@@ -277,7 +319,7 @@ export default function SubjectsView() {
                 key={s.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "36px 1fr 180px 80px 52px",
+                  gridTemplateColumns: "36px 1fr 150px 150px 96px 52px",
                   padding: "10px 16px",
                   borderBottom: "1px solid var(--border)",
                   background: used ? "rgba(34,197,94,0.06)" : "var(--bg)",
@@ -352,6 +394,31 @@ export default function SubjectsView() {
 
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>{s.category}</div>
 
+                <div style={{ display: "flex", gap: 4 }}>
+                  {SUBJECT_FORMATS.map((f) => {
+                    const on = subjectFormats(s).includes(f);
+                    const byCategory = on && !(s.formats ?? []).includes(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => { if (!byCategory) toggleFormat(s, f); }}
+                        title={byCategory ? `Fits ${SUBJECT_FORMAT_LABEL[f]} by category` : on ? `Fits ${SUBJECT_FORMAT_LABEL[f]}. Click to remove` : `Click to mark as fitting ${SUBJECT_FORMAT_LABEL[f]}`}
+                        style={{
+                          fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
+                          padding: "2px 5px", borderRadius: 3, cursor: byCategory ? "default" : "pointer", fontFamily: "inherit",
+                          border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                          background: on ? "var(--accent-dim)" : "transparent",
+                          color: on ? "var(--accent)" : "var(--subtle)",
+                          opacity: on ? 1 : 0.6,
+                        }}
+                      >
+                        {SUBJECT_FORMAT_CHIP[f]}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div>
                   {used ? (
                     unmarkingId === s.id ? (
@@ -372,7 +439,7 @@ export default function SubjectsView() {
                     ) : (
                       <button
                         onClick={() => setUnmarkingId(s.id)}
-                        title="Mark as unused"
+                        title={`Used for ${subjectUsedFormats(s).map((f) => USED_LABEL[f] ?? f).join(", ")}. Click to mark unused`}
                         style={{
                           display: "inline-block",
                           background: "rgba(34,197,94,0.15)",
@@ -390,7 +457,7 @@ export default function SubjectsView() {
                         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(217,119,6,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#d97706"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.15)"; (e.currentTarget as HTMLButtonElement).style.color = "#15803d"; }}
                       >
-                        Used
+                        {subjectUsedFormats(s).map((f) => USED_LABEL[f] ?? f).join(" · ") || "Used"}
                       </button>
                     )
                   ) : (

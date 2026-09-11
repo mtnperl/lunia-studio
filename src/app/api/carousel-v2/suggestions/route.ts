@@ -1,5 +1,6 @@
 import { checkRateLimit, getSubjects } from "@/lib/kv";
 import type { Subject } from "@/lib/types";
+import { subjectFitsFormat, subjectUsedFor } from "@/lib/subject-fit";
 
 export const maxDuration = 30;
 
@@ -29,9 +30,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const format: string = typeof body?.format === "string" ? body.format : "standard";
     const subjects = await getSubjects().catch(() => [] as Subject[]);
-    // Never resurface a subject that's already been used for a carousel.
-    const unused = subjects.filter((s) => !s.usedAt);
+    // Only subjects that fit the format asked for, and never one already
+    // used for that format. A subject burned on a Structured deck is still
+    // fair game for a Did you know.
+    const unused = subjects.filter((s) => subjectFitsFormat(s, format) && !subjectUsedFor(s, format));
 
     if (unused.length === 0) {
       return Response.json([]);

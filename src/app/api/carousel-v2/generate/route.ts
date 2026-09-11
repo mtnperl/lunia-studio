@@ -1,11 +1,14 @@
 import { isStoryBeat } from "@/lib/story-spine";
 import { isCarouselStructure, type CarouselStructure } from "@/lib/carousel-structures";
-import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, CONTENT_MAX_TOKENS_MAX, CONTENT_MAX_TOKENS_SHORT, EFFORT_MEDIUM } from "@/lib/anthropic";
+import { parseModelJson } from "@/lib/model-json";
+import { describeGenerateError } from "@/lib/generate-route-utils";
+import { generateChartbook } from "@/lib/chartbook-pipeline";
 import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief } from "@/lib/carousel-brief";
 import { STRUCTURES } from "@/lib/carousel-structures";
-import { GENERATE_CAROUSEL_PROMPT, GENERATE_CHARTBOOK_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
-import { lintChartbook, lintPrimer } from "@/lib/two-slide-lint";
-import { ChartbookVariantsResponseSchema, PrimerVariantsResponseSchema, type ChartbookContent, type PrimerContent } from "@/lib/types";
+import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
+import { lintPrimer } from "@/lib/two-slide-lint";
+import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
 import { ledgerBlockFor } from "@/lib/facts-gate";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { keepOneEssayGraphic } from "@/lib/essay-body";
@@ -24,21 +27,6 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 // Opus at effort medium lands in two to four minutes; high effort crossed
 // five minutes and the platform cut it.
 export const maxDuration = 800;
-
-// Convert any failure (Anthropic SDK error, JSON parse, Zod validation) into a
-// human-readable label that's safe to surface to the user. Keeps the raw error
-// in console for server-side debugging.
-function describeGenerateError(err: unknown, context: string): string {
-  const status = (err as { status?: number })?.status;
-  const message = err instanceof Error ? err.message : String(err);
-  if (status === 401 || status === 403) return "Anthropic API key invalid or revoked";
-  if (status === 429) return "Anthropic rate limited — wait a moment and try again";
-  if (status === 404) return "Anthropic model unavailable — check model access";
-  if (status && status >= 500) return `Anthropic service error (${status}) — try again`;
-  if (message.startsWith("Invalid response shape")) return `${context}: ${message}`;
-  if (message.includes("JSON")) return `${context}: model returned malformed JSON — try again`;
-  return `${context}: ${message.slice(0, 160)}`;
-}
 
 export async function POST(req: Request) {
   const ip =
@@ -89,7 +77,20 @@ export async function POST(req: Request) {
     if (format === "did_you_know") {
       return await generateDidYouKnow(topic, count);
     }
-    if (format === "chartbook" || format === "primer") {
+    if (format === "chartbook") {
+      // Two calls, chained: this route has nobody to confirm the figure in
+      // between. The builder calls /chartbook/figures and /chartbook/compose
+      // itself so the editor can.
+      try {
+        const variants = await generateChartbook(topic, count);
+        if (variants.length === 0) return Response.json({ error: "Generation produced no usable variants. Try again." }, { status: 500 });
+        return Response.json({ variants });
+      } catch (err) {
+        console.error("[generate/chartbook] failed:", err instanceof Error ? err.message : err);
+        return Response.json({ error: describeGenerateError(err, "chartbook generation") }, { status: 500 });
+      }
+    }
+    if (format === "primer") {
       return await generateTwoSlide(format, topic, count);
     }
 
@@ -334,13 +335,11 @@ async function callDidYouKnow(topic: string, variantCount: number, violations?: 
   const prompt = GENERATE_DID_YOU_KNOW_PROMPT(topic, variantCount, violations);
   const msg = await createContentMessage({
     model: CONTENT_MODEL,
-    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    max_tokens: CONTENT_MAX_TOKENS_MAX,
     thinking: CONTENT_THINKING,
     messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
   });
-  const raw = extractText(msg);
-  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const json = JSON.parse(text);
+  const json = parseModelJson(msg, "Did-you-know generation");
   const result = DidYouKnowVariantsResponseSchema.safeParse(json);
   if (!result.success) {
     throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
@@ -352,15 +351,10 @@ async function callDidYouKnow(topic: string, variantCount: number, violations?: 
 // One call for N variants, a lint per variant, one reprompt for the ones that
 // fail, the surviving violations attached so the editor can show them.
 
-type TwoSlideFormat = "chartbook" | "primer";
-type TwoSlideVariant = ChartbookContent | PrimerContent;
+type TwoSlideFormat = "primer";
+type TwoSlideVariant = PrimerContent;
 
 const TWO_SLIDE = {
-  chartbook: {
-    prompt: GENERATE_CHARTBOOK_PROMPT,
-    schema: ChartbookVariantsResponseSchema,
-    lint: (v: TwoSlideVariant) => lintChartbook(v as ChartbookContent),
-  },
   primer: {
     prompt: GENERATE_PRIMER_PROMPT,
     schema: PrimerVariantsResponseSchema,
@@ -370,15 +364,17 @@ const TWO_SLIDE = {
 
 async function callTwoSlide(format: TwoSlideFormat, topic: string, variantCount: number, violations?: string[]): Promise<TwoSlideVariant[]> {
   const spec = TWO_SLIDE[format];
+  // With adaptive thinking max_tokens is the ceiling on thinking plus
+  // output. The first production chartbook hit the 24K ceiling with no text
+  // written. A ceiling is not a target, so this asks for the top tier.
   const msg = await createContentMessage({
     model: CONTENT_MODEL,
-    max_tokens: CONTENT_MAX_TOKENS_LONG,
+    max_tokens: CONTENT_MAX_TOKENS_MAX,
     thinking: CONTENT_THINKING,
     messages: [{ role: "user", content: [{ type: "text", text: spec.prompt(topic, variantCount, violations) }] }],
   });
-  const raw = extractText(msg);
-  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const json = JSON.parse(text);
+  console.log(`[generate/${format}] stop=${msg.stop_reason} out=${msg.usage?.output_tokens ?? "?"}`);
+  const json = parseModelJson(msg, `${format} generation`);
   const result = spec.schema.safeParse(json);
   if (!result.success) {
     throw new Error(`Invalid response shape: ${result.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);

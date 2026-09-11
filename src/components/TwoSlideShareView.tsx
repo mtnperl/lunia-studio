@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { compositeSlideWithImages } from "@/lib/slide-export";
+import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import { renderTwoSlides, type TwoSlideFormat, type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
 import type { SavedCarousel } from "@/lib/types";
@@ -27,7 +28,11 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
   const paper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS[format].grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS[format].vignette };
   const ref1 = useRef<HTMLDivElement>(null);
   const ref2 = useRef<HTMLDivElement>(null);
-  const [blobs, setBlobs] = useState<Array<{ url: string; name: string } | null>>([null, null]);
+  const filesRef = useRef<File[]>([null as unknown as File, null as unknown as File]);
+  const [shareCapable, setShareCapable] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => { setShareCapable(deviceSharesFiles()); }, []);
   const [done, setDone] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [captionCopied, setCaptionCopied] = useState(false);
@@ -45,7 +50,6 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
 
   useEffect(() => {
     let cancelled = false;
-    const created: string[] = [];
     const safe = carousel.topic.replace(/[^a-z0-9]+/gi, "-").slice(0, 40).toLowerCase();
     const refs = [ref1, ref2];
     const names = [`${format}-${safe}-1.png`, `${format}-${safe}-2.png`];
@@ -59,9 +63,7 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
           if (!node) return;
           const file = await compositeSlideWithImages(node, [], { filename: names[i], exportH: 1350, loadDataUrl });
           if (cancelled) return;
-          const url = URL.createObjectURL(file);
-          created.push(url);
-          setBlobs((prev) => { const next = [...prev]; next[i] = { url, name: file.name }; return next; });
+          filesRef.current[i] = file;
           setDone((n) => n + 1);
         } catch (err) {
           if (cancelled) return;
@@ -71,9 +73,22 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
       }
     };
     run();
-    return () => { cancelled = true; for (const u of created) URL.revokeObjectURL(u); };
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleSaveAll() {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await saveFiles(filesRef.current.filter(Boolean), `Lunia ${format === "chartbook" ? "Chartbook" : "Primer"}: ${carousel.topic}`);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setSaveError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const [preview1, preview2] = renderTwoSlides(format, variant, paper, PREVIEW_SCALE);
   const [export1, export2] = renderTwoSlides(format, variant, paper, 1);
@@ -95,15 +110,14 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
       </div>
 
       <div style={{ fontSize: 13, color: done === 2 ? "#15803d" : "#6b7280", marginBottom: 12 }}>
-        {error ? `Export failed: ${error}` : done === 2 ? "✓ Ready. Tap a PNG button; on iPhone the image opens, long-press to save." : `Preparing PNGs… ${done}/2`}
+        {error ? `Export failed: ${error}` : done === 2 ? (shareCapable ? "✓ Ready. One tap opens the share sheet with both slides; Save Image sends them to Photos together." : "✓ Ready.") : `Preparing PNGs… ${done}/2`}
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
-        {blobs.map((b, i) => (
-          <a key={i} href={b?.url ?? "#"} download={b?.name} aria-disabled={!b} style={{
-            display: "inline-block", padding: "12px 20px", borderRadius: 8, fontWeight: 700, fontSize: 14,
-            background: b ? "#102635" : "#e5e7eb", color: b ? "#fff" : "#9ca3af", textDecoration: "none", pointerEvents: b ? "auto" : "none",
-          }}>↓ PNG {i + 1}</a>
-        ))}
+        <button onClick={handleSaveAll} disabled={done < 2 || saving} style={{
+          padding: "12px 20px", borderRadius: 8, fontWeight: 700, fontSize: 14, border: "none", cursor: done < 2 || saving ? "wait" : "pointer", fontFamily: "inherit",
+          background: done === 2 ? "#102635" : "#e5e7eb", color: done === 2 ? "#fff" : "#9ca3af",
+        }}>{saving ? "Opening..." : shareCapable ? "Save both to Photos" : "Download both"}</button>
+        {saveError && <div style={{ fontSize: 13, color: "#b91c1c", width: "100%" }}>{saveError}</div>}
       </div>
 
       <div style={{ background: "#f6f6f4", border: "1px solid #e5e7eb", borderRadius: 8, padding: 16 }}>

@@ -457,10 +457,22 @@ export async function getSubjects(): Promise<Subject[]> {
     }
     // Merge: append any DEFAULT_SUBJECTS not already present (by case-insensitive text).
     // Lets new seed categories (e.g. "Did You Know") show up without wiping user data.
+    // Format tags travel the same way: a stored seed that carries none takes
+    // the seed file's, so the audit reaches the library without a reseed.
+    // A seed the editor has already tagged keeps the editor's tags.
+    const byText = new Map(DEFAULT_SUBJECTS.map((d) => [d.text.trim().toLowerCase(), d]));
+    let changed = false;
+    const tagged = base.map((s) => {
+      if (s.formats) return s;
+      const seed = byText.get(s.text.trim().toLowerCase());
+      if (!seed?.formats?.length) return s;
+      changed = true;
+      return { ...s, formats: seed.formats };
+    });
     const haveTexts = new Set(base.map((s) => s.text.trim().toLowerCase()));
     const newcomers = DEFAULT_SUBJECTS.filter((d) => !haveTexts.has(d.text.trim().toLowerCase()));
-    if (newcomers.length === 0) return base;
-    const merged = [...base, ...newcomers];
+    if (newcomers.length === 0 && !changed) return base;
+    const merged = [...tagged, ...newcomers];
     await writeCollection(SUBJECTS_KEY, merged);
     return merged;
   } catch {
@@ -474,32 +486,48 @@ export async function saveSubjects(subjects: Subject[]): Promise<void> {
   await writeCollection(SUBJECTS_KEY, subjects);
 }
 
-export async function updateSubject(id: string, text: string): Promise<void> {
+export async function updateSubject(id: string, patch: { text?: string; formats?: string[] }): Promise<void> {
   const all = await getSubjects();
   const idx = all.findIndex((s) => s.id === id);
   if (idx >= 0) {
-    all[idx] = { ...all[idx], text };
+    all[idx] = {
+      ...all[idx],
+      ...(patch.text !== undefined ? { text: patch.text } : {}),
+      ...(patch.formats !== undefined ? { formats: patch.formats } : {}),
+    };
     await writeCollection(SUBJECTS_KEY, all);
   }
 }
 
-export async function markSubjectUsed(id: string): Promise<void> {
+/** Record a use. With a format, that format only (plus the last-used stamp);
+ *  without one, the legacy whole-subject mark. */
+export async function markSubjectUsed(id: string, format?: string): Promise<void> {
   const all = await getSubjects();
   const idx = all.findIndex((s) => s.id === id);
   if (idx >= 0) {
-    all[idx] = { ...all[idx], usedAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    const usedFor = format ? { ...(all[idx].usedFor ?? {}), [format]: now } : all[idx].usedFor;
+    all[idx] = { ...all[idx], usedAt: now, ...(usedFor ? { usedFor } : {}) };
     await writeCollection(SUBJECTS_KEY, all);
   }
 }
 
-export async function markSubjectUnused(id: string): Promise<void> {
+/** Clear a use. With a format, that one; without, every use. */
+export async function markSubjectUnused(id: string, format?: string): Promise<void> {
   const all = await getSubjects();
   const idx = all.findIndex((s) => s.id === id);
-  if (idx >= 0) {
-    const { usedAt: _removed, ...rest } = all[idx];
+  if (idx < 0) return;
+  const { usedAt: _removed, usedFor, ...rest } = all[idx];
+  if (format && usedFor && usedFor[format]) {
+    const { [format]: _gone, ...keep } = usedFor;
+    const remaining = Object.values(keep).sort();
+    all[idx] = Object.keys(keep).length > 0
+      ? { ...rest, usedFor: keep, usedAt: remaining[remaining.length - 1] }
+      : rest;
+  } else {
     all[idx] = rest;
-    await writeCollection(SUBJECTS_KEY, all);
   }
+  await writeCollection(SUBJECTS_KEY, all);
 }
 
 export async function deleteSubject(id: string): Promise<void> {

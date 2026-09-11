@@ -7,6 +7,8 @@ import TopicStep, { CarouselImageStyle } from "@/components/carousel/steps/Topic
 import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
+import ChartbookFigureStep from "@/components/carousel/steps/ChartbookFigureStep";
+import type { ChartbookFigure, ChartbookFigureProposal } from "@/lib/types";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import { isTwoSlideFormat } from "@/lib/types";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
@@ -16,9 +18,12 @@ import { Button } from "@/components/ui/Button";
 
 /** The studio has two states: writing the brief, or working on the artwork.
  *  It kept a 1-4 step machine long after Content and Hook stopped being
- *  screens; 1 and 4 are all that is left, and the names below say which. */
-type Step = 1 | 4;
+ *  screens; 1 and 4 are all that is left, and the names below say which.
+ *  The chartbook adds one in between: the figures, checked before the
+ *  slides are written. */
+type Step = 1 | 2 | 4;
 const BRIEF = 1 as const;
+const FIGURES = 2 as const;
 const STUDIO = 4 as const;
 
 const CAROUSEL_LOADER_MSGS = [
@@ -161,6 +166,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // Chartbook and Primer variants, one state for both (the format says which).
   const [twoSlideVariants, setTwoSlideVariants] = useState<TwoSlideVariant[]>([]);
   const [selectedTwoSlide, setSelectedTwoSlide] = useState(0);
+  // Chartbook stage one: the proposed figures, waiting for the editor's ok.
+  const [chartbookFigures, setChartbookFigures] = useState<ChartbookFigureProposal[]>([]);
+  const [selectedFigure, setSelectedFigure] = useState(0);
+  const [composing, setComposing] = useState(false);
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -197,7 +206,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      const hasWork = d && (d.topic || (d.variants?.length ?? 0) > 0 || (d.didYouKnowVariants?.length ?? 0) > 0);
+      const hasWork = d && (d.topic || (d.variants?.length ?? 0) > 0 || (d.didYouKnowVariants?.length ?? 0) > 0 || (d.chartbookFigures?.length ?? 0) > 0);
       if (!hasWork) return;
       if (typeof d.topic === "string") setTopic(d.topic);
       if (d.hookTone) setHookTone(d.hookTone);
@@ -225,9 +234,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       const restoredContent = Array.isArray(d.variants) && d.variants.length > 0;
       if (Array.isArray(d.twoSlideVariants)) setTwoSlideVariants(d.twoSlideVariants);
       if (typeof d.selectedTwoSlide === "number") setSelectedTwoSlide(d.selectedTwoSlide);
+      if (Array.isArray(d.chartbookFigures)) setChartbookFigures(d.chartbookFigures);
+      if (typeof d.selectedFigure === "number") setSelectedFigure(d.selectedFigure);
       const restoredDyk = Array.isArray(d.didYouKnowVariants) && d.didYouKnowVariants.length > 0;
       const restoredTwoSlide = Array.isArray(d.twoSlideVariants) && d.twoSlideVariants.length > 0;
-      setStep(restoredContent || restoredDyk || restoredTwoSlide ? STUDIO : BRIEF);
+      const restoredFigures = d.carouselFormat === "chartbook" && Array.isArray(d.chartbookFigures) && d.chartbookFigures.length > 0;
+      setStep(restoredContent || restoredDyk || restoredTwoSlide ? STUDIO : restoredFigures ? FIGURES : BRIEF);
       setRestoredDraft(true);
     } catch { /* ignore corrupt draft */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,12 +248,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   // Persist the working state whenever it changes (skip the empty initial state
   // so we never clobber a real draft with a blank one).
   useEffect(() => {
-    if (!topic && variants.length === 0 && didYouKnowVariants.length === 0 && twoSlideVariants.length === 0) return;
+    if (!topic && variants.length === 0 && didYouKnowVariants.length === 0 && twoSlideVariants.length === 0 && chartbookFigures.length === 0) return;
     const draft = {
       v: 1, step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook,
       brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages,
       imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants,
-      selectedDidYouKnow, twoSlideVariants, selectedTwoSlide,
+      selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure,
     };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -250,7 +262,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, slideImages: undefined, hookImageUrl: undefined })); } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow]);
+  }, [step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure]);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -367,8 +379,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       fetch(`/api/subjects/${subjectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "markUsed" }),
+        body: JSON.stringify({ action: "markUsed", format: format ?? "standard" }),
       }).catch(() => {});
+    }
+    if (format === "chartbook") {
+      await proposeFigures(t);
+      return;
     }
     try {
       const res = await fetch(`${apiBase}/generate`, {
@@ -395,7 +411,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;
       }
-      if (format === "chartbook" || format === "primer") {
+      if (format === "primer") {
         const twoSlide = (data.variants ?? []) as TwoSlideVariant[];
         if (twoSlide.length === 0) {
           setError("No usable variants returned. Try again.");
@@ -560,6 +576,78 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     } catch {}
   }
 
+  // ─── Chartbook: figures first, slides after the editor's ok ──────────────
+  async function proposeFigures(t: string) {
+    setLoading(true);
+    setLoaderNote("Finding the numbers and their sources");
+    setError(null);
+    setTwoSlideVariants([]);
+    setSelectedTwoSlide(0);
+    try {
+      const res = await fetch(`${apiBase}/chartbook/figures`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: t, count: 3 }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setError(data.error ?? "Failed to propose figures. Please try again.");
+        return;
+      }
+      const figures = (data.figures ?? []) as ChartbookFigureProposal[];
+      if (figures.length === 0) {
+        setError("No usable figures returned. Try again.");
+        return;
+      }
+      setChartbookFigures(figures);
+      setSelectedFigure(0);
+      setStep(FIGURES);
+    } catch {
+      setError("Network error while proposing figures. Try again.");
+    } finally {
+      setLoading(false);
+      setLoaderNote(null);
+    }
+  }
+
+  function updateFigure(i: number, figure: ChartbookFigure) {
+    // An edited figure is the editor's; the flags from the model's draft no
+    // longer describe it.
+    setChartbookFigures((prev) => prev.map((p, j) => j === i ? { ...p, figure, violations: undefined } : p));
+  }
+
+  async function composeChartbookFromFigure(figure: ChartbookFigure) {
+    setComposing(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/chartbook/compose`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, figure, count: 3 }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setError(data.error ?? "Failed to write the slides. Please try again.");
+        return;
+      }
+      const twoSlide = (data.variants ?? []) as TwoSlideVariant[];
+      if (twoSlide.length === 0) {
+        setError("No usable variants returned. Try again.");
+        return;
+      }
+      setTwoSlideVariants(twoSlide);
+      setSelectedTwoSlide(0);
+      setVariants([]);
+      setFalStatus("idle");
+      setFalCount(0);
+      setStep(STUDIO);
+    } catch {
+      setError("Network error while writing the slides. Try again.");
+    } finally {
+      setComposing(false);
+    }
+  }
+
   function handleRestart() {
     setStep(1);
     setTopic("");
@@ -582,6 +670,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setSelectedDidYouKnow(0);
     setTwoSlideVariants([]);
     setSelectedTwoSlide(0);
+    setChartbookFigures([]);
+    setSelectedFigure(0);
     setCarouselFormat("standard");
     clearActiveDraft();
   }
@@ -660,6 +750,18 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
           {!loading && !error && step === 1 && (
             <TopicStep onNext={handleTopicNext} initialLook={varyLook ?? undefined} initialFormat={varyFrom?.format} initialStructure={varyFrom?.structure ?? undefined} varyFrom={varyFrom?.topic} onClearVary={onVaryConsumed} />
+          )}
+          {!loading && !error && step === FIGURES && carouselFormat === "chartbook" && chartbookFigures.length > 0 && (
+            <ChartbookFigureStep
+              topic={topic}
+              figures={chartbookFigures}
+              selected={selectedFigure}
+              onSelect={setSelectedFigure}
+              onChange={updateFigure}
+              onConfirm={composeChartbookFromFigure}
+              onMoreFigures={() => proposeFigures(topic)}
+              busy={composing}
+            />
           )}
           {!loading && !error && step === 4 && (carouselFormat === "chartbook" || carouselFormat === "primer") && twoSlideVariants.length > 0 && (
             <TwoSlidePreviewStep

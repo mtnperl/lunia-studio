@@ -749,7 +749,9 @@ export const CAROUSEL_ICONS: CarouselIcon[] = [
 
   // ── Fitness extras 2 (8) ───────────────────────────────────────────────────
   {
-    id: "barbell",
+    // Was a second "barbell"; lookups by id only ever found the first, so
+    // this one was unreachable until it got its own id.
+    id: "barbell-plates",
     label: "Barbell",
     category: "fitness",
     svg: '<path d="M3 9v6M6 7v10M21 9v6M18 7v10M6 12h12"/>',

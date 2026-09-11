@@ -4,7 +4,7 @@
 // Banned terms come from banned-terms.ts so this file cannot drift from
 // compliance.ts (three lists already disagreed once).
 
-import type { ChartbookContent, PrimerContent } from "./types";
+import type { ChartbookContent, ChartbookFigure, PrimerContent } from "./types";
 import { scanBannedTerms } from "./banned-terms";
 
 const BANNED_SCAN_OPTS = { productMentions: true } as const;
@@ -28,14 +28,11 @@ function underlineInText(label: string, words: string[], text: string, v: string
   for (const w of words) if (!text.includes(w)) v.push(`${label}: underline word "${w}" is not in the text`);
 }
 
-export function lintChartbook(c: ChartbookContent | null | undefined): LintResult {
+/** The figure alone: the numbers, the labels, the source. Run on the
+ *  proposals before the editor sees them, and again inside lintChartbook. */
+export function lintChartbookFigure(f: ChartbookFigure | null | undefined): LintResult {
   const v: string[] = [];
-  if (!c || typeof c !== "object") return { ok: false, violations: ["content: missing or malformed"] };
-  common("cover.question", c.cover.question, v);
-  common("cover.kicker", c.cover.kicker, v);
-  if (c.cover.question.length > 60) v.push(`cover.question: too long (${c.cover.question.length} chars, max 60)`);
-  underlineInText("cover", c.cover.underline, c.cover.question, v);
-  const f = c.figure;
+  if (!f || typeof f !== "object") return { ok: false, violations: ["figure: missing or malformed"] };
   common("figure.title", f.title, v);
   if (f.title.length > 34) v.push(`figure.title: too long (${f.title.length} chars, max 34)`);
   common("figure.source", f.source.citation, v);
@@ -67,6 +64,17 @@ export function lintChartbook(c: ChartbookContent | null | undefined): LintResul
     : [];
   if (values.some((n) => !Number.isFinite(n) || n < 0)) v.push("figure: a value is not a finite non-negative number");
   if (f.layout === "claim-check" && f.small.value >= f.large.value) v.push("claim-check: small must be smaller than large");
+  return { ok: v.length === 0, violations: v };
+}
+
+export function lintChartbook(c: ChartbookContent | null | undefined): LintResult {
+  if (!c || typeof c !== "object") return { ok: false, violations: ["content: missing or malformed"] };
+  const v: string[] = [];
+  common("cover.question", c.cover.question, v);
+  common("cover.kicker", c.cover.kicker, v);
+  if (c.cover.question.length > 60) v.push(`cover.question: too long (${c.cover.question.length} chars, max 60)`);
+  underlineInText("cover", c.cover.underline, c.cover.question, v);
+  v.push(...lintChartbookFigure(c.figure).violations);
   if (!c.caption || c.caption.trim().length < 80) v.push("caption: too short or missing");
   common("caption", c.caption ?? "", v);
   return { ok: v.length === 0, violations: v };

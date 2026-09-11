@@ -27,6 +27,15 @@ const USER_PROMPT = `Find the most interesting sleep / circadian / chronobiology
 
 type LatestItem = { phrasing: string; sourceUrl: string };
 
+/** A pulled finding is one claim from one paper, which is the Did you know
+ *  shape by definition. It also fits the Chartbook when the line names a
+ *  comparison or a distribution. No model call: the line itself says. */
+export function tagResearchFinding(phrasing: string): string[] {
+  const tags = ["did_you_know"];
+  if (/\b(vs\.?|versus|by age|by decade|per (drink|hour|night|dose)|ranked|compared (with|to)|higher than|lower than|more than|less than|\d+\s*(%|percent|x|times))\b/i.test(phrasing)) tags.push("chartbook");
+  return tags;
+}
+
 function extractJsonArray(raw: string): string {
   // 1. Prefer a fenced block: ```json ... ``` or ``` ... ``` — handles models that
   //    add prose before/after, including markdown notes that contain [link](url).
@@ -133,6 +142,7 @@ export async function POST() {
       text: item.phrasing,
       category: LATEST_RESEARCH_CATEGORY,
       sourceUrl: item.sourceUrl,
+      formats: tagResearchFinding(item.phrasing),
     });
     haveUrls.add(urlKey);
     haveTexts.add(textKey);

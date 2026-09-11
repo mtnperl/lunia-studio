@@ -162,6 +162,29 @@ export const ChartbookVariantsResponseSchema = zDyk.object({
 export type ChartbookFigure = zDyk.infer<typeof ChartbookFigureSchema>;
 export type ChartbookContent = zDyk.infer<typeof ChartbookContentSchema>;
 
+// The chartbook is written in two calls. The first proposes figures: the
+// layout, the numbers and the source, with one line on the angle. The
+// editor confirms or corrects a figure, and only then does the second call
+// write the cover and caption around it. The research call has a small
+// output, so its thinking gets the room; the writing call is cheap.
+export const ChartbookFigureProposalSchema = zDyk.object({
+  figure: ChartbookFigureSchema,
+  /** One line, under 20 words: what this figure shows and why it lands. */
+  angle: zDyk.string().min(1),
+  violations: zDyk.array(zDyk.string()).optional(),
+});
+export const ChartbookFiguresResponseSchema = zDyk.object({
+  figures: zDyk.array(ChartbookFigureProposalSchema).min(1),
+});
+export type ChartbookFigureProposal = zDyk.infer<typeof ChartbookFigureProposalSchema>;
+
+export const ChartbookComposeResponseSchema = zDyk.object({
+  variants: zDyk.array(zDyk.object({
+    cover: ChartbookContentSchema.shape.cover,
+    caption: zDyk.string().min(1),
+  })).min(1),
+});
+
 // ─── Primer format ───────────────────────────────────────────────────────────
 // Two slides: a cover (a numeral beside the title for a list, the serif
 // question otherwise), then ONE reference slide from four layouts.
@@ -891,7 +914,18 @@ export type Subject = {
   id: string;
   text: string;
   category: string;
-  usedAt?: string;     // ISO date when last used for a carousel
+  /** ISO date when last used for anything. Kept as the "last used" stamp;
+   *  which format it was used for is in usedFor. A usedAt with no usedFor is
+   *  from before uses were recorded per format (see subject-fit.ts). */
+  usedAt?: string;
+  /** ISO date per carousel format (or "video") the subject was used for. A
+   *  subject burned on a Structured deck can still become a Did you know. */
+  usedFor?: Record<string, string>;
+  /** The frozen two-slide formats this subject fits: "did_you_know",
+   *  "chartbook", "primer". Structured and Engagement fit everything and
+   *  are not tagged. Absent means none, except that a subject in a category
+   *  named for a format fits that format (subject-fit.ts). */
+  formats?: string[];
   sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
 };
 
