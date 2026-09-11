@@ -93,7 +93,11 @@ function Body({ slide, fontScale }: { slide: PrimerSlideContent; fontScale: numb
   }
 }
 
+// The serif carries one voice line per slide: the title, and the term in a
+// row. Everything that informs is Inter. Inter sits larger at the same
+// size, so `sans` steps 10% down from the serif size it sits beside.
 const serif = (size: number): CSSProperties => ({ fontFamily: PEN_SERIF, fontWeight: 500, fontSize: size, color: C.ink, lineHeight: 1.25 });
+const sans = (size: number, weight: 300 | 400 | 500 = 300): CSSProperties => ({ fontFamily: PEN_SANS, fontWeight: weight, fontSize: Math.round(size * 0.9), color: C.ink, lineHeight: 1.3 });
 
 /** A · rows. Fewer rows grow the type, never the gaps. The term takes the
  *  pen, the key phrase of the definition takes the swipe (P2). */
@@ -110,7 +114,7 @@ function Rows({ rows, fontScale }: { rows: { term: string; definition: string; k
         <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 26, padding: `${pad}px 0`, borderBottom: `3px dashed ${C.hairline}`, whiteSpace: "nowrap", overflow: "hidden" }}>
           <span style={{ ...numStyle, fontSize: T.rowNumber, color: C.inkMuted, minWidth: 44 }}>{i + 1}</span>
           <span style={{ ...serif(size) }}><span style={penStyle}>{r.term}</span></span>
-          <span style={{ ...serif(size), color: C.inkSoft, marginLeft: 8, overflow: "hidden", textOverflow: "ellipsis" }}><MarkWords text={r.definition} words={r.key ? [r.key] : []} mark="swipe" /></span>
+          <span style={{ ...sans(size), color: C.inkSoft, marginLeft: 8, overflow: "hidden", textOverflow: "ellipsis" }}><MarkWords text={r.definition} words={r.key ? [r.key] : []} mark="swipe" /></span>
         </div>
       ))}
     </div>
@@ -126,9 +130,9 @@ function Definition({ slide, fontScale }: { slide: Extract<PrimerSlideContent, {
     <div style={{ display: "flex", flexDirection: "column", gap: 56 }}>
       <div>
         <div style={{ ...serif(Math.round(56 * fontScale)) }}><span style={penStyle}>{slide.term}</span></div>
-        <div style={{ ...serif(Math.round(36 * fontScale)), color: C.inkSoft, marginTop: 20, lineHeight: 1.35, maxWidth: 820 }}>{slide.definition}</div>
+        <div style={{ ...sans(Math.round(38 * fontScale)), color: C.inkSoft, marginTop: 20, lineHeight: 1.4, maxWidth: 820 }}>{slide.definition}</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 26, ...serif(big) }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 26, ...sans(big, 400) }}>
         <span><span style={penStyle}>{f.left}</span> =</span>
         <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           <span style={{ padding: "0 18px 8px" }}>{f.numerator}</span>
@@ -137,10 +141,10 @@ function Definition({ slide, fontScale }: { slide: Extract<PrimerSlideContent, {
         </span>
         {f.factor && <span>{f.factor}</span>}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 26, ...serif(big) }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 26, ...sans(big, 400) }}>
         <span>{slide.threshold.label} =</span><span style={swipeStyle}>{slide.threshold.value}</span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 26, ...serif(big) }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 26, ...sans(big, 400) }}>
         <span>{slide.example.label} =</span><span style={numStyle}>{slide.example.value}</span>
       </div>
     </div>
@@ -156,11 +160,11 @@ function Versus({ columns, fontScale }: { columns: [{ name: string; rows: string
       {columns.map((col, ci) => (
         <div key={ci} style={{ width: 400, display: "flex", flexDirection: "column" }}>
           <div style={serif(Math.round(44 * fontScale))}><span style={penStyle}>{col.name}</span></div>
-          <div style={{ ...serif(Math.round(30 * fontScale)), color: C.inkMuted, marginTop: 26, borderBottom: `2px solid ${C.ink}`, alignSelf: "flex-start" }}>Best for</div>
+          <div style={{ ...sans(Math.round(28 * fontScale), 500), color: C.inkMuted, marginTop: 26, borderBottom: `2px solid ${C.ink}`, alignSelf: "flex-start", letterSpacing: "0.04em" }}>Best for</div>
           {col.rows.map((r, i) => (
-            <div key={i} style={{ ...serif(rowSize), marginTop: 24 }}>{i === 0 ? <span style={swipeStyle}>{r}</span> : r}</div>
+            <div key={i} style={{ ...sans(rowSize), marginTop: 24 }}>{i === 0 ? <span style={swipeStyle}>{r}</span> : r}</div>
           ))}
-          <div style={{ ...serif(Math.round(26 * fontScale)), fontStyle: "italic", color: C.inkMuted, marginTop: "auto", paddingTop: 30 }}>{col.footnote}</div>
+          <div style={{ ...sans(Math.round(28 * fontScale)), fontStyle: "italic", color: C.inkMuted, marginTop: "auto", paddingTop: 30 }}>{col.footnote}</div>
         </div>
       ))}
       <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, borderLeft: `3px dashed ${C.hairline}` }} />
@@ -175,7 +179,7 @@ function Creed({ lines, closing, fontScale }: { lines: { condition: string; cons
   return (
     <div>
       {lines.map((l, i) => (
-        <div key={i} style={{ ...serif(size), padding: "18px 0", borderBottom: `3px dashed ${C.hairline}` }}>
+        <div key={i} style={{ ...sans(size), padding: "18px 0", borderBottom: `3px dashed ${C.hairline}` }}>
           Without <span style={penStyle}>{l.condition}</span>, no <span style={swipeStyle}>{l.consequence}</span>.
         </div>
       ))}

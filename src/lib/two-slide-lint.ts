@@ -87,7 +87,9 @@ export function lintPrimer(c: PrimerContent | null | undefined): LintResult {
     s.rows.forEach((r, i) => {
       common(`row ${i + 1}`, `${r.term} ${r.definition}`, v);
       if (r.term.split(/\s+/).length > 4) v.push(`row ${i + 1}: term over 4 words`);
-      if (r.term.length + r.definition.length > 58) v.push(`row ${i + 1}: over 58 characters (${r.term.length + r.definition.length}); it will not set on one line`);
+      // Definitions set in Inter, which runs wider than the serif: 52 is the
+      // most a row holds at eleven rows without an ellipsis.
+      if (r.term.length + r.definition.length > 52) v.push(`row ${i + 1}: over 52 characters (${r.term.length + r.definition.length}); it will not set on one line`);
       if (r.key && !r.definition.includes(r.key)) v.push(`row ${i + 1}: key "${r.key}" is not in the definition`);
     });
   } else if (s.layout === "definition") {

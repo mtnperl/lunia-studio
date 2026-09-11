@@ -6,7 +6,7 @@
 import type { CSSProperties } from "react";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { Kicker, MarkWords, PenChrome, PenGround, PenTitle, SourceLine, TitleBlock, numStyle, penPaper, penStyle, swipeStyle } from "@/components/carousel/shared/PenChrome";
-import { PEN_COLORS as C, PEN_SERIF, PEN_SANS, PEN_TYPE as T, PEN_LAYOUT as L, type PaperSettings } from "@/lib/brand-tokens";
+import { PEN_COLORS as C, PEN_SANS, PEN_TYPE as T, PEN_LAYOUT as L, type PaperSettings } from "@/lib/brand-tokens";
 import type { ChartbookContent, ChartbookFigure } from "@/lib/types";
 
 const H = 1350;
@@ -61,7 +61,9 @@ function Figure({ figure, fontScale }: { figure: ChartbookFigure; fontScale: num
   }
 }
 
-const labelSerif = (fontScale: number): CSSProperties => ({ fontFamily: PEN_SERIF, fontWeight: 500, fontSize: Math.round(T.label * fontScale), color: C.ink, textAlign: "center", lineHeight: 1.15 });
+// Labels are Inter: the serif is reserved for the title, the one voice line
+// on the slide. Inter sits larger at the same size, so labels step down 10%.
+const labelSerif = (fontScale: number): CSSProperties => ({ fontFamily: PEN_SANS, fontWeight: 500, fontSize: Math.round(T.label * 0.9 * fontScale), color: C.ink, textAlign: "center", lineHeight: 1.15 });
 const valueNum = (fontScale: number): CSSProperties => ({ ...numStyle, fontSize: Math.round(T.value * fontScale), textAlign: "center", whiteSpace: "nowrap" });
 
 /** A · pill bars. The tallest bar is the accent. */
@@ -109,7 +111,7 @@ function VersusBars({ series, groups, fontScale }: { series: [string, string]; g
       <div style={{ position: "absolute", left: 0, right: 0, top: 30 + chartH + 22, display: "flex", justifyContent: "space-around" }}>
         {groups.map((g, i) => <div key={i} style={labelSerif(fontScale)}>{g.label}</div>)}
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 30 + chartH + 110, textAlign: "center", fontFamily: PEN_SERIF, fontStyle: "italic", fontWeight: 500, fontSize: Math.round(30 * fontScale), color: C.ink }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 30 + chartH + 110, textAlign: "center", fontFamily: PEN_SANS, fontStyle: "italic", fontWeight: 400, fontSize: Math.round(28 * fontScale), color: C.ink }}>
         <span style={{ display: "inline-block", width: 20, height: 20, borderRadius: 10, background: C.bar, verticalAlign: -2, marginRight: 10 }} />{series[0]}
         <span style={{ display: "inline-block", width: 44 }} />
         <span style={{ display: "inline-block", width: 20, height: 20, borderRadius: 10, background: C.barAccent, verticalAlign: -2, marginRight: 10 }} />{series[1]}
@@ -131,7 +133,7 @@ function Ranked({ items, fontScale }: { items: { label: string; value: number; d
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
       {sorted.map((b, i) => (
         <div key={i} style={{ height: rowH, display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ width: labelW, fontFamily: PEN_SERIF, fontWeight: 500, fontSize: Math.round(Math.min(T.label, rowH * 0.5) * fontScale), color: C.ink, lineHeight: 1.1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</div>
+          <div style={{ width: labelW, fontFamily: PEN_SANS, fontWeight: 500, fontSize: Math.round(Math.min(T.label * 0.9, rowH * 0.45) * fontScale), color: C.ink, lineHeight: 1.1, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</div>
           <div style={{ width: trackW, height: barH, position: "relative" }}>
             <div style={{ width: Math.max(barH, Math.round(trackW * (b.value / max))), height: barH, background: i === 0 ? C.barAccent : C.bar, borderRadius: `0 ${barH / 2}px ${barH / 2}px 0` }} />
           </div>
@@ -162,12 +164,12 @@ function ObjectPair({ pair, fontScale }: { pair: [{ label: string; figure: strin
 /** E · a quote, then two bars at an extreme ratio with a drawn note. The
  *  small bar never drops under 24px and the note anchors to its label. */
 function ClaimCheck({ figure, fontScale }: { figure: Extract<ChartbookFigure, { layout: "claim-check" }>; fontScale: number }) {
-  const { quote, kicker, small, large, annotation } = figure;
+  const { quote, small, large, annotation } = figure;
   const chartH = 380;
   const largeH = chartH, smallH = Math.max(24, Math.round(chartH * (small.value / Math.max(large.value, 1))));
   return (
     <div style={{ position: "absolute", inset: 0 }}>
-      <div style={{ textAlign: "center", fontFamily: PEN_SERIF, fontWeight: 500, fontSize: Math.round(48 * fontScale), color: C.ink, lineHeight: 1.2, padding: "0 20px" }}>
+      <div style={{ textAlign: "center", fontFamily: PEN_SANS, fontStyle: "italic", fontWeight: 400, fontSize: Math.round(42 * fontScale), color: C.ink, lineHeight: 1.25, padding: "0 20px" }}>
         &ldquo;<MarkWords text={quote} words={[quote.split(/\s+/).slice(-2).join(" ")]} mark="swipe" />&rdquo;
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 200, height: chartH + 40, display: "flex", justifyContent: "center", gap: 180, alignItems: "flex-end" }}>
@@ -185,7 +187,7 @@ function ClaimCheck({ figure, fontScale }: { figure: Extract<ChartbookFigure, { 
         <div style={{ ...labelSerif(fontScale), width: 240 }}><span style={penStyle}>{small.label}</span></div>
         <div style={{ ...labelSerif(fontScale), width: 240 }}><span style={penStyle}>{large.label}</span></div>
       </div>
-      <div style={{ position: "absolute", left: 40, top: 280, width: 300, fontFamily: PEN_SERIF, fontStyle: "italic", fontWeight: 500, fontSize: Math.round(32 * fontScale), color: C.ink, lineHeight: 1.2 }}>{annotation}</div>
+      <div style={{ position: "absolute", left: 40, top: 280, width: 300, fontFamily: PEN_SANS, fontStyle: "italic", fontWeight: 300, fontSize: Math.round(30 * fontScale), color: C.ink, lineHeight: 1.25 }}>{annotation}</div>
       <svg aria-hidden style={{ position: "absolute", left: 200, top: 360 }} width="200" height="150" viewBox="0 0 200 150" fill="none" stroke={C.ink} strokeWidth="3" strokeLinecap="round">
         <path d="M10 10 C 60 20, 130 70, 175 138" />
         <path d="M156 128 L175 138 L172 116" />

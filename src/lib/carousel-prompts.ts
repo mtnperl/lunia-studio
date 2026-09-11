@@ -855,7 +855,7 @@ Generate ${variantCount} variants of a 2-slide "Primer" Instagram carousel about
 
 Slide 1 is a cover: "title" in sentence case, at most 40 characters ("Sleep terms worth knowing"). For the rows layout the cover shows the row count as a large numeral beside the title, so do not put a number in the title. "underline" names one or two words of the title, copied exactly. "kicker" is one short line under it (under 8 words).
 Slide 2 is ONE reference slide. Pick the layout that fits the subject:
-- "rows": a glossary or a ranked list. Fields: title, kicker, rows[{term, definition, key}] with 6 to 11 rows. term at most 4 words; term plus definition at most 58 characters so the row sets on one line; key is the phrase of the definition that carries it, 1 to 3 words, copied exactly.
+- "rows": a glossary or a ranked list. Fields: title, kicker, rows[{term, definition, key}] with 6 to 11 rows. term at most 4 words; term plus definition at most 52 characters so the row sets on one line; key is the phrase of the definition that carries it, 1 to 3 words, copied exactly.
 - "definition": one term that needs a formula. Fields: title, term, definition (one line, under 110 characters), formula{left, numerator, denominator, factor?}, threshold{label, value}, example{label, value}.
 - "versus": an either-or with conditions. Fields: title, kicker, columns[{name, rows[3-4], footnote}] x2. Each row under 40 characters and starts with what it is best for; footnote under 48 characters.
 - "creed": the conditions for one outcome. Fields: title, lines[{condition, consequence}] with 5 to 8 lines, closing. Each line renders as "Without {condition}, no {consequence}." so condition plus consequence stay under 40 characters. closing is one line ("Rest needs all the above.").

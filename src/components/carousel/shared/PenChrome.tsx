@@ -74,7 +74,7 @@ export function PenTitle({ text, underline, size = T.title, align = "center", st
 
 export function Kicker({ text, italic = false, size = T.kicker, style }: { text: string; italic?: boolean; size?: number; style?: CSSProperties }) {
   return (
-    <div style={{ fontFamily: italic ? PEN_SERIF : PEN_SANS, fontStyle: italic ? "italic" : "normal", fontWeight: italic ? 500 : 400, fontSize: size, color: C.inkMuted, textAlign: "center", lineHeight: 1.3, ...style }}>{text}</div>
+    <div style={{ fontFamily: PEN_SANS, fontStyle: italic ? "italic" : "normal", fontWeight: 400, fontSize: size, color: C.inkMuted, textAlign: "center", lineHeight: 1.3, ...style }}>{text}</div>
   );
 }
 
@@ -83,7 +83,7 @@ export const numStyle: CSSProperties = { fontFamily: PEN_SANS, fontWeight: 500, 
 
 export function SourceLine({ text }: { text: string }) {
   return (
-    <div style={{ position: "absolute", left: L.padX, right: L.padX, bottom: L.chromeBottom + 56, textAlign: "center", fontFamily: PEN_SERIF, fontStyle: "italic", fontWeight: 500, fontSize: T.source, color: C.inkMuted, lineHeight: 1.3, display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden" }}>{text}</div>
+    <div style={{ position: "absolute", left: L.padX, right: L.padX, bottom: L.chromeBottom + 56, textAlign: "center", fontFamily: PEN_SANS, fontStyle: "italic", fontWeight: 300, fontSize: T.source, color: C.inkMuted, lineHeight: 1.3, display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden" }}>{text}</div>
   );
 }
 
