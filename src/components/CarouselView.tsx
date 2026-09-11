@@ -770,6 +770,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               variants={twoSlideVariants}
               selected={selectedTwoSlide}
               onSelect={setSelectedTwoSlide}
+              onChange={(i, v) => setTwoSlideVariants((vs) => vs.map((x, j) => (j === i ? v : x)))}
               initialSavedId={loadedId}
               initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
                 ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS[carouselFormat].grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS[carouselFormat].vignette }

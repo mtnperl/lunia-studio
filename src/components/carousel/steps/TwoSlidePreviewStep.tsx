@@ -2,11 +2,13 @@
 
 // The preview and save step for the Chartbook and Primer formats. One
 // component for both: pick a variant, tune the paper, download the two
-// PNGs, save. The slides are frozen renderers of the variant's fields, so
-// there is no text editing here, the same as Did you know.
+// PNGs, save. The slides are frozen renderers of the variant's fields; the
+// fields themselves are editable in place (TwoSlideEditor), so the words
+// and numbers can change while the composition cannot.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import PaperControls from "@/components/carousel/shared/PaperControls";
+import TwoSlideEditor from "@/components/carousel/steps/TwoSlideEditor";
 import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel/slides/ChartbookSlides";
 import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
 import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
@@ -26,6 +28,9 @@ type Props = {
   variants: TwoSlideVariant[];
   selected: number;
   onSelect: (i: number) => void;
+  /** An edit to variant `i`. The renderers redraw from the new fields and
+   *  the PNGs rebuild; the parent owns the array so the draft persists. */
+  onChange?: (i: number, next: TwoSlideVariant) => void;
   onSaved?: (id: string) => void;
   initialSavedId?: string | null;
   initialPaper?: PaperSettings;
@@ -69,7 +74,8 @@ export function renderTwoSlides(format: TwoSlideFormat, v: TwoSlideVariant, pape
   ];
 }
 
-export default function TwoSlidePreviewStep({ format, topic, variants, selected, onSelect, onSaved, initialSavedId, initialPaper }: Props) {
+export default function TwoSlidePreviewStep({ format, topic, variants, selected, onSelect, onChange, onSaved, initialSavedId, initialPaper }: Props) {
+  const [editing, setEditing] = useState(false);
   const apiBase = useCarouselApi();
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
@@ -260,7 +266,23 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
         <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>{export2}</div>
       </div>
 
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 20 }}>
+      {onChange && (
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => setEditing((v) => !v)}
+            style={{ background: editing ? "var(--text)" : "var(--surface)", color: editing ? "var(--bg)" : "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+          >
+            {editing ? "Done editing" : "Edit the text"}
+          </button>
+          {editing && (
+            <div style={{ marginTop: 12 }}>
+              <TwoSlideEditor format={format} variant={variant} onChange={(next) => onChange(selected, next)} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!editing && <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={labelStyle}>Caption</div>
           <button onClick={copyCaption} style={{ fontSize: 12, fontWeight: 600, color: copied ? "var(--success)" : "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
@@ -268,7 +290,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
           </button>
         </div>
         <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{variant.caption}</div>
-      </div>
+      </div>}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button onClick={handleDownload} disabled={downloading || (ready < 2 && !prepError)} title={ready < 2 ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || ready < 2 ? "wait" : "pointer", opacity: ready < 2 && !prepError ? 0.6 : 1, fontFamily: "inherit" }}>

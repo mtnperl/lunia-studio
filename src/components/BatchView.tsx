@@ -234,6 +234,7 @@ function ReviewCard({
   onContentUpdate,
   onGoBackToReview,
   onSelectDidYouKnow,
+  onTwoSlideChange,
   onSaved,
 }: {
   item: QueueItem;
@@ -251,6 +252,7 @@ function ReviewCard({
   onContentUpdate: (id: string, config: CarouselConfig) => void;
   onGoBackToReview: (id: string) => void;
   onSelectDidYouKnow: (id: string, index: number) => void;
+  onTwoSlideChange: (id: string, index: number, next: TwoSlideVariant) => void;
   onSaved: (id: string, savedId: string) => void;
 }) {
   const isDidYouKnow = item.carouselFormat === "did_you_know";
@@ -358,6 +360,7 @@ function ReviewCard({
             variants={item.twoSlideVariants}
             selected={item.selectedDidYouKnow ?? 0}
             onSelect={(i) => onSelectDidYouKnow(item.id, i)}
+            onChange={(i, v) => onTwoSlideChange(item.id, i, v)}
             onSaved={(id) => onSaved(item.id, id)}
           />
         </div>
@@ -1354,6 +1357,7 @@ function BatchViewInner() {
                 })}
                 onGoBackToReview={(id) => updateItem(id, { status: "reviewing", reviewStage: "hook" })}
                 onSelectDidYouKnow={(id, index) => updateItem(id, { selectedDidYouKnow: index })}
+                onTwoSlideChange={(id, index, next) => updateItem(id, { twoSlideVariants: (queue.find((q) => q.id === id)?.twoSlideVariants ?? []).map((x, j) => (j === index ? next : x)) })}
                 onSaved={(id, savedId) => updateItem(id, { savedId })}
               />
             ))}
