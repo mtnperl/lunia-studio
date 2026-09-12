@@ -191,7 +191,18 @@ export const ESSAY_TYPE = {
  *  from the Highlighter review (Did you know, Billboard, Chartbook, Primer)
  *  default to half grain and no vignette, the phone-scale call of 9 Sep 2026.
  *  Every one of them exposes both as sliders (PaperControls). */
-export type PaperSettings = { grain: number; vignette: number };
+/** The paper ground of the new styles. `pen` is the colour of the
+ *  hand-drawn underline on the pen-and-paper formats (Did you know,
+ *  Chartbook, Primer); absent means the navy pen. */
+export type PaperSettings = { grain: number; vignette: number; pen?: string };
+/** Pen colours offered as swatches; any hex is accepted beside them. */
+export const PEN_PRESETS = [
+  { name: "Navy", hex: "#102635" },
+  { name: "Ochre", hex: "#B8930A" },
+  { name: "Red", hex: "#D8321E" },
+  { name: "Aqua", hex: "#4FCFC8" },
+  { name: "Slate", hex: "#2C3F51" },
+] as const;
 export const PAPER_DEFAULTS = {
   essay: { grain: 0.9, vignette: 0.07 },
   highlighter: { grain: 0.45, vignette: 0 },

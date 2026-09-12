@@ -25,7 +25,7 @@ async function fetchAsDataUrl(url: string): Promise<string> {
 
 export default function TwoSlideShareView({ carousel, format }: { carousel: SavedCarousel; format: TwoSlideFormat }) {
   const variant = (format === "chartbook" ? carousel.chartbookContent : carousel.primerContent) as TwoSlideVariant;
-  const paper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS[format].grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS[format].vignette };
+  const paper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS[format].grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS[format].vignette, pen: carousel.penColor };
   const ref1 = useRef<HTMLDivElement>(null);
   const ref2 = useRef<HTMLDivElement>(null);
   const filesRef = useRef<File[]>([null as unknown as File, null as unknown as File]);

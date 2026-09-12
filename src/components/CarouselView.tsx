@@ -772,8 +772,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSelect={setSelectedTwoSlide}
               onChange={(i, v) => setTwoSlideVariants((vs) => vs.map((x, j) => (j === i ? v : x)))}
               initialSavedId={loadedId}
-              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
-                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS[carouselFormat].grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS[carouselFormat].vignette }
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined || initialCarousel.penColor !== undefined)
+                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS[carouselFormat].grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS[carouselFormat].vignette, pen: initialCarousel.penColor }
                 : undefined}
               onSaved={onSaved}
             />
@@ -786,8 +786,8 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSelect={setSelectedDidYouKnow}
               initialSavedId={loadedId}
               initialTreatment={initialCarousel?.didYouKnowTreatment}
-              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
-                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette }
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined || initialCarousel.penColor !== undefined)
+                ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette, pen: initialCarousel.penColor }
                 : undefined}
               onSaved={onSaved}
             />
@@ -837,7 +837,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialHookHeadlineWeight={initialCarousel?.hookHeadlineWeight ?? pendingLook?.hookHeadlineWeight}
               initialEssayAccent={initialCarousel?.essayAccent ?? pendingLook?.essayAccent}
               initialPillar={initialCarousel?.pillar}
-              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined)
+              initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined || initialCarousel.penColor !== undefined)
                 ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.billboard.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.billboard.vignette }
                 : undefined}
               initialHookImagesByWeight={initialCarousel?.hookImagesByWeight}

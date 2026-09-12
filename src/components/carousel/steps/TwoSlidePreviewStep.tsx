@@ -11,7 +11,8 @@ import PaperControls from "@/components/carousel/shared/PaperControls";
 import TwoSlideEditor from "@/components/carousel/steps/TwoSlideEditor";
 import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel/slides/ChartbookSlides";
 import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
-import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
+import { PAPER_DEFAULTS, PEN_PRESETS, type PaperSettings } from "@/lib/brand-tokens";
+import { rememberPen, rememberedPen } from "@/lib/pen-memory";
 import { compositeSlideWithImages } from "@/lib/slide-export";
 import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import type { ChartbookContent, PrimerContent } from "@/lib/types";
@@ -90,11 +91,18 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
   useEffect(() => { setShareCapable(deviceSharesFiles()); }, []);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId ?? null);
+  // The first save makes the shell open the saved document, which remounts
+  // this step before the id has been read from it. Take the id when it
+  // lands, so Copy link and "Save changes" appear after the first save.
+  useEffect(() => { if (initialSavedId) setSavedId(initialSavedId); }, [initialSavedId]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
   const [fontScale, setFontScale] = useState(1);
-  const [paper, setPaper] = useState<PaperSettings>(initialPaper ?? PAPER_DEFAULTS[format]);
+  // The pen colour chosen last time is the starting pen for a new piece;
+  // a saved piece keeps its own.
+  const [paper, setPaper] = useState<PaperSettings>(() => initialPaper ?? { ...PAPER_DEFAULTS[format], pen: rememberedPen(format) });
+  const setPaperRemembered = (p: PaperSettings) => { rememberPen(format, p.pen); setPaper(p); };
 
   const variant = variants[selected];
   const label = format === "chartbook" ? "Chartbook" : "Primer";
@@ -179,6 +187,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
           ...(format === "chartbook" ? { chartbookContent: variant } : { primerContent: variant }),
           paperGrain: paper.grain,
           paperVignette: paper.vignette,
+          penColor: paper.pen,
         }),
       });
       const data = await res.json();
@@ -247,7 +256,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
         </div>
       )}
 
-      <PaperControls value={paper} defaults={PAPER_DEFAULTS[format]} onChange={setPaper} />
+      <PaperControls value={paper} defaults={PAPER_DEFAULTS[format]} onChange={setPaperRemembered} penDefault={PEN_PRESETS[0].hex} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}>
         <span style={labelStyle}>Font size</span>

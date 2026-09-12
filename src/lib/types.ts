@@ -648,6 +648,9 @@ export type SavedCarousel = {
   format?: CarouselFormat; // "standard" (default) | "engagement" | "did_you_know"
   engagementSubType?: EngagementSubType; // "reveal" | "diagnostic" — only when format is "engagement"
   didYouKnowContent?: DidYouKnowContent; // present iff format === "did_you_know"
+  /** Pen-and-paper formats: the colour of the hand-drawn underline, a hex.
+   *  Absent means the navy pen. */
+  penColor?: string;
   chartbookContent?: ChartbookContent;   // present iff format === "chartbook"
   primerContent?: PrimerContent;         // present iff format === "primer"
   /** Did you know only: which box the marked phrase takes. Absent = navy-box. */

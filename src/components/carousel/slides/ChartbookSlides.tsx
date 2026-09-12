@@ -5,7 +5,7 @@
 
 import type { CSSProperties } from "react";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
-import { Kicker, MarkWords, PenChrome, PenGround, PenTitle, SourceLine, TitleBlock, numStyle, penPaper, penStyle, swipeStyle } from "@/components/carousel/shared/PenChrome";
+import { Kicker, MarkWords, PenChrome, PenGround, PenTitle, SourceLine, TitleBlock, numStyle, penPaper, penStyleFor, swipeStyle } from "@/components/carousel/shared/PenChrome";
 import { PEN_COLORS as C, PEN_SANS, PEN_TYPE as T, PEN_LAYOUT as L, type PaperSettings } from "@/lib/brand-tokens";
 import type { ChartbookContent, ChartbookFigure } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export function ChartbookCoverSlide({ content, paper, scale = 1, fontScale = 1, 
     <SlideWrapper scale={scale} height={H} id={id} style={{ background: C.paper }}>
       <PenGround paper={p}>
         <div style={{ position: "absolute", left: L.padX, right: L.padX, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 40 }}>
-          <PenTitle text={q} underline={content.cover.underline} size={size} style={{ lineHeight: 1.08 }} />
+          <PenTitle text={q} underline={content.cover.underline} size={size} style={{ lineHeight: 1.08 }} pen={p.pen} />
           <Kicker text={content.cover.kicker} size={T.coverKicker} />
         </div>
         <PenChrome arrow />
@@ -40,9 +40,9 @@ export function ChartbookFigureSlide({ content, paper, scale = 1, fontScale = 1,
   return (
     <SlideWrapper scale={scale} height={H} id={id} style={{ background: C.paper }}>
       <PenGround paper={p}>
-        <TitleBlock title={f.title} kicker={kicker} />
+        <TitleBlock title={f.title} kicker={kicker} pen={p.pen} />
         <div style={{ position: "absolute", left: L.padX, right: L.padX, top: L.bodyTop, bottom: L.bodyBottom }}>
-          <Figure figure={f} fontScale={fontScale} />
+          <Figure figure={f} fontScale={fontScale} pen={p.pen} />
         </div>
         <SourceLine text={f.source.citation} />
         <PenChrome />
@@ -51,13 +51,13 @@ export function ChartbookFigureSlide({ content, paper, scale = 1, fontScale = 1,
   );
 }
 
-function Figure({ figure, fontScale }: { figure: ChartbookFigure; fontScale: number }) {
+function Figure({ figure, fontScale, pen }: { figure: ChartbookFigure; fontScale: number; pen?: string }) {
   switch (figure.layout) {
     case "pill-bars": return <PillBars bars={figure.bars} fontScale={fontScale} />;
     case "versus-bars": return <VersusBars series={figure.series} groups={figure.groups} fontScale={fontScale} />;
     case "ranked": return <Ranked items={figure.items} fontScale={fontScale} />;
-    case "object-pair": return <ObjectPair pair={figure.pair} fontScale={fontScale} />;
-    case "claim-check": return <ClaimCheck figure={figure} fontScale={fontScale} />;
+    case "object-pair": return <ObjectPair pair={figure.pair} fontScale={fontScale} pen={pen} />;
+    case "claim-check": return <ClaimCheck figure={figure} fontScale={fontScale} pen={pen} />;
   }
 }
 
@@ -146,7 +146,8 @@ function Ranked({ items, fontScale }: { items: { label: string; value: number; d
 
 /** D · two choices, two numbers, on either side of a dashed divider. The
  *  first figure takes the pen, the second the swipe. Plain, no icons. */
-function ObjectPair({ pair, fontScale }: { pair: [{ label: string; figure: string; note: string }, { label: string; figure: string; note: string }]; fontScale: number }) {
+function ObjectPair({ pair, fontScale, pen }: { pair: [{ label: string; figure: string; note: string }, { label: string; figure: string; note: string }]; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "space-around", alignItems: "center", textAlign: "center" }}>
       {pair.map((o, i) => (
@@ -163,7 +164,8 @@ function ObjectPair({ pair, fontScale }: { pair: [{ label: string; figure: strin
 
 /** E · a quote, then two bars at an extreme ratio with a drawn note. The
  *  small bar never drops under 24px and the note anchors to its label. */
-function ClaimCheck({ figure, fontScale }: { figure: Extract<ChartbookFigure, { layout: "claim-check" }>; fontScale: number }) {
+function ClaimCheck({ figure, fontScale, pen }: { figure: Extract<ChartbookFigure, { layout: "claim-check" }>; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   const { quote, small, large, annotation } = figure;
   const chartH = 380;
   const largeH = chartH, smallH = Math.max(24, Math.round(chartH * (small.value / Math.max(large.value, 1))));

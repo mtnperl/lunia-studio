@@ -14,6 +14,7 @@
 import type { CSSProperties } from "react";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { PaperTexture } from "@/components/carousel/shared/EssayChrome";
+import { penSvg } from "@/components/carousel/shared/PenChrome";
 import { DYK_CHROME_LABEL, DYK_COLORS, DYK_LAYOUT, DYK_SERIF, DYK_TYPE, PAPER_DEFAULTS, BRAND_FONT_FAMILY, type PaperSettings } from "@/lib/brand-tokens";
 import type { DidYouKnowSlideContent, DidYouKnowToken, DidYouKnowTreatment } from "@/lib/types";
 
@@ -30,17 +31,16 @@ type Props = {
 
 const TOTAL = 2;
 
-/** A wavy 7px stroke under the word, drawn as an SVG background so it
- *  overshoots the word by 2% on each side and survives line wraps. */
-const PEN_SVG = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M3 9 C 40 4, 80 12, 120 7 S 180 11, 197 6' fill='none' stroke='${encodeURIComponent(DYK_COLORS.pen)}' stroke-width='7' stroke-linecap='round'/></svg>")`;
-
-const penStyle: CSSProperties = {
-  backgroundImage: PEN_SVG,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "-2% 100%",
-  backgroundSize: "104% 14px",
-  paddingBottom: 6,
-};
+/** The same pen as Chartbook and Primer, in the deck's chosen colour. */
+function penStyleFor(color?: string): CSSProperties {
+  return {
+    backgroundImage: penSvg(color ?? DYK_COLORS.pen),
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "-2% 100%",
+    backgroundSize: "104% 14px",
+    paddingBottom: 6,
+  };
+}
 
 function boxStyle(treatment: DidYouKnowTreatment): CSSProperties {
   const navy = treatment === "navy-box";
@@ -65,8 +65,9 @@ export function markedIndex(tokens: DidYouKnowToken[]): number {
   return tokens.findIndex((t) => t.highlight);
 }
 
-function renderTokens(tokens: DidYouKnowToken[], treatment: DidYouKnowTreatment) {
+function renderTokens(tokens: DidYouKnowToken[], treatment: DidYouKnowTreatment, pen?: string) {
   const marked = markedIndex(tokens);
+  const penStyle = penStyleFor(pen);
   return tokens.map((t, i) => {
     if (!t.highlight) return <span key={i}>{t.text}</span>;
     // Tokens carry their own surrounding spaces; keep those outside the mark
@@ -178,8 +179,8 @@ export default function DidYouKnowSlide({ slide, index = 1, treatment = "navy-bo
         wordBreak: "normal",
         hyphens: "none",
       }}>
-        <p style={{ margin: 0 }}>{renderTokens(slide.body1, treatment)}</p>
-        <p style={{ margin: "36px 0 0 0" }}>{renderTokens(slide.body2, treatment)}</p>
+        <p style={{ margin: 0 }}>{renderTokens(slide.body1, treatment, paper?.pen)}</p>
+        <p style={{ margin: "36px 0 0 0" }}>{renderTokens(slide.body2, treatment, paper?.pen)}</p>
       </div>
 
       <div style={{ position: "absolute", left: DYK_LAYOUT.padX, right: DYK_LAYOUT.padX, bottom: DYK_LAYOUT.chromeBottom, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

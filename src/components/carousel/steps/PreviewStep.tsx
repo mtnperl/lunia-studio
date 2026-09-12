@@ -378,6 +378,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [staleUnitIds, setStaleUnitIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
+  // The first save makes the shell open the saved document, which remounts
+  // this step before the id has been read from it. Take the id when it
+  // lands, so the share link is offered after the first save, not the second.
+  useEffect(() => { if (initialSavedId) setSavedId(initialSavedId); }, [initialSavedId]);
   const [saveLabel, setSaveLabel] = useState<string | null>(null); // transient "Saved!" flash after a successful update
   const [copyLabel, setCopyLabel] = useState("Copy link");
   const [captionCopyLabel, setCaptionCopyLabel] = useState("Copy");

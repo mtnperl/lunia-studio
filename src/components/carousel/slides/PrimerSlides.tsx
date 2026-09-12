@@ -4,7 +4,7 @@
 
 import type { CSSProperties } from "react";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
-import { Kicker, MarkWords, PenChrome, PenGround, PenTitle, TitleBlock, numStyle, penPaper, penStyle, swipeStyle } from "@/components/carousel/shared/PenChrome";
+import { Kicker, MarkWords, PenChrome, PenGround, PenTitle, TitleBlock, numStyle, penPaper, penStyleFor, swipeStyle } from "@/components/carousel/shared/PenChrome";
 import { PEN_COLORS as C, PEN_SERIF, PEN_SANS, PEN_TYPE as T, PEN_LAYOUT as L, type PaperSettings } from "@/lib/brand-tokens";
 import type { PrimerContent, PrimerSlideContent } from "@/lib/types";
 
@@ -36,12 +36,12 @@ export function PrimerCoverSlide({ content, paper, scale = 1, fontScale = 1, id 
               {/* Inter, not the serif: Cormorant's 1 reads as a Roman I. */}
               <div style={{ ...numStyle, fontWeight: 400, fontSize: Math.round(T.numeral * fontScale * 0.9), lineHeight: 0.85, letterSpacing: "-0.06em" }}>{count}</div>
               <div style={{ fontFamily: PEN_SERIF, fontWeight: 500, fontSize: titleSize, lineHeight: 1.05, color: C.ink, maxWidth: 460 }}>
-                <MarkWords text={first} words={content.cover.underline.filter((w) => first.includes(w))} mark="pen" />
+                <MarkWords text={first} words={content.cover.underline.filter((w) => first.includes(w))} mark="pen" pen={p.pen} />
               </div>
             </div>
             {rest && (
               <div style={{ fontFamily: PEN_SERIF, fontWeight: 500, fontSize: titleSize, lineHeight: 1.05, color: C.ink, textAlign: "center" }}>
-                <MarkWords text={rest} words={content.cover.underline.filter((w) => rest.includes(w)).length ? content.cover.underline : [rest.split(/\s+/).slice(-1)[0]]} mark="pen" />
+                <MarkWords text={rest} words={content.cover.underline.filter((w) => rest.includes(w)).length ? content.cover.underline : [rest.split(/\s+/).slice(-1)[0]]} mark="pen" pen={p.pen} />
               </div>
             )}
             <Kicker text={content.cover.kicker} size={T.coverKicker} style={{ marginTop: 10 }} />
@@ -56,7 +56,7 @@ export function PrimerCoverSlide({ content, paper, scale = 1, fontScale = 1, id 
     <SlideWrapper scale={scale} height={H} id={id} style={{ background: C.paper }}>
       <PenGround paper={p}>
         <div style={{ position: "absolute", left: L.padX, right: L.padX, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 40 }}>
-          <PenTitle text={title} underline={content.cover.underline} size={size} style={{ lineHeight: 1.08 }} />
+          <PenTitle text={title} underline={content.cover.underline} size={size} style={{ lineHeight: 1.08 }} pen={p.pen} />
           <Kicker text={content.cover.kicker} size={T.coverKicker} />
         </div>
         <PenChrome arrow />
@@ -74,9 +74,9 @@ export function PrimerBodySlide({ content, paper, scale = 1, fontScale = 1, id }
   return (
     <SlideWrapper scale={scale} height={H} id={id} style={{ background: C.paper }}>
       <PenGround paper={p}>
-        <TitleBlock title={s.title} kicker={kicker} kickerItalic />
+        <TitleBlock title={s.title} kicker={kicker} kickerItalic pen={p.pen} />
         <div style={{ position: "absolute", left: L.padX, right: L.padX, top: L.bodyTop, bottom: L.bodyBottom - 60, overflow: "hidden" }}>
-          <Body slide={s} fontScale={fontScale} />
+          <Body slide={s} fontScale={fontScale} pen={p.pen} />
         </div>
         <PenChrome />
       </PenGround>
@@ -84,12 +84,12 @@ export function PrimerBodySlide({ content, paper, scale = 1, fontScale = 1, id }
   );
 }
 
-function Body({ slide, fontScale }: { slide: PrimerSlideContent; fontScale: number }) {
+function Body({ slide, fontScale, pen }: { slide: PrimerSlideContent; fontScale: number; pen?: string }) {
   switch (slide.layout) {
-    case "rows": return <Rows rows={slide.rows} fontScale={fontScale} />;
-    case "definition": return <Definition slide={slide} fontScale={fontScale} />;
-    case "versus": return <Versus columns={slide.columns} fontScale={fontScale} />;
-    case "creed": return <Creed lines={slide.lines} closing={slide.closing} fontScale={fontScale} />;
+    case "rows": return <Rows rows={slide.rows} fontScale={fontScale} pen={pen} />;
+    case "definition": return <Definition slide={slide} fontScale={fontScale} pen={pen} />;
+    case "versus": return <Versus columns={slide.columns} fontScale={fontScale} pen={pen} />;
+    case "creed": return <Creed lines={slide.lines} closing={slide.closing} fontScale={fontScale} pen={pen} />;
   }
 }
 
@@ -101,7 +101,8 @@ const sans = (size: number, weight: 300 | 400 | 500 = 300): CSSProperties => ({ 
 
 /** A · rows. Fewer rows grow the type, never the gaps. The term takes the
  *  pen, the key phrase of the definition takes the swipe (P2). */
-function Rows({ rows, fontScale }: { rows: { term: string; definition: string; key?: string }[]; fontScale: number }) {
+function Rows({ rows, fontScale, pen }: { rows: { term: string; definition: string; key?: string }[]; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   // Eleven rows must clear the 730px body box: size and padding both step
   // down with the count, and a row never wraps (the lint caps it at 58
   // characters; anything longer is cut with an ellipsis, not spilled).
@@ -123,7 +124,8 @@ function Rows({ rows, fontScale }: { rows: { term: string; definition: string; k
 
 /** B · one term, a definition, a fraction, a threshold, an example. The
  *  threshold's value takes the swipe. */
-function Definition({ slide, fontScale }: { slide: Extract<PrimerSlideContent, { layout: "definition" }>; fontScale: number }) {
+function Definition({ slide, fontScale, pen }: { slide: Extract<PrimerSlideContent, { layout: "definition" }>; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   const f = slide.formula;
   const big = Math.round(40 * fontScale);
   return (
@@ -153,7 +155,8 @@ function Definition({ slide, fontScale }: { slide: Extract<PrimerSlideContent, {
 
 /** C · two columns on a dashed divider. Names take the pen, the first row
  *  of each column takes the swipe, footnotes are italic lines. */
-function Versus({ columns, fontScale }: { columns: [{ name: string; rows: string[]; footnote: string }, { name: string; rows: string[]; footnote: string }]; fontScale: number }) {
+function Versus({ columns, fontScale, pen }: { columns: [{ name: string; rows: string[]; footnote: string }, { name: string; rows: string[]; footnote: string }]; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   const rowSize = Math.round(32 * fontScale);
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", height: "100%" }}>
@@ -174,7 +177,8 @@ function Versus({ columns, fontScale }: { columns: [{ name: string; rows: string
 }
 
 /** D · the creed as serif rows: the condition in the pen, the consequence swiped. */
-function Creed({ lines, closing, fontScale }: { lines: { condition: string; consequence: string }[]; closing: string; fontScale: number }) {
+function Creed({ lines, closing, fontScale, pen }: { lines: { condition: string; consequence: string }[]; closing: string; fontScale: number; pen?: string }) {
+  const penStyle = penStyleFor(pen);
   const size = Math.round(Math.min(40, 44 - (lines.length - 5) * 2) * fontScale);
   return (
     <div>

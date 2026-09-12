@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import PaperControls from "@/components/carousel/shared/PaperControls";
+import { rememberPen, rememberedPen } from "@/lib/pen-memory";
+import { PEN_PRESETS } from "@/lib/brand-tokens";
 import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
 import { compositeSlideWithImages } from "@/lib/slide-export";
 import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
@@ -53,12 +55,18 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   useEffect(() => { setShareCapable(deviceSharesFiles()); }, []);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId ?? null);
+  // The first save makes the shell open the saved document, which remounts
+  // this step before the id has been read from it. Take the id when it lands.
+  useEffect(() => { if (initialSavedId) setSavedId(initialSavedId); }, [initialSavedId]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
   const [fontScale, setFontScale] = useState(1);
   const [treatment, setTreatment] = useState<DidYouKnowTreatment>(initialTreatment ?? "navy-box");
-  const [paper, setPaper] = useState<PaperSettings>(initialPaper ?? PAPER_DEFAULTS.highlighter);
+  // The pen colour chosen last time is the starting pen for a new piece;
+  // a saved piece keeps its own.
+  const [paper, setPaper] = useState<PaperSettings>(() => initialPaper ?? { ...PAPER_DEFAULTS.highlighter, pen: rememberedPen("did_you_know") });
+  const setPaperRemembered = (p: PaperSettings) => { rememberPen("did_you_know", p.pen); setPaper(p); };
 
   function handleCopyShareLink() {
     if (!savedId) return;
@@ -142,6 +150,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
           didYouKnowTreatment: treatment,
           paperGrain: paper.grain,
           paperVignette: paper.vignette,
+          penColor: paper.pen,
         }),
       });
       const data = await res.json();
@@ -249,7 +258,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       </div>
 
       {/* Paper: grain and vignette */}
-      <PaperControls value={paper} defaults={PAPER_DEFAULTS.highlighter} onChange={setPaper} />
+      <PaperControls value={paper} defaults={PAPER_DEFAULTS.highlighter} onChange={setPaperRemembered} penDefault={PEN_PRESETS[0].hex} />
 
       {/* Font size control */}
       <div style={{

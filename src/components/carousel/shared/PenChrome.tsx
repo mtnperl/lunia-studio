@@ -8,20 +8,28 @@ import { PEN_COLORS as C, PEN_SERIF, PEN_SANS, PEN_TYPE as T, PEN_LAYOUT as L, P
 
 export function penPaper(format: "chartbook" | "primer", paper?: Partial<PaperSettings>): PaperSettings {
   const d = PAPER_DEFAULTS[format];
-  return { grain: paper?.grain ?? d.grain, vignette: paper?.vignette ?? d.vignette };
+  return { grain: paper?.grain ?? d.grain, vignette: paper?.vignette ?? d.vignette, pen: paper?.pen };
 }
 
-/** A wavy 7px stroke under the word, drawn as an SVG background so it
- *  overshoots the word by 2% on each side and survives line wraps. */
-const PEN_SVG = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M3 9 C 40 4, 80 12, 120 7 S 180 11, 197 6' fill='none' stroke='${encodeURIComponent(C.pen)}' stroke-width='7' stroke-linecap='round'/></svg>")`;
+/** A 7px stroke under the word with a slight hand-drawn waver (about a
+ *  pixel and a half either way, not the wave it started with), drawn as an
+ *  SVG background so it overshoots the word by 2% on each side and survives
+ *  line wraps. `color` is any CSS colour; the default is the navy pen. */
+export function penSvg(color: string = C.pen): string {
+  return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M3 8 C 40 6.5, 80 9.5, 120 7.5 S 180 9, 197 7' fill='none' stroke='${encodeURIComponent(color)}' stroke-width='7' stroke-linecap='round'/></svg>")`;
+}
 
-export const penStyle: CSSProperties = {
-  backgroundImage: PEN_SVG,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "-2% 100%",
-  backgroundSize: "104% 14px",
-  paddingBottom: 6,
-};
+export function penStyleFor(color?: string): CSSProperties {
+  return {
+    backgroundImage: penSvg(color),
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "-2% 100%",
+    backgroundSize: "104% 14px",
+    paddingBottom: 6,
+  };
+}
+
+export const penStyle: CSSProperties = penStyleFor();
 
 /** The marker swipe: denser at both ends, cloned across line breaks. */
 export const swipeStyle: CSSProperties = {
@@ -34,8 +42,8 @@ export const swipeStyle: CSSProperties = {
 
 /** `text` with each of `words` (exact substrings, first occurrence) wrapped
  *  in `mark`. Words that are not in the text are ignored. */
-export function MarkWords({ text, words, mark = "pen" }: { text: string; words?: readonly string[]; mark?: "pen" | "swipe" }) {
-  const style = mark === "pen" ? penStyle : swipeStyle;
+export function MarkWords({ text, words, mark = "pen", pen }: { text: string; words?: readonly string[]; mark?: "pen" | "swipe"; pen?: string }) {
+  const style = mark === "pen" ? penStyleFor(pen) : swipeStyle;
   const hits = (words ?? [])
     .map((w) => ({ w, at: w ? text.indexOf(w) : -1 }))
     .filter((h) => h.at >= 0)
@@ -63,11 +71,11 @@ export function PenGround({ paper, children }: { paper: PaperSettings; children:
 }
 
 /** Serif title with a pen under the chosen words (default: the last word). */
-export function PenTitle({ text, underline, size = T.title, align = "center", style }: { text: string; underline?: readonly string[]; size?: number; align?: "center" | "left"; style?: CSSProperties }) {
+export function PenTitle({ text, underline, size = T.title, align = "center", style, pen }: { text: string; underline?: readonly string[]; size?: number; align?: "center" | "left"; style?: CSSProperties; pen?: string }) {
   const words = underline && underline.length > 0 ? underline : [text.trim().split(/\s+/).slice(-1)[0] ?? ""];
   return (
     <div style={{ fontFamily: PEN_SERIF, fontWeight: 500, fontSize: size, lineHeight: 1.05, color: C.ink, textAlign: align, ...style }}>
-      <MarkWords text={text} words={words} mark="pen" />
+      <MarkWords text={text} words={words} mark="pen" pen={pen} />
     </div>
   );
 }
@@ -100,10 +108,10 @@ export function PenChrome({ arrow = false }: { arrow?: boolean }) {
 }
 
 /** Title block at the top of the second slide: serif title, unit kicker. */
-export function TitleBlock({ title, underline, kicker, kickerItalic = false }: { title: string; underline?: readonly string[]; kicker?: string; kickerItalic?: boolean }) {
+export function TitleBlock({ title, underline, kicker, kickerItalic = false, pen }: { title: string; underline?: readonly string[]; kicker?: string; kickerItalic?: boolean; pen?: string }) {
   return (
     <div style={{ position: "absolute", left: L.padX, right: L.padX, top: L.titleTop, textAlign: "center" }}>
-      <PenTitle text={title} underline={underline} />
+      <PenTitle text={title} underline={underline} pen={pen} />
       {kicker && <Kicker text={kicker} italic={kickerItalic} style={{ marginTop: 22 }} />}
     </div>
   );

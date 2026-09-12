@@ -703,7 +703,7 @@ export default function CarouselShareClient({ carousel }: Props) {
 function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const dyk = carousel.didYouKnowContent!;
   const dykTreatment = carousel.didYouKnowTreatment ?? "navy-box";
-  const dykPaper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette };
+  const dykPaper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette, pen: carousel.penColor };
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
