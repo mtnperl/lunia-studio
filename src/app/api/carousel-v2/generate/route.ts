@@ -4,8 +4,8 @@ import { createContentMessage, extractText, CONTENT_MODEL, CONTENT_THINKING, CON
 import { parseModelJson } from "@/lib/model-json";
 import { describeGenerateError } from "@/lib/generate-route-utils";
 import { generateChartbook } from "@/lib/chartbook-pipeline";
-import { BRIEF_PROMPT, parseBrief, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief } from "@/lib/carousel-brief";
-import { STRUCTURES } from "@/lib/carousel-structures";
+import { BRIEF_PROMPT, parseBriefResult, describeReject, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief, type BriefReject } from "@/lib/carousel-brief";
+import { STRUCTURES, VALUE_MOVE_TEXT } from "@/lib/carousel-structures";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
 import { lintPrimer } from "@/lib/two-slide-lint";
 import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
@@ -114,11 +114,27 @@ export async function POST(req: Request) {
     if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     // What ran recently, so this deck does not reprint last week's hook,
     // scene or lead figure. Read once, given to the brief and to the cut.
-    const recentBlock = recentDecksBlock((await getCarousels().catch(() => [])) as SavedCarousel[], { excludeId: requestId });
+    const recentBlock = recentDecksBlock(await getCarousels().catch(() => []) as SavedCarousel[], { excludeId: requestId });
     if (recentBlock) console.log(`[generate] memory: ${recentBlock.split("\n").filter((l) => l.startsWith("- ")).length} recent decks attached`);
     // Stage 1: the brief. The argument in prose, before any slide exists.
     // Engagement decks keep their own prompt and skip it.
-    const brief = format === "standard" ? await writeBrief(topic, ledgerBlock, structure, recentBlock) : null;
+    // What the last few decks were FOR, so the account does not run six
+    // corrections in a row. Read off the saved briefs, newest first.
+    const recentCarousels = (await getCarousels().catch(() => [])) as SavedCarousel[];
+    const recentMandates = recentCarousels
+      .filter((c) => c.id !== requestId)
+      .slice(0, 8)
+      .map((c) => c.content?.brief?.mandate);
+    const briefResult = format === "standard" ? await writeBrief(topic, ledgerBlock, structure, recentBlock, recentMandates) : null;
+    // The brief may decline the subject: no mandate passed its own test, so
+    // there is no deck here. That is an answer, not a failure, and it reaches
+    // the user with the subjects that would have worked.
+    if (briefResult && "reject" in briefResult) {
+      const r: BriefReject = briefResult.reject;
+      console.log(`[generate] no deck here: ${r.reason}`);
+      return Response.json({ error: describeReject(r), reject: r }, { status: 422 });
+    }
+    const brief = briefResult?.brief ?? null;
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
       : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock + recentBlock;
@@ -481,19 +497,41 @@ function sentenceCase(text: string): string {
 
 /** Stage 1. Null when the model returns nothing usable, in which case the
  *  deck is written the old way, from the topic and the ledger. */
-async function writeBrief(topic: string, ledgerBlock: string, structure?: CarouselStructure, recentBlock = ""): Promise<CarouselBrief | null> {
+async function writeBrief(
+  topic: string,
+  ledgerBlock: string,
+  structure?: CarouselStructure,
+  recentBlock = "",
+  recentMandates: (string | undefined)[] = [],
+): Promise<{ brief: CarouselBrief } | { reject: BriefReject } | null> {
   try {
-    const hint = structure ? `${STRUCTURES[structure].label}: ${STRUCTURES[structure].info.what}` : undefined;
+    const spec = structure ? STRUCTURES[structure] : null;
+    const hint = spec ? `${spec.label}: ${spec.info.what}` : undefined;
+    // The value move used to reach only the slide-cutting prompt, which was a
+    // stage too late: the piece was already written to explain the topic, and
+    // the cut was then told to flip a belief the piece did not contain. It is
+    // given to the brief now, where it can still change what the deck says.
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
       max_tokens: CONTENT_MAX_TOKENS_SHORT,
       thinking: CONTENT_THINKING,
       output_config: { effort: EFFORT_MEDIUM },
-      messages: [{ role: "user", content: BRIEF_PROMPT(topic, ledgerBlock, hint, recentBlock) }],
+      messages: [{
+        role: "user",
+        content: BRIEF_PROMPT(topic, ledgerBlock, hint, recentBlock, {
+          valueMove: spec ? VALUE_MOVE_TEXT[spec.valueMove] : undefined,
+          hookJob: spec?.hookJob,
+          recentMandates,
+        }),
+      }],
     });
-    const brief = parseBrief(extractText(msg));
-    console.log(brief ? `[generate] piece: ${brief.kind}, ${brief.owes.length} owed, ${brief.backing.length} backing fact(s), question "${brief.question.slice(0, 80)}"` : "[generate] piece: unusable, writing without it");
-    return brief;
+    const result = parseBriefResult(extractText(msg));
+    if (!result) { console.log("[generate] piece: unusable, writing without it"); return null; }
+    if (result.kind === "reject") return { reject: result.reject };
+    const brief = result.brief;
+    console.log(`[generate] piece: ${brief.kind}, mandate ${brief.mandate ?? "none"}, ${brief.owes.length} owed, ${brief.backing.length} backing fact(s), question "${brief.question.slice(0, 80)}"`);
+    if (brief.turn) console.log(`[generate] turn: ${brief.turn.slice(0, 120)}`);
+    return { brief };
   } catch (err) {
     console.warn("[generate] brief failed, writing without it:", err instanceof Error ? err.message : err);
     return null;

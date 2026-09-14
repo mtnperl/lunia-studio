@@ -24,6 +24,7 @@
 //      an editor fixes. It returns rewrites, which are applied here.
 
 import type { CarouselContent, SavedCarousel } from "./types";
+import { mandateMenuBlock, mandateBlock, recentMandatesBlock, isDeckMandate, getMandate } from "./deck-mandates";
 
 // ─── Memory of recent decks ──────────────────────────────────────────────────
 //
@@ -75,6 +76,18 @@ export type BriefBacking = {
 export type BriefComparison = { measure: string; a: string; b: string; result: string };
 
 export type CarouselBrief = {
+  // The mandate: why this deck exists at all, decided before the piece.
+  /** Which mandate was chosen (see deck-mandates.ts). "" on decks written
+   *  before the mandate gate existed. */
+  mandate?: string;
+  /** The promise the mandate makes, in one line. */
+  mandateLine?: string;
+  /** The one sentence the reader will believe afterwards and does not now.
+   *  Everything before it sets it up, everything after pays it off. */
+  turn?: string;
+  /** The specific thing the turn rests on: a study, a measurement, a
+   *  threshold, a scene. Without one the turn is an opinion. */
+  material?: string;
   // The assignment.
   /** The question the reader typed, in their words. */
   question: string;
@@ -118,19 +131,55 @@ export type EditorRead = {
   readAt: string;
 };
 
+/** The brief declining the subject. No mandate passed its own test, so there
+ *  is no deck here; the writer says why and offers subjects that would work.
+ *  The pipeline could not do this before: every stage improved the deck it
+ *  was handed, so a weak subject always became a well-made forgettable deck. */
+export type BriefReject = {
+  /** Why nothing passed, in one sentence a person can act on. */
+  reason: string;
+  /** Subjects on the same ground that would pass, as topic lines. */
+  instead: string[];
+};
+
 // ─── Stage 1: the assignment and the piece ───────────────────────────────────
 
-export const BRIEF_PROMPT = (topic: string, ledgerBlock: string, structureHint?: string, recentBlock = ""): string => `You are writing a short piece for an Instagram carousel by Lunia Life, a sleep supplement brand. Topic: "${topic}"
+export const BRIEF_PROMPT = (
+  topic: string,
+  ledgerBlock: string,
+  structureHint?: string,
+  recentBlock = "",
+  opts: { valueMove?: string; hookJob?: string; recentMandates?: (string | undefined)[] } = {},
+): string => `You are the editor of Lunia Life, a sleep supplement brand, commissioning a short piece for an Instagram carousel. Subject as it arrived from the library: "${topic}"
 
-Work in two parts. There are no slide rules here: no word counts, no hooks, no loops between slides. That comes later, from what you write now.
+Work in three parts. There are no slide rules here: no word counts, no hooks, no loops between slides. That comes later, from what you write now.
 
-PART ONE, THE ASSIGNMENT. What an editor writes on the top of the page before a writer starts.
+PART ZERO, THE MANDATE. Before anything else, decide whether there is a deck here at all, and if so what it is for.
+
+A subject is not a reason to publish. "The relationship between meal timing and sleep quality" is a line from a syllabus: read as a question it asks "does when I eat affect my sleep", the honest answer is "yes, eat earlier", and every reader already believes that. A deck whose conclusion the reader already holds has nowhere to travel, however well it is written. Your first job is to find the thing on this ground that a reader does NOT already hold.
+
+Work it in this order.
+  1. Consider the subject against the mandates below and pick the two or three that could plausibly apply.
+  2. For each, write the line it would carry, and apply that mandate's own test honestly. A mandate you cannot pass is not available to you.
+  3. Choose the one that passes most convincingly. That is the mandate, and the piece is written to deliver it.
+  4. Name THE TURN: the one sentence the reader will believe afterwards that they do not believe now. If a reader would nod along to that sentence, it is not a turn, and you go back to step one.
+  5. Name THE MATERIAL: the specific thing the turn rests on. A study, a measured threshold, a named mechanism, a scene. Without one, the turn is your opinion and the deck cannot be published. Where the research notes below carry it, say which note. Where you are certain of it as textbook science, say so plainly. Never invent a figure, a study or a source to satisfy this.
+
+THE MANDATES:
+
+${mandateMenuBlock()}
+
+IF NOTHING PASSES. When no mandate passes its own test on this subject, say so instead of writing a piece anyway. Return ONLY this, and nothing else:
+{"reject": {"reason": "one sentence on why there is no deck here", "instead": ["a topic line on the same ground that would pass", "another", "a third"]}}
+Each line names something specific on the SAME subject the reader picked, not a neighbouring topic, and names a measure or a mechanism rather than inventing a value. This is a correct and useful answer; a well-written deck nobody needed is worse than an honest no.
+
+PART ONE, THE ASSIGNMENT. What an editor writes on the top of the page before a writer starts. It serves the mandate you just chose.
 - The question. Read the topic as a question a reader typed into a search box. "What is sleep architecture and why it matters" is two questions: what is it, and why should I care. "Does magnesium help sleep" is one. Write the question in the reader's words.
 - Who is asking. One group of people, in their own words: "people who sleep eight hours and still wake tired", not "anyone interested in sleep". A piece for everyone reaches no one.
 - What the answer owes. A satisfying answer to that question has to contain certain things, and you list them before you write so none goes missing. "What is X and why it matters" owes a plain definition, a picture of X the reader can hold, and the consequence that makes it matter. "Does X help Y" owes what happened when someone tested it and what that means for the reader. "How do I X" owes the steps and why each one. Three to five items. The deck fails if one is missing, whatever else it says well.
 - The kind of piece: explainer, finding, myth, how-to, story or list.
 
-PART TWO, THE PIECE. About 150 to 220 words of prose a good science journalist would file, answering the question in the order the assignment sets. It is told, not reported: where research appears, it is what someone did and what they saw, in words the reader can picture. Never a frequency, a dose, a p-value or a sample size in the prose; those go in "backing" for the fact check.
+PART TWO, THE PIECE. About 150 to 220 words of prose a good science journalist would file, answering the question in the order the assignment sets and delivering the mandate. It is told, not reported: where research appears, it is what someone did and what they saw, in words the reader can picture. Never a frequency, a dose, a p-value or a sample size in the prose; those go in "backing" for the fact check.
 
 The story leads and the research backs it. Build the piece around the question, then reach for a fact where a sentence would otherwise ask the reader to take your word for it. A sentence that explains, defines or tells a story needs no citation, and the piece is not made of citations. The research notes below are notes, not an outline: use what backs something you are saying, and ignore the rest however striking it is. A note is never the reason a paragraph exists.
 
@@ -143,9 +192,13 @@ The loop. A carousel is read one slide at a time, and at each slide the reader d
 Who reads it: a curious adult who reads well, the reader of a good newspaper's science pages. Use the real terms (REM, cortisol, slow-wave sleep) and define each in passing the first time; never a nursery substitute like "dreaming sleep". Sentences of the length a science journalist writes, most 12 to 22 words, with a short one where a point lands. Literal verbs and named things: "adenosine builds up between brain cells while you are awake and clears away during sleep", never "the brain's running costs" or "the molecule"; where a plain word exists, it wins over a metaphor, and the noun is repeated rather than replaced by a stand-in.
 
 Be right. Only say what the notes support or what you are certain of; where a mechanism is uncertain, say what is known and stop. Every number sits next to its baseline. If the reader holds a belief the piece overturns, say that belief in their words before you overturn it, and if they hold none, do not invent one.
-${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${ledgerBlock ? `\nRESEARCH NOTES, for backing, not for outline:\n${ledgerBlock}\n` : ""}${recentBlock}
+${structureHint ? `\nHow this deck will argue: ${structureHint}\n` : ""}${opts.valueMove ? `\nWHAT THE READER GAINS. This deck exists to ${opts.valueMove}. The mandate you choose has to serve that, and so does the turn.\n` : ""}${opts.hookJob ? `The hook will have to: ${opts.hookJob}\n` : ""}${ledgerBlock ? `\nRESEARCH NOTES, for backing, not for outline. One of these may well be your material; a note that carries the turn is the reason this deck can be published:\n${ledgerBlock}\n` : ""}${recentMandatesBlock(opts.recentMandates ?? [])}${recentBlock}
 Return ONLY valid JSON in this exact format, no other text:
 {
+  "mandate": "correction | unknown-claim | connection | naming | finding | rule | question",
+  "mandateLine": "the promise this mandate makes, one line, carrying what that mandate's line must carry",
+  "turn": "the one sentence the reader will believe afterwards and does not believe now",
+  "material": "the specific thing the turn rests on: the study, the threshold, the mechanism or the scene",
   "question": "the question the reader typed, in their words",
   "who": "one group, in their own words, ten words or fewer",
   "kind": "explainer | finding | myth | how-to | story | list",
@@ -182,7 +235,12 @@ export function parseBrief(raw: string): CarouselBrief | null {
     const loop = { promise: String(loopRaw.promise ?? "").trim().slice(0, 300), carried: String(loopRaw.carried ?? "").trim().slice(0, 300), lands: String(loopRaw.lands ?? "").trim().slice(0, 300) };
     const kindRaw = str("kind", 20).toLowerCase() as BriefKind;
     const kind: BriefKind = BRIEF_KINDS.includes(kindRaw) ? kindRaw : "explainer";
+    const mandateRaw = str("mandate", 40).toLowerCase();
     const brief: CarouselBrief = {
+      mandate: isDeckMandate(mandateRaw) ? mandateRaw : undefined,
+      mandateLine: str("mandateLine", 400) || undefined,
+      turn: str("turn", 400) || undefined,
+      material: str("material", 400) || undefined,
       question: str("question", 300),
       who: str("who", 160),
       kind,
@@ -200,6 +258,38 @@ export function parseBrief(raw: string): CarouselBrief | null {
   } catch {
     return null;
   }
+}
+
+/** The brief call's answer: a piece, or an honest refusal to write one.
+ *  Returns null when the reply is neither, so the caller can carry on
+ *  without a brief rather than fail the whole generation. */
+export function parseBriefResult(raw: string): { kind: "brief"; brief: CarouselBrief } | { kind: "reject"; reject: BriefReject } | null {
+  let reject: BriefReject | null = null;
+  try {
+    const text = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const o = JSON.parse(text) as { reject?: unknown };
+    const r = o?.reject && typeof o.reject === "object" ? (o.reject as Record<string, unknown>) : null;
+    if (r) {
+      const reason = String(r.reason ?? "").trim().slice(0, 400);
+      const instead = Array.isArray(r.instead)
+        ? r.instead.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim().slice(0, 200)).slice(0, 4)
+        : [];
+      // A refusal with no reason is not a refusal, it is a malformed reply.
+      if (reason) reject = { reason, instead };
+    }
+  } catch {
+    /* not JSON at the top level; parseBrief does its own tolerant read */
+  }
+  if (reject) return { kind: "reject", reject };
+  const brief = parseBrief(raw);
+  return brief ? { kind: "brief", brief } : null;
+}
+
+/** The refusal as one line for a log or an error message. */
+export function describeReject(reject: BriefReject): string {
+  return reject.instead.length > 0
+    ? `${reject.reason} Try instead: ${reject.instead.map((t) => `"${t}"`).join(", ")}.`
+    : reject.reason;
 }
 
 /** The backing facts as one indented list, for any prompt that carries the piece. */
@@ -222,7 +312,7 @@ function assignmentLines(brief: CarouselBrief): string {
 export function briefPromptBlock(brief: CarouselBrief | null | undefined): string {
   if (!brief) return "";
   const backs = backingLines(brief);
-  return `
+  return `${mandateBlock(brief.mandate, brief.mandateLine)}${brief.turn ? `  THE TURN, the one sentence the reader will believe afterwards: ${brief.turn}\n` : ""}
 THE PIECE. This is what the deck says. Every slide is CUT from it: a sentence or two, given a headline. Keep the piece's sentences where they fit; shorten only to fit the slide, and never by chopping a sentence into fragments. You may not add a claim, a number, a mechanism or a motive that is not in the piece, and every number keeps the baseline the piece gives it. A slide that carries a sentence the piece backs with a fact carries that source as its citation; a slide of story or explanation carries none, and an empty citation is correct.
 
 THE ASSIGNMENT:
@@ -241,7 +331,7 @@ ${backs ? `  Backing, for citations and accuracy:\n${backs}\n` : ""}  ${brief.ov
 export function craftBlock(brief: CarouselBrief): string {
   const backs = backingLines(brief);
   const loop = brief.loop ?? { promise: "", carried: "", lands: "" };
-  return `
+  return `${mandateBlock(brief.mandate, brief.mandateLine)}
 WHO IS READING. ${brief.who || "A curious adult who reads well"}. They read the science pages of a good newspaper on their phone; nothing is assumed and nothing is dumbed down. Write the way a good science journalist writes for them: real terms, each explained in passing the first time, sentences of the length prose has, and a story of what people did and what they saw rather than what was measured.
 
 THE ASSIGNMENT. The deck exists to answer this question, and the slides together must deliver everything the answer owes. A deck that says true things and leaves one of these out has failed.
@@ -262,6 +352,21 @@ HOW A GOOD CAROUSEL READS. The reader sees one slide at a time and decides at ea
   Headlines are complete sentences a stranger understands with nothing under them. The slide that defines the deck's subject may carry the question itself as its headline ("What is sleep pressure?") and answer it in the first sentence.
   Numbers only where the reader can feel them, always against their baseline.
   The last slide answers the question in the reader's words and says what to do with the answer.
+
+THE SHAPE OF THE ARGUMENT. ${brief.turn ? `The deck turns on one sentence: ${brief.turn} Everything before it sets that up, everything after pays it off.${brief.material ? ` It rests on: ${brief.material}` : ""} One slide carries the turn and it is the slide the deck exists for; if that slide could be deleted without killing the deck, the turn is on the wrong slide.` : "One slide carries the sentence the deck exists for. Everything before it sets that up, everything after pays it off."}
+
+  Where a running order is set for you below, follow it. Where none is, these are the jobs, in order, and each one passes or fails its own test:
+    1. THE MOMENT. One scene or claim that raises a question. Passes if a stranger can say what question it opened.
+    2. THE RECOGNITION. The situation the reader lives, and what they currently blame it on. Passes if it works cold as a first slide, because Instagram shows the deck from here too, and if it names their belief in their words.
+    3. THE CRACK. Why that explanation is incomplete. Passes if it breaks a belief the previous slide showed them holding, rather than one they were never shown.
+    4. THE TURN. The one sentence the deck exists for. Passes if deleting this slide kills the deck.
+    5. THE COST. What the turn means for tonight. Passes if it reuses a concrete detail from the recognition slide rather than making a general claim.
+    6. THE MOVE. The one thing to do, and why it follows. Passes if it follows from the turn, not from common sense.
+
+THREE RULES ACROSS EVERY SLIDE. These are what separate a deck from a list of true sentences.
+  SPECIFICITY INCREASES. Each slide is more concrete than the one before it. The failure to watch for is the opposite: a deck that opens on a specific scene and drifts upward into "prioritise consistency" and "listen to your body". If a later slide is vaguer than an earlier one, the argument has collapsed and the slide is rewritten, not softened.
+  ONE NEW THING PER SLIDE. A slide that only moves the reader toward the next one is a transition, and a transition is not a slide. If you cannot name what this slide taught that the last one did not, merge it or cut it.
+  THE SWAP TEST. Take any sentence and swap the subject for a neighbouring one. If the sentence still reads fine, it belongs to no deck in particular and it goes. Every line should be impossible to lift into a different deck unchanged.
 
 HOW A SLIDE IS WRITTEN. These are the edits the editor makes by hand to every deck; make them before they have to.
   Literal verbs, no metaphors. "Adenosine is a by-product of the brain's everyday activity", never "the brain's running costs". "Caffeine blocks the receptors", never "parks itself in them". "The pressure keeps building", never "rising behind the block". Where a plain word exists, it wins.
@@ -288,7 +393,9 @@ export const EDITOR_READ_PROMPT = (brief: CarouselBrief | null, content: Carouse
   const question = brief?.question || "the question the topic asks";
   const owes = brief?.owes?.length ? brief.owes.map((o) => `    - ${o}`).join("\n") : "";
   return `You are a careful native English reader. You have not seen any writing rules and you must not invent any. Read this Instagram carousel cold, the way a stranger would on a phone.
-${brief ? `
+${brief ? `${brief.mandate && brief.mandateLine ? `
+WHY THIS DECK EXISTS. It was commissioned to do one thing: ${brief.mandateLine}${getMandate(brief.mandate) ? ` It fails if it reads as ${getMandate(brief.mandate)!.failsAs.toLowerCase()}` : ""}${brief.turn ? `\n  The sentence the reader is meant to believe afterwards: ${brief.turn}` : ""}
+` : ""}
 THE ASSIGNMENT this deck was made for:
   The question the reader is asking: ${question}
   Who is asking: ${brief.who}${owes ? `\n  What the answer owes them:\n${owes}` : ""}
@@ -305,10 +412,13 @@ ${tk}
 Read it in three passes.
 
 FIRST, THE TITLE TEST. A reader tapped this deck because they wanted to know: "${question}". Using only what the slides say, answer that question in one sentence. If you cannot, or the slides answer a different question, or one of the things the answer owes is missing, that is the first and most important note: say what is missing, and put the fix on the slide that should carry it, rewriting that slide whole so it says the missing thing in the register of the rest. A deck that says true things and does not answer its title has failed.
+${brief?.mandateLine ? `  Then the same test for what the deck was FOR. Name the slide that delivers "${brief.mandateLine}". If no slide does, or the deck only circles it, that is a note of the same weight: put the fix on the slide that should carry it.${brief.turn ? ` Say which slide carries the sentence the reader is meant to believe, and if none does, rewrite the slide nearest to it so that it does.` : ""}\n` : ""}
 
 SECOND, THE SWIPE. Does slide 2 stand alone for a stranger who sees it first, and does it make them want slide 3? At each slide, is there a reason to see the next one that comes from what the slide says? A deck that reads as a list of true facts in any order has no pull; a slide that is a fragment to create suspense, or that only makes sense once you have read the next, is worse. Fix by rewriting the slide so it says its whole thought and the thought itself leads on.
 
-THIRD, WHAT AN EDITOR FIXES. A slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a metaphor where a plain verb exists ("parks itself in the receptors" for "blocks the receptors", "running costs" for "everyday activity"); a stand-in the reader has to resolve ("the molecule", "that clearing") where the noun should be repeated (repeating the noun is never a fault here, a stand-in is); a long sentence carrying two ideas that should be two short ones, or two thoughts on one slide with no blank line between them; a finding stated cold where "In one study, researchers..." would tell the reader evidence is coming; a second study on a slide that only needed one, or a citation on a slide that only defines or explains; a slide that recites a measurement instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that answers something other than the question; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
+THIRD, THREE RULES. Read the slides in order against these before anything else in this pass. A later slide vaguer or more general than an earlier one, so the deck drifts from a scene up into advice anyone could give. A slide that teaches nothing the previous slide did not, and only moves the reader along. A sentence that would read just as well in a deck on a different subject, which means it belongs to no deck at all. Each of these is fixed by rewriting the slide to be more specific, never by softening it or cutting it short.
+
+FOURTH, WHAT AN EDITOR FIXES. A slide that does not follow from the one before it, or that overturns a belief the reader was never shown holding; a number with no baseline on the slide; a sentence no native writer would produce, or a nursery substitute for a real term ("dreaming sleep" for REM); a metaphor where a plain verb exists ("parks itself in the receptors" for "blocks the receptors", "running costs" for "everyday activity"); a stand-in the reader has to resolve ("the molecule", "that clearing") where the noun should be repeated (repeating the noun is never a fault here, a stand-in is); a long sentence carrying two ideas that should be two short ones, or two thoughts on one slide with no blank line between them; a finding stated cold where "In one study, researchers..." would tell the reader evidence is coming; a second study on a slide that only needed one, or a citation on a slide that only defines or explains; a slide that recites a measurement instead of telling who did what and what they saw; a headline that means nothing on its own; a takeaway that answers something other than the question; a hook that promises what the slides never deliver; anything pitched at a child rather than the adult this is for. When a slide reads as machinery, rewrite the whole slide in the register of a science journalist; do not patch a word.
 
 A fix is a replacement for that unit only, and it never removes what the slide was for: if the last slide's action is not earned by what came before, add the bridge from the piece rather than deleting the action, and never turn the last slide into a repeat of the one before it. Shapes: a hook headline is UPPERCASE, 8 words or fewer, with a subline of 10 words or fewer; a slide headline is ${opts.essay ? "UPPERCASE, 4 to 9 words, a complete claim" : "8 words or fewer"}${opts.viral ? ", sentence case, and is the first line of the slide's thought" : ""}; ${bodyShape}; a takeaway point is 12 words or fewer with no full stop. Paragraphs inside a body are separated by a real newline character, never by the " / " this listing uses to show them. No em dashes anywhere; use a comma, a colon or a full stop. Keep every fact inside the piece. Keep citations as they are; a slide with no citation is not a fault.
 

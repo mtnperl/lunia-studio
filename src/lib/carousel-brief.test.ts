@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseBrief, parseEditorRead, applyEditorRead, briefPromptBlock, craftBlock, describeEditorRead, recentDecksBlock, repairTakeaway, EDITOR_READ_PROMPT } from "./carousel-brief";
+import { parseBrief, parseBriefResult, describeReject, parseEditorRead, applyEditorRead, briefPromptBlock, craftBlock, describeEditorRead, recentDecksBlock, repairTakeaway, EDITOR_READ_PROMPT, BRIEF_PROMPT } from "./carousel-brief";
 import { splitEssayBody, keepOneEssayGraphic, isEssayGraphic } from "./essay-body";
 import type { CarouselContent, SavedCarousel } from "./types";
 
@@ -160,5 +160,84 @@ describe("essay figure", () => {
     const { slides, cleared } = keepOneEssayGraphic([{ graphic: JSON.stringify({ component: "wave", data: { labels: ["A"] } }) }, { graphic: split }, { graphic: bars }]);
     expect(slides.map((s) => !!s.graphic)).toEqual([false, true, false]);
     expect(cleared).toBe(2);
+  });
+});
+
+describe("the mandate gate", () => {
+  const withMandate = {
+    ...brief,
+    mandate: "connection",
+    mandateLine: "Melatonin is both the sleep signal and the insulin brake.",
+    turn: "The same meal is a different meal at ten at night.",
+    material: "Melatonin suppresses insulin secretion as it rises in the evening.",
+  };
+
+  it("parses the mandate, the turn and the material, and drops an invented mandate", () => {
+    const parsed = parseBrief(JSON.stringify(withMandate));
+    expect(parsed?.mandate).toBe("connection");
+    expect(parsed?.turn).toBe(withMandate.turn);
+    expect(parsed?.material).toBe(withMandate.material);
+    expect(parseBrief(JSON.stringify({ ...withMandate, mandate: "vibes" }))?.mandate).toBeUndefined();
+    // A brief written before the gate existed still parses.
+    expect(parseBrief(JSON.stringify(brief))?.mandate).toBeUndefined();
+  });
+
+  it("offers the mandates and the refusal in the brief prompt", () => {
+    const prompt = BRIEF_PROMPT("meal timing and sleep", "", undefined, "", {
+      valueMove: "take something everyone believes and show it is backwards",
+      hookJob: "Name the contradiction.",
+      recentMandates: ["finding", "finding", "finding"],
+    });
+    expect(prompt).toContain("PART ZERO, THE MANDATE");
+    expect(prompt).toContain('MANDATE "connection"');
+    expect(prompt).toContain("show it is backwards");
+    expect(prompt).toContain("Name the contradiction.");
+    expect(prompt).toContain("The last three were all Finding");
+    expect(prompt).toContain('{"reject":');
+  });
+
+  it("carries the mandate and the turn into the cut", () => {
+    const block = craftBlock(withMandate);
+    expect(block).toContain("THE MANDATE");
+    expect(block).toContain("Melatonin is both the sleep signal");
+    expect(block).toContain("The deck turns on one sentence");
+    expect(block).toContain("SPECIFICITY INCREASES");
+    expect(block).toContain("THE SWAP TEST");
+  });
+
+  it("gives the editor the promise to check the deck against", () => {
+    const prompt = EDITOR_READ_PROMPT(withMandate, deck);
+    expect(prompt).toContain("WHY THIS DECK EXISTS");
+    expect(prompt).toContain("Melatonin is both the sleep signal");
+    expect(prompt).toContain("THREE RULES");
+    // A deck with no mandate gets the read it always had, with no empty block.
+    expect(EDITOR_READ_PROMPT(brief, deck)).not.toContain("WHY THIS DECK EXISTS");
+  });
+});
+
+describe("parseBriefResult", () => {
+  it("reads a normal brief", () => {
+    const out = parseBriefResult(JSON.stringify(brief));
+    expect(out?.kind).toBe("brief");
+    if (out?.kind === "brief") expect(out.brief.claim).toBe(brief.claim);
+  });
+
+  it("reads a refusal and describes it with the subjects that would work", () => {
+    const raw = JSON.stringify({ reject: { reason: "Everyone already believes you should eat earlier.", instead: ["Melatonin and the late meal", "Meal timing and core temperature"] } });
+    const out = parseBriefResult(raw);
+    expect(out?.kind).toBe("reject");
+    if (out?.kind === "reject") {
+      expect(out.reject.instead).toHaveLength(2);
+      expect(describeReject(out.reject)).toContain("Try instead");
+      expect(describeReject({ reason: "No deck here.", instead: [] })).toBe("No deck here.");
+    }
+  });
+
+  it("treats a refusal with no reason as malformed, not as a refusal", () => {
+    expect(parseBriefResult(JSON.stringify({ reject: { instead: ["something"] } }))).toBeNull();
+  });
+
+  it("returns null when the reply is neither, so writing can go on without a brief", () => {
+    expect(parseBriefResult("not json at all")).toBeNull();
   });
 });

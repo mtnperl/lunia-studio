@@ -11,6 +11,7 @@ import ChartbookFigureStep from "@/components/carousel/steps/ChartbookFigureStep
 import type { ChartbookFigure, ChartbookFigureProposal } from "@/lib/types";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import { isTwoSlideFormat } from "@/lib/types";
+import { readJsonResponse } from "@/lib/fetch-json";
 import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -406,7 +407,10 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           requestId,
         }),
       });
-      const data = await res.json();
+      // Generation is the longest call in the app. When it dies at the edge
+      // the platform serves an error page, and res.json() turned that into a
+      // parser error that read like a bug in the writer.
+      const data = await readJsonResponse<Record<string, unknown> & { error?: string }>(res, "generation");
       if (!res.ok || data.error) {
         setError(data.error ?? "Failed to generate content. Please try again.");
         return;

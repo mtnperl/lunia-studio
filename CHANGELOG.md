@@ -3,6 +3,18 @@
 ## [Unreleased]
 
 ### Added
+- Deck mandates: the reason a deck exists, decided before the piece is written. Seven of them in `src/lib/deck-mandates.ts` (Correction, Unknown claim, Connection, Naming, Finding, Rule, Question), each carrying the test it must pass and the way it goes wrong. The brief now opens on PART ZERO, weighs two or three mandates against the subject, applies each one's own test, and writes the piece to deliver the winner. The chosen mandate, the turn and the material are stored on the brief and carried into the cut and the editor read.
+- The brief can decline a subject. When no mandate passes its test there is no deck, and the brief returns a reason with three topic lines on the same ground that would pass. The route answers 422 and the builder shows it. Until now every stage improved the deck it was handed and nothing could say no, so a weak subject always became a well-made forgettable deck.
+- The turn and the material. The turn is the one sentence the reader will believe afterwards and does not believe now; the material is the study, threshold, mechanism or scene it rests on. A turn a reader would nod at sends the brief back to the mandate menu, and a turn with no material cannot be published.
+- The slide-by-slide spec in `craftBlock`: six named jobs (Moment, Recognition, Crack, Turn, Cost, Move) each with the test it passes, used where a structure does not set its own running order. Plus three rules on every deck: specificity increases slide to slide, one new thing per slide, and the swap test (a sentence that would read fine in a deck on another subject belongs to no deck).
+- Mandate mix memory. The last eight decks' mandates reach the brief, so an account does not run six corrections in a row. It governs the mix only and never bars a mandate the subject needs.
+
+### Fixed
+- The value move reached the slide-cutting prompt but never the brief, so the piece was written to explain the topic and the cut was then told to flip a belief the piece did not contain. `writeBrief` now passes the structure's value move and hook job into `BRIEF_PROMPT`, one stage earlier, where it can still change what the deck says.
+- The editor read only tested whether the deck answered its title. It now also names the slide that delivers the mandate, and the slide carrying the turn, and rewrites the nearest slide when neither exists.
+- Carousel generation, the longest call in the app, reported an edge timeout as a JSON parse error. It reads through `readJsonResponse` now.
+
+### Added
 - Hook spread: twelve labelled hook ANGLES (Symptom, Paradox, Tell, Wrong door, Myth bust, Mechanism, Evidence, Stakes, Scale, Relief, Threshold, Confession) in `src/lib/hook-angles.ts`. An angle is the entry point into the topic, not a synonym for a tone. `POST /api/carousel-v2/hook-spread` writes one hook per selected angle against the same fixed deck, tags each with its angle and a one-line note on what it does, and appends them to the pool. Angle chips and the spread button are in the Brief rail of PreviewStep and in the rewrite panel of HookStep; every hook card shows the angle it came from.
 - `Hook.angle` and `Hook.angleNote` on the carousel content type. Optional, so hooks written before the spread are untouched.
 - Anti-machine block in the spread prompt: no invented precision (a clock time, a percentage or a count appears only if the piece has it), no hollow aphorisms, no drifting off the deck's subject onto a downstream symptom, no borrowed cadence (colon headlines, "here is why", "it is not X, it is Y").
