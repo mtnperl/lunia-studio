@@ -261,6 +261,13 @@ export type Hook = {
   /** Essay preset: the one word or short phrase of the headline drawn in the
    *  accent box. An exact substring of headline; dropped otherwise. */
   emphasis?: string;
+  /** Hook spread: the angle this hook was written for (see hook-angles.ts).
+   *  Labels the option in the builder. Absent on hooks written before the
+   *  spread existed, and on single-tone regenerations. */
+  angle?: string;
+  /** Hook spread: one line on what this option does that the others do not.
+   *  Shown to the person choosing; never rendered on the slide. */
+  angleNote?: string;
 };
 
 export type CarouselContentSlide = {

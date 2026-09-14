@@ -5,6 +5,7 @@ import { TECHNICAL_TERMS, MAX_SENTENCE_WORDS } from "./plain-language";
 import { spinePromptBlock, type StorySpine } from "./story-spine";
 import { structurePromptBlock, slotFor, STRUCTURES, type CarouselStructure } from "./carousel-structures";
 import { briefPromptBlock, craftBlock, type CarouselBrief } from "./carousel-brief";
+import { anglePromptBlock } from "./hook-angles";
 
 // ─── Brand bridge — caption Paragraph 4 spec ──────────────────────────────────
 // When the "Brand SEO line in caption" toggle is on (default), Claude adds a
@@ -212,6 +213,71 @@ Hook format rules (hard):
 - subline: max 10 words, no period at the end. It completes the headline: the comparison its number comes from, or who the deck is for. Never a slogan.
 - sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
   If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer — the hook simply renders without a trust liner. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty. Never pad this field to satisfy the format.`;
+};
+
+/**
+ * Prompt for a HOOK SPREAD: one hook per ANGLE, not N variations of one tone.
+ *
+ * REGENERATE_HOOKS_PROMPT writes every hook under a single hook tone, so the
+ * options it returns differ by wording. This one hands the model a different
+ * entry point for each hook and asks it to open the same deck through each
+ * door in turn. Each returned hook carries the angle it was written for, so
+ * the builder can label it and the writer can choose a strategy rather than a
+ * synonym. Format rules mirror REGENERATE_HOOKS_PROMPT so the output drops
+ * straight into content.hooks.
+ */
+export const HOOK_SPREAD_PROMPT = (
+  topic: string,
+  angles: string[],
+  slides: { headline: string; body: string }[] = [],
+  guidelines = "",
+  spine: StorySpine | null = null,
+  structure: CarouselStructure | null = null,
+  stylePreset: string | null = null,
+  opts: { existing?: { headline: string; subline?: string }[]; brief?: CarouselBrief | null } = {},
+): string => {
+  const isEssay = stylePreset === "essay";
+  const isBillboard = stylePreset === "billboard";
+  const deck = slides.map((s, i) => `Slide ${i + 1}: ${s.headline} — ${s.body}`).join("\n");
+  const existing = (opts.existing ?? []).filter((h) => h.headline).map((h) => `  - ${h.headline}${h.subline ? ` / ${h.subline}` : ""}`).join("\n");
+  const shape = angles
+    .map((id) => `    { "angle": "${id}", "headline": "string", "subline": "string", "angleNote": "string", "sourceNote": "Based on [real journal/institution] research, [year] — or \\"\\" if you cannot name a real one"${isEssay || isBillboard ? ', "emphasis": "string"' : ""} }`)
+    .join(",\n");
+  return `You are a content strategist for Lunia Life, a sleep supplement brand. Write EXACTLY ${angles.length} hook options for the carousel below — one per ANGLE listed. An angle is where the reader is standing when the hook reaches them, not a synonym for a tone. Each hook opens THIS SAME deck through a different door.
+
+Topic: ${topic}
+${PLAIN_LANGUAGE_BLOCK}${spinePromptBlock(spine)}${structure ? `THE HOOK'S JOB (${STRUCTURES[structure].label}): ${STRUCTURES[structure].hookJob}\n` : ""}
+The deck the hook must introduce. The slides and CTA are FIXED — a hook that promises something these slides do not deliver has failed:
+${deck || "(no slide content provided — base hooks on the topic)"}
+${opts.brief ? `\nTHE PIECE the deck was cut from. Every hook opens THIS argument with a sentence the piece contains, and adds no detail the piece does not have.\n  The question: ${opts.brief.question || topic}\n  What the reader can say afterwards: ${opts.brief.claim}\n  Who is asking: ${opts.brief.who}\n  The piece: ${opts.brief.argument.replace(/\n+/g, " ")}\n` : ""}${existing ? `\nALREADY ON THE TABLE. These hooks exist for this deck. Do not repeat, paraphrase, or reuse the lead figure or scene of any of them:\n${existing}\n` : ""}
+THE ANGLES, in order. Write one hook for each, in this order, and tag it with its id:
+
+${anglePromptBlock(angles)}
+
+WHAT MAKES A HOOK READ AS MACHINE-WRITTEN. These are the failures to avoid, and they matter more than any other rule here:
+1. INVENTED PRECISION. A number, a clock time, a percentage or a count appears in a hook ONLY if it is in the piece or the slides above. "Waking at 2:40" is a fabrication that sounds specific; "waking twice a night to pee" is an observation. When you do not have the figure, write the observation. Never reach for a decimal or an odd-numbered minute to sound real.
+2. THE HOLLOW APHORISM. A line built to sound wise that carries no information — "YOUR BLADDER IS NOT THE CLUE", "SLEEP IS THE NEW CURRENCY". If the reader cannot say what they just learned, cut it.
+3. DRIFT OFF THE SUBJECT. The deck has a subject. A hook that opens on a downstream symptom and never names the subject leaves the reader somewhere else. Open wherever you like, but the headline or the subline names what this deck is actually about.
+4. THE BORROWED CADENCE. No colon headlines. No "here is why", "the truth about", "what nobody tells you", "it's not X, it's Y". No stacked abstract nouns. No em dashes anywhere.
+5. WORDS NOBODY SAYS OUT LOUD. Write the sentence a person would say to a friend across a table. If you would not say it out loud, it is not a hook.
+
+Output STRICT JSON, no markdown, no commentary, exactly ${angles.length} objects in the order of the angles above:
+{
+  "hooks": [
+${shape}
+  ]
+}
+
+Hook format rules (hard):
+- angle: copied exactly from the angle id it was written for.
+- angleNote: one short line, max 12 words, on what this hook does that the others do not. Written for the person choosing between them, not for the reader.
+- headline: UPPERCASE, punchy, max 8 words${isEssay ? `
+- emphasis: the ONE word (two at most) of the headline that carries it, copied EXACTLY from the headline. It is drawn in a filled box. The verb, the number or the villain; never the product, never "you".` : ""}${isBillboard ? `
+- BILLBOARD: the headline is set as a thin line over a HEAVY line. Write it as two halves, at most 22 characters then at most 14 characters. "emphasis" is the heavy half, copied EXACTLY from the end of the headline. The subline is set the same way under the photo: two short halves, at most 5 words in all.` : ""}
+- subline: max 10 words, no period at the end. It completes the headline: the comparison its number comes from, or who the deck is for. Never a slogan.
+- sourceNote: the trust liner under the hook. Include one ONLY when you can name a specific, real, published source you are confident exists. Format: "Based on [real published journal/institution] research, [year]". Max 8 words after "Based on".
+  If you cannot name a real source for this specific claim, return an empty string "". An empty sourceNote is a CORRECT and expected answer. Inventing, guessing, or approximating a source is a serious error, and is worse than leaving it empty.
+- If an angle genuinely does not fit this deck (the piece has no threshold to name, no figure to scale against), write the honest weaker hook for it anyway and say so in angleNote. Do not silently write a different angle in its place.${guidelines ? `\n\nExtra direction from the user, applied to all ${angles.length}:\n${guidelines}` : ""}`;
 };
 
 export const STYLE_REFERENCE_PREFIX = `A carousel style reference image is attached. Study it carefully: note the tone, vocabulary, content density, section structure, and how claims are framed. Match that style in the carousel you generate below — do not comment on the image, just apply what you observe.\n\n`;

@@ -38,6 +38,8 @@ import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFiel
 import { DEFAULT_GATING } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
+import { HOOK_ANGLES, DEFAULT_SPREAD, hookAngleLabel } from "@/lib/hook-angles";
+import { readJsonResponse } from "@/lib/fetch-json";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { DEFAULT_HOOK_OVERLAYS, SOFT_WHITE, type HookOverlaySettings, type BackgroundWash } from "@/components/carousel/shared/HookOverlays";
 import FeedPreview from "@/components/carousel/preview/FeedPreview";
@@ -431,9 +433,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   const [editorH, setEditorH] = useState(0);
   const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption" | "check">("slide");
   // More hooks (appended to the pool) and more titles (offered for one slide).
-  const HOOK_POOL_MAX = 12;
+  const HOOK_POOL_MAX = 24;
   const [hookBusy, setHookBusy] = useState(false);
   const [hookError, setHookError] = useState<string | null>(null);
+  // Hook spread: one hook per angle, so the options on the table differ by
+  // strategy instead of by wording. The chips are the angles asked for.
+  const [spreadAngles, setSpreadAngles] = useState<string[]>(DEFAULT_SPREAD);
+  const [spreadBusy, setSpreadBusy] = useState(false);
   const [titleOptions, setTitleOptions] = useState<{ key: string; items: string[] } | null>(null);
   const [titleBusy, setTitleBusy] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -569,7 +575,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
           existing: content.hooks, brief: content.brief ?? null, count: 3,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse<{ error?: string; hooks?: Hook[] }>(res, "hook rewrite");
       if (!res.ok || data.error) throw new Error(data.error ?? "Could not write hooks");
       const fresh = (Array.isArray(data.hooks) ? data.hooks : []) as Hook[];
       if (fresh.length === 0) throw new Error("No hooks returned");
@@ -579,6 +585,46 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     } finally {
       setHookBusy(false);
     }
+  }
+
+  /** One hook per selected ANGLE, appended to the pool.
+   *
+   *  "More hooks" writes three variations under the deck's single hook tone,
+   *  which is a choice between synonyms. This writes the same deck opened
+   *  through a different door each time — symptom, paradox, stakes — and tags
+   *  each option with the angle it came from, so the choice is a strategy. */
+  async function writeSpread() {
+    if (spreadBusy || hookBusy || spreadAngles.length === 0) return;
+    if (content.hooks.length >= HOOK_POOL_MAX) return;
+    setSpreadBusy(true);
+    setHookError(null);
+    try {
+      const res = await fetch(`${apiBase}/hook-spread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic, stylePreset, structure: structure ?? undefined,
+          content: { slides: content.slides, spine: content.spine },
+          existing: content.hooks, brief: content.brief ?? null,
+          angles: spreadAngles,
+        }),
+      });
+      const data = await readJsonResponse<{ error?: string; hooks?: Hook[] }>(res, "hook spread");
+      if (!res.ok || data.error) throw new Error(data.error ?? "Could not write the spread");
+      const fresh = (Array.isArray(data.hooks) ? data.hooks : []) as Hook[];
+      if (fresh.length === 0) throw new Error("No hooks returned");
+      onContentChange({ ...config, content: { ...content, hooks: [...content.hooks, ...fresh].slice(0, HOOK_POOL_MAX) } });
+    } catch (err) {
+      setHookError(err instanceof Error ? err.message : "Could not write the spread");
+    } finally {
+      setSpreadBusy(false);
+    }
+  }
+
+  /** Toggle one angle in the spread. The last one cannot be removed — a spread
+   *  of nothing has no meaning, and the button would silently do nothing. */
+  function toggleAngle(id: string) {
+    setSpreadAngles((cur) => (cur.includes(id) ? (cur.length > 1 ? cur.filter((a) => a !== id) : cur) : [...cur, id].slice(0, 8)));
   }
 
   /** Four alternative headlines for one slide or the takeaway. Offered as a
@@ -598,7 +644,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, headline, body: bodyText, kind, label: kind === "takeaway" ? "the takeaway" : `slide ${(slideIdx ?? 0) + 2}`, stylePreset, brief: content.brief ?? null, existing: already, count: 4 }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse<{ error?: string; headlines?: string[] }>(res, "title rewrite");
       if (!res.ok || data.error) throw new Error(data.error ?? "Could not write titles");
       const items = (Array.isArray(data.headlines) ? data.headlines : []) as string[];
       if (items.length === 0) throw new Error("No titles returned");
@@ -3069,9 +3115,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                               transition: "border-color var(--ui-dur-2) var(--ui-ease-out), background var(--ui-dur-2) var(--ui-ease-out)",
                             }}
                           >
+                            {hookAngleLabel(h.angle) && (
+                              <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 4 }}>
+                                {hookAngleLabel(h.angle)}
+                              </div>
+                            )}
                             <div style={{ fontSize: 13.5, fontWeight: active ? 600 : 500, lineHeight: 1.35 }}>{h.headline}</div>
                             {h.subline && (
                               <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>{h.subline}</div>
+                            )}
+                            {h.angleNote && (
+                              <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 5, lineHeight: 1.4 }}>{h.angleNote}</div>
                             )}
                           </button>
                         );
@@ -3087,8 +3141,43 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                         )}
                       </div>
                     )}
+                    <div style={{ marginTop: 16 }}>
+                      <Label kind="section">Hook spread</Label>
+                      <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                        One hook per angle, all opening this same deck. Pick the doors you want tried.
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {HOOK_ANGLES.map((a) => {
+                          const on = spreadAngles.includes(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => toggleAngle(a.id)}
+                              title={a.job}
+                              aria-pressed={on}
+                              style={{
+                                padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                                border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                                background: on ? "var(--accent-dim)" : "var(--bg)",
+                                color: on ? "var(--text)" : "var(--muted)",
+                                transition: "border-color var(--ui-dur-2) var(--ui-ease-out), background var(--ui-dur-2) var(--ui-ease-out)",
+                              }}
+                            >
+                              {a.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <UiButton size="sm" variant="primary" disabled={spreadBusy || hookBusy || content.hooks.length >= HOOK_POOL_MAX} onClick={writeSpread}>
+                          {spreadBusy ? "Writing…" : `Write ${spreadAngles.length} hooks`}
+                        </UiButton>
+                        <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>{spreadAngles.length} of {HOOK_ANGLES.length} angles</span>
+                      </div>
+                    </div>
                     <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <UiButton size="sm" variant="secondary" disabled={hookBusy || content.hooks.length >= HOOK_POOL_MAX} onClick={moreHooks}>{hookBusy ? "Writing…" : "✨ More hooks"}</UiButton>
+                      <UiButton size="sm" variant="secondary" disabled={hookBusy || spreadBusy || content.hooks.length >= HOOK_POOL_MAX} onClick={moreHooks}>{hookBusy ? "Writing…" : "More in this tone"}</UiButton>
                       <span style={{ fontSize: 12, color: hookError ? "var(--error)" : "var(--ui-text-3)" }}>{hookError ?? `${content.hooks.length} of ${HOOK_POOL_MAX} in the pool`}</span>
                     </div>
                     <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>

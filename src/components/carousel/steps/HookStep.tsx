@@ -1,13 +1,15 @@
 "use client";
 import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
-import { BrandStyle, CarouselContent, CarouselContrastMode, CarouselStylePreset } from "@/lib/types";
+import { BrandStyle, CarouselContent, CarouselContrastMode, CarouselStylePreset, type Hook } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { Button } from "@/components/ui/Button";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
+import { HOOK_ANGLES, DEFAULT_SPREAD, hookAngleLabel } from "@/lib/hook-angles";
+import { readJsonResponse } from "@/lib/fetch-json";
 
 const IMAGE_STYLE_CHIPS: { value: CarouselImageStyle; label: string }[] = [
   { value: "realistic", label: "Realistic" },
@@ -33,7 +35,7 @@ type Props = {
   topic?: string;
   imageStyle?: CarouselImageStyle;
   onImageStyleChange?: (style: CarouselImageStyle) => void;
-  onHooksChange?: (hooks: { headline: string; subline: string; sourceNote?: string }[]) => void;
+  onHooksChange?: (hooks: Hook[]) => void;
   hookTone?: string;
   moodId?: string | null;
   onMoodChange?: (id: string | null) => void;
@@ -54,6 +56,10 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
   const [hooksGuidelines, setHooksGuidelines] = useState("");
   const [regeneratingHooks, setRegeneratingHooks] = useState(false);
   const [hooksRegenError, setHooksRegenError] = useState<string | null>(null);
+  // Hook spread: one hook per angle, so the options differ by strategy rather
+  // than by wording. Same panel, second button.
+  const [spreadAngles, setSpreadAngles] = useState<string[]>(DEFAULT_SPREAD);
+  const [spreadBusy, setSpreadBusy] = useState(false);
   const imagePrompt = content.imagePrompt ?? "";
   const hook = content.hooks[selectedHook];
 
@@ -74,7 +80,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           brief: content.brief ?? null,
         }),
       });
-      const data = await res.json();
+      const data = await readJsonResponse<{ error?: string; hooks?: { headline: string; subline: string; sourceNote?: string }[] }>(res, "hook rewrite");
       if (!res.ok || data.error) {
         setHooksRegenError(data.error ?? "Failed to regenerate hooks");
       } else if (Array.isArray(data.hooks) && data.hooks.length > 0) {
@@ -84,11 +90,53 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
       } else {
         setHooksRegenError("No hooks returned — please try again");
       }
-    } catch {
-      setHooksRegenError("Network error — please try again");
+    } catch (err) {
+      setHooksRegenError(err instanceof Error ? err.message : "Network error, please try again");
     } finally {
       setRegeneratingHooks(false);
     }
+  }
+
+  /** One hook per selected ANGLE, appended to the pool. "Regenerate" writes
+   *  variations under the deck's single hook tone; this opens the same deck
+   *  through a different door each time, and tags each option with its angle. */
+  async function handleSpread() {
+    if (spreadBusy || regeneratingHooks || spreadAngles.length === 0) return;
+    setSpreadBusy(true);
+    setHooksRegenError(null);
+    try {
+      const res = await fetch(`${apiBase}/hook-spread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic ?? "",
+          content: { slides: content.slides, spine: content.spine },
+          guidelines: hooksGuidelines.trim(),
+          stylePreset,
+          existing: content.hooks,
+          brief: content.brief ?? null,
+          angles: spreadAngles,
+        }),
+      });
+      const data = await readJsonResponse<{ error?: string; hooks?: { headline: string; subline: string; sourceNote?: string; angle?: string; angleNote?: string }[] }>(res, "hook spread");
+      if (!res.ok || data.error) {
+        setHooksRegenError(data.error ?? "Failed to write the spread");
+      } else if (Array.isArray(data.hooks) && data.hooks.length > 0) {
+        onHooksChange?.([...content.hooks, ...data.hooks].slice(0, 24));
+        setAlternatives([]);
+      } else {
+        setHooksRegenError("No hooks returned, please try again");
+      }
+    } catch (err) {
+      setHooksRegenError(err instanceof Error ? err.message : "Network error, please try again");
+    } finally {
+      setSpreadBusy(false);
+    }
+  }
+
+  /** Toggle one angle. The last one stays: a spread of nothing has no meaning. */
+  function toggleAngle(id: string) {
+    setSpreadAngles((cur) => (cur.includes(id) ? (cur.length > 1 ? cur.filter((a) => a !== id) : cur) : [...cur, id].slice(0, 8)));
   }
 
   async function handleRegeneratePrompt() {
@@ -175,6 +223,11 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 paddingBottom: 4,
               }}>
                 {isSelected ? `✓ Hook ${i + 1} selected` : `Hook ${i + 1}`}
+                {hookAngleLabel(h.angle) && (
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--subtle)", marginTop: 3, fontWeight: 500 }}>
+                    {hookAngleLabel(h.angle)}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -195,7 +248,7 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             Rewrite hook copy
             <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 4 }}>
-              — 3 fresh hooks for this same deck
+              — fresh hooks for this same deck
             </span>
           </span>
           <span style={{ fontSize: 16, lineHeight: 1, transform: hooksPanelOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
@@ -266,6 +319,56 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
                 "Regenerate 3 hooks"
               )}
             </button>
+
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 4,
+              }}>
+                Or write a spread
+              </label>
+              <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px", lineHeight: 1.5 }}>
+                One hook per angle, all opening this same deck. Pick the doors you want tried.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {HOOK_ANGLES.map((a) => {
+                  const on = spreadAngles.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleAngle(a.id)}
+                      title={a.job}
+                      aria-pressed={on}
+                      style={{
+                        padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                        border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                        background: on ? "var(--accent-dim)" : "var(--bg)",
+                        color: on ? "var(--text)" : "var(--muted)",
+                        transition: "border-color 0.15s, background 0.15s",
+                      }}
+                    >
+                      {a.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={handleSpread}
+                disabled={spreadBusy || regeneratingHooks}
+                style={{
+                  marginTop: 10,
+                  background: spreadBusy ? "var(--surface)" : "var(--text)",
+                  color: spreadBusy ? "var(--muted)" : "var(--bg)",
+                  border: "none", borderRadius: 6,
+                  padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "inherit", cursor: spreadBusy ? "not-allowed" : "pointer",
+                }}
+              >
+                {spreadBusy ? "Writing the spread..." : `Write ${spreadAngles.length} hooks by angle`}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Hook spread: twelve labelled hook ANGLES (Symptom, Paradox, Tell, Wrong door, Myth bust, Mechanism, Evidence, Stakes, Scale, Relief, Threshold, Confession) in `src/lib/hook-angles.ts`. An angle is the entry point into the topic, not a synonym for a tone. `POST /api/carousel-v2/hook-spread` writes one hook per selected angle against the same fixed deck, tags each with its angle and a one-line note on what it does, and appends them to the pool. Angle chips and the spread button are in the Brief rail of PreviewStep and in the rewrite panel of HookStep; every hook card shows the angle it came from.
+- `Hook.angle` and `Hook.angleNote` on the carousel content type. Optional, so hooks written before the spread are untouched.
+- Anti-machine block in the spread prompt: no invented precision (a clock time, a percentage or a count appears only if the piece has it), no hollow aphorisms, no drifting off the deck's subject onto a downstream symptom, no borrowed cadence (colon headlines, "here is why", "it is not X, it is Y").
+
+### Fixed
+- "More hooks" surfaced `Unexpected token 'A', "An error o"... is not valid JSON` when the function timed out at the edge. `readJsonResponse` (`src/lib/fetch-json.ts`) now reads the body once and reports what actually happened, and HookStep no longer reports every failure as a network error.
+- Hook pool raised from 12 to 24, since one spread can write eight at a time.
+
 ## [0.3.0] - 2026-04-08
 
 ### Added
