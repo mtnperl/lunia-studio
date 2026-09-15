@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { readJsonResponse } from "@/lib/fetch-json";
 import { Subject } from "@/lib/types";
 import { SUBJECT_FORMATS, SUBJECT_FORMAT_CHIP, SUBJECT_FORMAT_LABEL, subjectFitsFormat, subjectFormats, subjectUsedFormats, type SubjectFormat } from "@/lib/subject-fit";
 
@@ -36,6 +37,13 @@ export default function SubjectsView() {
   const [category, setCategory] = useState("All");
   // Filter by the frozen format a subject fits; "any" shows everything.
   const [fitFilter, setFitFilter] = useState<"any" | SubjectFormat>("any");
+  // Corrected subjects: lines the research contradicted and the library has
+  // since rewritten. Kept behind a toggle so the default view is the library
+  // as it stands, not a changelog.
+  const [correcting, setCorrecting] = useState(false);
+  const [correctionNote, setCorrectionNote] = useState<string | null>(null);
+  const [showCorrected, setShowCorrected] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("Copy the list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -153,6 +161,47 @@ export default function SubjectsView() {
   });
   const fitCounts = Object.fromEntries(SUBJECT_FORMATS.map((f) => [f, subjects.filter((s) => subjectFitsFormat(s, f)).length])) as Record<SubjectFormat, number>;
 
+  const corrected = subjects.filter((s) => s.priorText).sort((a, b) => (b.correctedAt ?? "").localeCompare(a.correctedAt ?? ""));
+
+  /** Rewrite every subject line the research contradicts. One explicit run,
+   *  not a background rewrite: this edits the content library, and the old
+   *  wording is kept so every change is visible below and reversible. */
+  async function runCorrections() {
+    setCorrecting(true);
+    setCorrectionNote(null);
+    try {
+      const res = await fetch("/api/subjects/corrections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await readJsonResponse<{ error?: string; corrected?: number; condensed?: number; skipped?: number; remaining?: number }>(res, "subject correction");
+      if (!res.ok || data.error) throw new Error(data.error ?? "Could not correct the subjects");
+      const parts = [
+        `${data.corrected ?? 0} subject${data.corrected === 1 ? "" : "s"} corrected`,
+        data.skipped ? `${data.skipped} left alone` : null,
+        data.remaining ? `${data.remaining} still to do, run again` : null,
+      ].filter(Boolean);
+      setCorrectionNote(parts.join(", "));
+      setShowCorrected(true);
+      await loadSubjects();
+    } catch (err) {
+      setCorrectionNote(err instanceof Error ? err.message : "Could not correct the subjects");
+    } finally {
+      setCorrecting(false);
+    }
+  }
+
+  /** Put one subject back the way the library had it. */
+  async function revertOne(id: string) {
+    await fetch("/api/subjects/corrections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revert: id }),
+    }).catch(() => {});
+    await loadSubjects();
+  }
+
   const usedCount = subjects.filter((s) => s.usedAt).length;
 
   return (
@@ -162,6 +211,7 @@ export default function SubjectsView() {
           <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>Subject library</h2>
           <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>
             {subjects.length} subjects · {usedCount} used · {subjects.length - usedCount} remaining
+            {corrected.length > 0 && <> · <button type="button" onClick={() => setShowCorrected((v) => !v)} style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--accent)", cursor: "pointer", textDecoration: "underline" }}>{corrected.length} corrected</button></>}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -203,6 +253,77 @@ export default function SubjectsView() {
             {seeding ? "Seeding…" : "↺ Restore defaults"}
           </button>
         </div>
+      </div>
+
+      {/* Corrected subject lines. The research filed against a subject can
+          say the line as written is not what the studies show; this rewrites
+          the library so a false premise does not seed every future deck. */}
+      <div style={{ padding: "12px 14px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Correct the lines the research contradicts</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.5 }}>
+              Where the studies on file say a subject line is not true as written, the line is
+              rewritten to what they actually show. The old wording is kept, so every change is
+              listed here and can be put back.
+            </div>
+          </div>
+          <button
+            onClick={runCorrections}
+            disabled={correcting}
+            style={{
+              padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 7,
+              background: correcting ? "var(--surface)" : "var(--accent)",
+              color: correcting ? "var(--muted)" : "var(--bg)",
+              border: `1px solid ${correcting ? "var(--border)" : "var(--accent)"}`,
+              cursor: correcting ? "not-allowed" : "pointer", fontFamily: "inherit",
+            }}
+          >
+            {correcting ? "Correcting…" : "Correct the library"}
+          </button>
+        </div>
+        {correctionNote && <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8 }}>{correctionNote}</div>}
+        {showCorrected && corrected.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)" }}>
+                {corrected.length} corrected
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = corrected.map((s2) => `${s2.category}\n  was: ${s2.priorText}\n  now: ${s2.text}`).join("\n\n");
+                  navigator.clipboard.writeText(text).then(() => {
+                    setCopyLabel("Copied");
+                    setTimeout(() => setCopyLabel("Copy the list"), 2000);
+                  }).catch(() => setCopyLabel("Copy failed"));
+                }}
+                style={{ padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                {copyLabel}
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 420, overflowY: "auto" }}>
+              {corrected.map((s2) => (
+                <div key={s2.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", justifyContent: "space-between", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", textDecoration: "line-through", lineHeight: 1.4 }}>{s2.priorText}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--text)", marginTop: 3, lineHeight: 1.4 }}>{s2.text}</div>
+                    <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 3 }}>{s2.category}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => revertOne(s2.id)}
+                    title="Put the old line back"
+                    style={{ flexShrink: 0, padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--muted)", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Undo
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

@@ -937,6 +937,13 @@ export type Subject = {
    *  named for a format fits that format (subject-fit.ts). */
   formats?: string[];
   sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
+  /** The line this subject used to carry, before the research filed against
+   *  it showed the claim could not be published as written. Present only on a
+   *  corrected subject: it is what the corrected list shows and what an undo
+   *  restores. See subject-corrections.ts. */
+  priorText?: string;
+  /** When the line was corrected. */
+  correctedAt?: string;
 };
 
 export type AssetType =

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+- Subject corrections. Where the research on file says a subject line is not true as written, the library rewrites the line to what the studies show, so a false premise stops seeding every future deck. One button on the Subject library runs the whole pass; it is a single explicit run rather than a background rewrite, because it edits the content library. The old wording moves to `priorText`, so every change is listed with a before and after, can be copied out as plain text, and can be undone one subject at a time. A caveat subject (safe with a qualifier) is left alone.
+- `claimCorrection` is written as a frame for the writer, not as a subject line, and comes back anywhere between one clean sentence and a paragraph of methods and sample sizes. Anything already subject-shaped goes in verbatim; anything carrying a sample size, a bracketed age range, a semicolon, or more than 110 characters is condensed to a line first on the draft tier. A condensed line that comes back unusable leaves the subject alone, since a mangled subject is worse than an uncorrected one.
+
 ### Fixed
 - The Facts screen read "0 of 496 subjects have facts on file" with 2201 facts in the ledger. A fact carries the subject id it was filed under, and those ids go stale when the subject library is reseeded: the ids change, the wording does not. `coverageOf` resolved with `f.subjectId ?? text`, which short-circuited on the stale id and never tried the wording, so every fact fell through. It now resolves by id only when that id still names a subject. This was not cosmetic: the nightly research job skips subjects that already have facts, so a coverage of zero had it re-researching the whole library every night at three subjects a run, which is the spend that got fact checks paused in the first place.
 
