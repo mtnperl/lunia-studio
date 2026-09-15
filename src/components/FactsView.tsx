@@ -69,6 +69,32 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
     setBusy(null);
     toast({ title: `${n} fact${n === 1 ? "" : "s"} verified`, kind: "success" });
   };
+  /** Clear a subject of every fact filed under it, in one write. The
+   *  counterpart to Approve all, for a subject that is not worth keeping. */
+  const removeAll = async (subject: string, items: Fact[]) => {
+    if (items.length === 0) return;
+    const verified = items.filter((f) => f.status === "verified").length;
+    const ok = await confirm({
+      title: `Delete all ${items.length} facts?`,
+      description: `Everything filed under "${subject}"${verified > 0 ? `, including ${verified} you have verified` : ""}. This cannot be undone. Retract a fact instead if a published carousel still carries its value.`,
+      confirmLabel: `Delete ${items.length}`,
+      tone: "danger",
+    });
+    if (!ok) return;
+    const key = items[0].subjectId ?? items[0].subjectText;
+    setBusy(`delete-${key}`);
+    const ids = items.map((f) => f.id);
+    const r = await fetch("/api/facts", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ids }),
+    }).then((x) => x.json()).catch(() => null);
+    setBusy(null);
+    if (!r?.ok) { toast({ title: "Delete failed", description: r?.error, kind: "danger", duration: 0 }); return; }
+    const gone = new Set(ids);
+    setFacts((fs) => (fs ?? []).filter((x) => !gone.has(x.id)));
+    toast({ title: `${r.deleted} fact${r.deleted === 1 ? "" : "s"} deleted`, description: subject, kind: "success" });
+  };
   const remove = async (f: Fact) => {
     if (!(await confirm({ title: "Delete this fact?", description: "Retract it instead if a document might still carry the value.", confirmLabel: "Delete", tone: "danger" }))) return;
     await fetch(`/api/facts/${f.id}`, { method: "DELETE" });
@@ -158,7 +184,10 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
                   </h2>
                   {lead.claimCorrection && <div style={{ fontSize: 13, color: "var(--ui-text-2)", lineHeight: 1.45 }}><span style={{ color: "var(--ui-text-3)" }}>{lead.safeForCopy === false ? "Write it as: " : "Caveat: "}</span>{lead.claimCorrection}</div>}
                 </div>
-                {pendingHere > 1 && <Button size="sm" onClick={() => approveAll(items)} busy={busy === `approve-${key}`}>Approve all {pendingHere}</Button>}
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  {pendingHere > 1 && <Button size="sm" onClick={() => approveAll(items)} busy={busy === `approve-${key}`}>Approve all {pendingHere}</Button>}
+                  {items.length > 1 && <Button size="sm" variant="danger" onClick={() => removeAll(subject, items)} busy={busy === `delete-${key}`}>Delete all {items.length}</Button>}
+                </div>
               </div>
               <div style={{ border: "1px solid var(--ui-border)", borderRadius: 8, overflow: "hidden" }}>
                 {items.map((f) => (

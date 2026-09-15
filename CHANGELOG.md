@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Delete all, beside Approve all on every subject group in the Facts screen, for a subject that is not worth keeping. The confirm names the count and how many of them you had verified, since this cannot be undone. `DELETE /api/facts` takes a set of ids and filters the ledger once: deleting one at a time through the per-id route read and rewrote the whole ledger per fact, so clearing a subject of five rewrote a few thousand rows five times. Capped at 500 ids per request.
+
 ### Removed
 - Batch research. `/api/facts/research-batch` is gone, and with it the "Research the next 2 now" button. The screen promised that three subjects were researched every night, which was never true: no cron was ever scheduled for it in `vercel.json`, so the line described work the deployment did not do.
 - Research at write time. `ledgerBlockFor` used to research a subject with nothing on file before writing. A write is not the moment to spend a minute and a web search filling a gap, and the cost arrived without anyone choosing it. The gate now reads the ledger and nothing else, and reaches no network at all. A subject with nothing on file is written from what the writer knows, and the brief's material gate decides whether that is publishable. Filling a gap is deliberate now: Research a subject, one at a time, on the Facts screen.

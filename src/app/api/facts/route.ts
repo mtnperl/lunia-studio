@@ -49,3 +49,29 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Could not save facts" }, { status: 500 });
   }
 }
+
+/**
+ * Delete a set of facts in one write.
+ *
+ * Deleting one at a time through /api/facts/[id] reads and rewrites the whole
+ * ledger per fact, so clearing a subject of five facts rewrote a few thousand
+ * rows five times. This filters once and saves once.
+ */
+export async function DELETE(req: Request): Promise<Response> {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const ids: string[] = Array.isArray(body?.ids)
+      ? body.ids.filter((x: unknown): x is string => typeof x === "string" && x.length > 0).slice(0, 500)
+      : [];
+    if (ids.length === 0) return Response.json({ error: "No ids given" }, { status: 400 });
+    const wanted = new Set(ids);
+    const all = await getFacts();
+    const kept = all.filter((f) => !wanted.has(f.id));
+    const deleted = all.length - kept.length;
+    if (deleted > 0) await saveFacts(kept);
+    return Response.json({ ok: true, deleted, remaining: kept.length });
+  } catch (err) {
+    console.error("[api/facts] DELETE", err);
+    return Response.json({ error: "Could not delete the facts" }, { status: 500 });
+  }
+}
