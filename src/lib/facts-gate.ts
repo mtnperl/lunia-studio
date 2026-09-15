@@ -1,37 +1,32 @@
-import { getFacts, getSubjects } from "./kv";
-import { FACT_CHECKS_PAUSED } from "./fact-check-pause";
-import { matchFacts, factsPromptBlock, normalizeText } from "./facts";
-import { researchSubject, getResearchAttempts } from "./facts-research";
+import { getFacts } from "./kv";
+import { matchFacts, factsPromptBlock } from "./facts";
 
 /**
- * The gate every generation passes through. Nothing on file for the subject
- * means research runs first, so figures arrive with sources instead of from
- * memory. Only subjects in the library are researched here; a free-typed
- * topic is not, because it is not a subject yet.
+ * The gate every generation passes through: the facts already on file for
+ * this subject, quoted with their sources.
+ *
+ * It used to research a subject with nothing on file before writing, and a
+ * nightly job worked through the rest of the library. Both are gone. The
+ * ledger holds thousands of facts with real citations, and a write is not
+ * the moment to spend a minute and a web search filling a gap: it made a
+ * generation unpredictably slow and unpredictably expensive, and the cost
+ * arrived without anyone choosing it.
+ *
+ * Nothing here reaches the network. A subject with nothing on file is
+ * written from what the writer knows, and the brief's material gate is what
+ * decides whether that is good enough to publish. Filling a gap is a
+ * deliberate act now: Research a subject, on the Facts screen.
  */
 export async function ledgerBlockFor(topic: string, subjectId?: string): Promise<string> {
   try {
-    let ledger = await getFacts();
-    let matched = matchFacts(ledger, topic, subjectId);
-    if (matched.length === 0) {
-      const subjects = await getSubjects().catch(() => []);
-      const subject = subjects.find((s) => s.id === subjectId) ?? subjects.find((s) => normalizeText(s.text) === normalizeText(topic));
-      if (subject) {
-        const attempts = await getResearchAttempts();
-        const last = attempts[subject.id];
-        const recently = last && Date.now() - new Date(last).getTime() < 7 * 86_400_000;
-        if (FACT_CHECKS_PAUSED) {
-          console.log(`[facts] nothing on file for "${subject.text.slice(0, 50)}"; research is paused, writing from what is on file`);
-        } else if (!recently) {
-          console.log(`[facts] nothing on file for "${subject.text.slice(0, 50)}", researching before writing`);
-          await researchSubject(subject).catch((err) => console.warn("[facts] research before writing failed:", err));
-          ledger = await getFacts();
-          matched = matchFacts(ledger, topic, subject.id);
-        }
-      }
-    }
+    const ledger = await getFacts();
+    const matched = matchFacts(ledger, topic, subjectId);
     const block = factsPromptBlock(matched);
-    if (block) console.log(`[facts] ${matched.filter((f) => f.status === "verified").length} verified, ${matched.filter((f) => f.status === "pending").length} pending facts attached`);
+    if (block) {
+      console.log(`[facts] ${matched.filter((f) => f.status === "verified").length} verified, ${matched.filter((f) => f.status === "pending").length} pending facts attached`);
+    } else {
+      console.log(`[facts] nothing on file for "${topic.slice(0, 60)}"; writing without a ledger`);
+    }
     return block;
   } catch (err) {
     console.warn("[facts] ledger unavailable, writing without it:", err);

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Removed
+- Batch research. `/api/facts/research-batch` is gone, and with it the "Research the next 2 now" button. The screen promised that three subjects were researched every night, which was never true: no cron was ever scheduled for it in `vercel.json`, so the line described work the deployment did not do.
+- Research at write time. `ledgerBlockFor` used to research a subject with nothing on file before writing. A write is not the moment to spend a minute and a web search filling a gap, and the cost arrived without anyone choosing it. The gate now reads the ledger and nothing else, and reaches no network at all. A subject with nothing on file is written from what the writer knows, and the brief's material gate decides whether that is publishable. Filling a gap is deliberate now: Research a subject, one at a time, on the Facts screen.
+
 ### Added
 - Subject corrections. Where the research on file says a subject line is not true as written, the library rewrites the line to what the studies show, so a false premise stops seeding every future deck. One button on the Subject library runs the whole pass; it is a single explicit run rather than a background rewrite, because it edits the content library. The old wording moves to `priorText`, so every change is listed with a before and after, can be copied out as plain text, and can be undone one subject at a time. A caveat subject (safe with a qualifier) is left alone.
 - `claimCorrection` is written as a frame for the writer, not as a subject line, and comes back anywhere between one clean sentence and a paragraph of methods and sample sizes. Anything already subject-shaped goes in verbatim; anything carrying a sample size, a bracketed age range, a semicolon, or more than 110 characters is condensed to a line first on the draft tier. A condensed line that comes back unusable leaves the subject alone, since a mangled subject is worse than an uncorrected one.

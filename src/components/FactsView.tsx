@@ -94,16 +94,6 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
     toast({ title: `${r.added} facts to review`, description: subj.text, kind: "success" });
     setStatus("pending"); load();
   };
-  const batch = async () => {
-    setBusy("batch");
-    toast({ title: "Researching the next 2 subjects", description: "Primary sources only. A minute each. Results arrive as pending." });
-    const r = await fetch("/api/facts/research-batch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ limit: 2 }) }).then((x) => x.json()).catch(() => null);
-    setBusy(null);
-    if (!r?.ok) { toast({ title: "Batch failed", description: r?.error, kind: "danger", duration: 0 }); return; }
-    const done = (r.researched as { subject: string; added?: number; error?: string }[]);
-    toast({ title: `${done.filter((d) => !d.error).length} subjects researched`, description: done.map((d) => `${d.subject.slice(0, 40)}: ${d.error ? "failed" : `${d.added} facts`}`).join(" · "), kind: "success" });
-    setStatus("pending"); load();
-  };
   const hunt = async (f: Fact) => {
     setBusy(`hunt-${f.id}`);
     const r = await fetch(`/api/facts/propagate?factId=${encodeURIComponent(f.id)}`).then((x) => x.json()).catch(() => null);
@@ -132,9 +122,8 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
               <span style={{ color: "var(--ui-text-3)", fontFamily: "var(--ui-font-mono)", fontSize: 12 }}>{Math.round((coverage.covered / Math.max(1, coverage.total)) * 100)}%</span>
             </div>
             <div style={{ height: 6, background: "var(--ui-surface-3)", borderRadius: 3, overflow: "hidden" }}><div style={{ width: `${(coverage.covered / Math.max(1, coverage.total)) * 100}%`, height: "100%", background: "var(--ui-text)", transition: "width var(--ui-dur-4) var(--ui-ease-out)" }} /></div>
-            <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>A subject with nothing on file is researched the first time it is used, and three more are researched every night. {coverage.unresearched} still to go.</span>
+            <span style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Writing uses what is on file and nothing else. The {coverage.unresearched} with nothing are written from what the writer knows; research one with Research a subject when it is worth the minute.</span>
           </div>
-          <Button onClick={batch} busy={busy === "batch"} icon={<IcRefresh size={14} />}>Research the next 2 now</Button>
         </div>
       )}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
