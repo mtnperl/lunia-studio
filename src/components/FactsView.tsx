@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { HeadlineVerdict, Fact, FactStatus, Subject } from "@/lib/types";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button, IconButton, Tooltip, Badge, Input, Textarea, Select, Field, Dialog, EmptyState, Skeleton, Tabs, useToast, useConfirm, IcRefresh, IcTrash, IcCopy, IcPlus } from "@/components/ui";
@@ -26,6 +26,11 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
   const [status, setStatus] = useState<StatusFilter>("all");
   const [editing, setEditing] = useState<Fact | null>(null);
   const [adding, setAdding] = useState(false);
+  // Delete all arms on the first click and fires on the second. One button
+  // at a time, and it disarms itself so a stray click never sits loaded.
+  const [armedDelete, setArmedDelete] = useState<string | null>(null);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (armTimer.current) clearTimeout(armTimer.current); }, []);
   const [researchOpen, setResearchOpen] = useState(false);
   const [researchSubject, setResearchSubject] = useState<string>("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -70,18 +75,24 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
     toast({ title: `${n} fact${n === 1 ? "" : "s"} verified`, kind: "success" });
   };
   /** Clear a subject of every fact filed under it, in one write. The
-   *  counterpart to Approve all, for a subject that is not worth keeping. */
+   *  counterpart to Approve all, for a subject that is not worth keeping.
+   *
+   *  Two clicks on the same button rather than a dialog: the first arms it,
+   *  the second does it. Clearing subjects is a pass of many decisions, and a
+   *  modal per subject turns a rhythm into a slog. The arming still has to be
+   *  deliberate, so it disarms itself after a few seconds and only one button
+   *  is ever armed at a time. */
   const removeAll = async (subject: string, items: Fact[]) => {
     if (items.length === 0) return;
-    const verified = items.filter((f) => f.status === "verified").length;
-    const ok = await confirm({
-      title: `Delete all ${items.length} facts?`,
-      description: `Everything filed under "${subject}"${verified > 0 ? `, including ${verified} you have verified` : ""}. This cannot be undone. Retract a fact instead if a published carousel still carries its value.`,
-      confirmLabel: `Delete ${items.length}`,
-      tone: "danger",
-    });
-    if (!ok) return;
     const key = items[0].subjectId ?? items[0].subjectText;
+    if (armedDelete !== key) {
+      setArmedDelete(key);
+      if (armTimer.current) clearTimeout(armTimer.current);
+      armTimer.current = setTimeout(() => setArmedDelete(null), 4000);
+      return;
+    }
+    if (armTimer.current) clearTimeout(armTimer.current);
+    setArmedDelete(null);
     setBusy(`delete-${key}`);
     const ids = items.map((f) => f.id);
     const r = await fetch("/api/facts", {
@@ -186,7 +197,23 @@ export default function FactsView({ onOpenDocument }: { onOpenDocument: (kind: "
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   {pendingHere > 1 && <Button size="sm" onClick={() => approveAll(items)} busy={busy === `approve-${key}`}>Approve all {pendingHere}</Button>}
-                  {items.length > 1 && <Button size="sm" variant="danger" onClick={() => removeAll(subject, items)} busy={busy === `delete-${key}`}>Delete all {items.length}</Button>}
+                  {items.length > 1 && (() => {
+                    const armed = armedDelete === key;
+                    const verifiedHere = items.filter((f) => f.status === "verified").length;
+                    return (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => removeAll(subject, items)}
+                        busy={busy === `delete-${key}`}
+                        title={armed ? "Click again to delete. This cannot be undone." : "Delete every fact filed under this subject"}
+                      >
+                        {armed
+                          ? `Click again to delete ${items.length}${verifiedHere > 0 ? ` (${verifiedHere} verified)` : ""}`
+                          : `Delete all ${items.length}`}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
               <div style={{ border: "1px solid var(--ui-border)", borderRadius: 8, overflow: "hidden" }}>

@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- Delete all, beside Approve all on every subject group in the Facts screen, for a subject that is not worth keeping. The confirm names the count and how many of them you had verified, since this cannot be undone. `DELETE /api/facts` takes a set of ids and filters the ledger once: deleting one at a time through the per-id route read and rewrote the whole ledger per fact, so clearing a subject of five rewrote a few thousand rows five times. Capped at 500 ids per request.
+- Delete all, beside Approve all on every subject group in the Facts screen, for a subject that is not worth keeping. It takes two clicks on the same button rather than a dialog: the first arms it, the second does it, and the armed label names how many of them you had verified. Clearing subjects is a pass of many decisions and a modal per subject turns a rhythm into a slog, so the guard is inline instead. Only one button is armed at a time and it disarms itself after a few seconds, so a stray click never sits loaded. The single-fact delete keeps its dialog. `DELETE /api/facts` takes a set of ids and filters the ledger once: deleting one at a time through the per-id route read and rewrote the whole ledger per fact, so clearing a subject of five rewrote a few thousand rows five times. Capped at 500 ids per request.
 
 ### Removed
 - Batch research. `/api/facts/research-batch` is gone, and with it the "Research the next 2 now" button. The screen promised that three subjects were researched every night, which was never true: no cron was ever scheduled for it in `vercel.json`, so the line described work the deployment did not do.
