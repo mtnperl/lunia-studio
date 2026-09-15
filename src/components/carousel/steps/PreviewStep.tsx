@@ -7,7 +7,7 @@ import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
 import { PALETTE } from "@/lib/lunia-brand-guidelines";
 import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
-import { slotFor, type CarouselStructure } from "@/lib/carousel-structures";
+import { slotFor, STRUCTURES, STRUCTURE_IDS, type CarouselStructure } from "@/lib/carousel-structures";
 import { FACT_CHECKS_PAUSED } from "@/lib/fact-check-pause";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
 import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
@@ -87,6 +87,10 @@ type Props = {
   config: CarouselConfig;
   hookTone: HookTone;
   onRestart: () => void;
+  /** Rewrite the deck under a different structure, keeping the cover.
+   *  Absent until the carousel has been saved, since the recast reads the
+   *  deck it replaces from the library. */
+  onRecast?: (structure: CarouselStructure, opts: { keepHook: boolean; keepImage: boolean }) => Promise<void>;
   /** Batch review only: return this item to the review list. The single-carousel
    *  builder no longer passes it — switching the hook happens in the Brief
    *  drawer on this surface, so there is nowhere to go back TO. */
@@ -371,7 +375,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, initialEssayAccent, initialPillar, initialPaper, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onRecast, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, initialEssayAccent, initialPillar, initialPaper, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
@@ -440,6 +444,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
   // strategy instead of by wording. The chips are the angles asked for.
   const [spreadAngles, setSpreadAngles] = useState<string[]>(DEFAULT_SPREAD);
   const [spreadBusy, setSpreadBusy] = useState(false);
+  // Recast: the deck rewritten under a different structure, cover kept.
+  const [recastStructure, setRecastStructure] = useState<CarouselStructure | null>(null);
+  const [recastKeepHook, setRecastKeepHook] = useState(true);
+  const [recastKeepImage, setRecastKeepImage] = useState(true);
+  const [recastBusy, setRecastBusy] = useState(false);
+  const [recastError, setRecastError] = useState<string | null>(null);
   const [titleOptions, setTitleOptions] = useState<{ key: string; items: string[] } | null>(null);
   const [titleBusy, setTitleBusy] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -618,6 +628,23 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       setHookError(err instanceof Error ? err.message : "Could not write the spread");
     } finally {
       setSpreadBusy(false);
+    }
+  }
+
+  /** Rewrite the deck under the chosen structure, behind the cover it has.
+   *  The slides and caption are replaced; the hook and its artwork stay when
+   *  the toggles say so. */
+  async function runRecast() {
+    if (!onRecast || !recastStructure || recastBusy) return;
+    setRecastBusy(true);
+    setRecastError(null);
+    try {
+      await onRecast(recastStructure, { keepHook: recastKeepHook, keepImage: recastKeepImage });
+      setRecastStructure(null);
+    } catch (err) {
+      setRecastError(err instanceof Error ? err.message : "Could not recast this carousel");
+    } finally {
+      setRecastBusy(false);
     }
   }
 
@@ -3200,6 +3227,63 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
                   </div>
                 ) : (
                   <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>One hook was written for this carousel. A new hook image is one click away in Refine image on the hook slide.</span>
+                )}
+                {onRecast && (
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                    <Label kind="section">Recast</Label>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                      Argue the same subject a different way. The slides and caption are rewritten
+                      {recastKeepHook || recastKeepImage ? " behind the cover you already have" : " from scratch"}.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {STRUCTURE_IDS.filter((id) => id !== structure).map((id) => {
+                        const on = recastStructure === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setRecastStructure(on ? null : id)}
+                            title={STRUCTURES[id].info.what}
+                            aria-pressed={on}
+                            style={{
+                              padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                              border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                              background: on ? "var(--accent-dim)" : "var(--bg)",
+                              color: on ? "var(--text)" : "var(--muted)",
+                              transition: "border-color var(--ui-dur-2) var(--ui-ease-out), background var(--ui-dur-2) var(--ui-ease-out)",
+                            }}
+                          >
+                            {STRUCTURES[id].label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 10 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text)", cursor: "pointer" }}>
+                        <input type="checkbox" checked={recastKeepHook} onChange={(e) => setRecastKeepHook(e.target.checked)} />
+                        Keep the hook
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text)", cursor: "pointer" }}>
+                        <input type="checkbox" checked={recastKeepImage} onChange={(e) => setRecastKeepImage(e.target.checked)} />
+                        Keep the image
+                      </label>
+                    </div>
+                    {recastStructure && (
+                      <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                        {STRUCTURES[recastStructure].info.what}
+                      </p>
+                    )}
+                    <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <UiButton size="sm" variant="primary" disabled={!recastStructure || recastBusy} onClick={runRecast}>
+                        {recastBusy ? "Rewriting…" : recastStructure ? `Recast as ${STRUCTURES[recastStructure].label}` : "Pick a shape"}
+                      </UiButton>
+                      {recastError && <span style={{ fontSize: 12, color: "var(--error)" }}>{recastError}</span>}
+                    </div>
+                    <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                      This replaces the slides in place and takes a couple of minutes. Save first if you
+                      want the current version kept.
+                    </p>
+                  </div>
                 )}
                 <div style={{ fontSize: 12, color: "var(--ui-text-3)" }}>Hook tone: {hookTone}. Start over, in the Export menu, rewrites everything from a new brief.</div>
               </UiPanel>

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Recast: argue the same subject a different way behind the cover the deck already has. A structure is chosen from a topic line before any words exist, which is the worst moment to judge what shape an argument wants, and the mistake only shows on the finished deck. The Brief rail now offers every other structure, with Keep the hook and Keep the image as separate toggles. The piece is written again under the new structure's value move, so it is a real rewrite rather than the old slides reshuffled, and `keptCoverBlock` tells the writer which cover it has to open out of. The kept cover goes back on after the editor read, so nothing downstream can rewrite the hook the user asked to keep. Keeping the image skips image generation entirely, so a recast costs one text generation.
+
 ### Fixed
 - The hook slide exported as a plain coloured square on a phone: the ground and the wash with no photograph between them. Two causes, both in `compositeSlideWithImages`. Every image was re-fetched through the proxy at export time even though the `<img>` was already decoded on the page, so a slow connection or one bad proxy response lost the picture the user could see in the preview. And both failure paths were a bare `continue`, so an image that could not be loaded or decoded was dropped without a word while the export reported success.
 - The live `<img>` is now the draw source and the fetch is the fallback, which removes a network round trip from the export and matters most on iOS, where the share sheet's activation window closes within seconds of the tap. Painting moved ahead of the foreground capture, because that capture blanks each `src` and restores it, and a just-restored `src` is not reliably decoded again in time.

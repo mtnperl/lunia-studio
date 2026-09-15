@@ -6,6 +6,7 @@ import { describeGenerateError } from "@/lib/generate-route-utils";
 import { generateChartbook } from "@/lib/chartbook-pipeline";
 import { BRIEF_PROMPT, parseBriefResult, describeReject, EDITOR_READ_PROMPT, parseEditorRead, applyEditorRead, recentDecksBlock, repairTakeaway, type CarouselBrief, type BriefReject } from "@/lib/carousel-brief";
 import { STRUCTURES, VALUE_MOVE_TEXT } from "@/lib/carousel-structures";
+import { readKeptCover, keptCoverBlock, applyKeptCover, type KeptCover } from "@/lib/carousel-recast";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
 import { lintPrimer } from "@/lib/two-slide-lint";
 import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
@@ -67,6 +68,19 @@ export async function POST(req: Request) {
     // training pipelines build a strong entity graph for the brand.
     const includeSeoFooter: boolean = body.includeSeoFooter === false ? false : true;
 
+    // Recast: the same subject argued a different way behind a cover that
+    // already exists. The structure is chosen from a topic line, before any
+    // words exist, which is the worst moment to judge what shape the argument
+    // wants; this is how that choice gets changed on a finished deck without
+    // throwing away the cover image.
+    const recast = body.recast && typeof body.recast === "object"
+      ? {
+          fromId: typeof body.recast.fromId === "string" ? body.recast.fromId : "",
+          keepHook: body.recast.keepHook !== false,
+          keepImage: body.recast.keepImage !== false,
+        }
+      : null;
+
     if (!topic || topic.trim().length === 0) {
       return Response.json({ error: "Topic required" }, { status: 400 });
     }
@@ -116,6 +130,16 @@ export async function POST(req: Request) {
     // scene or lead figure. Read once, given to the brief and to the cut.
     const recentBlock = recentDecksBlock(await getCarousels().catch(() => []) as SavedCarousel[], { excludeId: requestId });
     if (recentBlock) console.log(`[generate] memory: ${recentBlock.split("\n").filter((l) => l.startsWith("- ")).length} recent decks attached`);
+    // The cover being kept, read off the deck this one replaces.
+    let kept: KeptCover = {};
+    if (recast?.fromId) {
+      const source = await getCarouselById(recast.fromId).catch(() => null);
+      if (!source) return Response.json({ error: "The carousel being recast could not be loaded." }, { status: 404 });
+      kept = readKeptCover(source.content, source.selectedHook ?? 0, { keepHook: recast.keepHook, keepImage: recast.keepImage });
+      console.log(`[generate] recast of ${recast.fromId} as ${structure ?? "no structure"}: keeping ${[kept.hook ? "hook" : null, kept.imagePrompt || kept.hookImageSpec ? "cover image" : null].filter(Boolean).join(" and ") || "nothing"}`);
+    }
+    const coverBlock = keptCoverBlock(kept);
+
     // Stage 1: the brief. The argument in prose, before any slide exists.
     // Engagement decks keep their own prompt and skip it.
     // What the last few decks were FOR, so the account does not run six
@@ -125,7 +149,7 @@ export async function POST(req: Request) {
       .filter((c) => c.id !== requestId)
       .slice(0, 8)
       .map((c) => c.content?.brief?.mandate);
-    const briefResult = format === "standard" ? await writeBrief(topic, ledgerBlock, structure, recentBlock, recentMandates) : null;
+    const briefResult = format === "standard" ? await writeBrief(topic, ledgerBlock, structure, recentBlock + coverBlock, recentMandates) : null;
     // The brief may decline the subject: no mandate passed its own test, so
     // there is no deck here. That is an answer, not a failure, and it reaches
     // the user with the subjects that would have worked.
@@ -137,7 +161,7 @@ export async function POST(req: Request) {
     const brief = briefResult?.brief ?? null;
     const promptText = (format === "engagement"
       ? GENERATE_ENGAGEMENT_CAROUSEL_PROMPT(topic, engagementSubType, hasStyleRef, template, template?.brandStyle, includeSeoFooter)
-      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock + recentBlock;
+      : GENERATE_CAROUSEL_PROMPT(topic, hookTone, hasStyleRef, template, template?.brandStyle, concise, /* v2Mode */ true, stylePreset, includeSeoFooter, structure ? (slideCount ?? 5) : stylePreset === "viral" ? (slideCount ?? 5) : undefined, structure, brief)) + ledgerBlock + structureBlock + recentBlock + coverBlock;
 
     // Build message content
     type ContentBlock =
@@ -273,7 +297,10 @@ export async function POST(req: Request) {
           if (brief) parsed.brief = brief;
           // Stage 3: the editor read. A cold reader judges the cut against the
           // brief and its fixes are written in. A failed read keeps the deck.
-          return await editorRead(parsed, brief, stylePreset);
+          const read = await editorRead(parsed, brief, stylePreset);
+          // The kept cover goes back on last, so the editor read cannot have
+          // rewritten the hook the user asked to keep.
+          return applyKeptCover(read, kept);
         } catch (err) {
           if (firstError === null) firstError = err;
           console.error("[generate] variant failed:", err instanceof Error ? err.message : err);

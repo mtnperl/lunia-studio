@@ -356,6 +356,44 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
   }
 
+  /** Rewrite this deck under a different structure, behind the cover it
+   *  already has. The structure is picked from a topic line before any words
+   *  exist, so the mistake only shows on the finished deck; this is how it
+   *  gets corrected without losing the cover image. */
+  async function handleRecast(newStructure: CarouselStructure, opts: { keepHook: boolean; keepImage: boolean }): Promise<void> {
+    if (!loadedId) throw new Error("Save this carousel before recasting it.");
+    const res = await fetch(`${apiBase}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic,
+        hookTone,
+        count: 1,
+        concise,
+        format: carouselFormat,
+        stylePreset,
+        includeSeoFooter,
+        structure: newStructure,
+        slideCount: (variants[selectedVariant]?.slides?.length ?? 3) >= 6 ? 10 : 5,
+        recast: { fromId: loadedId, keepHook: opts.keepHook, keepImage: opts.keepImage },
+      }),
+    });
+    const data = await readJsonResponse<MultiVariantResponse & { error?: string; brandStyle?: BrandStyle }>(res, "recast");
+    if (!res.ok || data.error) throw new Error(data.error ?? "Could not recast this carousel");
+    const fresh = (data.variants ?? [])[0];
+    if (!fresh) throw new Error("No deck came back. Try again.");
+    // Straight into the open editor. The cover artwork is untouched, so the
+    // images already on screen stay as they are and nothing is regenerated.
+    const next = [...variants];
+    next[selectedVariant] = fresh;
+    setVariants(next);
+    setSelectedHook(0);
+    setStructure(newStructure);
+    if (!opts.keepImage) {
+      startImages({ topic, content: fresh, hookIndex: 0, hookTone, imageStyle, stylePreset, contrastMode, moodId });
+    }
+  }
+
   async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number, deckStructure?: CarouselStructure) {
     setPendingLook(look ?? varyLook);
     setTopic(t);
@@ -820,6 +858,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               hookTone={hookTone}
               structure={structure}
               onRestart={handleRestart}
+              onRecast={loadedId ? handleRecast : undefined}
               onSelectHook={setSelectedHook}
               initialImageStyle={imageStyle}
               initialContrastMode={contrastMode}
