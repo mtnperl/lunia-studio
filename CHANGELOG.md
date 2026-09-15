@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- The Facts screen read "0 of 496 subjects have facts on file" with 2201 facts in the ledger. A fact carries the subject id it was filed under, and those ids go stale when the subject library is reseeded: the ids change, the wording does not. `coverageOf` resolved with `f.subjectId ?? text`, which short-circuited on the stale id and never tried the wording, so every fact fell through. It now resolves by id only when that id still names a subject. This was not cosmetic: the nightly research job skips subjects that already have facts, so a coverage of zero had it re-researching the whole library every night at three subjects a run, which is the spend that got fact checks paused in the first place.
+
 ### Added
 - Recast: argue the same subject a different way behind the cover the deck already has. A structure is chosen from a topic line before any words exist, which is the worst moment to judge what shape an argument wants, and the mistake only shows on the finished deck. The Brief rail now offers every other structure, with Keep the hook and Keep the image as separate toggles. The piece is written again under the new structure's value move, so it is a real rewrite rather than the old slides reshuffled, and `keptCoverBlock` tells the writer which cover it has to open out of. The kept cover goes back on after the editor read, so nothing downstream can rewrite the hook the user asked to keep. Keeping the image skips image generation entirely, so a recast costs one text generation.
 

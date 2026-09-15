@@ -126,7 +126,16 @@ export function coverageOf(facts: Fact[], subjects: Subject[]): { bySubject: Rec
   for (const s of subjects) bySubject[s.id] = { verified: 0, pending: 0 };
   const byText = new Map(subjects.map((s) => [s.text.trim().toLowerCase(), s.id]));
   for (const f of facts) {
-    const id = f.subjectId ?? byText.get((f.subjectText ?? "").trim().toLowerCase());
+    // A fact carries the subject id it was filed under, which goes stale when
+    // the subject library is reseeded: the ids change, the wording does not.
+    // `f.subjectId ?? text` short-circuited on the stale id and never tried
+    // the wording, so 2201 facts filed under subjects that still exist read
+    // as zero coverage. The nightly research queue skips subjects that have
+    // facts, so a coverage of zero had it researching the whole library again
+    // every night, which is real money. Resolve by id ONLY when that id still
+    // names a subject, and fall back to the wording when it does not.
+    const byId = f.subjectId && bySubject[f.subjectId] ? f.subjectId : undefined;
+    const id = byId ?? byText.get((f.subjectText ?? "").trim().toLowerCase());
     if (!id || !bySubject[id]) continue;
     if (f.status === "verified") bySubject[id].verified++;
     else if (f.status === "pending") bySubject[id].pending++;
