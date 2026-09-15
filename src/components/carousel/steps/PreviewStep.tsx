@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import { compositeSlideWithImages } from "@/lib/slide-export";
+import { compositeSlideWithImages, MissingSlideImagesError } from "@/lib/slide-export";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
@@ -1047,6 +1047,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       try {
         return await compositeWithImages(el, imgEls, filename, exportH);
       } catch (err) {
+        // An image that could not be drawn is not a reason to fall through:
+        // plain toPng is exactly what drops <img> contents on mobile, so it
+        // would hand back the same slide with a coloured square where the
+        // photograph belongs. Say so instead.
+        if (err instanceof MissingSlideImagesError) throw err;
         console.warn("[carousel] composite failed, falling back to plain toPng", err);
         // fall through
       }
@@ -1081,6 +1086,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  /** What went wrong, in words the user can act on. A slide missing its
+   *  photograph used to export silently as a coloured square, so that case
+   *  says what happened and that a retry usually fixes it. */
+  function exportErrorMessage(err: unknown): string {
+    if (err instanceof MissingSlideImagesError) return err.message;
+    return "Export failed — try again";
+  }
+
   async function downloadSlide(index: number) {
     setDownloading(index);
     setExportError(null);
@@ -1089,7 +1102,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
       await saveFile(file);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setExportError("Export failed — try again");
+      setExportError(exportErrorMessage(err));
     } finally {
       setDownloading(null);
     }
@@ -1153,7 +1166,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onChangeHook,
         }
       }
     } catch (err) {
-      if (err instanceof Error && err.name !== "AbortError") setExportError("Export failed — try again");
+      if (err instanceof Error && err.name !== "AbortError") setExportError(exportErrorMessage(err));
     } finally {
       setDownloadingAll(false);
     }

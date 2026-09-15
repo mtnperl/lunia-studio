@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import { compositeSlideWithImages } from "@/lib/slide-export";
+import { compositeSlideWithImages, MissingSlideImagesError } from "@/lib/slide-export";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import BillboardContentSlide from "@/components/carousel/slides/BillboardContentSlide";
 import BillboardTakeawaySlide from "@/components/carousel/slides/BillboardTakeawaySlide";
@@ -229,6 +229,11 @@ export default function CarouselShareClient({ carousel }: Props) {
       try {
         return await compositeWithImages(el, imgEls, filename, exportH);
       } catch (compErr) {
+        // An image that could not be drawn is not a reason to fall through:
+        // plain toPng is exactly what drops <img> contents on mobile, so it
+        // would hand back the same slide with a coloured square where the
+        // photograph belongs. Say so instead.
+        if (compErr instanceof MissingSlideImagesError) throw compErr;
         console.warn("[share] composite failed, falling back to plain toPng", describeRejection(compErr));
         // fall through
       }

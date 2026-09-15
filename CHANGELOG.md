@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- The hook slide exported as a plain coloured square on a phone: the ground and the wash with no photograph between them. Two causes, both in `compositeSlideWithImages`. Every image was re-fetched through the proxy at export time even though the `<img>` was already decoded on the page, so a slow connection or one bad proxy response lost the picture the user could see in the preview. And both failure paths were a bare `continue`, so an image that could not be loaded or decoded was dropped without a word while the export reported success.
+- The live `<img>` is now the draw source and the fetch is the fallback, which removes a network round trip from the export and matters most on iOS, where the share sheet's activation window closes within seconds of the tap. Painting moved ahead of the foreground capture, because that capture blanks each `src` and restores it, and a just-restored `src` is not reliably decoded again in time.
+- Anything still undrawn throws `MissingSlideImagesError`, which the callers no longer swallow into a plain `toPng`. Falling through to `toPng` was what produced the silent square in the first place, since it is exactly the path that drops `<img>` contents on mobile. The user sees a sentence naming what happened instead of a broken slide.
+- A live element drawn without CORS taints the canvas and the pixels cannot be read back. That case is detected and repainted from data URLs, which are same-origin, rather than failing the export.
+
 ### Added
 - Deck mandates: the reason a deck exists, decided before the piece is written. Seven of them in `src/lib/deck-mandates.ts` (Correction, Unknown claim, Connection, Naming, Finding, Rule, Question), each carrying the test it must pass and the way it goes wrong. The brief now opens on PART ZERO, weighs two or three mandates against the subject, applies each one's own test, and writes the piece to deliver the winner. The chosen mandate, the turn and the material are stored on the brief and carried into the cut and the editor read.
 - The brief can decline a subject. When no mandate passes its test there is no deck, and the brief returns a reason with three topic lines on the same ground that would pass. The route answers 422 and the builder shows it. Until now every stage improved the deck it was handed and nothing could say no, so a weak subject always became a well-made forgettable deck.
