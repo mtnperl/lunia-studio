@@ -1,4 +1,5 @@
 import type { CarouselLookSettings, SavedCarousel } from "./types";
+import { normalizeGraphic } from "./carousel-utils";
 
 /** The whole-deck style of a saved carousel, as a look. Undefined fields are
  *  left out so applying it never resets a setting the source never touched. */
@@ -20,9 +21,10 @@ export function lookFromCarousel(c: SavedCarousel): CarouselLookSettings {
  *  has no graphic. This is the structure a variant mirrors. */
 export function structureOf(c: Pick<SavedCarousel, "content">): string[] {
   return (c.content?.slides ?? []).map((s) => {
-    if (!s.graphic) return "none";
-    try { const g = JSON.parse(s.graphic) as { component?: string }; return typeof g.component === "string" ? g.component : "none"; }
-    catch { return s.graphic.trim().startsWith("<svg") ? "svg" : "none"; }
+    const raw = normalizeGraphic(s.graphic);
+    if (!raw) return "none";
+    try { const g = JSON.parse(raw) as { component?: string }; return typeof g.component === "string" ? g.component : "none"; }
+    catch { return raw.startsWith("<svg") ? "svg" : "none"; }
   });
 }
 

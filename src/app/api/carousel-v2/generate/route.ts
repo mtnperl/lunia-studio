@@ -15,7 +15,7 @@ import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { keepOneEssayGraphic } from "@/lib/essay-body";
 import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, getCarousels, saveCarousel } from "@/lib/kv";
 import { structurePromptBlock } from "@/lib/carousel-looks";
-import { validateOrFallbackGraphic } from "@/lib/carousel-utils";
+import { validateOrFallbackGraphic, normalizeGraphic } from "@/lib/carousel-utils";
 import { CarouselContent, CarouselFormat, CarouselStylePreset, DidYouKnowContent, DidYouKnowVariantsResponseSchema, EngagementSubType, HookTone, SavedCarousel } from "@/lib/types";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
@@ -247,6 +247,24 @@ export async function POST(req: Request) {
               delete parsed.takeaway;
             }
           }
+          // Every graphic becomes a string before anything reads it. The
+          // model sometimes sends the GraphicSpec object rather than the JSON
+          // string the prompt asks for, and the essay pass below ran first and
+          // called .trim() on it, killing the whole generation with
+          // "e.graphic.trim is not a function".
+          if (Array.isArray(parsed.slides)) {
+            for (const slide of parsed.slides) {
+              const g = normalizeGraphic((slide as { graphic?: unknown }).graphic);
+              if (g) slide.graphic = g;
+              else delete (slide as { graphic?: unknown }).graphic;
+            }
+          }
+          if (parsed.cta) {
+            const g = normalizeGraphic((parsed.cta as { graphic?: unknown }).graphic);
+            if (g) parsed.cta.graphic = g;
+            else delete (parsed.cta as { graphic?: unknown }).graphic;
+          }
+
           // The essay look carries one figure per deck, in ink and accent.
           if (stylePreset === "essay" && Array.isArray(parsed.slides)) {
             const { slides, cleared } = keepOneEssayGraphic(parsed.slides);

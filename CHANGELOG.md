@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Carousel generation died with "e.graphic.trim is not a function". A slide's `graphic` is typed as a string and the prompt asks for a GraphicSpec JSON string, but the model sometimes sends the object itself. Three readers then called `.trim()` on an object: the essay pass, the graphic validator, and the structure reader used by duplicate-and-vary. The essay pass ran before any normalising, so one bad field killed the whole generation. `normalizeGraphic` now turns whatever arrived into a string (an object is stringified rather than discarded, since the encoding was wrong but the content was not) and runs on every slide and the CTA the moment the model's JSON is parsed. All three readers were hardened too, so a saved or hand-edited deck cannot crash them either.
+
 ### Added
 - Delete all, beside Approve all on every subject group in the Facts screen, for a subject that is not worth keeping. It takes two clicks on the same button rather than a dialog: the first arms it, the second does it, and the armed label names how many of them you had verified. Clearing subjects is a pass of many decisions and a modal per subject turns a rhythm into a slog, so the guard is inline instead. Only one button is armed at a time and it disarms itself after a few seconds, so a stray click never sits loaded. The single-fact delete keeps its dialog. `DELETE /api/facts` takes a set of ids and filters the ledger once: deleting one at a time through the per-id route read and rewrote the whole ledger per fact, so clearing a subject of five rewrote a few thousand rows five times. Capped at 500 ids per request.
 

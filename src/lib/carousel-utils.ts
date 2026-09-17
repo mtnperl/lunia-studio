@@ -42,8 +42,43 @@ export function parseGraphicSpec(raw: string | undefined): GraphicSpec | null {
  * Leaves raw SVG strings (Path 2, not JSON) and empty/undefined values
  * untouched — this only guards the curated GraphicSpec JSON path.
  */
-export function validateOrFallbackGraphic(raw: string | undefined, fallbackText?: string): string | undefined {
-  if (!raw || raw.trim() === '') return raw;
+/**
+ * A slide's `graphic` as a string, whatever the model sent.
+ *
+ * The field carries either a GraphicSpec JSON string or a raw SVG string, and
+ * the prompt asks for a string. A model that sends the object instead is not
+ * wrong about the content, only about the encoding, so the object is stringified
+ * rather than thrown away: the validator downstream still judges the shape.
+ * Anything that is neither a string nor an object is dropped.
+ */
+export function normalizeGraphic(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const t = value.trim();
+    return t.length > 0 && t !== '""' ? t : undefined;
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    try {
+      const json = JSON.stringify(value);
+      return json && json !== '{}' ? json : undefined;
+    } catch {
+      return undefined; // circular or otherwise unserialisable
+    }
+  }
+  return undefined;
+}
+
+export function validateOrFallbackGraphic(rawValue: unknown, fallbackText?: string): string | undefined {
+  // The field is typed as a string, and the model mostly sends one, but it
+  // sometimes sends the GraphicSpec object itself. Everything downstream then
+  // called .trim() on an object and the whole generation died with
+  // "e.graphic.trim is not a function". Normalising here means every caller
+  // that goes through this gate is safe whatever the model sent.
+  // An empty string comes back as it went in. keepOneEssayGraphic clears a
+  // graphic by setting "" and callers assign the result straight back, so
+  // turning that into undefined would quietly change the shape of saved decks.
+  if (typeof rawValue === 'string' && rawValue.trim() === '') return rawValue;
+  const raw = normalizeGraphic(rawValue);
+  if (!raw) return undefined;
   let obj: unknown;
   try {
     obj = JSON.parse(raw);

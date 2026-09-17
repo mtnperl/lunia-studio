@@ -2,6 +2,8 @@
 // lines. A list line starts with "- ". Fewer than two list lines is a
 // paragraph, so a stray dash never turns prose into a list.
 
+import { normalizeGraphic } from "./carousel-utils";
+
 const LIST_ITEM = /^\s*[-\u2022\u00b7]\s+/;
 
 export function splitEssayBody(body: string): { lead: string; items: string[] } {
@@ -52,8 +54,11 @@ export function keepOneEssayGraphic<T extends { graphic?: string }>(slides: T[])
   let kept = false;
   let cleared = 0;
   const out = slides.map((s) => {
-    if (!s.graphic || !s.graphic.trim()) return s;
-    if (!kept && isEssayGraphic(s.graphic)) { kept = true; return s; }
+    // Not `s.graphic.trim()`: a deck arriving with the GraphicSpec object in
+    // this field killed the whole generation here.
+    const g = normalizeGraphic(s.graphic);
+    if (!g) return s;
+    if (!kept && isEssayGraphic(g)) { kept = true; return s; }
     cleared += 1;
     return { ...s, graphic: "" };
   });
