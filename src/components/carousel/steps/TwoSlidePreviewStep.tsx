@@ -13,7 +13,7 @@ import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel
 import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
 import { PAPER_DEFAULTS, PEN_PRESETS, type PaperSettings } from "@/lib/brand-tokens";
 import { rememberPen, rememberedPen } from "@/lib/pen-memory";
-import { compositeSlideWithImages } from "@/lib/slide-export";
+import { compositeSlideWithImages, slideExportSignature } from "@/lib/slide-export";
 import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import type { ChartbookContent, PrimerContent } from "@/lib/types";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -35,7 +35,16 @@ type Props = {
   onSaved?: (id: string) => void;
   initialSavedId?: string | null;
   initialPaper?: PaperSettings;
+  /** The font size the saved piece was set to. Absent means 100%. */
+  initialFontScale?: number;
 };
+
+/** The slider's range. A stored value outside it came from somewhere else
+ *  and is pulled back rather than trusted. */
+const FONT_SCALE_MIN = 0.85;
+const FONT_SCALE_MAX = 1.2;
+const clampFontScale = (n: number | undefined): number =>
+  typeof n === "number" && Number.isFinite(n) ? Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, n)) : 1;
 
 async function loadDataUrl(src: string): Promise<string> {
   if (src.startsWith("data:")) return src;
@@ -75,7 +84,7 @@ export function renderTwoSlides(format: TwoSlideFormat, v: TwoSlideVariant, pape
   ];
 }
 
-export default function TwoSlidePreviewStep({ format, topic, variants, selected, onSelect, onChange, onSaved, initialSavedId, initialPaper }: Props) {
+export default function TwoSlidePreviewStep({ format, topic, variants, selected, onSelect, onChange, onSaved, initialSavedId, initialPaper, initialFontScale }: Props) {
   const [editing, setEditing] = useState(false);
   const apiBase = useCarouselApi();
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
@@ -98,7 +107,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
-  const [fontScale, setFontScale] = useState(1);
+  const [fontScale, setFontScale] = useState(() => clampFontScale(initialFontScale));
   // The pen colour chosen last time is the starting pen for a new piece;
   // a saved piece keeps its own.
   const [paper, setPaper] = useState<PaperSettings>(() => initialPaper ?? { ...PAPER_DEFAULTS[format], pen: rememberedPen(format) });
@@ -129,13 +138,23 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
     return out;
   }
 
+  // Everything the two PNGs are drawn from. The hand-written list this
+  // replaced was missing `paper.pen`, so a new pen colour never invalidated
+  // the cached files and Download handed back the navy slides.
+  const exportSignature = slideExportSignature(format, selected, variant, paper, fontScale);
+
   // Rebuild the PNGs whenever what they show changes. Debounced so a slider
-  // drag does not render on every tick.
+  // drag does not render on every tick, and skipped entirely where nothing
+  // needs them early: iOS opens the share sheet inside the gesture that
+  // asked for it, so the files have to exist before the tap; a plain
+  // download does not, and building two 1080x1350 slides after every
+  // control change is what made the editor stop answering.
   useEffect(() => {
     let cancelled = false;
     filesRef.current = [];
     setReady(0);
     setPrepError(null);
+    if (!shareCapable) return;
     const t = setTimeout(async () => {
       try {
         await new Promise((r) => setTimeout(r, 150));
@@ -153,7 +172,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
     }, 400);
     return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [format, selected, variant, paper.grain, paper.vignette, fontScale]);
+  }, [exportSignature, shareCapable]);
 
   if (!variant) return null;
 
@@ -188,6 +207,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
           paperGrain: paper.grain,
           paperVignette: paper.vignette,
           penColor: paper.pen,
+          fontScale,
         }),
       });
       const data = await res.json();
@@ -212,6 +232,8 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
   }
 
   const labelStyle = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" } as const;
+  // Only a device that pre-builds can be waiting on a build.
+  const preparing = shareCapable && ready < 2 && !prepError;
   const [preview1, preview2] = renderTwoSlides(format, variant, paper, PREVIEW_SCALE, fontScale);
   const [export1, export2] = renderTwoSlides(format, variant, paper, 1, fontScale);
 
@@ -260,7 +282,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, padding: "10px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}>
         <span style={labelStyle}>Font size</span>
-        <input type="range" min={0.85} max={1.2} step={0.05} value={fontScale} onChange={(e) => setFontScale(Number(e.target.value))} style={{ flex: 1, accentColor: "var(--accent)" }} />
+        <input type="range" min={FONT_SCALE_MIN} max={FONT_SCALE_MAX} step={0.05} value={fontScale} onChange={(e) => setFontScale(Number(e.target.value))} style={{ flex: 1, accentColor: "var(--accent)" }} />
         <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums", color: "var(--text)", minWidth: 44, textAlign: "right" }}>{Math.round(fontScale * 100)}%</span>
         <button onClick={() => setFontScale(1)} style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Reset</button>
       </div>
@@ -302,8 +324,8 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
       </div>}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={handleDownload} disabled={downloading || (ready < 2 && !prepError)} title={ready < 2 ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || ready < 2 ? "wait" : "pointer", opacity: ready < 2 && !prepError ? 0.6 : 1, fontFamily: "inherit" }}>
-          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : ready < 2 && !prepError ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
+        <button onClick={handleDownload} disabled={downloading || preparing} title={preparing ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || preparing ? "wait" : "pointer", opacity: preparing ? 0.6 : 1, fontFamily: "inherit" }}>
+          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : preparing ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
         </button>
         <button onClick={handleSave} disabled={saving} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", fontFamily: "inherit" }}>
           {saving ? "Saving..." : savedId ? "Save changes" : "Save to library"}

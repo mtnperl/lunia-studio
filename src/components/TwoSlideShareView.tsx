@@ -90,8 +90,10 @@ export default function TwoSlideShareView({ carousel, format }: { carousel: Save
     }
   }
 
-  const [preview1, preview2] = renderTwoSlides(format, variant, paper, PREVIEW_SCALE);
-  const [export1, export2] = renderTwoSlides(format, variant, paper, 1);
+  // The Font size the piece was saved at; the share page used to ignore it.
+  const fontScale = carousel.fontScale ?? 1;
+  const [preview1, preview2] = renderTwoSlides(format, variant, paper, PREVIEW_SCALE, fontScale);
+  const [export1, export2] = renderTwoSlides(format, variant, paper, 1, fontScale);
   const label = format === "chartbook" ? "Chartbook" : "Primer";
 
   return (

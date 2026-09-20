@@ -30,8 +30,26 @@
 // and a just-restored src is not guaranteed to be decoded again in time.
 
 import { toPng } from "html-to-image";
+import { fontEmbedCSSFor } from "@/lib/font-embed";
 
 export type LoadDataUrl = (src: string) => Promise<string>;
+
+/**
+ * One value standing for everything a rebuilt PNG depends on, for the
+ * effects that cache exported slides ahead of the download.
+ *
+ * Those effects used to spell their dependency array out by hand, and the
+ * pen colour was left off it: choosing a different pen redrew the preview
+ * and left the cached PNGs alone, so Download handed back the navy version
+ * of a slide the user had just made red. A list written out by hand can be
+ * missing an entry and still look complete; a signature over the whole
+ * input cannot.
+ *
+ * Pass every input the renderer reads — content, treatment, paper, scale.
+ */
+export function slideExportSignature(...inputs: unknown[]): string {
+  return JSON.stringify(inputs);
+}
 
 /** Thrown when the slide exported without one or more of its images. The
  *  callers do not fall back to a plain toPng on this: toPng is what drops
@@ -243,6 +261,11 @@ export async function compositeSlideWithImages(
 
   let undrawn = await paintBase(false);
 
+  // The web fonts, resolved once per page rather than once per export. See
+  // lib/font-embed: html-to-image otherwise refetches every font file and
+  // grows the document's stylesheet on every call.
+  const fontEmbedCSS = await fontEmbedCSSFor(el);
+
   // ── The foreground: the slide with its images and paper layers hidden ────
   const savedDisplays = imgEls.map((img) => img.style.display);
   const savedSrcs = imgEls.map((img) => img.getAttribute("src") ?? "");
@@ -260,6 +283,7 @@ export async function compositeSlideWithImages(
     fgDataUrl = await toPng(el, {
       width: 1080, height: exportH, pixelRatio: 2,
       cacheBust: false, backgroundColor: "transparent",
+      fontEmbedCSS,
       filter: (n: Node) => !(n instanceof HTMLImageElement),
     });
   } finally {

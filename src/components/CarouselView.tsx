@@ -817,6 +817,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined || initialCarousel.penColor !== undefined)
                 ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS[carouselFormat].grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS[carouselFormat].vignette, pen: initialCarousel.penColor }
                 : undefined}
+              initialFontScale={initialCarousel?.fontScale}
               onSaved={onSaved}
             />
           )}
@@ -831,6 +832,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               initialPaper={initialCarousel && (initialCarousel.paperGrain !== undefined || initialCarousel.paperVignette !== undefined || initialCarousel.penColor !== undefined)
                 ? { grain: initialCarousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: initialCarousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette, pen: initialCarousel.penColor }
                 : undefined}
+              initialFontScale={initialCarousel?.fontScale}
               onSaved={onSaved}
             />
           )}

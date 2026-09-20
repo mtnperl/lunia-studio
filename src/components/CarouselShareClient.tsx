@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { compositeSlideWithImages, MissingSlideImagesError } from "@/lib/slide-export";
+import { fontEmbedCSSFor } from "@/lib/font-embed";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import BillboardContentSlide from "@/components/carousel/slides/BillboardContentSlide";
 import BillboardTakeawaySlide from "@/components/carousel/slides/BillboardTakeawaySlide";
@@ -240,7 +241,9 @@ export default function CarouselShareClient({ carousel }: Props) {
     }
 
     // No <img>s (CTA, content slides without bg): standard html-to-image.
-    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
+    // Same one-off font resolution as the compositor: without it every
+    // call refetches the whole brand sheet and grows the page's stylesheet.
+    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false, fontEmbedCSS: await fontEmbedCSSFor(el) });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
@@ -709,6 +712,10 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
   const dyk = carousel.didYouKnowContent!;
   const dykTreatment = carousel.didYouKnowTreatment ?? "navy-box";
   const dykPaper = { grain: carousel.paperGrain ?? PAPER_DEFAULTS.highlighter.grain, vignette: carousel.paperVignette ?? PAPER_DEFAULTS.highlighter.vignette, pen: carousel.penColor };
+  // The Font size the piece was saved at. The share page used to ignore it,
+  // so a piece set to 120% was shown and downloaded at 100% by everyone the
+  // link reached.
+  const dykFontScale = carousel.fontScale ?? 1;
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -871,17 +878,17 @@ function DidYouKnowShareView({ carousel }: { carousel: SavedCarousel }) {
         </div>
       </div>
       <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-        <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={0.5} />
-        <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={0.5} />
+        <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={0.5} fontScale={dykFontScale} />
+        <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={0.5} fontScale={dykFontScale} />
       </div>
 
       {/* Hidden full-size slides for canvas compositing */}
       <div style={{ position: "absolute", left: -9999, top: 0, pointerEvents: "none", opacity: 0 }}>
         <div ref={exportSlide1Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={1} />
+          <DidYouKnowSlide slide={dyk.slide1} index={1} treatment={dykTreatment} paper={dykPaper} scale={1} fontScale={dykFontScale} />
         </div>
         <div ref={exportSlide2Ref} style={{ width: 1080, height: 1350 }}>
-          <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={1} />
+          <DidYouKnowSlide slide={dyk.slide2} index={2} treatment={dykTreatment} paper={dykPaper} scale={1} fontScale={dykFontScale} />
         </div>
       </div>
 

@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
       format, engagementSubType, didYouKnowContent, chartbookContent, primerContent,
-      didYouKnowTreatment, paperGrain, paperVignette, penColor,
+      didYouKnowTreatment, paperGrain, paperVignette, penColor, fontScale,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
       hookHeadlineWeight, hookImagesByWeight, essayAccent, pillar,
@@ -151,6 +151,10 @@ export async function POST(req: Request) {
       paperGrain: typeof paperGrain === "number" && paperGrain >= 0 && paperGrain <= 1 ? paperGrain : undefined,
       paperVignette: typeof paperVignette === "number" && paperVignette >= 0 && paperVignette <= 1 ? paperVignette : undefined,
       penColor: typeof penColor === "string" && /^#[0-9a-f]{6}$/i.test(penColor) ? penColor.toLowerCase() : undefined,
+      // The two-slide formats' Font size slider. Bounded here too: the
+      // editors clamp on read, and a stored value out of range would still
+      // set type nobody chose.
+      fontScale: typeof fontScale === "number" && Number.isFinite(fontScale) && fontScale >= 0.5 && fontScale <= 2 ? fontScale : undefined,
       reelsMode: reelsMode ?? undefined,
       citationFontSize: citationFontSize ?? undefined,
       headlineScale: headlineScale ?? undefined,

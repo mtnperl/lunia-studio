@@ -666,6 +666,11 @@ export type SavedCarousel = {
    *  means the style's own default (Did you know: 0.45 grain, no vignette). */
   paperGrain?: number;
   paperVignette?: number;
+  /** Did you know, Chartbook and Primer: the Font size slider, a multiplier
+   *  on every type size in the piece. Absent means 100%. Distinct from
+   *  `headlineScale` / `bodyScale`, which are the standard format's separate
+   *  headline and body controls. */
+  fontScale?: number;
   reelsMode?: boolean;     // true = 9:16 Reels format
   citationFontSize?: number;
   headlineScale?: number;

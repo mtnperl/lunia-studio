@@ -5,7 +5,7 @@ import PaperControls from "@/components/carousel/shared/PaperControls";
 import { rememberPen, rememberedPen } from "@/lib/pen-memory";
 import { PEN_PRESETS } from "@/lib/brand-tokens";
 import { PAPER_DEFAULTS, type PaperSettings } from "@/lib/brand-tokens";
-import { compositeSlideWithImages } from "@/lib/slide-export";
+import { compositeSlideWithImages, slideExportSignature } from "@/lib/slide-export";
 import { deviceSharesFiles, saveFiles } from "@/lib/save-files";
 import type { DidYouKnowContent, DidYouKnowTreatment } from "@/lib/types";
 import { useCarouselApi } from "@/components/carousel/api-context";
@@ -27,7 +27,16 @@ type Props = {
   initialSavedId?: string | null;
   initialTreatment?: DidYouKnowTreatment;
   initialPaper?: PaperSettings;
+  /** The font size the saved piece was set to. Absent means 100%. */
+  initialFontScale?: number;
 };
+
+/** The slider's range. A stored value outside it came from somewhere else
+ *  and is pulled back rather than trusted. */
+const FONT_SCALE_MIN = 0.85;
+const FONT_SCALE_MAX = 1.3;
+const clampFontScale = (n: number | undefined): number =>
+  typeof n === "number" && Number.isFinite(n) ? Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, n)) : 1;
 
 /** Same-origin assets (the paper grain) as data URLs for the canvas compositor. */
 async function loadDataUrl(src: string): Promise<string> {
@@ -41,7 +50,7 @@ async function loadDataUrl(src: string): Promise<string> {
   });
 }
 
-export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved, initialSavedId, initialTreatment, initialPaper }: Props) {
+export default function DidYouKnowPreviewStep({ topic, variants, selected, onSelect, onSaved, initialSavedId, initialTreatment, initialPaper, initialFontScale }: Props) {
   const apiBase = useCarouselApi();
   const exportSlide1Ref = useRef<HTMLDivElement>(null);
   const exportSlide2Ref = useRef<HTMLDivElement>(null);
@@ -61,7 +70,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [linkCopyLabel, setLinkCopyLabel] = useState("Copy link");
-  const [fontScale, setFontScale] = useState(1);
+  const [fontScale, setFontScale] = useState(() => clampFontScale(initialFontScale));
   const [treatment, setTreatment] = useState<DidYouKnowTreatment>(initialTreatment ?? "navy-box");
   // The pen colour chosen last time is the starting pen for a new piece;
   // a saved piece keeps its own.
@@ -94,11 +103,24 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
     return out;
   }
 
+  // Everything the two PNGs are drawn from. The hand-written list this
+  // replaced was missing `paper.pen`, so a new pen colour never invalidated
+  // the cached files and Download handed back the navy slides.
+  const exportSignature = slideExportSignature(selected, variant, treatment, paper, fontScale);
+
+  // Building both slides ahead of the tap costs a second or two of main
+  // thread each time, and it is only worth paying where it buys something:
+  // iOS opens the share sheet inside the gesture that asked for it and
+  // closes the window long before two 1080x1350 slides are ready. A plain
+  // download has no such window, so on anything else nothing is built until
+  // the button is pressed — which is what keeps the controls answering
+  // while they are being moved.
   useEffect(() => {
     let cancelled = false;
     filesRef.current = [];
     setReady(0);
     setPrepError(null);
+    if (!shareCapable) return;
     const t = setTimeout(async () => {
       try {
         await new Promise((r) => setTimeout(r, 150));
@@ -116,7 +138,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
     }, 400);
     return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, variant, treatment, paper.grain, paper.vignette, fontScale]);
+  }, [exportSignature, shareCapable]);
 
   if (!variant) return null;
 
@@ -151,6 +173,7 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
           paperGrain: paper.grain,
           paperVignette: paper.vignette,
           penColor: paper.pen,
+          fontScale,
         }),
       });
       const data = await res.json();
@@ -175,6 +198,8 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
   }
 
   const labelStyle = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" } as const;
+  // Only a device that pre-builds can be waiting on a build.
+  const preparing = shareCapable && ready < 2 && !prepError;
 
   return (
     <div>
@@ -271,8 +296,8 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
         </span>
         <input
           type="range"
-          min={0.85}
-          max={1.3}
+          min={FONT_SCALE_MIN}
+          max={FONT_SCALE_MAX}
           step={0.05}
           value={fontScale}
           onChange={(e) => setFontScale(Number(e.target.value))}
@@ -329,16 +354,16 @@ export default function DidYouKnowPreviewStep({ topic, variants, selected, onSel
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={handleDownload}
-          disabled={downloading || (ready < 2 && !prepError)}
-          title={ready < 2 ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"}
+          disabled={downloading || preparing}
+          title={preparing ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"}
           style={{
             background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8,
-            padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || ready < 2 ? "wait" : "pointer",
-            opacity: ready < 2 && !prepError ? 0.6 : 1,
+            padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || preparing ? "wait" : "pointer",
+            opacity: preparing ? 0.6 : 1,
             fontFamily: "inherit",
           }}
         >
-          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : ready < 2 && !prepError ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
+          {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : preparing ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
         </button>
         <button
           onClick={handleSave}

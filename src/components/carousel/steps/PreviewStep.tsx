@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { compositeSlideWithImages, MissingSlideImagesError } from "@/lib/slide-export";
+import { fontEmbedCSSFor } from "@/lib/font-embed";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import ContentSlide from "@/components/carousel/slides/ContentSlide";
 import EditorialContentSlide from "@/components/carousel/slides/EditorialContentSlide";
@@ -1085,7 +1086,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
     }
 
     // Slides with no <img> (CTA, content slides without bg/graphic): plain toPng.
-    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false });
+    // Same one-off font resolution as the compositor: without it every
+    // call refetches the whole brand sheet and grows the page's stylesheet.
+    const dataUrl = await toPng(el, { width: 1080, height: exportH, pixelRatio: 2, cacheBust: false, fontEmbedCSS: await fontEmbedCSSFor(el) });
     const blob = await (await fetch(dataUrl)).blob();
     return new File([blob], filename, { type: "image/png" });
   }
