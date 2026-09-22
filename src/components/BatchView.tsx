@@ -19,6 +19,7 @@ import {
   CATEGORIES, SAMPLE_SUBJECTS, TONE_LABEL,
 } from "@/components/carousel/steps/TopicStep";
 import { CarouselApiProvider, useCarouselApi } from "@/components/carousel/api-context";
+import { Badge } from "@/components/ui";
 
 const DRAFT_KEY = "lunia:batch:active";
 const MAX_TOPICS = 10;
@@ -853,8 +854,11 @@ function BatchViewInner() {
   const draftTexts = new Set(draftTopics.map((r) => r.text));
   // Same rule as the single builder: rows that were approved, carry their six
   // slides, and have not been built yet.
+  // Built rows stay listed, marked rather than hidden — same rule as the
+  // single builder. Only rows already queued below are dropped, because those
+  // really would be duplicates in this run.
   const filteredRows = rows
-    .filter((r) => isBuildable(r) && !r.usedAt)
+    .filter((r) => isBuildable(r))
     .filter((r) => rowCategory === "All" || r.carouselType === rowCategory)
     .filter((r) => r.subject.toLowerCase().includes(rowSearch.toLowerCase()))
     .filter((r) => !draftTexts.has(r.subject))
@@ -1182,8 +1186,9 @@ function BatchViewInner() {
                   }}
                 >
                   <span>{r.subject}</span>
-                  <span style={{ fontSize: 10, color: "var(--subtle)", flexShrink: 0 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--subtle)", flexShrink: 0 }}>
                     E{r.evidence} S{r.story} · {r.carouselType}
+                    {r.usedAt && <Badge tone="success">Used</Badge>}
                   </span>
                 </div>
               ))}

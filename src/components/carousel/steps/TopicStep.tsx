@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, type CarouselLook, type CarouselLookSettings } from "@/lib/types";
 import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
-import { Select as UiSelect } from "@/components/ui";
+import { Badge, Select as UiSelect } from "@/components/ui";
 import { STRUCTURES, STRUCTURE_IDS, structureFromLegacy, type CarouselStructure } from "@/lib/carousel-structures";
 import { Button } from "@/components/ui/Button";
 
@@ -248,15 +248,18 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
     return result;
   }, [subjects]);
 
-  // The builder shows rows that have not been built yet. The Rows tab shows
-  // everything, built or not.
-  const pool = interleavedSubjects.filter((s) => !s.usedAt);
+  // Built rows stay in the list. Hiding them meant a subject you had just
+  // shot vanished with no trace, and there was no way to find it again from
+  // the builder or to deliberately shoot it a second time. It carries a Used
+  // pill instead, and the row itself stays quiet: no tint, no bold, so a
+  // half-used library still reads as a list rather than a highlight reel.
+  const pool = interleavedSubjects;
   const filteredSubjects = pool.filter((s) => {
     const matchCat = category === "All" || s.carouselType === category;
     const matchSearch = s.subject.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
-  const usedCount = subjects.length - pool.length;
+  const usedCount = subjects.filter((s) => s.usedAt).length;
   // Types with something to show, so the dropdown never names an empty one.
   const categoryOptions = CATEGORIES.filter((c) => c === "All" || pool.some((s) => s.carouselType === c));
 
@@ -494,7 +497,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
             {loadingSubjects
               ? "Loading..."
-              : `${filteredSubjects.length} of ${pool.length} rows${usedCount > 0 ? ` · ${usedCount} already built (hidden)` : ""}`}
+              : `${filteredSubjects.length} of ${pool.length} rows${usedCount > 0 ? ` · ${usedCount} already built` : ""}`}
           </div>
 
           {/* Row list */}
@@ -520,11 +523,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                     padding: "10px 14px",
                     borderBottom: "1px solid var(--border)",
                     cursor: "pointer",
-                    background: isSelected
-                      ? "rgba(34,197,94,0.12)"
-                      : used
-                      ? "rgba(34,197,94,0.06)"
-                      : "var(--bg)",
+                    background: isSelected ? "rgba(34,197,94,0.12)" : "var(--bg)",
                     transition: "background 0.1s",
                     outline: isSelected ? "1.5px solid #15803d" : "none",
                     outlineOffset: -1,
@@ -532,8 +531,8 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                 >
                   <div style={{
                     fontSize: 13,
-                    fontWeight: isSelected ? 700 : used ? 600 : 400,
-                    color: isSelected ? "#15803d" : used ? "#15803d" : "var(--text)",
+                    fontWeight: isSelected ? 700 : 400,
+                    color: isSelected ? "#15803d" : "var(--text)",
                     lineHeight: 1.4,
                   }}>
                     {s.subject}
@@ -543,16 +542,10 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                       E{s.evidence} S{s.story}
                     </span>
                     <span style={{ fontSize: 10, color: isSelected ? "#15803d" : "var(--subtle)" }}>{s.carouselType}</span>
-                    {used && !isSelected && (
-                      <span style={{
-                        background: "rgba(34,197,94,0.15)",
-                        color: "#15803d",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: "1px 6px",
-                        borderRadius: 3,
-                        textTransform: "uppercase",
-                      }}>Used</span>
+                    {used && (
+                      <span title={`Built ${s.usedAt!.slice(0, 10)}. Picking it again writes a second deck from the same row.`}>
+                        <Badge tone="success">Used</Badge>
+                      </span>
                     )}
                   </div>
                 </div>

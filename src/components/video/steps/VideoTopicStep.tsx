@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
+import { Badge } from "@/components/ui";
 
 /** What this picker needs off a library row: a line to write about, a type to
  *  group by, and an id. The subject library it used to read went with the
  *  claims ledger on 2026-09-22. */
-type Topic = { id: string; text: string; category: string };
+type Topic = { id: string; text: string; category: string; usedAt?: string };
 
 const CATEGORIES = [
   "All",
@@ -103,10 +104,11 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
       .then((r) => r.json())
       .then((d: unknown) => {
         const rows = Array.isArray(d) ? (d as CarouselRow[]) : [];
+        // Built rows stay in the list, marked rather than hidden.
         setSubjects(
           rows
-            .filter((r) => isBuildable(r) && !r.usedAt)
-            .map((r) => ({ id: r.id, text: r.subject, category: r.carouselType })),
+            .filter(isBuildable)
+            .map((r) => ({ id: r.id, text: r.subject, category: r.carouselType, usedAt: r.usedAt })),
         );
         setLoadingSubjects(false);
       })
@@ -234,7 +236,10 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
                   }}
                 >
                   <span style={{ display: "block" }}>{s.text}</span>
-                  <span style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em" }}>{s.category}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em" }}>
+                    {s.category}
+                    {s.usedAt && <Badge tone="success">Used</Badge>}
+                  </span>
                 </button>
               ))}
             </div>
