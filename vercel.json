@@ -45,9 +45,6 @@
     "src/app/api/carousel-v2/export/route.ts": {
       "maxDuration": 60
     },
-    "src/app/api/facts/research/route.ts": {
-      "maxDuration": 180
-    },
     "src/app/api/campaign/generate/route.ts": {
       "maxDuration": 240
     }
