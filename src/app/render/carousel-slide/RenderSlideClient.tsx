@@ -66,6 +66,9 @@ export type RenderSlideProps = {
   paperVignette?: number;
   subline?: string;
   sourceNote?: string;
+  /** False when the cover picture carries no typeset headline, so the HTML
+   *  must draw it. See HookSlide. Absent keeps the baked-in behaviour. */
+  headlineInImage?: boolean;
   backgroundImageUrl?: string;
   points?: string[];
   interaction?: { type: "save" | "send" | "comment"; label: string };

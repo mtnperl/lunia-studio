@@ -49,6 +49,12 @@ type Props = {
   showCitationBars?: boolean;
   /** Headline boldness — "default" is today's weight (400, or 300 under Editorial Scientific). */
   headlineWeight?: HookHeadlineWeight;
+  /** True when the background picture already carries the headline, which is
+   *  what the Editorial Scientific preset does when the deck has a hook image
+   *  spec. The HTML headline is then suppressed so the words are not set
+   *  twice. False means the picture is a bare photograph and the HTML must
+   *  carry the type: a cover with neither is what shipped on 2026-09-22. */
+  headlineInImage?: boolean;
   /** Essay preset: the boxed word (exact substring of headline), the accent, and the serial chrome. */
   emphasis?: string;
   essayAccent?: EssayAccent;
@@ -67,7 +73,7 @@ const HEADLINE_WEIGHTS = {
   black: { default: 900, editorial: 900 },
 } as const;
 
-export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default", emphasis, essayAccent, essayNumber, essayDate: essayDateText, pillar, paper }: Props) {
+export default function HookSlide({ headline, subline, sourceNote, topic: _topic, scale = 1, id, brandStyle, backgroundImageUrl, isFalImage = false, shimmer = false, logoScale = 1, arrowScale = 1, showLuniaLifeWatermark = false, prominentWatermark = false, overlays, frameH, reels = false, stylePreset = "default", showSlideArrows = true, showSlideNumbers: _showSlideNumbers = true, showCitationBars = true, headlineWeight = "default", headlineInImage = true, emphasis, essayAccent, essayNumber, essayDate: essayDateText, pillar, paper }: Props) {
   const isEditorial = isEditorialPreset(stylePreset);
   const isFreePress = stylePreset === "free-press";
   const isEssay = stylePreset === "essay";
@@ -210,7 +216,7 @@ export default function HookSlide({ headline, subline, sourceNote, topic: _topic
             </div>
           )}
         </div>
-      ) : !(isEditorial && backgroundImageUrl) && (
+      ) : !(isEditorial && backgroundImageUrl && headlineInImage) && (
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
