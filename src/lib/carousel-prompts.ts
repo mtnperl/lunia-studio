@@ -526,7 +526,7 @@ FORWARD-REFERENCE TEASE (mandatory): the LAST sentence of Slide 3's body must pl
 
 ` : ""}${v2Mode ? takeawayBlock(total) : ""}
 Brand rules (follow exactly):
-- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. This content is fact-checked against real sources before it ships, and invented specifics get caught and sent back.
+- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. Nothing downstream checks this. There is no fact check between you and the post, so an invented specific ships as written.
 - Do not assert a mechanism, timing, dose or percentage you are not confident is correct. Describe the direction of the effect instead. "Magnesium is associated with faster sleep onset" is publishable; "magnesium cuts sleep onset by 17 minutes" is not, unless that figure is real.
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"
@@ -791,7 +791,7 @@ Return ONLY valid JSON in this exact format, no other text:
 }
 
 Brand rules (follow exactly):
-- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. This content is fact-checked against real sources before it ships, and invented specifics get caught and sent back.
+- ACCURACY OUTRANKS PUNCH. Where a sharper phrasing would be wrong and a slightly softer one would be right, choose the right one every time. A hedged true claim ("cortisol climbs through the second half of the night") beats a crisp false one ("cortisol peaks at 3am"). Specificity you cannot stand behind is not confidence, it is a liability. Nothing downstream checks this. There is no fact check between you and the post, so an invented specific ships as written.
 - Do not assert a mechanism, timing, dose or percentage you are not confident is correct. Describe the direction of the effect instead. "Magnesium is associated with faster sleep onset" is publishable; "magnesium cuts sleep onset by 17 minutes" is not, unless that figure is real.
 - No em dashes anywhere. Use commas or short sentences instead.
 - No medical claims. Only use: "may support", "helps promote", "shown in studies", "associated with"

@@ -8,7 +8,7 @@ import {
 import { Shell, RailHead, useHistory, useAutosave, useFitScale } from "./Shell";
 import { SlideCanvas, SLIDE_W, SLIDE_H, type SlideElement } from "./SlideCanvas";
 import { MOCK_CAROUSEL, SUBJECTS, HOOK_OPTIONS, type MockSlide } from "./mock-data";
-import { HookSlidePanel, ContentSlidePanel, TakeawayPanel, StyleTab, BriefTab, CaptionTab, CheckTab, DEFAULT_STYLE, HOOK_WEIGHT_PX, type StyleState } from "./CarouselRails";
+import { HookSlidePanel, ContentSlidePanel, TakeawayPanel, StyleTab, BriefTab, CaptionTab, DEFAULT_STYLE, HOOK_WEIGHT_PX, type StyleState } from "./CarouselRails";
 
 type Doc = typeof MOCK_CAROUSEL;
 type View = "editor" | "preview";
@@ -40,7 +40,7 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
   const [view, setView] = useState<View>("editor");
   const [selected, setSelected] = useState<string[]>(() => (doc?.slides[0] ? [doc.slides[0].id] : []));
   const [element, setElement] = useState<SlideElement | null>(null);
-  const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption" | "check">("slide");
+  const [railTab, setRailTab] = useState<"slide" | "style" | "brief" | "caption">("slide");
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [style, setStyleState] = useState<StyleState>(DEFAULT_STYLE);
   const setStyle = (p: Partial<StyleState>) => setStyleState((s) => ({ ...s, ...p }));
@@ -176,7 +176,6 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
     { id: "all", label: "Select all slides", group: "Slide", shortcut: "mod+a", onSelect: () => doc && setSelected(doc.slides.map((s) => s.id)) },
     { id: "preview", label: "Preview at Instagram size", group: "View", onSelect: () => setView("preview") },
     { id: "arrows", label: showArrows ? "Hide slide arrows" : "Show slide arrows", group: "Style", onSelect: () => setStyle({ showArrows: !showArrows }) },
-    { id: "check", label: "Fact check every slide", group: "Document", keywords: "verify sources", onSelect: () => setRailTab("check") },
     { id: "pdf", label: "PDF guide (engagement format)", group: "Export", onSelect: () => toast({ title: "PDF guide", description: "Lead magnet written from this carousel. Engagement format only." }) },
     { id: "link", label: "Copy share link", group: "Export", onSelect: () => toast({ title: "Link copied" }) },
     { id: "hd", label: "Preview HD for this slide", group: "Slide", onSelect: () => toast({ title: "Preview HD", description: "Server render at full resolution." }) },
@@ -239,7 +238,7 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
   const right = doc && current && (
     <>
       <div style={{ padding: "8px 8px 0" }}>
-        <Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "slide", label: "Slide" }, { value: "style", label: "Style" }, { value: "brief", label: "Brief" }, { value: "caption", label: "Caption" }, { value: "check", label: "Check" }]} />
+        <Tabs value={railTab} onChange={setRailTab} ariaLabel="Properties" items={[{ value: "slide", label: "Slide" }, { value: "style", label: "Style" }, { value: "brief", label: "Brief" }, { value: "caption", label: "Caption" }]} />
       </div>
       <div className="shell__rail-body">
         {railTab === "slide" && (selected.length > 1 ? (
@@ -263,7 +262,6 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
         {railTab === "style" && <StyleTab style={style} setStyle={setStyle} />}
         {railTab === "brief" && <BriefTab topic={doc.topic} tone={doc.tone} onTopic={(t) => history.set((d) => d ? { ...d, topic: t } : d, "topic")} onTone={(t) => history.set((d) => d ? { ...d, tone: t } : d)} onRegenerateAll={() => { setSelected([]); startGeneration(); }} />}
         {railTab === "caption" && <CaptionTab caption={doc.caption} onChange={(c) => history.set((d) => d ? { ...d, caption: c } : d, "caption")} />}
-        {railTab === "check" && <CheckTab slides={doc.slides} />}
       </div>
     </>
   );
@@ -334,7 +332,7 @@ export default function CarouselProposal({ startEmpty = false }: { startEmpty?: 
         exportLabel="Export" onExport={() => toast({ title: "Exporting 5 PNGs", description: "1080 by 1350, one file per slide.", kind: "success" })}
         exportMenu={[
           { type: "heading", label: "Export" },
-          { label: `Download all (${doc?.slides.length ?? 0} PNGs)`, shortcut: "mod+e", onSelect: () => toast({ title: `Exporting ${doc?.slides.length ?? 0} PNGs`, description: "1080 by 1350, one file per slide. Blocked only when the fact check found a contradiction you have not decided on.", kind: "success" }) },
+          { label: `Download all (${doc?.slides.length ?? 0} PNGs)`, shortcut: "mod+e", onSelect: () => toast({ title: `Exporting ${doc?.slides.length ?? 0} PNGs`, description: "1080 by 1350, one file per slide.", kind: "success" }) },
           { label: "Download this slide (PNG)", onSelect: () => toast({ title: "Slide PNG downloaded" }) },
           { label: "Preview HD for this slide", onSelect: () => toast({ title: "Preview HD", description: "Server render at full resolution." }) },
           { label: "PDF guide", disabled: true, onSelect: () => {} },

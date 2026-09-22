@@ -849,7 +849,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
           {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&(falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
               // Remount when a saved carousel loads over a restored draft, so
-              // the studio's saved id, settings and verification come from the
+              // the studio's saved id and settings come from the
               // document and Save cannot create a duplicate.
               key={loadedId ?? "draft"}
               config={config}
@@ -886,7 +886,6 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSaved={onSaved}
               onExit={onExit}
               onReload={onReload}
-              initialVerification={initialCarousel?.verification}
               carouselFormat={carouselFormat}
               stylePreset={stylePreset}
               onContentChange={(c) => {

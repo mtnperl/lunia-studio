@@ -111,3 +111,23 @@ The Word field guide describes a 16-column export with no `Citation` column,
 and an earlier CSV used a different slide format entirely (`"headline";
 visual direction`, no body copy). Neither matches what the app reads. This
 document describes the file the importer actually parses.
+
+## There is no fact check
+
+The per-slide fact check was deleted on 2026-09-22, with its routes, its
+panel, its gating config and the `verification` record on a saved deck. It
+hashed every unit, sent each claim to a grounded model with web search, and
+coloured the export button by the verdict. Two carousel sessions had already
+taken a quarter of a month's API credits, and it had been switched off behind
+a constant since 2026-09-05.
+
+Deleting it is only safe because of what replaced the writer. A row's claims
+were reviewed before they reached the app, and the source is printed on the
+slide that states the figure. The check was re-checking somebody else's work
+at Opus prices.
+
+What this means for the free-typed topic path, which still writes its own
+slides: nothing downstream checks them. The prompts say so in as many words,
+because telling a writer a safety net exists when it does not is worse than
+telling it nothing. Decks saved before this date keep their stored
+`verification` object; it is no longer read, and nothing strips it.

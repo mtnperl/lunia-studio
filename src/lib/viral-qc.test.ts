@@ -15,27 +15,29 @@ const content = {
 
 describe("viralChecklist", () => {
   it("passes a well-formed 5-slide carousel on every rule code can judge", () => {
-    const rows = viralChecklist(content, 0, null);
+    const rows = viralChecklist(content, 0);
     const byId = Object.fromEntries(rows.map((r) => [r.id, r.state]));
     expect(byId.hook).toBe("pass");
     expect(byId.loops).toBe("pass");
     expect(byId.compliance).toBe("pass");
     expect(byId.cta).toBe("pass");
     expect(byId.caption).toBe("pass");
-    expect(byId.facts).toBe("manual");
+    // The fact-check row went with the check on 2026-09-22. Rule 12 reads
+    // what the slides cite; nothing replaced rule 9.
+    expect(byId.facts).toBeUndefined();
     expect(byId.tension).toBe("manual");
     expect(byId.plain).toBeDefined();
   });
   it("fails a nine-word hook, a banned phrase and a stray CTA", () => {
     const bad = { ...content, hooks: [{ headline: "Three signs your low drive is sleep, not stress", subline: "", sourceNote: "" }], slides: [{ ...content.slides[0], body: "This clinically dosed stack fixes your sleep. Visit lunialife.com now. Loop." }] } as CarouselContent;
-    const byId = Object.fromEntries(viralChecklist(bad, 0, null).map((r) => [r.id, r]));
+    const byId = Object.fromEntries(viralChecklist(bad, 0).map((r) => [r.id, r]));
     expect(byId.hook.state).toBe("fail");
     expect(byId.compliance.state).toBe("fail");
     expect(byId.compliance.detail).toContain("clinically dosed");
     expect(byId.cta.state).toBe("fail");
   });
   it("judges detail, the second hook and the audience", () => {
-    const rows = Object.fromEntries(viralChecklist(content, 0, null).map((r) => [r.id, r]));
+    const rows = Object.fromEntries(viralChecklist(content, 0).map((r) => [r.id, r]));
     expect(rows.detail.state).toBe("manual");
     expect(rows.detail.detail).toContain("Slide 2");
     expect(rows["second-hook"].state).toBe("pass");
@@ -50,13 +52,13 @@ describe("viralChecklist", () => {
       ],
       takeaway: { headline: "PROTECT THE FIRST BLOCK", points: ["Five hours cuts the hormone", "The gym was never the problem", "Lights out by eleven tonight"], interaction: { type: "save", label: "Save this for the next 5am alarm" } },
     } as unknown as CarouselContent;
-    const g = Object.fromEntries(viralChecklist(good, 0, null).map((r) => [r.id, r]));
+    const g = Object.fromEntries(viralChecklist(good, 0).map((r) => [r.id, r]));
     expect(g.detail.state).toBe("pass");
     expect(g.audience.state).toBe("pass");
     expect(g.cta.state).toBe("pass");
     expect(g.cta.detail).toBe("Takeaway closes the deck");
     const second = { ...good, slides: [good.slides[0], { ...good.slides[1] }, good.slides[2]] } as CarouselContent;
     second.slides[0] = { ...second.slides[0], headline: "But it gets worse" };
-    expect(Object.fromEntries(viralChecklist(second, 0, null).map((r) => [r.id, r.state]))["second-hook"]).toBe("manual");
+    expect(Object.fromEntries(viralChecklist(second, 0).map((r) => [r.id, r.state]))["second-hook"]).toBe("manual");
   });
 });

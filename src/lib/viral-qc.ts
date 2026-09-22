@@ -1,6 +1,5 @@
-import type { CarouselContent, VerificationRecord } from "./types";
+import type { CarouselContent } from "./types";
 import { BANNED_PHRASES, BANNED_PATTERNS } from "./lunia-brand-guidelines";
-import { summarize } from "./verification-status";
 import { plainLanguageCheck, describeIssues } from "./plain-language";
 import { storyCheck, describeStoryIssues, hasConcreteDetail, standsAlone, hookNamesAudience } from "./story-spine";
 import { describeEditorRead } from "./carousel-brief";
@@ -8,7 +7,7 @@ import { structurePlan, STRUCTURES, type CarouselStructure } from "./carousel-st
 
 /**
  * The pre-publish checklist from docs/carousel-viral-engine.md, section 5.
- * Pure: reads the content and the fact-check record, returns one row per
+ * Pure: reads the content, returns one row per
  * line of the checklist. "manual" means the rule cannot be judged by code and
  * the writer ticks it by reading.
  */
@@ -26,13 +25,13 @@ const lastSentence = (s: string) => {
 export type ChecklistOpts = { structure?: CarouselStructure | null; viralLook?: boolean };
 
 /** The Viral checklist, kept for callers and tests: the deck checklist for the Story structure on the Viral look. */
-export function viralChecklist(content: CarouselContent, selectedHook: number, record?: VerificationRecord | null): QcRow[] {
-  return deckChecklist(content, selectedHook, record, { structure: "story", viralLook: true });
+export function viralChecklist(content: CarouselContent, selectedHook: number): QcRow[] {
+  return deckChecklist(content, selectedHook, { structure: "story", viralLook: true });
 }
 
 /** The pre-publish checklist for any structure. Rules that depend on the
  *  deck's shape read the structure's slot plan; the rest are invariants. */
-export function deckChecklist(content: CarouselContent, selectedHook: number, record?: VerificationRecord | null, opts: ChecklistOpts = {}): QcRow[] {
+export function deckChecklist(content: CarouselContent, selectedHook: number, opts: ChecklistOpts = {}): QcRow[] {
   const structure = opts.structure ?? "story";
   const plan = structurePlan(structure, (content.slides ?? []).length);
   const spec = STRUCTURES[structure];
@@ -86,9 +85,8 @@ export function deckChecklist(content: CarouselContent, selectedHook: number, re
   const follow = /for more sleep-science content follow @lunia_life|follow @lunia_life for science-based sleep strategies/i.test(content.caption ?? "");
   rows.push({ id: "caption", label: "Caption carries the standard follow line", state: follow ? "pass" : "fail", detail: follow ? "For more Sleep-Science content follow @lunia_life" : "Add: For more Sleep-Science content follow @lunia_life" });
 
-  // 9. Fact check.
-  if (!record) rows.push({ id: "facts", label: "Fact check clean", state: "manual", detail: "Runs with the fact check above." });
-  else { const s = summarize(record); rows.push({ id: "facts", label: "Fact check clean", state: s.findings === 0 ? "pass" : "fail", detail: s.findings === 0 ? "Nothing to fix" : `${s.findings} to fix above` }); }
+  // 9 was the fact check's row. The check went on 2026-09-22, and rule 12
+  // below already reads what the slides cite, so nothing replaced it.
 
   // 10. Plain language: no technical term in the hook, at most one per deck
   // and glossed where it first appears, no sentence over the phone limit.

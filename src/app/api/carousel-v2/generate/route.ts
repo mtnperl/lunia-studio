@@ -222,8 +222,10 @@ export async function POST(req: Request) {
           //
           // The prompts now bless "" explicitly (see carousel-prompts.ts hook rules),
           // so an empty sourceNote means "no real source found" and must survive to
-          // the UI, where the hook renders without a trust liner and the verification
-          // layer flags it. Never re-add a fallback here.
+          // the UI, where the hook renders without a trust liner. The fact check
+          // that used to flag it is gone as of 2026-09-22, which makes this rule
+          // stricter, not looser: nothing downstream will catch an invented
+          // source. Never re-add a fallback here.
           if (parsed.hooks) {
             // Essay preset: the boxed word must be a substring of the headline
             // or the cover has nothing to draw. Case-insensitive, then stored

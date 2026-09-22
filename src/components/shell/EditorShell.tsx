@@ -26,7 +26,7 @@ export function EditorShell<V extends string>({
   exportLabel: string;
   exportMenu?: MenuItem[];
   onExport?: () => void;
-  /** Shown beside the export button and as its title: a fact-check or staleness warning. */
+  /** Shown beside the export button and as its title: a warning about the export. */
   exportNote?: string;
   exportTone?: "warning" | "danger";
   left: ReactNode;

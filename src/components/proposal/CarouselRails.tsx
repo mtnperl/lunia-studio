@@ -298,35 +298,3 @@ export function CaptionTab({ caption, onChange }: { caption: string; onChange: (
     </Panel>
   );
 }
-
-/* ── Check tab (fact check) ────────────────────────────────────────────── */
-export function CheckTab({ slides }: { slides: MockSlide[] }) {
-  const { toast } = useToast();
-  const [state, setState] = useState<"idle" | "running" | "done">("idle");
-  const run = () => { setState("running"); window.setTimeout(() => setState("done"), 2200); };
-  const units = slides.filter((s) => s.kind === "content");
-  return (
-    <>
-      <Panel title="Fact check" actions={<Button size="sm" variant={state === "idle" ? "primary" : "secondary"} busy={state === "running"} onClick={run}>{state === "done" ? "Re-check" : "Verify"}</Button>}>
-        {state === "idle" && <Note>Not checked yet. Every claim on every slide is checked against its source. Advisory, not blocking.</Note>}
-        {state === "running" && <div className="gen" role="status">{units.map((u, i) => <div key={u.id} className="gen__step" data-state={i === 0 ? "active" : "todo"}><span className="ic">{i === 0 ? <Spinner size={12} /> : <span style={{ width: 6, height: 6, borderRadius: 3, background: "var(--ui-border-strong)" }} />}</span>Slide {i + 2}</div>)}</div>}
-        {state === "done" && (
-          <>
-            <Row gap={8}><Badge tone="warning">1 needs a decision</Badge><Badge tone="success">2 clean</Badge><Badge>0 unchecked</Badge></Row>
-            <div style={{ border: "1px solid var(--ui-warning)", borderRadius: 6, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-              <strong style={{ fontSize: 13 }}>Slide 3 · vitamin B6 as the required cofactor</strong>
-              <Note>Source says pyridoxal phosphate is the cofactor for glutamate decarboxylase. Same thing, different name; the source quote uses the enzyme form.</Note>
-              <Row>
-                <Button size="sm" variant="primary" onClick={() => toast({ title: "Fix applied to slide 3", description: "Save to keep it.", action: { label: "Undo", onClick: () => {} } })} icon={<IcCheck size={12} />}>Apply fix</Button>
-                <Button size="sm" onClick={() => toast({ title: "Looking this up" })}>Look this up</Button>
-                <Button size="sm" variant="ghost" onClick={() => toast({ title: "Marked verified by you" })}>I verified this</Button>
-                <Button size="sm" variant="ghost" onClick={() => toast({ title: "Marked wrong" })}>Mark wrong</Button>
-              </Row>
-            </div>
-            <details><summary style={{ fontSize: 12, color: "var(--ui-text-2)", cursor: "pointer" }}>Clean · 2 slides</summary><Note>Slide 2, slide 4. Each claim, its verdict and the source quote sit here.</Note></details>
-          </>
-        )}
-      </Panel>
-    </>
-  );
-}

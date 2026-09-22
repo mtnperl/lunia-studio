@@ -4,13 +4,13 @@
 import { Fragment } from "react";
 import { deckChecklist, type QcRow } from "@/lib/viral-qc";
 import type { CarouselStructure } from "@/lib/carousel-structures";
-import type { CarouselContent, VerificationRecord } from "@/lib/types";
+import type { CarouselContent } from "@/lib/types";
 
 const COLOR: Record<QcRow["state"], string> = { pass: "var(--ui-text-3)", fail: "var(--error)", manual: "var(--ui-text-3)" };
 const MARK: Record<QcRow["state"], string> = { pass: "Pass", fail: "Fix", manual: "By eye" };
 
-export function ViralChecklist({ content, selectedHook, record, structure, viralLook }: { content: CarouselContent; selectedHook: number; record?: VerificationRecord | null; structure?: CarouselStructure | null; viralLook?: boolean }) {
-  const rows = deckChecklist(content, selectedHook, record, { structure, viralLook });
+export function ViralChecklist({ content, selectedHook, structure, viralLook }: { content: CarouselContent; selectedHook: number; structure?: CarouselStructure | null; viralLook?: boolean }) {
+  const rows = deckChecklist(content, selectedHook, { structure, viralLook });
   const fails = rows.filter((r) => r.state === "fail").length;
   const manual = rows.filter((r) => r.state === "manual").length;
   return (

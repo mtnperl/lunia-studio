@@ -9,7 +9,6 @@ import EditorialContentSlide from "@/components/carousel/slides/EditorialContent
 import { PALETTE } from "@/lib/lunia-brand-guidelines";
 import ViralContentSlide from "@/components/carousel/slides/ViralContentSlide";
 import { slotFor, STRUCTURES, STRUCTURE_IDS, type CarouselStructure } from "@/lib/carousel-structures";
-import { FACT_CHECKS_PAUSED } from "@/lib/fact-check-pause";
 import FreePressContentSlide from "@/components/carousel/slides/FreePressContentSlide";
 import FreePressTakeawaySlide from "@/components/carousel/slides/FreePressTakeawaySlide";
 import { FP_COLORS, FP_TYPE } from "@/lib/brand-tokens";
@@ -26,8 +25,7 @@ import { BILLBOARD_COLORS, BILLBOARD_PILLARS, PAPER_DEFAULTS, type PaperSettings
 import type { BillboardPillar } from "@/lib/types";
 import BoxedWordPicker from "@/components/carousel/shared/BoxedWordPicker";
 import { ESSAY_COLORS, type EssayAccent } from "@/lib/brand-tokens";
-import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type Hook, type VerificationRecord } from "@/lib/types";
-import VerificationPanel from "@/components/carousel/VerificationPanel";
+import { BrandStyle, CarouselConfig, CarouselContrastMode, CarouselFormat, HookHeadlineWeight, HookTone, type Hook } from "@/lib/types";
 import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
 import { RewriteBar } from "@/components/editor/RewriteBar";
@@ -35,8 +33,6 @@ import { VersionsPanel } from "@/components/editor/VersionsPanel";
 import type { CarouselLook, CarouselLookSettings } from "@/lib/types";
 import { Input as UiInput } from "@/components/ui";
 import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
-import { extractCarouselUnits, findStaleUnits, deriveRecordStatus, applyUnitFields, type UnitFields, getUnitFields } from "@/lib/verification-status";
-import { DEFAULT_GATING } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { HOOK_ANGLES, DEFAULT_SPREAD, hookAngleLabel } from "@/lib/hook-angles";
@@ -142,8 +138,6 @@ type Props = {
   onSaved?: (id: string) => void;
   /** Reload the document from the server, after a version restore. */
   onReload?: () => void;
-  /** Fact-verification record loaded alongside a saved carousel, if it has one. */
-  initialVerification?: import("@/lib/types").VerificationRecord;
 };
 
 const PREVIEW_SCALE = 0.62;
@@ -376,13 +370,10 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 
 const WASH_SEED: BackgroundWash = { mode: "dark", color: SOFT_WHITE, opacity: 0.6, gradient: false };
 
-export default function PreviewStep({ config, hookTone, onRestart, onRecast, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, initialEssayAccent, initialPillar, initialPaper, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, initialVerification, onExit }: Props) {
+export default function PreviewStep({ config, hookTone, onRestart, onRecast, onChangeHook, onSelectHook, onContentChange, onReload, initialImageStyle, initialContrastMode, initialMoodId, initialReelsMode, initialCitationFontSize, initialSlideBgColor, initialDarkBackground, initialLogoScale, initialArrowScale, initialHeadlineScale, initialBodyScale, initialIconScale, initialShowLuniaLifeWatermark, initialHookOverlays, initialShowSlideArrows, initialShowSlideNumbers, initialShowCitationBars, initialHookHeadlineWeight, initialHookImagesByWeight, initialEssayAccent, initialPillar, initialPaper, stylePreset = "default", carouselFormat = "standard", structure = null, initialSavedId = null, onSaved, onExit }: Props) {
   const apiBase = useCarouselApi();
   const [downloading, setDownloading] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
-  const [verification, setVerification] = useState<VerificationRecord | undefined>(initialVerification);
-  const [autoVerify, setAutoVerify] = useState(false);
-  const [staleUnitIds, setStaleUnitIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
   // The first save makes the shell open the saved document, which remounts
@@ -1138,41 +1129,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
     }
   }
 
-  // Recompute which units drifted from their verdict whenever the copy changes.
-  // Per-unit, so editing one slide doesn't discard the whole deck's verification.
-  useEffect(() => {
-    let cancelled = false;
-    if (!verification) {
-      setStaleUnitIds([]);
-      return;
-    }
-    const units = extractCarouselUnits(config.content);
-    findStaleUnits(verification, units).then((ids) => {
-      if (!cancelled) setStaleUnitIds(ids);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [verification, config.content]);
-
-  // Export state, driven by the gating policy rather than a hardcoded rule.
-  // DEFAULT_GATING ships fully advisory, so nothing blocks: the export always
-  // works and the button simply tells you what it knows. Flip a surface to
-  // "block" in the gating config to restore a hard gate.
-  const verificationStatus = verification ? deriveRecordStatus(verification) : null;
-  const gating = DEFAULT_GATING.carousel;
-  const action = verificationStatus === "red" ? gating.red : verificationStatus === "amber" ? gating.amber : "warn";
-  const exportBlocked = action === "block" && verificationStatus !== null && verificationStatus !== "green";
-  const exportWarned =
-    verificationStatus === "red" || verificationStatus === "amber" || staleUnitIds.length > 0;
-  const exportNote =
-    verificationStatus === "red"
-      ? "Contains a claim contradicted by its sources. Review the Fact check panel before posting."
-      : staleUnitIds.length > 0
-        ? `${staleUnitIds.length} unit${staleUnitIds.length > 1 ? "s" : ""} edited since the last check.`
-        : verificationStatus === "amber"
-          ? "Part of this carousel could not be checked."
-          : undefined;
+  // The fact check is gone (2026-09-22). It hashed every slide, sent each
+  // claim to a grounded model, and gated the export on the verdict. A deck is
+  // now built from a sheet row whose claims were reviewed before they reached
+  // the app, with the source printed on the slide, so the check was rechecking
+  // somebody else's work at Opus prices. Export is unconditional.
+  const exportBlocked = false;
+  const exportWarned = false;
+  const exportNote: string | undefined = undefined;
 
   async function downloadAll() {
     if (exportBlocked) return;
@@ -1304,11 +1268,6 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
       const firstSave = !savedId;
       setSavedId(id);
       onSaved?.(id);
-      // Every carousel is fact-checked. A first save starts the run without a
-      // click; later saves leave the panel's stale-unit logic to prompt a re-check.
-      // While fact checks are paused the run is not even requested, so a new
-      // deck does not open on a failed call.
-      if (firstSave && !FACT_CHECKS_PAUSED) setAutoVerify(true);
       // Brief "Saved!" flash on the button so the user knows the update landed.
       setSaveLabel("Saved!");
       setTimeout(() => setSaveLabel(null), 1600);
@@ -3100,7 +3059,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         onView={setViewMode}
         exportLabel={downloadingAll ? "Exporting" : exportBlocked ? "Download blocked" : "Export"}
         exportNote={exportNote}
-        exportTone={verificationStatus === "red" ? "danger" : exportWarned ? "warning" : undefined}
+        exportTone={exportWarned ? "warning" : undefined}
         exportMenu={[
           { type: "heading", label: "Export" },
           ...(["feed", "feedGrid", "story", "square"] as ExportFrame[]).map((fr) => ({ label: `Download all, ${EXPORT_FRAMES[fr].label}`, disabled: downloadingAll || exportBlocked, onSelect: () => { void downloadAllAs(fr); } })),
@@ -3296,33 +3255,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 {content.caption ? <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{content.caption}</div> : <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>No caption was written for this carousel.</span>}
               </UiPanel>
             )}
-            {railTab === "check" && (savedId ? (
-              <VerificationPanel
-                carouselId={savedId}
-                record={verification}
-                // Pass the policy explicitly. Without it the panel fell back to a
-                // hardcoded "contradicted claims block download", which stopped
-                // being true when verification went advisory — so the footer
-                // claimed a block that no longer existed.
-                gating={gating}
-                staleUnitIds={staleUnitIds}
-                pendingUnitLabels={extractCarouselUnits(config.content).map((u) => u.label)}
-                onRecordChange={setVerification}
-                autoRun={autoVerify}
-                unitFields={(unitId) => getUnitFields(config.content, unitId)}
-                onApplyFix={(unitId, fields: UnitFields) => {
-                  // Writes into the live content. The unit's hash now differs from
-                  // the one on its verdict, so the staleness effect marks it edited
-                  // and the panel stops presenting the old verdict as current.
-                  onContentChange({ ...config, content: applyUnitFields(config.content, unitId, fields) });
-                }}
-              />
-            ) : (
-              <UiPanel title="Fact check">
-                <span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>Save this carousel first. The check runs on its own after the first save, and every slide is checked against real sources.</span>
-              </UiPanel>
-            ))}
-            {railTab === "check" && (structure || isViral) && carouselFormat !== "engagement" && <ViralChecklist content={content} selectedHook={config.selectedHook} record={verification} structure={structure ?? "story"} viralLook={isViral} />}
+            {/* The tab used to hold the fact check with this checklist under
+                it, and the checklist only appeared when the deck had a
+                structure. With the check gone that left an empty tab on a
+                row-built deck, which carries no structure, so the checklist is
+                the tab now. */}
+            {railTab === "check" && (carouselFormat !== "engagement"
+              ? <ViralChecklist content={content} selectedHook={config.selectedHook} structure={structure ?? "story"} viralLook={isViral} />
+              : <UiPanel title="Check"><span style={{ fontSize: 13, color: "var(--ui-text-2)" }}>The deck checklist does not apply to an engagement carousel.</span></UiPanel>)}
           </div>
         </>}
       >

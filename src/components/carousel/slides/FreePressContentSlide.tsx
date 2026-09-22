@@ -19,8 +19,8 @@
 //
 // ─── The footer is two lines, and they are not the same thing ────────────────
 // The Free Press's own decks put the author's name in red and have nowhere to
-// put a citation. Lunia's carousels are fact-checked, so the citation is real
-// data and gets its own line: Playfair italic at half-opacity, sitting ABOVE
+// put a citation. A Lunia citation comes off the reviewed sheet row, so it is
+// real data and gets its own line: Playfair italic at half-opacity, sitting ABOVE
 // the indicator. Quiet enough never to compete with the copy, present enough
 // to be read.
 //

@@ -1,4 +1,4 @@
-import { saveAssetIfNew, saveCarousel, getCarouselById } from "@/lib/kv";
+import { saveAssetIfNew, saveCarousel } from "@/lib/kv";
 import { isCarouselStructure } from "@/lib/carousel-structures";
 import { AssetMetadata, ChartbookContentSchema, DidYouKnowContentSchema, PrimerContentSchema, SavedCarousel } from "@/lib/types";
 import { randomUUID } from "crypto";
@@ -169,16 +169,11 @@ export async function POST(req: Request) {
       essayAccent: essayAccent === "red" || essayAccent === "yellow" ? essayAccent : undefined,
       pillar: pillar === "Sleep" || pillar === "Recovery" || pillar === "Nutrition" || pillar === "Longevity" ? pillar : undefined,
       hookImagesByWeight: mirroredHookImagesByWeight,
-      // Carry any existing fact-verification record forward. This object is
-      // rebuilt from the request body on every save, so a field the client
-      // doesn't send is silently dropped — and the client has no reason to send
-      // the verification record back. Without this, saving after verifying
-      // wipes the verdicts.
-      //
-      // Staleness is handled separately and correctly: each unit carries a
-      // content hash, so any unit whose text actually changed in this save is
-      // shown as stale rather than falsely inheriting its old verdict.
-      verification: (await getCarouselById(id).catch(() => null))?.verification,
+      // A fact-check record used to be carried forward here, because this
+      // object is rebuilt from the request body on every save and the client
+      // never sent the verdicts back. The check went on 2026-09-22; a deck
+      // saved before then keeps whatever record is already stored, since this
+      // save no longer reads or rewrites that field.
       savedAt: new Date().toISOString(),
     };
 
