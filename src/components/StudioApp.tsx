@@ -9,7 +9,7 @@ import CampaignLibraryView from "@/components/CampaignLibraryView";
 import BatchView from "@/components/BatchView";
 import { PageHeader } from "@/components/ui/PageHeader";
 import CarouselLibraryView from "@/components/CarouselLibraryView";
-import SubjectsView from "@/components/SubjectsView";
+import RowLibraryView from "@/components/RowLibraryView";
 import HomeView from "@/components/HomeView";
 import BusinessView from "@/components/business/BusinessView";
 import VideoView from "@/components/VideoView";
@@ -20,7 +20,6 @@ import EmailReviewView from "@/components/email-review/EmailReviewView";
 import EmailFlowsLibrary from "@/components/email-review/EmailFlowsLibrary";
 import UGCTrackerView from "@/components/ugc/UGCTrackerView";
 import UGCBriefsView from "@/components/ugc/UGCBriefsView";
-import FactsView from "@/components/FactsView";
 import { AppShell, type RecentDoc } from "@/components/shell/AppShell";
 import { isTab, type Tab } from "@/components/shell/nav";
 import type { Script, SavedCarousel, SavedCampaign, EmailFlow } from "@/lib/types";
@@ -177,7 +176,7 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
         />
       )}
       {tab === "batch" && <BatchView />}
-      {tab === "subjects" && <SubjectsView />}
+      {tab === "rows" && <RowLibraryView />}
       {tab === "carousel-library" && (
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "40px 40px 80px" }}>
           <PageHeader title="Carousels" description="Everything you have built. Open one to keep editing, or copy its caption straight to Instagram." />
@@ -216,7 +215,6 @@ export default function StudioApp({ initialOpen = null, initialTab = "home" }: {
       {tab === "video-library" && <VideoLibraryView />}
       {tab === "video-assets" && <VideoAssetsView />}
       {tab === "assets" && <AssetsView />}
-      {tab === "facts" && <FactsView onOpenDocument={(kind, id) => (kind === "carousel" ? openRecent({ kind: "carousel", id, title: "" }) : openRecent({ kind: "email", id, title: "" }))} />}
       {tab === "ugc" && <UGCTrackerView />}
       {tab === "ugc-briefs" && <UGCBriefsView onBack={() => navigate("home")} />}
       {tab === "business-overview" && <BusinessView active="overview" />}

@@ -394,7 +394,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     }
   }
 
-  async function handleTopicNext(t: string, tone: HookTone, subjectId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number, deckStructure?: CarouselStructure) {
+  async function handleTopicNext(t: string, tone: HookTone, rowId?: string, conciseMode?: boolean, style?: CarouselImageStyle, format?: CarouselFormat, engSubType?: EngagementSubType, preset?: CarouselStylePreset, seoFooter?: boolean, contrast?: CarouselContrastMode, look?: CarouselLookSettings, slideCount?: number, deckStructure?: CarouselStructure) {
     setPendingLook(look ?? varyLook);
     setTopic(t);
     setHookTone(tone);
@@ -414,13 +414,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     // The server saves the finished deck under this id before responding.
     // If the response never reaches us, the deck is still there to fetch.
     const requestId = (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    if (subjectId) {
-      fetch(`/api/subjects/${subjectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "markUsed", format: format ?? "standard" }),
-      }).catch(() => {});
-    }
+    // The row is stamped as used server-side, once the deck exists. It used
+    // to be marked here, before the call, which burned a row whenever the
+    // generation then failed.
     if (format === "chartbook") {
       await proposeFigures(t);
       return;
@@ -431,7 +427,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: t,
-          ...(subjectId ? { subjectId } : {}),
+          ...(rowId ? { rowId } : {}),
           hookTone: tone,
           count: isTwoSlideFormat(format) ? 3 : 1,
           concise: conciseMode ?? false,

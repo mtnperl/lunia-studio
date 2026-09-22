@@ -10,7 +10,8 @@ import { readKeptCover, keptCoverBlock, applyKeptCover, type KeptCover } from "@
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
 import { lintPrimer } from "@/lib/two-slide-lint";
 import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
-import { ledgerBlockFor } from "@/lib/facts-gate";
+import { getCarouselRowById, updateCarouselRow } from "@/lib/kv";
+import { ROW_FINISH_PROMPT, parseRowFinish, rowBuildBlocker, rowToCarousel, selectedHookIndex } from "@/lib/carousel-row-deck";
 import { lintDidYouKnowContent } from "@/lib/did-you-know-lint";
 import { keepOneEssayGraphic } from "@/lib/essay-body";
 import { checkRateLimit, getAssets, getCarouselTemplateById, getCarouselById, getCarousels, saveCarousel } from "@/lib/kv";
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
     const count: number = Math.max(1, Math.min(5, Number(body.count) || 1));
     const templateId: string | undefined = typeof body.templateId === "string" ? body.templateId : undefined;
     const concise: boolean = body.concise ?? false;
+    const rowId: string | undefined = typeof body.rowId === "string" && body.rowId.length > 0 ? body.rowId : undefined;
     const format: CarouselFormat =
       body.format === "engagement" ? "engagement"
       : body.format === "did_you_know" ? "did_you_know"
@@ -81,11 +83,19 @@ export async function POST(req: Request) {
         }
       : null;
 
-    if (!topic || topic.trim().length === 0) {
+    if (!rowId && (!topic || topic.trim().length === 0)) {
       return Response.json({ error: "Topic required" }, { status: 400 });
     }
     if (topic.length > 500) {
       return Response.json({ error: "Topic too long (max 500 characters)" }, { status: 400 });
+    }
+
+    // The row path. A reviewed sheet row is already the deck: six headlines,
+    // six bodies, the hooks and the on-slide sources, all checked before they
+    // reached the app. Nothing here writes a slide. One model call finishes
+    // the caption and the takeaway, and that is the whole generation.
+    if (rowId) {
+      return await generateFromRow(rowId, requestId, stylePreset, includeSeoFooter);
     }
 
     if (format === "did_you_know") {
@@ -119,13 +129,14 @@ export async function POST(req: Request) {
     console.log("[generate] templateId:", templateId, "→ found:", template ? `"${template.name}" (${template.images.length} images)` : "null");
 
     const hasStyleRef = styleRefs.length > 0;
-    // Claims ledger: verified facts for this subject are quoted, not recalled.
-    const ledgerBlock = await ledgerBlockFor(topic, typeof body.subjectId === "string" ? body.subjectId : undefined);
+    // No claims ledger. Numbers used to be quoted from a ledger keyed by
+    // subject; the row library replaced both, and on this legacy path the
+    // writer is on its own with the accuracy rules in the prompt.
+    const ledgerBlock = "";
     // Duplicate and vary: mirror an earlier carousel's slide structure.
     const structureFromId: string | undefined = typeof body.structureFrom?.documentId === "string" ? body.structureFrom.documentId : undefined;
     const structureSource = structureFromId ? await getCarouselById(structureFromId).catch(() => null) : null;
     const structureBlock = structureSource ? structurePromptBlock(structureSource) : "";
-    if (ledgerBlock) console.log(`[generate] ledger: ${ledgerBlock.split("\n").filter((l) => l.startsWith("- ")).length} verified facts attached`);
     // What ran recently, so this deck does not reprint last week's hook,
     // scene or lead figure. Read once, given to the brief and to the cut.
     const recentBlock = recentDecksBlock(await getCarousels().catch(() => []) as SavedCarousel[], { excludeId: requestId });
@@ -390,6 +401,96 @@ export async function POST(req: Request) {
     console.error("[api/carousel/generate]", err);
     return Response.json({ error: describeGenerateError(err, "Generation") }, { status: 500 });
   }
+}
+
+/**
+ * Build a deck from a reviewed row.
+ *
+ * The slides are copied, not written. The single model call finishes the
+ * caption and the takeaway, and a failure there is not fatal: the deck is the
+ * valuable part and it already exists, so it is returned with a warning and
+ * the editor writes the close by hand rather than losing six checked slides.
+ */
+async function generateFromRow(
+  rowId: string,
+  requestId: string | undefined,
+  stylePreset: string | undefined,
+  includeSeoFooter: boolean,
+): Promise<Response> {
+  const row = await getCarouselRowById(rowId);
+  if (!row) return Response.json({ error: "That row is no longer in the library." }, { status: 404 });
+  const blocker = rowBuildBlocker(row);
+  if (blocker) return Response.json({ error: blocker }, { status: 422 });
+
+  let finish;
+  let warning: string | undefined;
+  try {
+    const msg = await createContentMessage({
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_SHORT,
+      thinking: CONTENT_THINKING,
+      output_config: { effort: EFFORT_MEDIUM },
+      messages: [{ role: "user", content: [{ type: "text", text: ROW_FINISH_PROMPT(row, includeSeoFooter) }] }],
+    });
+    finish = parseRowFinish(parseModelJson(msg, "Row finish"));
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err);
+    console.error(`[generate/row] finish failed for ${rowId}: ${why}`);
+    warning = `The slides are from the sheet and are complete. The caption and the last slide could not be written (${why}) — write them in the editor, or regenerate.`;
+    finish = {
+      caption: "",
+      takeaway: {
+        headline: "",
+        points: [],
+        interaction: { type: "save" as const, label: "" },
+      },
+    };
+  }
+
+  const content = rowToCarousel(row, finish);
+  // A takeaway with no points is not a slide. Drop it so the renderer falls
+  // back to the CTA layout rather than drawing an empty close.
+  if (!content.takeaway?.points.length) delete content.takeaway;
+  if (includeSeoFooter && content.caption.trim().length > 0) {
+    const { appendEntityLine } = await import("@/lib/lunia-brand");
+    content.caption = appendEntityLine(content.caption, `${row.subject}|0`);
+  }
+
+  const { getStylePresetBrandStyle } = await import("@/lib/carousel-style-presets");
+  const resolvedBrandStyle = getStylePresetBrandStyle(stylePreset as CarouselStylePreset | undefined) ?? null;
+
+  if (requestId) {
+    const record: SavedCarousel = {
+      id: requestId,
+      topic: row.subject,
+      hookTone: "educational",
+      rowId: row.id,
+      content,
+      selectedHook: selectedHookIndex(row),
+      brandStyle: resolvedBrandStyle ?? undefined,
+      stylePreset: (stylePreset as CarouselStylePreset | undefined) ?? undefined,
+      format: "standard",
+      savedAt: new Date().toISOString(),
+    };
+    await saveCarousel(record).catch((e) => console.warn("[generate/row] could not save the deck under its request id", e));
+    await updateCarouselRow(row.id, {
+      usedAt: new Date().toISOString(),
+      lastCarouselId: requestId,
+      status: row.status === "draft" ? "in-production" : row.status,
+    }).catch((e) => console.warn("[generate/row] could not stamp the row as used", e));
+  }
+
+  console.log(`[generate/row] ${row.subject.slice(0, 60)}: ${content.slides.length} content slides from the sheet, ${warning ? "no" : "a"} finish`);
+
+  return Response.json({
+    variants: [content],
+    savedId: requestId ?? null,
+    styleRefsUsed: 0,
+    brandStyle: resolvedBrandStyle,
+    stylePreset: stylePreset ?? "default",
+    row: { id: row.id, subject: row.subject, citation: row.citation, citationUrl: row.citationUrl, visualSystem: row.visualSystem, evidence: row.evidence, story: row.story },
+    ...(warning ? { warning } : {}),
+  });
 }
 
 async function callDidYouKnow(topic: string, variantCount: number, violations?: string[]): Promise<DidYouKnowContent[]> {

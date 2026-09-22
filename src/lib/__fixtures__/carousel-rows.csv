@@ -1,0 +1,33 @@
+﻿Subject,Carousel type,Evidence,Story,Build,Why,Citation,Visual system,Hook option A,Hook option B,Hook option C,Slide 1,Slide 2,Slide 3,Slide 4,Slide 5,Slide 6
+A cup of coffee needs 8.8 hours before bed; a pre-workout dose needs 13 (Gardiner 2023 systematic review),Latest Research,5,5,YES,"Gardiner et al. 2023 systematically reviewed caffeine dose and timing, finding the cutoff depends on dose and sleep outcome.",Gardiner C et al. (2023). The effect of caffeine on subsequent sleep: A systematic review and meta-analysis. Sleep medicine reviews. https://pubmed.ncbi.nlm.nih.gov/36870101/,A single bedtime timeline holds a coffee cup and pre-workout scoop at their different cutoffs.,Your coffee has a bedtime,A pre-workout can outlast the workout,The caffeine cutoff changes with the dose,"Headline: Your coffee has a bedtime
+Body: A coffee and a pre-workout do not get the same cutoff.","Headline: Caffeine does not leave on your schedule
+Body: The clock starts when you finish the drink.","Headline: More caffeine needs more runway
+Body: For a 107 mg coffee, the modeled window was 8.8 hours.
+On-slide source: Gardiner et al., 2023","Headline: Pre-workout is not just stronger coffee
+Body: For a 217.5 mg pre-workout, it was 13.2 hours.
+On-slide source: Gardiner et al., 2023","Headline: Work backward from bedtime
+Body: Use those windows as guides, then watch your own sleep.","Headline: Dose and timing belong together
+Body: The useful question is how much and how late.
+Brand mark: small Lunia Life wordmark only"
+A fixed wake time can matter more than forcing bedtime,Sleep Hygiene,5,5,YES,CBT-I guidelines and circadian research support stable wake timing while bedtime follows genuine sleepiness.,Edinger JD et al. (2021). Behavioral and psychological treatments for chronic insomnia disorder in adults: an American Academy of Sleep Medicine clinical practice guideline. Journal of clinical sleep medicine : JCSM : official publication of the American Academy of Sleep Medicine. https://pubmed.ncbi.nlm.nih.gov/33164742/,The morning clock stays fixed while the bedtime clock stops being forced into place.,A better bedtime starts in the morning,Stop bargaining with bedtime,Wake time may be the steadier lever,"Headline: A better bedtime starts in the morning
+Body: Trying harder at night can make you more alert.","Headline: Bedtime effort can increase arousal
+Body: A forced bedtime is still time awake in bed.","Headline: Wake time sets light, movement, and sleep-pressure timing
+Body: Morning light and activity begin at wake-up.","Headline: A stable morning makes bedtime more predictable
+Body: A stable start makes the next night less random.","Headline: Wake consistently and wait for sleepiness
+Body: Keep wake time steady; go to bed when sleepy.","Headline: Anchor the morning and let sleepiness lead
+Body: The morning is easier to control than sleep onset.
+Brand mark: small Lunia Life wordmark only"
+A proprietary blend hides the dose you need to evaluate,Lunia Ingredients,5,5,YES,US labeling permits proprietary blends to list a total blend weight while withholding individual ingredient amounts.,"U.S. Food and Drug Administration. 21 CFR § 101.36, Nutrition labeling of dietary supplements. https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-C/section-101.36",A real-looking supplement panel shows one blend total with individual doses visibly absent.,The ingredient list can hide the dose,A proprietary blend gives you one useful-looking number,Can you match this blend to a study?,"Headline: The ingredient list can hide the dose
+Body: A long label can still leave the key question unanswered.","Headline: The blend shows one combined weight
+Body: The total weight covers every ingredient in the blend.","Headline: Individual doses disappear inside it
+Body: One ingredient could make up nearly all of that total.","Headline: Without dose, research matching becomes impossible
+Body: Without individual amounts, comparison with trials is guesswork.","Headline: Look for every ingredient amount
+Body: Look for a number beside each active ingredient.","Headline: If the dose is hidden, the claim is hard to check
+Body: Transparency is an ingredient-by-ingredient list.
+Brand mark: small Lunia Life wordmark only"
+A rejected subject that never got slides,Latest Research,5,5,NO,Too vague to verify and shoot safely.,,A single bedtime timeline holds a coffee cup and pre-workout scoop at their different cutoffs.,Your coffee has a bedtime,A pre-workout can outlast the workout,The caffeine cutoff changes with the dose,,,,,,
+A YES row missing its last two slides,Sleep Hygiene,5,5,YES,CBT-I guidelines and circadian research support stable wake timing while bedtime follows genuine sleepiness.,Edinger JD et al. (2021). Behavioral and psychological treatments for chronic insomnia disorder in adults: an American Academy of Sleep Medicine clinical practice guideline. Journal of clinical sleep medicine : JCSM : official publication of the American Academy of Sleep Medicine. https://pubmed.ncbi.nlm.nih.gov/33164742/,The morning clock stays fixed while the bedtime clock stops being forced into place.,A better bedtime starts in the morning,Stop bargaining with bedtime,Wake time may be the steadier lever,"Headline: A better bedtime starts in the morning
+Body: Trying harder at night can make you more alert.","Headline: Bedtime effort can increase arousal
+Body: A forced bedtime is still time awake in bed.","Headline: Wake time sets light, movement, and sleep-pressure timing
+Body: Morning light and activity begin at wake-up.","Headline: A stable morning makes bedtime more predictable
+Body: A stable start makes the next night less random.",,

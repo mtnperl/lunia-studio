@@ -30,7 +30,6 @@ import {
 } from "@/lib/verification";
 import type { ClaimVerdict, VerificationRecord, VerifyFrame } from "@/lib/types";
 import { encodeFrame } from "@/lib/verification-stream";
-import { fileVerifiedFacts } from "@/lib/facts-file";
 
 export const maxDuration = 300;
 
@@ -135,8 +134,10 @@ export async function POST(req: NextRequest): Promise<Response> {
               (unit) => send({ t: "unit", unit }),
               () => send({ t: "phase", phase: "conflicts" }),
             );
+            // The verdict lives on the deck. It used to be copied into a
+            // claims ledger as well; the ledger went with the subject library
+            // on 2026-09-22, and sourced numbers now come from the sheet.
             const persisted = await attachCarouselVerification(id, record);
-            void fileVerifiedFacts(id, record);
             const gating = await getGatingConfig();
             send({
               t: "done",
@@ -169,7 +170,6 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     const record = await verifyUnits(units, "carousel", id);
     const persisted = await attachCarouselVerification(id, record);
-    void fileVerifiedFacts(id, record);
 
     const gating = await getGatingConfig();
     const status = deriveRecordStatus(record);

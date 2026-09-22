@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { Subject } from "@/lib/types";
+import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import ShapeGallery from "./ShapeGallery";
 import {
@@ -63,9 +63,9 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
   }, [shapePickerOpen]);
   const [mode, setMode] = useState<Mode>("list");
   const [customTopic, setCustomTopic] = useState("");
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<CarouselRow[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<CarouselRow | null>(null);
   const [search, setSearch] = useState("");
 
   const [occasion, setOccasion] = useState("");
@@ -73,20 +73,22 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
   const [ctaUrl, setCtaUrl] = useState("https://www.lunialife.com/products/lunia-sleep-vitamins");
   const [tone, setTone] = useState(TONES[0]);
 
-  // Subject library — shared with the carousel builder.
+  // The carousel row library, read for its subject lines only. An email is
+  // not built from a row's slides; this is a list of things worth writing
+  // about that somebody already checked.
   useEffect(() => {
-    fetch("/api/subjects")
+    fetch("/api/carousel-rows")
       .then((r) => r.json())
-      .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoadingSubjects(false); })
+      .then((d) => { setSubjects(Array.isArray(d) ? (d as CarouselRow[]).filter(isBuildable) : []); setLoadingSubjects(false); })
       .catch(() => setLoadingSubjects(false));
   }, []);
 
   const filteredSubjects = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return subjects.filter((s) => !q || s.text.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+    return subjects.filter((s) => !q || s.subject.toLowerCase().includes(q) || s.carouselType.toLowerCase().includes(q));
   }, [subjects, search]);
 
-  const topic = mode === "list" ? (selectedSubject?.text ?? "") : customTopic;
+  const topic = mode === "list" ? (selectedSubject?.subject ?? "") : customTopic;
   const canGenerate = topic.trim().length >= 4;
 
   return (
@@ -107,7 +109,7 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
                 border: "none", cursor: "pointer", fontFamily: "inherit",
               }}
             >
-              {m === "list" ? "Subject library" : "Custom topic"}
+              {m === "list" ? "Row library" : "Custom topic"}
             </button>
           ))}
         </div>
@@ -122,12 +124,12 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
               style={{ ...inputStyle, marginBottom: 8 }}
             />
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-              {loadingSubjects ? "Loading subjects…" : `${filteredSubjects.length} subject${filteredSubjects.length === 1 ? "" : "s"}`}
+              {loadingSubjects ? "Loading rows…" : `${filteredSubjects.length} row${filteredSubjects.length === 1 ? "" : "s"}`}
             </div>
             <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", maxHeight: 300, overflowY: "auto" }}>
               {!loadingSubjects && filteredSubjects.length === 0 && (
                 <div style={{ padding: "22px 16px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-                  No subjects found. Add some in the Subjects tab, or use a custom topic.
+                  No rows found. Import the review sheet on the Rows tab, or use a custom topic.
                 </div>
               )}
               {filteredSubjects.map((s) => {
@@ -144,10 +146,10 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
                     }}
                   >
                     <span style={{ fontSize: 13, fontWeight: isSelected ? 700 : 400, color: isSelected ? "var(--accent)" : "var(--text)", lineHeight: 1.4 }}>
-                      {s.text}
+                      {s.subject}
                     </span>
                     <span style={{ fontSize: 10, color: isSelected ? "var(--accent)" : "var(--subtle)", flexShrink: 0, marginLeft: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                      {s.category}
+                      {s.carouselType}
                     </span>
                   </div>
                 );
@@ -155,7 +157,7 @@ export default function BriefStep({ onGenerate }: { onGenerate: (brief: Campaign
             </div>
             {selectedSubject && (
               <div style={{ marginTop: 8, padding: "9px 12px", background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>
-                ✓ {selectedSubject.text}
+                ✓ {selectedSubject.subject}
               </div>
             )}
           </div>

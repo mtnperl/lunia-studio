@@ -1,5 +1,11 @@
 # Carousel structures
 
+> Superseded on the main path as of 2026-09-22. A deck is now built from a
+> reviewed library row, which already carries its six slides, so there is no
+> argument left for a structure to shape. See `docs/carousel-rows.md`. What is
+> below still describes decks generated from a free-typed topic, and every deck
+> saved before that date.
+
 One axis owns how a deck argues. It replaced the hook-tone picker and the Standard format on 2026-09-05. Look (Editorial, Free Press, Viral) is a separate axis; any structure can wear any look. Did You Know is untouched: its own frozen two-slide flow. Engagement decks (comment keyword) keep their own generator for now and do not take a structure.
 
 The table lives in `src/lib/carousel-structures.ts`. The generator prompt is built from it and the checklist reads the same table, so a deck's shape lives in exactly one place.

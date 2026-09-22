@@ -1,10 +1,9 @@
-import { checkRateLimit, getSubjects } from "@/lib/kv";
-import type { Subject } from "@/lib/types";
-import { subjectFitsFormat, subjectUsedFor } from "@/lib/subject-fit";
+import { checkRateLimit, getCarouselRows } from "@/lib/kv";
+import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
 
 export const maxDuration = 30;
 
-// How many topic suggestions to surface per click.
+// How many suggestions to surface per click.
 const SUGGESTION_COUNT = 6;
 
 function shuffle<T>(arr: T[]): T[] {
@@ -16,6 +15,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/**
+ * What to shoot next: buildable rows nobody has used yet, one per carousel
+ * type so a click does not return six variations on the same theme.
+ *
+ * This used to pick from the subject library and filter by which frozen format
+ * a subject fitted. Rows carry their own six slides, so the only questions
+ * left are whether the row was approved and whether it has been built.
+ */
 export async function POST(req: Request) {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -23,48 +30,38 @@ export async function POST(req: Request) {
     "127.0.0.1";
   const allowed = await checkRateLimit(ip, "carousel");
   if (!allowed) {
-    return Response.json(
-      { error: "Too many requests. Please try again in an hour." },
-      { status: 429 }
-    );
+    return Response.json({ error: "Too many requests. Please try again in an hour." }, { status: 429 });
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const format: string = typeof body?.format === "string" ? body.format : "standard";
-    const subjects = await getSubjects().catch(() => [] as Subject[]);
-    // Only subjects that fit the format asked for, and never one already
-    // used for that format. A subject burned on a Structured deck is still
-    // fair game for a Did you know.
-    const unused = subjects.filter((s) => subjectFitsFormat(s, format) && !subjectUsedFor(s, format));
+    const rows = await getCarouselRows().catch(() => [] as CarouselRow[]);
+    const unused = rows.filter((r) => isBuildable(r) && !r.usedAt);
+    if (unused.length === 0) return Response.json([]);
 
-    if (unused.length === 0) {
-      return Response.json([]);
+    const byType = new Map<string, CarouselRow[]>();
+    for (const r of unused) {
+      const list = byType.get(r.carouselType) ?? [];
+      list.push(r);
+      byType.set(r.carouselType, list);
     }
-
-    // Group by category, shuffled within each category so repeated clicks
-    // don't always surface the same item first.
-    const byCategory = new Map<string, Subject[]>();
-    for (const s of unused) {
-      const list = byCategory.get(s.category) ?? [];
-      list.push(s);
-      byCategory.set(s.category, list);
-    }
-    const categories = shuffle([...byCategory.keys()]);
-    for (const cat of categories) byCategory.set(cat, shuffle(byCategory.get(cat)!));
-
-    // One subject per category, from as many distinct categories as possible —
-    // never two suggestions from the same category unless the library has
-    // fewer than SUGGESTION_COUNT categories with unused subjects left.
-    const picked: Subject[] = categories
+    // Highest evidence first inside a type, so a click surfaces the strongest
+    // row of each, then shuffle the types so it is not the same six each time.
+    for (const [, list] of byType) list.sort((a, b) => b.evidence - a.evidence || b.story - a.story);
+    const picked = shuffle([...byType.keys()])
       .slice(0, SUGGESTION_COUNT)
-      .map((cat) => byCategory.get(cat)![0]);
+      .map((t) => byType.get(t)![0]);
 
     return Response.json(
-      picked.map((s) => ({ id: s.id, title: s.text, category: s.category }))
+      picked.map((r) => ({
+        id: r.id,
+        title: r.subject,
+        category: r.carouselType,
+        evidence: r.evidence,
+        story: r.story,
+      })),
     );
   } catch (err) {
     console.error("[api/carousel/suggestions]", err);
-    return Response.json({ error: "Failed to generate suggestions" }, { status: 500 });
+    return Response.json({ error: "Failed to load suggestions" }, { status: 500 });
   }
 }

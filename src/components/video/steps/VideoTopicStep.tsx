@@ -1,8 +1,11 @@
 "use client";
-import { isSubjectUsedAnywhere } from "@/lib/subject-fit";
-
 import { useState, useEffect } from "react";
-import { Subject } from "@/lib/types";
+import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
+
+/** What this picker needs off a library row: a line to write about, a type to
+ *  group by, and an id. The subject library it used to read went with the
+ *  claims ledger on 2026-09-22. */
+type Topic = { id: string; text: string; category: string };
 
 const CATEGORIES = [
   "All",
@@ -87,25 +90,32 @@ type Mode = "list" | "custom";
 
 export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleChange, videoFormat = "brand-story", onFormatChange }: Props) {
   const [mode, setMode] = useState<Mode>("list");
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<Topic[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<Topic | null>(null);
   const [custom, setCustom] = useState("");
   const [hookTone, setHookTone] = useState<string>("pattern-interrupt");
 
   useEffect(() => {
-    fetch("/api/subjects")
+    fetch("/api/carousel-rows")
       .then((r) => r.json())
-      .then((d) => { setSubjects(Array.isArray(d) ? d : []); setLoadingSubjects(false); })
+      .then((d: unknown) => {
+        const rows = Array.isArray(d) ? (d as CarouselRow[]) : [];
+        setSubjects(
+          rows
+            .filter((r) => isBuildable(r) && !r.usedAt)
+            .map((r) => ({ id: r.id, text: r.subject, category: r.carouselType })),
+        );
+        setLoadingSubjects(false);
+      })
       .catch(() => setLoadingSubjects(false));
   }, []);
 
   const topic = mode === "list" ? (selectedSubject?.text ?? "") : custom.trim();
 
   const filteredSubjects = subjects.filter((s) => {
-    if (isSubjectUsedAnywhere(s)) return false;
     const matchCat = category === "All" || s.category === category;
     const matchSearch = s.text.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
@@ -170,12 +180,12 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
         Choose a topic
       </h2>
       <p style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 13, color: "var(--muted)", marginBottom: 28 }}>
-        Pick from your subject library or enter a custom topic. Claude will write a 5-scene video script.
+        Pick from the carousel row library or enter a custom topic. Claude will write a 5-scene video script.
       </p>
 
       {/* Mode toggle */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        <button style={modeBtn(mode === "list")} onClick={() => setMode("list")}>Subject Library</button>
+        <button style={modeBtn(mode === "list")} onClick={() => setMode("list")}>Row library</button>
         <button style={modeBtn(mode === "custom")} onClick={() => setMode("custom")}>Custom Topic</button>
       </div>
 
@@ -184,7 +194,7 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
           <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
             <input
               style={{ ...S.input, flex: 1 }}
-              placeholder="Search subjects..."
+              placeholder="Search rows..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -205,7 +215,7 @@ export default function VideoTopicStep({ onNext, loading, videoStyle, onStyleCha
             <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
               {filteredSubjects.length === 0 ? (
                 <div style={{ fontFamily: "Helvetica Neue, sans-serif", fontSize: 13, color: "var(--subtle)", padding: "16px 0" }}>
-                  No subjects match your search.
+                  No rows match your search.
                 </div>
               ) : filteredSubjects.map((s) => (
                 <button

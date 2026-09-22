@@ -19,6 +19,7 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
   const apiBase = useCarouselApi();
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [shorteningSlide, setShorteningSlide] = useState<number | null>(null);
+  const [lengtheningSlide, setLengtheningSlide] = useState<number | null>(null);
   const [originalBodies, setOriginalBodies] = useState<Record<number, string>>({});
   const [iconPickerOpen, setIconPickerOpen] = useState<number | null>(null);
   const [iconPickerCategory, setIconPickerCategory] = useState<IconCategory>("sleep");
@@ -92,6 +93,29 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
       updateSlide(slideIndex, "body", data.body);
     } finally {
       setShorteningSlide(null);
+    }
+  }
+
+  /** The other direction. Capped server-side so a longer body cannot crowd
+   *  the slide's graphic out of its zone. */
+  async function handleLengthen(slideIndex: number) {
+    setLengtheningSlide(slideIndex);
+    setOriginalBodies(prev => ({ ...prev, [slideIndex]: content.slides[slideIndex].body }));
+    try {
+      const res = await fetch(`${apiBase}/lengthen-slide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: content.slides[slideIndex].body, headline: content.slides[slideIndex].headline }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("[lengthen-slide]", err);
+        return;
+      }
+      const data = await res.json();
+      updateSlide(slideIndex, "body", data.body);
+    } finally {
+      setLengtheningSlide(null);
     }
   }
 
@@ -267,6 +291,25 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                 }}
               >
                 {shorteningSlide === i ? "Shortening…" : "✂ Shorter"}
+              </button>
+              <button
+                onClick={() => handleLengthen(i)}
+                disabled={lengtheningSlide === i}
+                title="Add a sentence. Capped so the slide's graphic keeps its room."
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: lengtheningSlide === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: lengtheningSlide === i ? 0.5 : 1,
+                }}
+              >
+                {lengtheningSlide === i ? "Expanding…" : "↔ Longer"}
               </button>
               {originalBodies[i] !== undefined && (
                 <button

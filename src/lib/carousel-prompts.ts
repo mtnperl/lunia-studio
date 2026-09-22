@@ -23,6 +23,13 @@ const BRAND_BRIDGE_INSTRUCTION = `
   Voice rules apply: dry, science-forward, no hype, no em dashes. Never sales-y. Never "buy now". Treat it as a closing thought a calm scientist would write.
 `;
 
+/** The caption spec, shared by the structured prompt and the row path so a
+ *  change to Lunia's caption voice lands in both. Extracted verbatim from
+ *  GENERATE_CAROUSEL_PROMPT on 2026-09-22; the built string is unchanged. */
+export function captionRules(includeSeoFooter: boolean): string {
+  return `- Caption: the Instagram caption. ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). The first two paragraphs are the post. Write them the way a science journalist tells a friend what they just read: same register as the slides, calmer. Open on the one specific detail from this deck the reader would not have guessed, said plainly. Then say what that detail means for them, one idea per sentence. Reuse the deck's own nouns instead of reaching for synonyms. Let sentence length vary, and let the two paragraphs be different lengths. Together they stay under 90 words. Do not open with a question, a stat dressed as a headline, or "here's the thing". No rule-of-three lists, no "not X but Y" reversals, no "imagine" or "picture this", and never tell the reader something is surprising, show the detail instead. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}`;
+}
+
 export const SUGGESTIONS_PROMPT = `You are a content strategist for Lunia Life, a sleep supplement brand. Generate exactly 3 Instagram carousel topic suggestions across these five content pillars: sleep science, ingredient education, cortisol and stress, longevity, wind-down routines.
 
 Return ONLY valid JSON in this exact format, no other text:
@@ -533,7 +540,7 @@ Brand rules (follow exactly):
   If you cannot cite a real paper for a slide's claim, return an empty string "" for that slide's citation and write the body so it does not imply a specific study. An empty citation is a CORRECT answer. A plausible-looking but invented citation is the worst possible output — it is the one failure this system cannot detect on its own.
 - CTA headline: short sharp statement, not a question, not a command, uppercase, max 6 words
 - All headlines uppercase
-- Caption: the Instagram caption. ${includeSeoFooter ? "4" : "3"} paragraphs separated by \\n\\n (double newline). The first two paragraphs are the post. Write them the way a science journalist tells a friend what they just read: same register as the slides, calmer. Open on the one specific detail from this deck the reader would not have guessed, said plainly. Then say what that detail means for them, one idea per sentence. Reuse the deck's own nouns instead of reaching for synonyms. Let sentence length vary, and let the two paragraphs be different lengths. Together they stay under 90 words. Do not open with a question, a stat dressed as a headline, or "here's the thing". No rule-of-three lists, no "not X but Y" reversals, no "imagine" or "picture this", and never tell the reader something is surprising, show the detail instead. Paragraph 3 (1-2 sentences): close with exactly "For more Sleep-Science content follow @lunia_life". No hashtags. No em dashes.${includeSeoFooter ? BRAND_BRIDGE_INSTRUCTION : ""}
+${captionRules(includeSeoFooter)}
 - graphic: compact single-line JSON. ${v2Mode && !isViral && !structured ? `MANDATORY TIER DIVERSITY (v2): the 3 content slides MUST come from 3 DIFFERENT tiers — exactly one TIER A (data), one TIER B (layout), and one TIER C (concept). Within the chosen tier, pick the component that best fits THE NARRATIVE PAYOFF of that specific slide's headline, not just whichever component the data fits into. If the headline turns on a sequence, prefer steps. If it turns on a set of conditions or actions, prefer checklist. If it turns on a handful of named things, prefer iconGrid. Don't pick the safest match — pick the one that pays off the headline.` : `MANDATORY VARIETY RULE: all 3 slides MUST use 3 DIFFERENT component types.`} Use this 3-tier routing to pick:
 
   STEP 1 — CLASSIFY the slide:

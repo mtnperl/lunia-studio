@@ -1,6 +1,7 @@
-import type { Fact, CarouselLook } from "./types";
+import type { CarouselLook } from "./types";
+import type { CarouselRow } from "./carousel-rows";
 import Redis from "ioredis";
-import { Script, SavedCarousel, AssetMetadata, Subject, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
+import { Script, SavedCarousel, AssetMetadata, CarouselTemplate, SavedVideoAd, VideoAssetMetadata, SavedEmail, SavedCampaign, UGCCampaign, UGCBrief, SavedFlowReview, CampaignSnippet, GatingConfig, DEFAULT_GATING } from "./types";
 import { backupCollectionToBlob, restoreCollectionFromBlob } from "./kv-backup";
 import type { SavedShape } from "./campaign-shapes";
 import type { DecisionModelSnapshot } from "./decision-model";
@@ -143,6 +144,7 @@ const RATE_LIMITS: Record<string, number> = {
   images: 100,    // fal.ai image generation
   "ugc-caption": 100, // UGC caption drafts
   "ugc-import": 10,   // CSV imports
+  "carousel-rows-import": 10, // carousel review sheet imports
   klaviyo: 60,    // Klaviyo proxy reads (60/h per IP — Klaviyo allows ~75/min globally)
   "email-review": 30, // analyze + regen-suggestions (Sonnet, expensive)
   "klaviyo-write": 12, // template writebacks (deliberately tight — every write is a real change)
@@ -439,124 +441,45 @@ export async function deleteCarouselLook(id: string): Promise<void> {
   await writeCollection(CAROUSEL_LOOKS_KEY, all.filter((l) => l.id !== id));
 }
 
-// ─── Subjects ─────────────────────────────────────────────────────────────────
-const SUBJECTS_KEY = "lunia:subjects";
+// ─── Carousel rows ────────────────────────────────────────────────────────────
+//
+// The row library: one reviewed spreadsheet row is one six-slide carousel.
+// It replaced the subject library and the claims ledger, which between them
+// asked the writer to invent both the topic and the numbers. See
+// src/lib/carousel-rows.ts.
+const CAROUSEL_ROWS_KEY = "lunia:carousel-rows";
 
-export async function getSubjects(): Promise<Subject[]> {
-  try {
-    const { DEFAULT_SUBJECTS } = await import("./default-subjects");
-    const stored = await redis.get<Subject[]>(SUBJECTS_KEY);
-    let base = stored;
-    if (!base || base.length === 0) {
-      const restored = await restoreCollectionFromBlob<Subject>(SUBJECTS_KEY);
-      if (restored && restored.length > 0) base = restored;
-    }
-    if (!base || base.length === 0) {
-      await writeCollection(SUBJECTS_KEY, DEFAULT_SUBJECTS);
-      return DEFAULT_SUBJECTS;
-    }
-    // Merge: append any DEFAULT_SUBJECTS not already present (by case-insensitive text).
-    // Lets new seed categories (e.g. "Did You Know") show up without wiping user data.
-    // Format tags travel the same way: a stored seed that carries none takes
-    // the seed file's, so the audit reaches the library without a reseed.
-    // A seed the editor has already tagged keeps the editor's tags.
-    const byText = new Map(DEFAULT_SUBJECTS.map((d) => [d.text.trim().toLowerCase(), d]));
-    let changed = false;
-    const tagged = base.map((s) => {
-      if (s.formats) return s;
-      const seed = byText.get(s.text.trim().toLowerCase());
-      if (!seed?.formats?.length) return s;
-      changed = true;
-      return { ...s, formats: seed.formats };
-    });
-    const haveTexts = new Set(base.map((s) => s.text.trim().toLowerCase()));
-    const newcomers = DEFAULT_SUBJECTS.filter((d) => !haveTexts.has(d.text.trim().toLowerCase()));
-    if (newcomers.length === 0 && !changed) return base;
-    const merged = [...tagged, ...newcomers];
-    await writeCollection(SUBJECTS_KEY, merged);
-    return merged;
-  } catch {
-    // Redis unavailable (e.g. local dev without KV_URL) — return defaults in-memory
-    const { DEFAULT_SUBJECTS } = await import("./default-subjects").catch(() => ({ DEFAULT_SUBJECTS: [] as Subject[] }));
-    return DEFAULT_SUBJECTS;
-  }
+export async function getCarouselRows(): Promise<CarouselRow[]> {
+  return readCollection<CarouselRow>(CAROUSEL_ROWS_KEY);
 }
 
-export async function saveSubjects(subjects: Subject[]): Promise<void> {
-  await writeCollection(SUBJECTS_KEY, subjects);
+export async function saveCarouselRows(rows: CarouselRow[]): Promise<void> {
+  await writeCollection(CAROUSEL_ROWS_KEY, rows);
 }
 
-export async function updateSubject(id: string, patch: { text?: string; formats?: string[] }): Promise<void> {
-  const all = await getSubjects();
-  const idx = all.findIndex((s) => s.id === id);
-  if (idx >= 0) {
-    all[idx] = {
-      ...all[idx],
-      ...(patch.text !== undefined ? { text: patch.text } : {}),
-      ...(patch.formats !== undefined ? { formats: patch.formats } : {}),
-    };
-    await writeCollection(SUBJECTS_KEY, all);
-  }
+export async function getCarouselRowById(id: string): Promise<CarouselRow | null> {
+  const all = await getCarouselRows();
+  return all.find((r) => r.id === id) ?? null;
 }
 
-/** Record a use. With a format, that format only (plus the last-used stamp);
- *  without one, the legacy whole-subject mark. */
-export async function markSubjectUsed(id: string, format?: string): Promise<void> {
-  const all = await getSubjects();
-  const idx = all.findIndex((s) => s.id === id);
-  if (idx >= 0) {
-    const now = new Date().toISOString();
-    const usedFor = format ? { ...(all[idx].usedFor ?? {}), [format]: now } : all[idx].usedFor;
-    all[idx] = { ...all[idx], usedAt: now, ...(usedFor ? { usedFor } : {}) };
-    await writeCollection(SUBJECTS_KEY, all);
-  }
+/** Patch one row and return it, or null when the id is unknown. The id,
+ *  source position and import stamp are not patchable: they identify the row. */
+export async function updateCarouselRow(
+  id: string,
+  patch: Partial<Omit<CarouselRow, "id" | "sourceRow" | "importedAt">>,
+): Promise<CarouselRow | null> {
+  const all = await getCarouselRows();
+  const idx = all.findIndex((r) => r.id === id);
+  if (idx < 0) return null;
+  const next = { ...all[idx], ...patch, id: all[idx].id, sourceRow: all[idx].sourceRow, importedAt: all[idx].importedAt };
+  all[idx] = next;
+  await writeCollection(CAROUSEL_ROWS_KEY, all);
+  return next;
 }
 
-/** Clear a use. With a format, that one; without, every use. */
-export async function markSubjectUnused(id: string, format?: string): Promise<void> {
-  const all = await getSubjects();
-  const idx = all.findIndex((s) => s.id === id);
-  if (idx < 0) return;
-  const { usedAt: _removed, usedFor, ...rest } = all[idx];
-  if (format && usedFor && usedFor[format]) {
-    const { [format]: _gone, ...keep } = usedFor;
-    const remaining = Object.values(keep).sort();
-    all[idx] = Object.keys(keep).length > 0
-      ? { ...rest, usedFor: keep, usedAt: remaining[remaining.length - 1] }
-      : rest;
-  } else {
-    all[idx] = rest;
-  }
-  await writeCollection(SUBJECTS_KEY, all);
-}
-
-export async function deleteSubject(id: string): Promise<void> {
-  const all = await getSubjects();
-  const filtered = all.filter((s) => s.id !== id);
-  await writeCollection(SUBJECTS_KEY, filtered);
-}
-
-// ─── Claims ledger ────────────────────────────────────────────────────────────
-const FACTS_KEY = "lunia:facts";
-
-export async function getFacts(): Promise<Fact[]> {
-  return readCollection<Fact>(FACTS_KEY);
-}
-
-export async function saveFacts(facts: Fact[]): Promise<void> {
-  await writeCollection(FACTS_KEY, facts);
-}
-
-export async function upsertFact(fact: Fact): Promise<void> {
-  const all = await getFacts();
-  const idx = all.findIndex((f) => f.id === fact.id);
-  if (idx >= 0) all[idx] = fact; else all.unshift(fact);
-  await writeCollection(FACTS_KEY, all);
-}
-
-export async function deleteFact(id: string): Promise<void> {
-  const all = await getFacts();
-  await writeCollection(FACTS_KEY, all.filter((f) => f.id !== id));
+export async function deleteCarouselRow(id: string): Promise<void> {
+  const all = await getCarouselRows();
+  await writeCollection(CAROUSEL_ROWS_KEY, all.filter((r) => r.id !== id));
 }
 
 // ─── Carousel Templates ───────────────────────────────────────────────────────

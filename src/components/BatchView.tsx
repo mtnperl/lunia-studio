@@ -7,11 +7,11 @@ import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
 import { isTwoSlideFormat } from "@/lib/types";
-import { isSubjectFormat, subjectFitsFormat, subjectUsedFor, SUBJECT_FORMATS, SUBJECT_FORMAT_CHIP, type SubjectFormat } from "@/lib/subject-fit";
+import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
 import { MiniRetroLoader, RetroImageError } from "@/components/carousel/shared/RetroLoader";
 import {
   BrandStyle, CarouselConfig, CarouselContent, CarouselContrastMode, CarouselFormat, CarouselStylePreset,
-  DidYouKnowContent, EngagementSubType, HookTone, Subject,
+  DidYouKnowContent, EngagementSubType, HookTone,
 } from "@/lib/types";
 import type { CarouselImageStyle, HookRecommendation } from "@/components/carousel/steps/TopicStep";
 import {
@@ -38,6 +38,9 @@ type QueueItem = {
   carouselFormat: CarouselFormat;
   engagementSubType?: EngagementSubType;
   concise: boolean;
+  /** Set when the topic came from a library row: the deck is then built from
+   *  the row's six reviewed slides rather than written from the topic line. */
+  rowId?: string;
   imageStyle: CarouselImageStyle;
   stylePreset: CarouselStylePreset;
   includeSeoFooter: boolean;
@@ -69,7 +72,9 @@ type QueueItem = {
 type DraftTopic = {
   id: string;
   text: string;
-  subjectId?: string;
+  /** The reviewed library row this topic came from, when it came from one.
+   *  A row build copies six checked slides; a typed topic does not. */
+  rowId?: string;
   hookTone: HookTone;
   hookToneAuto: boolean; // true until the user manually overrides the AI recommendation
 };
@@ -509,25 +514,21 @@ function BatchViewInner() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [generating, setGenerating] = useState(false);
 
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [subjectSearch, setSubjectSearch] = useState("");
-  const [subjectCategory, setSubjectCategory] = useState("All");
-  const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
+  const [rows, setRows] = useState<CarouselRow[]>([]);
+  const [rowSearch, setRowSearch] = useState("");
+  const [rowCategory, setRowCategory] = useState("All");
+  const [rowPickerOpen, setRowPickerOpen] = useState(false);
 
   const [suggestions, setSuggestions] = useState<{ id: string; title: string; category: string }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
-  const [addingSubject, setAddingSubject] = useState(false);
-  const [newSubjectText, setNewSubjectText] = useState("");
-  const [newSubjectCategory, setNewSubjectCategory] = useState("Did You Know");
-  const [newSubjectFormats, setNewSubjectFormats] = useState<SubjectFormat[]>([]);
-  const [addSubjectError, setAddSubjectError] = useState<string | null>(null);
-  const frozenFormat: SubjectFormat | null = isSubjectFormat(carouselFormat) ? carouselFormat : null;
-  useEffect(() => { if (frozenFormat) setNewSubjectFormats((prev) => prev.includes(frozenFormat) ? prev : [...prev, frozenFormat]); }, [frozenFormat]);
-
+  // There is no "add a topic to the library" here any more. A row is six
+  // reviewed slides with a citation; it is made in the sheet and imported, not
+  // typed into a picker. Free text still works through the box below, it just
+  // does not pretend to be a library row.
   useEffect(() => {
-    fetch("/api/subjects").then((r) => r.json()).then((d) => setSubjects(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/carousel-rows").then((r) => r.json()).then((d) => setRows(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
   // ── Draft persistence — survives reload / accidental tab close ───────────
@@ -595,12 +596,12 @@ function BatchViewInner() {
   }
 
   // ── Topic queue helpers ───────────────────────────────────────────────────
-  function addDraftTopic(text: string, subjectId?: string) {
+  function addDraftTopic(text: string, rowId?: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
     setDraftTopics((prev) => {
       if (prev.length >= MAX_TOPICS || prev.some((r) => r.text === trimmed)) return prev;
-      return [...prev, { id: nanoid(), text: trimmed, subjectId, hookTone: "educational", hookToneAuto: true }];
+      return [...prev, { id: nanoid(), text: trimmed, rowId, hookTone: "educational", hookToneAuto: true }];
     });
   }
 
@@ -657,48 +658,15 @@ function BatchViewInner() {
   function pickSuggestion(s: { id: string; title: string; category: string }) {
     addDraftTopic(s.title, s.id);
     setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
-    // Mark used the moment a suggestion is picked (not just on generate) so
-    // an abandoned suggestion never resurfaces — matches TopicStep.
-    fetch(`/api/subjects/${s.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "markUsed", format: carouselFormat }),
-    }).catch(() => {});
-    const now = new Date().toISOString();
-    setSubjects((prev) => prev.map((su) => (su.id === s.id ? { ...su, usedAt: now, usedFor: { ...(su.usedFor ?? {}), [carouselFormat]: now } } : su)));
+    // A row is stamped as used by the generate route, when a deck actually
+    // exists. It used to be stamped here, at pick time, which quietly burned
+    // rows that were queued and then abandoned. Hide it locally instead.
+    setRows((prev) => prev.filter((r) => r.id !== s.id));
   }
 
   function pickSampleTopic() {
     const pick = SAMPLE_SUBJECTS[Math.floor(Math.random() * SAMPLE_SUBJECTS.length)];
     addDraftTopic(pick);
-  }
-
-  async function submitNewSubject() {
-    const text = newSubjectText.trim();
-    if (text.length < 4 || text.length > 200) {
-      setAddSubjectError("Topic must be 4-200 characters");
-      return;
-    }
-    setAddSubjectError(null);
-    try {
-      const res = await fetch("/api/subjects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, category: newSubjectCategory, formats: newSubjectFormats }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setAddSubjectError(j.error || "Failed to add topic");
-        return;
-      }
-      const created = await res.json();
-      setSubjects((prev) => [created, ...prev]);
-      addDraftTopic(created.text, created.id);
-      setNewSubjectText("");
-      setAddingSubject(false);
-    } catch {
-      setAddSubjectError("Network error");
-    }
   }
 
   // Batch format forces tone/length on some formats — mirrors TopicStep.handleNext.
@@ -723,6 +691,7 @@ function BatchViewInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic: item.topic,
+          ...(item.rowId ? { rowId: item.rowId } : {}),
           hookTone: item.hookTone,
           count: isTwoSlideFormat(item.carouselFormat) ? 3 : 1,
           concise: item.concise,
@@ -830,13 +799,14 @@ function BatchViewInner() {
 
   async function handleGenerate() {
     if (draftTopics.length === 0) return;
-    const rows = draftTopics.slice(0, MAX_TOPICS);
+    const drafts = draftTopics.slice(0, MAX_TOPICS);
 
-    const items: QueueItem[] = rows.map((row) => {
+    const items: QueueItem[] = drafts.map((row) => {
       const { hookTone, concise: effConcise } = resolveItemSettings(row);
       return {
         id: nanoid(),
         topic: row.text,
+        ...(row.rowId ? { rowId: row.rowId } : {}),
         hookTone,
         carouselFormat,
         engagementSubType: carouselFormat === "engagement" ? engagementSubType : undefined,
@@ -855,19 +825,6 @@ function BatchViewInner() {
     setQueue((prev) => [...prev, ...items]);
     setDraftTopics([]);
     setGenerating(true);
-
-    // Mark subject-linked topics used (suggestion-sourced ones are already
-    // marked at pick time — this covers subject-library picks, matching the
-    // regular flow's mark-at-generate-time behavior).
-    for (const row of rows) {
-      if (row.subjectId) {
-        fetch(`/api/subjects/${row.subjectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "markUsed", format: carouselFormat }),
-        }).catch(() => {});
-      }
-    }
 
     for (let i = 0; i < items.length; i += 3) {
       const chunk = items.slice(i, i + 3);
@@ -894,14 +851,13 @@ function BatchViewInner() {
   const reviewingCount = queue.filter((i) => i.status === "reviewing").length;
 
   const draftTexts = new Set(draftTopics.map((r) => r.text));
-  // Same rule as the single builder: subjects that fit the format and have
-  // not been used for it.
-  const filteredSubjects = subjects
-    .filter((s) => !subjectUsedFor(s, carouselFormat))
-    .filter((s) => subjectFitsFormat(s, carouselFormat))
-    .filter((s) => subjectCategory === "All" || s.category === subjectCategory)
-    .filter((s) => s.text.toLowerCase().includes(subjectSearch.toLowerCase()))
-    .filter((s) => !draftTexts.has(s.text))
+  // Same rule as the single builder: rows that were approved, carry their six
+  // slides, and have not been built yet.
+  const filteredRows = rows
+    .filter((r) => isBuildable(r) && !r.usedAt)
+    .filter((r) => rowCategory === "All" || r.carouselType === rowCategory)
+    .filter((r) => r.subject.toLowerCase().includes(rowSearch.toLowerCase()))
+    .filter((r) => !draftTexts.has(r.subject))
     .slice(0, 60);
 
   const showToneControl = carouselFormat === "standard";
@@ -1158,10 +1114,10 @@ function BatchViewInner() {
             {loadingSuggestions ? "Thinking…" : "✨ Suggest topics"}
           </button>
           <button
-            onClick={() => setSubjectPickerOpen((v) => !v)}
-            style={{ fontSize: 12, fontWeight: 600, background: subjectPickerOpen ? "rgba(30,122,138,0.1)" : "var(--surface)", color: subjectPickerOpen ? "#1e7a8a" : "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
+            onClick={() => setRowPickerOpen((v) => !v)}
+            style={{ fontSize: 12, fontWeight: 600, background: rowPickerOpen ? "rgba(30,122,138,0.1)" : "var(--surface)", color: rowPickerOpen ? "#1e7a8a" : "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
           >
-            {subjectPickerOpen ? "▲ Hide subject library" : "▼ Pick from subject library"}
+            {rowPickerOpen ? "▲ Hide row library" : "▼ Pick from row library"}
           </button>
         </div>
 
@@ -1194,69 +1150,41 @@ function BatchViewInner() {
           </div>
         )}
 
-        {subjectPickerOpen && (
+        {rowPickerOpen && (
           <div style={{ marginBottom: 16, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", overflow: "hidden" }}>
             <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
               <input
-                type="text" value={subjectSearch} onChange={(e) => setSubjectSearch(e.target.value)}
-                placeholder="Search subjects..."
+                type="text" value={rowSearch} onChange={(e) => setRowSearch(e.target.value)}
+                placeholder="Search rows..."
                 style={{ flex: 1, padding: "5px 8px", fontSize: 12, border: "1px solid var(--border)", borderRadius: 5, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" }}
               />
               <select
-                value={subjectCategory} onChange={(e) => setSubjectCategory(e.target.value)}
+                value={rowCategory} onChange={(e) => setRowCategory(e.target.value)}
                 style={{ padding: "5px 8px", fontSize: 12, border: "1px solid var(--border)", borderRadius: 5, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none", cursor: "pointer" }}
               >
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)" }}>
-              {!addingSubject ? (
-                <button onClick={() => setAddingSubject(true)} style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-                  + Add custom topic to library
-                </button>
-              ) : (
-                <div>
-                  <input
-                    type="text" value={newSubjectText} maxLength={200} onChange={(e) => setNewSubjectText(e.target.value)}
-                    placeholder="New topic text..."
-                    style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: "1.5px solid var(--border)", borderRadius: 6, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box", marginBottom: 6 }}
-                  />
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <select value={newSubjectCategory} onChange={(e) => setNewSubjectCategory(e.target.value)} style={{ flex: 1, padding: "6px 8px", fontSize: 11, border: "1.5px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", fontFamily: "inherit", cursor: "pointer" }}>
-                      {CATEGORIES.filter((c) => c !== "All").map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    {SUBJECT_FORMATS.map((f) => {
-                      const on = newSubjectFormats.includes(f);
-                      return (
-                        <button key={f} type="button" title="Which two-slide formats this subject fits" onClick={() => setNewSubjectFormats((prev) => on ? prev.filter((x) => x !== f) : [...prev, f])}
-                          style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 6px", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent-dim)" : "var(--bg)", color: on ? "var(--accent)" : "var(--muted)" }}>
-                          {SUBJECT_FORMAT_CHIP[f]}
-                        </button>
-                      );
-                    })}
-                    <button onClick={submitNewSubject} style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>Add</button>
-                    <button onClick={() => { setAddingSubject(false); setAddSubjectError(null); }} style={{ padding: "6px 10px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                  </div>
-                  {addSubjectError && <div style={{ fontSize: 11, color: "#e53e3e", marginTop: 6 }}>{addSubjectError}</div>}
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {filteredRows.length === 0 && (
+                <div style={{ padding: "16px 12px", textAlign: "center", color: "var(--muted)", fontSize: 12 }}>
+                  {rows.length === 0 ? "No rows imported yet. Import the review sheet on the Rows screen." : "No rows match your filter."}
                 </div>
               )}
-            </div>
-            <div style={{ maxHeight: 220, overflowY: "auto" }}>
-              {filteredSubjects.length === 0 && (
-                <div style={{ padding: "16px 12px", textAlign: "center", color: "var(--muted)", fontSize: 12 }}>No subjects match your filter.</div>
-              )}
-              {filteredSubjects.map((s) => (
+              {filteredRows.map((r) => (
                 <div
-                  key={s.id}
-                  onClick={() => draftTopics.length < MAX_TOPICS && addDraftTopic(s.text, s.id)}
+                  key={r.id}
+                  onClick={() => draftTopics.length < MAX_TOPICS && addDraftTopic(r.subject, r.id)}
                   style={{
                     padding: "7px 12px", fontSize: 12, borderBottom: "1px solid var(--border)",
                     cursor: draftTopics.length >= MAX_TOPICS ? "not-allowed" : "pointer",
                     display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
                   }}
                 >
-                  <span>{s.text}</span>
-                  <span style={{ fontSize: 10, color: "var(--subtle)", flexShrink: 0 }}>{s.category}</span>
+                  <span>{r.subject}</span>
+                  <span style={{ fontSize: 10, color: "var(--subtle)", flexShrink: 0 }}>
+                    E{r.evidence} S{r.story} · {r.carouselType}
+                  </span>
                 </div>
               ))}
             </div>

@@ -7,6 +7,7 @@ import { Button, Input } from "@/components/ui";
 
 const PRESETS: { label: string; instruction: string }[] = [
   { label: "Shorter", instruction: "Make it shorter. Cut filler, keep the point." },
+  { label: "Longer", instruction: "Add one more sentence, at most 55 words in total. Say the mechanism, what it means for the reader, or the condition it holds under. Introduce no new number, study, author or year." },
   { label: "Punchier", instruction: "Make it punchier: shorter sentences, stronger verbs, same meaning." },
   { label: "Simpler", instruction: "Use simpler words a tired reader gets on first pass." },
   { label: "Fix grammar", instruction: "Fix grammar, spelling and punctuation only. Change nothing else." },

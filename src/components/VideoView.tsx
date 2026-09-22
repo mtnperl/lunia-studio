@@ -202,13 +202,8 @@ export default function VideoView() {
     setLoading(true);
     setError(null);
     try {
-      if (subjectId) {
-        fetch(`/api/subjects/${subjectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "markUsed", format: "video" }),
-        }).catch(() => {});
-      }
+      // A library row used to be marked here. Rows are stamped as used when
+      // a carousel is built from them; a video does not consume one.
 
       if (videoFormat === "captions") {
         const res = await fetch("/api/video/generate-captions", {

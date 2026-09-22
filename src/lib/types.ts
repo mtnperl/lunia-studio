@@ -634,6 +634,10 @@ export type SavedCarousel = {
   hookTone: HookTone;
   /** How the deck argues. Old records have none; structureFromLegacy() infers it. */
   structure?: CarouselStructure;
+  /** The reviewed library row this deck was built from. See
+   *  src/lib/carousel-rows.ts. Absent on decks written before the row library,
+   *  and on any deck built from a free-typed topic. */
+  rowId?: string;
   content: CarouselContent;
   selectedHook: number;
   graphicStyles?: [GraphicStyle, GraphicStyle, GraphicStyle]; // legacy
@@ -923,32 +927,6 @@ export type CarouselTemplate = {
   images: CarouselTemplateImage[];
   brandStyle?: BrandStyle;
   uploadedAt: string;
-};
-
-export type Subject = {
-  id: string;
-  text: string;
-  category: string;
-  /** ISO date when last used for anything. Kept as the "last used" stamp;
-   *  which format it was used for is in usedFor. A usedAt with no usedFor is
-   *  from before uses were recorded per format (see subject-fit.ts). */
-  usedAt?: string;
-  /** ISO date per carousel format (or "video") the subject was used for. A
-   *  subject burned on a Structured deck can still become a Did you know. */
-  usedFor?: Record<string, string>;
-  /** The frozen two-slide formats this subject fits: "did_you_know",
-   *  "chartbook", "primer". Structured and Engagement fit everything and
-   *  are not tagged. Absent means none, except that a subject in a category
-   *  named for a format fits that format (subject-fit.ts). */
-  formats?: string[];
-  sourceUrl?: string;  // optional citation URL (set for "Latest Research" auto-pulls)
-  /** The line this subject used to carry, before the research filed against
-   *  it showed the claim could not be published as written. Present only on a
-   *  corrected subject: it is what the corrected list shows and what an undo
-   *  restores. See subject-corrections.ts. */
-  priorText?: string;
-  /** When the line was corrected. */
-  correctedAt?: string;
 };
 
 export type AssetType =
@@ -1372,42 +1350,6 @@ export type SavedCampaign = {
   topic: string;
   createdAt: string;
   content: CampaignContent;
-};
-
-// ─── Claims ledger ────────────────────────────────────────────────────────────
-export type FactStatus = "verified" | "pending" | "retracted";
-/** How the subject's headline claim holds up against the facts on file. */
-export type HeadlineVerdict = "supported" | "partly" | "no_evidence" | "contradicted";
-
-/** One sourced fact, keyed to a subject. See src/lib/facts.ts. */
-export type Fact = {
-  id: string;
-  /** Subject library id when known. */
-  subjectId?: string;
-  /** Subject text, or the carousel topic the fact was verified under. */
-  subjectText: string;
-  /** One sentence carrying the figure. */
-  statement: string;
-  /** The figure on its own, for display: "8 mg per 200 ml cup". */
-  value?: string;
-  source: { citation?: string; url?: string; title?: string; quote?: string };
-  status: FactStatus;
-  origin: "verification" | "research" | "manual";
-  /** Document it was verified in, when it came from a fact check. */
-  contentId?: string;
-  createdAt: string;
-  updatedAt: string;
-  verifiedAt?: string;
-  /** Earlier statements, kept so an old value can be hunted down. */
-  previous?: { statement: string; changedAt: string }[];
-  note?: string;
-  /** Review verdict on the subject's headline claim, carried by every fact
-   *  filed for it. Missing means the claim has not been reviewed. */
-  claimVerdict?: HeadlineVerdict;
-  /** False when the headline cannot be published as written. */
-  safeForCopy?: boolean;
-  /** How to state the claim honestly: the frame generation writes to. */
-  claimCorrection?: string;
 };
 
 // ─── Analytics / Dashboard ───────────────────────────────────────────────────
