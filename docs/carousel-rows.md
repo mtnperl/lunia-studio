@@ -68,7 +68,22 @@ and not seven. `cta` is still populated for layouts that predate the takeaway.
 
 ## What the model still writes
 
-Two things, in one call: the caption, and the takeaway. That is all.
+Three things, in one call: the expanded bodies, the takeaway, and the caption.
+
+A sheet body is expanded only when it is under 18 words. Every content body in
+the first export is 4 to 12 words, one clause, which reads as a caption under
+the headline rather than a slide; 18 words is two real clauses. A body at or
+above the floor is left exactly as written, the prompt names only the slides
+that fall under it, and `usableBody` refuses a replacement for one that did
+not need it even if the model sends one anyway. Write fuller bodies in the
+sheet and the expansion stops happening.
+
+Sentence counting was tried for this and dropped. "For a 107 mg coffee, the
+modeled window was 8.8 hours." splits into two sentences on the decimal point,
+and "not a fixed 4 p.m. rule" into three.
+
+An expansion is checked before it lands: missing, empty, over 55 words, or no
+longer than the line it replaces, and the sheet's own line is kept.
 
 The prompt (`ROW_FINISH_PROMPT`) is handed the finished deck and told it is not
 writing or rewriting the slides. It may not introduce a number, study, author
@@ -98,6 +113,13 @@ Re-import is a merge on the subject line. An edited sheet updates the row in
 place and keeps its id, chosen hook, status and build history. Rows the new
 file does not mention are left alone, so a partial export can never read as a
 deletion.
+
+That is the right behaviour for an edited sheet and the wrong one for a
+replaced sheet, so `DELETE /api/carousel-rows` empties the library and the
+Rows screen carries it as Delete all. It arms on the first click and fires on
+the second, disarming after four seconds. Build stamps go with it, so every
+row comes back unbuilt. Decks already built are their own records and survive
+the rows they came from.
 
 ## What this does not cover
 

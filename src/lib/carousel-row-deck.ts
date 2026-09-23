@@ -18,6 +18,21 @@ import type { CarouselContent, CarouselContentSlide, Hook } from "./types";
 import { captionRules } from "./carousel-prompts";
 import { contentSlides, coverHeadline, isBuildable, summaryGuidance, type CarouselRow } from "./carousel-rows";
 
+/**
+ * The floor under an expansion. A sheet body at or above this stands on its
+ * own and is left exactly as written.
+ *
+ * Eighteen because of what the sheets actually hold: every content body in
+ * the first 144-row export is 4 to 12 words, one clause, which reads as a
+ * caption under the headline rather than a slide. Eighteen words is two real
+ * clauses. It sits above everything in that export, so that sheet expands
+ * whole, and below anything written as real body copy, so a sheet with fuller
+ * lines is left alone. Sentence counting was tried and dropped: "For a 107 mg
+ * coffee, the modeled window was 8.8 hours." splits into two on the decimal
+ * point, and "not a fixed 4 p.m. rule" into three.
+ */
+export const MIN_BODY_WORDS = 18;
+
 /** The ceiling on an expanded body. A slide's text zone is fixed, and copy
  *  that crowds it pushes the infographic below its legibility floor, where
  *  FitBox drops it. Same number the Longer control uses. */
@@ -72,12 +87,26 @@ export function rowContentSlides(row: CarouselRow, bodies?: (string | undefined)
   }));
 }
 
-/** An expanded body, or the sheet's own line when the expansion is missing,
- *  empty, over the cap, or shorter than what it replaced. */
+/** How many words a body carries. */
+export function wordCount(text: string): number {
+  return (text ?? "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Whether a sheet body is too thin to stand on a slide on its own. A body
+ *  that is already long enough is never rewritten, even if the model sends
+ *  something for it. */
+export function needsExpansion(body: string): boolean {
+  return wordCount(body) < MIN_BODY_WORDS;
+}
+
+/** An expanded body, or the sheet's own line when the sheet's line was
+ *  already enough, or when the expansion is missing, empty, over the cap, or
+ *  shorter than what it replaced. */
 export function usableBody(expanded: string | undefined, original: string): string {
+  if (!needsExpansion(original)) return original;
   const next = (expanded ?? "").trim();
   if (!next) return original;
-  if (next.split(/\s+/).filter(Boolean).length > MAX_BODY_WORDS) return original;
+  if (wordCount(next) > MAX_BODY_WORDS) return original;
   if (next.length <= original.length) return original;
   return next;
 }
@@ -130,9 +159,22 @@ export function ROW_FINISH_PROMPT(row: CarouselRow, includeSeoFooter: boolean): 
     .join("\n");
 
   const content = contentSlides(row);
+  const thin = content.map((s, i) => ({ s, i })).filter(({ s }) => needsExpansion(s.body));
+  const bodiesBlock = thin.length === 0
+    ? `1. Nothing. Every body on this deck is already long enough to stand on its own, so "bodies" comes back as an empty array. Do not rewrite a single one of them.`
+    : `1. The expanded bodies. Return "bodies" as an array of ${content.length} strings, one per slide between the cover and the close, in order.
+  ${thin.length === content.length
+    ? "Every one of them needs expanding."
+    : `Only these need expanding: ${thin.map(({ i }) => `slide ${i + 2}`).join(", ")}. For every other position return an empty string "": those bodies are already long enough and rewriting one is an error.`}
+  This is an EXPANSION, not a rewrite. Start from the line that is already there and keep its meaning, its subject and its wording where the wording is doing work. Then add what the reader needs to understand it: the mechanism behind it, what it means for them, or the condition it holds under.
+  2 to 3 sentences, at most ${MAX_BODY_WORDS} words in total. Sentence length varies.
+  You may NOT introduce a number, a percentage, a study, an author, a year, a dose or a finding that is not already somewhere on the six slides above. If the expansion you want needs a fact you do not have, write a shorter one that does not.
+  Every figure already in the line stays exactly as written. "Twenty-two of 25" does not become "88 percent" or "most".
+  Do not repeat the slide's own headline back in its body, and do not restate the slide before it.`;
+
   return `You are writing for Lunia Life, a sleep supplement brand. A six-slide Instagram carousel has already been written and fact-checked by an editor. It is below, exactly as it will be published.
 
-The headlines are final and are not yours to touch. The bodies under them were written as one short line each, which reads as a caption rather than a slide, so you are expanding them. You are also writing the close and the caption. Nothing else.
+The headlines are final and are not yours to touch.${thin.length > 0 ? " The bodies under them are too short to stand on a slide, so you are expanding the ones named below." : " The bodies under them are already long enough and are not yours to touch either."} You are also writing the close and the caption. Nothing else.
 
 SUBJECT: ${row.subject}
 EDITORIAL NOTE (internal, never quote it): ${row.why}
@@ -144,13 +186,7 @@ ${slides}
 
 WHAT TO WRITE
 
-1. The expanded bodies, one for each of the ${content.length} slides between the cover and the close (slides 2 to ${content.length + 1} above), in order.
-  This is an EXPANSION, not a rewrite. Start from the line that is already there and keep its meaning, its subject and its wording where the wording is doing work. Then add what the reader needs to understand it: the mechanism behind it, what it means for them, or the condition it holds under.
-  2 to 3 sentences, at most ${MAX_BODY_WORDS} words in total. Sentence length varies.
-  You may NOT introduce a number, a percentage, a study, an author, a year, a dose or a finding that is not already somewhere on the six slides above. If the expansion you want needs a fact you do not have, write a shorter one that does not.
-  Every figure already in the line stays exactly as written. "Twenty-two of 25" does not become "88 percent" or "most".
-  Do not repeat the slide's own headline back in its body, and do not restate the slide before it.
-  Return them in "bodies", in slide order.
+${bodiesBlock}
 
 2. The takeaway, the deck's last slide. It replaces the sheet's slide 6 on the artwork, so it has to close the same argument the sheet closed, in fresh language. The sheet's close reads "${close?.headline ?? ""}" / "${close?.body ?? ""}" — treat that as guidance on WHERE the deck lands, not as copy to reuse or paraphrase.
   takeaway.headline: the claim in the reader's words. UPPERCASE, max 6 words, not a question. It says what the deck showed, never a riddle about it.
@@ -170,7 +206,7 @@ VOICE. Plain words a tired adult understands on first read. No em dashes. No exc
 
 Return ONLY valid JSON, no other text:
 {
-  "bodies": [${content.map((_, i) => `"expanded body for slide ${i + 2}"`).join(", ")}],
+  "bodies": [${content.map((c, i) => (needsExpansion(c.body) ? `"expanded body for slide ${i + 2}"` : `""`)).join(", ")}],
   "takeaway": {
     "headline": "string",
     "points": ["string", "string", "string"],

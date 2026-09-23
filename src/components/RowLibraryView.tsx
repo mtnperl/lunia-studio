@@ -61,7 +61,45 @@ export default function RowLibraryView() {
   const [importing, setImporting] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Delete all arms on the first click and fires on the second, and disarms
+  // itself after four seconds so a loaded button never sits waiting. Same
+  // guard the Facts screen used before it went: clearing a library is one
+  // decision, and a modal for it is ceremony.
+  const [armed, setArmed] = useState(false);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (armTimer.current) clearTimeout(armTimer.current); }, []);
+  const [clearing, setClearing] = useState(false);
   const { toast } = useToast();
+
+  async function deleteAll() {
+    if (!armed) {
+      setArmed(true);
+      if (armTimer.current) clearTimeout(armTimer.current);
+      armTimer.current = setTimeout(() => setArmed(false), 4000);
+      return;
+    }
+    if (armTimer.current) clearTimeout(armTimer.current);
+    setArmed(false);
+    setClearing(true);
+    try {
+      const res = await fetch("/api/carousel-rows", { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast({ kind: "danger", title: "Could not empty the library", description: data?.error });
+        return;
+      }
+      setReport(null);
+      setPendingFile(null);
+      setOpen(null);
+      if (fileRef.current) fileRef.current.value = "";
+      await load();
+      toast({ kind: "success", title: "Library emptied", description: `${data?.deleted ?? 0} rows deleted. Import the sheet to start again.` });
+    } catch {
+      toast({ kind: "danger", title: "Network error while emptying the library" });
+    } finally {
+      setClearing(false);
+    }
+  }
 
   async function load() {
     try {
@@ -155,9 +193,23 @@ export default function RowLibraryView() {
         title="Carousel rows"
         description="One reviewed row is one six-slide carousel. The headlines, bodies, hooks and sources come from the sheet; the builder writes only the caption and the last slide."
         actions={
-          <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={importing}>
-            Import the sheet
-          </Button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {(rows?.length ?? 0) > 0 && (
+              <Button
+                variant={armed ? "danger" : "ghost"}
+                onClick={() => void deleteAll()}
+                busy={clearing}
+                title={armed ? "Click again to delete every row. This cannot be undone." : "Empty the library so the sheet can be imported clean"}
+              >
+                {armed
+                  ? `Click again to delete all ${rows!.length}${counts.unbuilt < counts.buildable ? ` (${counts.buildable - counts.unbuilt} already built)` : ""}`
+                  : "Delete all"}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={importing}>
+              Import the sheet
+            </Button>
+          </div>
         }
       />
 

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseXLSX } from "./xlsx";
-import { parseRows, type CarouselRow } from "./carousel-rows";
+import { contentSlides, parseRows, type CarouselRow } from "./carousel-rows";
 import {
   MAX_BODY_WORDS,
+  MIN_BODY_WORDS,
+  needsExpansion,
   ROW_FINISH_PROMPT,
   usableBody,
   parseRowFinish,
@@ -145,6 +147,19 @@ describe("the cover's picture", () => {
   });
 });
 
+describe("needsExpansion", () => {
+  it("calls every body in the real export too thin", () => {
+    // The first 144-row sheet tops out at 12 words per content body.
+    for (const s of contentSlides(yes)) expect(needsExpansion(s.body)).toBe(true);
+  });
+
+  it("leaves a body that already stands on its own", () => {
+    const full = Array.from({ length: MIN_BODY_WORDS }, () => "word").join(" ");
+    expect(needsExpansion(full)).toBe(false);
+    expect(needsExpansion(Array.from({ length: MIN_BODY_WORDS - 1 }, () => "word").join(" "))).toBe(true);
+  });
+});
+
 describe("usableBody", () => {
   const sheet = "Twenty-two of 25 differed by more than ten percent.";
 
@@ -165,6 +180,12 @@ describe("usableBody", () => {
 
   it("keeps the sheet's line when the expansion is no longer than it", () => {
     expect(usableBody("Most missed.", sheet)).toBe(sheet);
+  });
+
+  it("refuses to touch a body that was already long enough", () => {
+    const full = `Twenty-two of the 25 gummies differed from their label by more than ten percent, and the gap ran both ways.`;
+    expect(needsExpansion(full)).toBe(false);
+    expect(usableBody(`${full} An extra sentence the model wanted to add.`, full)).toBe(full);
   });
 });
 
@@ -203,6 +224,23 @@ describe("the expansion brief", () => {
     expect(prompt).toContain('"expanded body for slide 2"');
     expect(prompt).toContain('"expanded body for slide 5"');
     expect(prompt).not.toContain('"expanded body for slide 6"');
+  });
+
+  it("names only the thin slides when some are already long enough", () => {
+    const full = Array.from({ length: MIN_BODY_WORDS + 2 }, () => "word").join(" ");
+    const mixed: CarouselRow = { ...yes, slides: yes.slides.map((s, i) => (i === 2 ? { ...s, body: full } : s)) };
+    const p = ROW_FINISH_PROMPT(mixed, true);
+    expect(p).toContain("Only these need expanding: slide 2, slide 4, slide 5");
+    expect(p).toContain('rewriting one is an error');
+  });
+
+  it("asks for nothing when every body already stands on its own", () => {
+    const full = Array.from({ length: MIN_BODY_WORDS + 2 }, () => "word").join(" ");
+    const fat: CarouselRow = { ...yes, slides: yes.slides.map((s) => ({ ...s, body: full })) };
+    const p = ROW_FINISH_PROMPT(fat, true);
+    expect(p).toContain("already long enough to stand on its own");
+    expect(p).toContain("are not yours to touch either");
+    expect(p).not.toContain("This is an EXPANSION");
   });
 
   it("still says the headlines are not the model's", () => {
