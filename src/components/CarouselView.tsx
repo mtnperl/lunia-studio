@@ -97,6 +97,11 @@ function CarouselLoader({ note }: { note?: string | null } = {}) {
   );
 }
 
+/** Long enough for gpt-image-2 on the editorial preset, which is the slowest
+ *  lane, and short of the route's own 300s ceiling so the client gives up
+ *  before the platform does and can say so. */
+const IMAGE_TIMEOUT_MS = 240_000;
+
 export default function CarouselView({ initialCarousel, onCarouselLoaded, onSaved, onExit, varyFrom, onVaryConsumed, onReload, version = "v1" }: { initialCarousel?: SavedCarousel | null; onCarouselLoaded?: () => void; onSaved?: (id: string) => void; onExit?: () => void; version?: "v1" | "v2"; varyFrom?: SavedCarousel | null; onVaryConsumed?: () => void; onReload?: () => void }) {
   const apiBase = useCarouselApi();
   const [step, setStep] = useState<Step>(1);
@@ -280,6 +285,37 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       }
     : null;
 
+  /**
+   * One retry, and a message that says what actually happened.
+   *
+   * The hook image is a single long request: on the Editorial Scientific
+   * preset it goes to gpt-image-2, which runs for a minute or more. There was
+   * no retry and no timeout, so any connection that died in transit surfaced
+   * as the browser's bare "Failed to fetch" and the only way forward was to
+   * regenerate the deck. A dropped connection is not the same as an engine
+   * refusing the image, and the card should not say the same thing for both.
+   */
+  async function fetchImageOnce(url: string, options: RequestInit, attempt: number): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } catch (err) {
+      const aborted = err instanceof Error && err.name === "AbortError";
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 2000));
+        return fetchImageOnce(url, options, 1);
+      }
+      throw new Error(
+        aborted
+          ? `The image engine did not answer within ${Math.round(IMAGE_TIMEOUT_MS / 1000)}s, twice. It is usually still busy rather than broken — try again in a minute.`
+          : "The connection dropped before the image came back, twice. Your copy is untouched; try again.",
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // Only generate hook (0) — content + CTA slides stay clean with brand colors
   const FAL_SLIDE_INDICES = [0] as const;
   const FAL_TOTAL = FAL_SLIDE_INDICES.length;
@@ -293,7 +329,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     let loaded = 0;
     let failed = 0;
     FAL_SLIDE_INDICES.forEach((i) => {
-      fetch(`${apiBase}/generate-image`, {
+      fetchImageOnce(`${apiBase}/generate-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -311,7 +347,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               ? { customPrompt: currentContent.hookImagePromptOverride }
               : {}),
         }),
-      })
+      }, 0)
         .then(async (r) => {
           // Read body as text first so we can surface non-JSON errors
           // (Vercel timeout pages, HTML 502/504 responses, etc.) instead

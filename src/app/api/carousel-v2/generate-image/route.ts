@@ -265,7 +265,7 @@ export async function POST(req: Request) {
       });
     }
 
-    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id}${contrastMode === 'high' ? ' contrast=high' : ''} refs=${referenceImageUrls.length} prompt_source=${customPrompt ? 'custom' : (imagePrompt?.trim() ? 'claude' : 'fallback')} prompt="${prompt.slice(0, 100)}..."`);
+    console.log(`[v2/generate-image] slide=${slideIndex} engine=${engine} mood=${mood.id}${contrastMode === 'high' ? ' contrast=high' : ''} refs=${referenceImageUrls.length} spec=${hookImageSpec?.concept ? 'concept' : hookImageSpec ? 'empty' : 'none'} framework=${useEditorialHookFramework ? 'editorial' : 'base'} prompt_source=${customPrompt ? 'custom' : (imagePrompt?.trim() ? 'claude' : 'fallback')} prompt="${prompt.slice(0, 100)}..."`);
 
     let url: string | undefined;
     try {
