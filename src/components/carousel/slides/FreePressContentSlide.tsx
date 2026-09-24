@@ -29,6 +29,8 @@
 // return "" rather than inventing a source — so this slide must render that
 // case as an absence, not as a gap where a source should have been.
 
+import { hasListLines } from "@/lib/body-format";
+import FormattedBody from "@/components/carousel/shared/FormattedBody";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
@@ -87,6 +89,8 @@ type Props = {
   /** Export frame height override (1080 square, 1920 story). Width stays 1080. */
   frameH?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   showSlideArrows?: boolean;
   /** Editor only — undefined on the export path, which then renders exactly
    *  the markup it always did. Mirrors EditorialContentSlide. */
@@ -142,6 +146,7 @@ export default function FreePressContentSlide({
   citationFontSize,
   frameH, reels = false,
   bodyScale = 1,
+  lineSpacing = 1,
   showSlideArrows = true,
   onSelectElement,
   selectedElement,
@@ -161,13 +166,14 @@ export default function FreePressContentSlide({
   // that reads and a sheet of blank paper with a citation on it.
   const bodyBlocks = splitBodyBlocks(body);
   const blocks = bodyBlocks.length > 0 ? bodyBlocks : splitBodyBlocks(headline);
+  const listBody = bodyBlocks.length > 0 && hasListLines(body);
   const naturalSize = FP_TYPE.body * bodyScale * (reels ? 1.08 : 1);
   const sourceSize = citationFontSize ?? FP_TYPE.source;
   const hasCitation = !!(citation && citation.trim());
 
   // Keyed on the inputs that change how much room the copy needs, so a shorter
   // body resets to full size instead of inheriting the previous shrink.
-  const fitKey = `${blocks.join("|")}|${naturalSize}|${reels}`;
+  const fitKey = `${blocks.join("|")}|${body}|${naturalSize}|${reels}|${lineSpacing}`;
   const [fit, setFit] = useState({ key: fitKey, v: 1 });
   const autoFit = fit.key === fitKey ? fit.v : 1;
   const bodySize = Math.round(naturalSize * autoFit);
@@ -282,12 +288,24 @@ export default function FreePressContentSlide({
               // the single most expensive object on the slide — it costs the
               // same height as a line of copy while carrying no words — and
               // the copy is the design. Still unmistakably a paragraph break.
-              gap: Math.round(bodySize * 0.68),
+              gap: Math.round(bodySize * 0.68 * lineSpacing),
               width: "100%",
               flexShrink: 0,
             }}
           >
-          {blocks.map((block, i) => {
+          {listBody ? (() => {
+              // A list the author typed: one editable zone, drawn line by line.
+              const { style: zStyle, ...zRest } = zone("body");
+              const editingBody = editingElement === "body";
+              const textStyle: CSSProperties = { fontFamily: FP_SANS, fontWeight: 700, fontSize: bodySize, letterSpacing: "-0.005em", color: ink };
+              return (
+                <div {...zRest} style={{ ...(editingBody ? { ...textStyle, lineHeight: 1.06 * lineSpacing, whiteSpace: "pre-wrap" as const } : {}), ...zStyle }}>
+                  {editingBody ? body : (
+                    <FormattedBody body={body} fontSize={bodySize} lineHeight={1.06} lineSpacing={lineSpacing} textStyle={textStyle} markerColor={indicator} />
+                  )}
+                </div>
+              );
+            })() : blocks.map((block, i) => {
               // Only the first block is the editable zone: the body is ONE
               // field, and hanging a second contentEditable off the same string
               // would let two edits race to write it.
@@ -306,7 +324,7 @@ export default function FreePressContentSlide({
                     // type — dropping the font size re-wraps the copy into
                     // more lines and gives most of the height straight back —
                     // so this is what buys the size back.
-                    lineHeight: 1.06,
+                    lineHeight: 1.06 * lineSpacing,
                     letterSpacing: "-0.005em",
                     color: ink,
                     textAlign: "center",

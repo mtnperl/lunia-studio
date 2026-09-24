@@ -30,9 +30,10 @@ import { EditorShell, RailHead } from "@/components/shell/EditorShell";
 import AssetBrowser from "@/components/campaign/AssetBrowser";
 import { RewriteBar } from "@/components/editor/RewriteBar";
 import { VersionsPanel } from "@/components/editor/VersionsPanel";
-import type { CarouselLook, CarouselLookSettings } from "@/lib/types";
+import type { CarouselContentSlide, CarouselLook, CarouselLookSettings } from "@/lib/types";
+import { BULLET_MARK, LINE_SPACING_MAX, LINE_SPACING_MIN, clampLineSpacing, clearFormatting, insertParagraphBreak, toggleList, type TextEdit } from "@/lib/body-format";
 import { Input as UiInput } from "@/components/ui";
-import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy } from "@/components/ui";
+import { Button as UiButton, IconButton as UiIconButton, Tooltip as UiTooltip, Tabs as UiTabs, Panel as UiPanel, Badge as UiBadge, IcCopy as UiIcCopy, IcTrash as UiIcTrash, IcPlus as UiIcPlus, IcChevron as UiIcChevron } from "@/components/ui";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { HOOK_ANGLES, DEFAULT_SPREAD, hookAngleLabel } from "@/lib/hook-angles";
@@ -141,6 +142,10 @@ type Props = {
 };
 
 const PREVIEW_SCALE = 0.62;
+// Content slides between the hook and the close. Instagram allows 20 frames;
+// past ten a carousel stops getting read to the end.
+const MIN_CONTENT_SLIDES = 1;
+const MAX_CONTENT_SLIDES = 10;
 
 // ─── Toolbar button style (v2 toolbar) ────────────────────────────────────────
 function toolbarBtnStyle(active: boolean): React.CSSProperties {
@@ -533,6 +538,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   const [suggestingIcons, setSuggestingIcons] = useState<number | null>(null);
 
   // Text editor state (content slides 1–3, i.e. slideIndex 0–2)
+  const bodyFieldRef = useRef<HTMLTextAreaElement>(null);
 
   function updateSlideField(slideIndex: number, field: "headline" | "body" | "citation", value: string) {
     const slides = [...content.slides];
@@ -542,6 +548,31 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
 
   /** Essay: which word of a content slide's headline takes the box.
    *  undefined = the slide picks, "" = none. */
+  /** Apply a formatting edit to the focused body field and keep the selection
+   *  on what changed, so pressing Bullets twice toggles the same lines. */
+  function formatBody(slideIndex: number, edit: (text: string, a: number, b: number) => TextEdit) {
+    const el = bodyFieldRef.current;
+    const text = content.slides[slideIndex]?.body ?? "";
+    const a = el ? el.selectionStart : text.length;
+    const b = el ? el.selectionEnd : text.length;
+    const r = edit(text, a, b);
+    if (r.text !== text) updateSlideField(slideIndex, "body", r.text);
+    requestAnimationFrame(() => {
+      const f = bodyFieldRef.current;
+      if (!f) return;
+      f.focus();
+      f.setSelectionRange(r.selStart, r.selEnd);
+    });
+  }
+
+  function setSlideLineSpacing(slideIndex: number, value: number) {
+    const slides = [...content.slides];
+    const { lineSpacing: _drop, ...rest } = slides[slideIndex];
+    void _drop;
+    slides[slideIndex] = value === 1 ? rest : { ...rest, lineSpacing: clampLineSpacing(value) };
+    onContentChange({ ...config, content: { ...content, slides } });
+  }
+
   function updateSlideEmphasis(slideIndex: number, value: string | undefined) {
     const slides = [...content.slides];
     const { headlineEmphasis: _drop, ...rest } = slides[slideIndex];
@@ -996,7 +1027,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   // no canvas-taint / Safari quirks. Same props the preview uses, so the PNG
   // matches the preview exactly.
   async function renderContentSlideViaRemotion(
-    slide: { headline: string; body: string; citation: string; graphic?: string },
+    slide: { headline: string; body: string; citation: string; graphic?: string; lineSpacing?: number },
     filename: string,
   ): Promise<File> {
     const res = await fetch("/api/carousel-v2/render-slide", {
@@ -1007,6 +1038,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         body: slide.body,
         citation: slide.citation,
         graphic: slide.graphic,
+        lineSpacing: slide.lineSpacing,
         brandStyle: bs,
         slideBgColor,
         darkBackground,
@@ -1284,15 +1316,16 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
     });
   }
 
-  // Read the graphic JSON for any slot — content slides at 0-2, the CTA at 3.
+  // Read the graphic JSON for any slot — content slides at 0..n-1, the CTA at n
+  // (one past the last content slide, which is where focusedSlide - 1 lands).
   function getSlotGraphic(slideIndex: number): string {
-    if (slideIndex === 3) return content.cta?.graphic ?? "";
+    if (slideIndex === content.slides.length) return content.cta?.graphic ?? "";
     return content.slides[slideIndex]?.graphic ?? "";
   }
 
   // Write back the graphic JSON to the right slot.
   function setSlotGraphic(slideIndex: number, graphic: string) {
-    if (slideIndex === 3) {
+    if (slideIndex === content.slides.length) {
       onContentChange({ ...config, content: { ...content, cta: { ...content.cta, graphic } } });
     } else {
       const slides = [...content.slides];
@@ -1438,7 +1471,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
     const slideIndex = focusedSlide - 1;
     const willOpen = inspectorMode !== "icons";
     setInspectorMode(willOpen ? "icons" : null);
-    if (willOpen && slideIndex >= 0 && slideIndex <= 2
+    if (willOpen && slideIndex >= 0 && slideIndex < content.slides.length
         && getSelectedIcons(slideIndex).length === 0 && iconSuggestions.length === 0) {
       void handleSuggestIcons(slideIndex);
     }
@@ -1485,9 +1518,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
     setInspectorMode((cur) => {
       if (cur === null || cur === "settings") return cur;
       if (cur === "element") return null;
-      const isContent = i >= 1 && i <= 3;
+      const isContent = i >= 1 && i <= content.slides.length;
       const isHook = i === 0;
-      const isTakeaway = hasTakeaway && i === 4;
+      const isTakeaway = hasTakeaway && i === content.slides.length + 1;
       if ((cur === "icons" || cur === "text" || cur === "graphicType"
         || cur === "graphicData" || cur === "graphicComment") && !isContent) return null;
       if ((cur === "overlays" || cur === "image") && !isHook) return null;
@@ -1500,7 +1533,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   // auto-pick). Used by the "Use these" button in the v2 icon inspector.
   function applyIconSuggestions(ids: string[]) {
     const slideIndex = focusedSlide - 1;
-    if (slideIndex < 0 || slideIndex > 2) return;
+    if (slideIndex < 0 || slideIndex >= content.slides.length) return;
     writeIconGraphic(slideIndex, ids.slice(0, 4), iconPickerLayout, false);
   }
 
@@ -1864,11 +1897,88 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   function handleClearContentBg(slideIndex: number) {
     setContentBgImages(prev => {
       const next = [...prev];
-      while (next.length < 3) next.push(null);
+      while (next.length < content.slides.length) next.push(null);
       next[slideIndex] = null;
       onContentChange({ ...config, contentBgImages: next, contentBgOverlayOpacity });
       return next;
     });
+  }
+
+  // ─── Slide order: delete, move, duplicate, add ─────────────────────────────
+  // Content slides only; the hook opens the deck and the takeaway/CTA closes it.
+  // Everything keyed by content-slide index moves with its slide: the persisted
+  // background images, and the per-slide notes / graphic history held here.
+  // Blocked while a regenerate is in flight, since its result is written back
+  // by index and would land on whatever slide moved into that spot.
+  const slideOpsBusy = regenerating !== null || regeneratingGraphic !== null || suggestingIcons !== null;
+
+  function remapByIndex<T>(map: Record<number, T>, order: (number | null)[]): Record<number, T> {
+    const out: Record<number, T> = {};
+    order.forEach((old, i) => { if (old !== null && map[old] !== undefined) out[i] = map[old]; });
+    return out;
+  }
+
+  /** Rebuild the content slides from `order`: each entry is the old index the
+   *  new slot takes its slide from, or a fresh slide object. */
+  function reorderSlides(order: (number | CarouselContentSlide)[], focusContent: number) {
+    if (slideOpsBusy) return;
+    const slides = order.map((o) => (typeof o === "number" ? content.slides[o] : o));
+    const oldIdx = order.map((o) => (typeof o === "number" ? o : null));
+    const bg = oldIdx.map((o) => (o === null ? null : contentBgImages[o] ?? null));
+    setContentBgImages(bg);
+    setSlideNote((m) => remapByIndex(m, oldIdx));
+    setGraphicHistory((m) => remapByIndex(m, oldIdx));
+    setVectorAttempts((m) => remapByIndex(m, oldIdx));
+    setGraphicRegenCount((m) => remapByIndex(m, oldIdx));
+    setGraphicComment((m) => remapByIndex(m, oldIdx));
+    setIconSuggestions([]);
+    setSelectedElement(null);
+    setEditing(null);
+    onContentChange({ ...config, content: { ...content, slides }, contentBgImages: bg, contentBgOverlayOpacity });
+    setFocusedSlide(Math.max(0, Math.min(slides.length - 1, focusContent)) + 1);
+  }
+
+  // Delete is two clicks: there is no undo in this editor, and a slide's copy,
+  // graphic and background go with it. The arm lapses after a few seconds.
+  const [deleteArmed, setDeleteArmed] = useState<number | null>(null);
+  useEffect(() => {
+    if (deleteArmed === null) return;
+    const t = setTimeout(() => setDeleteArmed(null), 4000);
+    return () => clearTimeout(t);
+  }, [deleteArmed]);
+
+  const contentOrder = () => content.slides.map((_, i) => i as number | CarouselContentSlide);
+
+  function deleteContentSlide(ci: number) {
+    if (content.slides.length <= MIN_CONTENT_SLIDES) return;
+    const order = contentOrder().filter((_, i) => i !== ci);
+    // Nothing left to edit on a slide that is gone.
+    setInspectorMode((cur) => (cur === "settings" ? cur : null));
+    reorderSlides(order, Math.min(ci, order.length - 1));
+  }
+
+  function moveContentSlide(ci: number, dir: -1 | 1) {
+    const j = ci + dir;
+    if (j < 0 || j >= content.slides.length) return;
+    const order = contentOrder();
+    [order[ci], order[j]] = [order[j], order[ci]];
+    reorderSlides(order, j);
+  }
+
+  function duplicateContentSlide(ci: number) {
+    if (content.slides.length >= MAX_CONTENT_SLIDES) return;
+    const order = contentOrder();
+    order.splice(ci + 1, 0, ci);
+    reorderSlides(order, ci + 1);
+  }
+
+  function addContentSlide(afterCi: number) {
+    if (content.slides.length >= MAX_CONTENT_SLIDES) return;
+    const order = contentOrder();
+    order.splice(afterCi + 1, 0, { headline: "New slide", body: "Write the point here.", citation: "" });
+    reorderSlides(order, afterCi + 1);
+    setInspectorMode("text");
+    setRailTab("slide");
   }
 
   // ─── v2 inspector body renderer ───────────────────────────────────────────
@@ -2217,12 +2327,33 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.4, fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)", marginBottom: 12 }}
             />
             <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Main text</label>
+            {/* Formatting lives in the text itself ("• ", "1. ", blank line),
+                so it survives save, share, export and every preset. */}
+            <div role="toolbar" aria-label="Text formatting" style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+              <UiButton size="sm" variant="secondary" title="Bullet the selected lines (click again to remove)" onMouseDown={(e) => e.preventDefault()} onClick={() => formatBody(slideIdx, (t, a, b) => toggleList(t, a, b, "bullet"))}>{BULLET_MARK.trim()} Bullets</UiButton>
+              <UiButton size="sm" variant="secondary" title="Number the selected lines (click again to remove)" onMouseDown={(e) => e.preventDefault()} onClick={() => formatBody(slideIdx, (t, a, b) => toggleList(t, a, b, "number"))}>1. Numbered</UiButton>
+              <UiButton size="sm" variant="secondary" title="Add a blank line (paragraph space) after the current line" onMouseDown={(e) => e.preventDefault()} onClick={() => formatBody(slideIdx, (t, a) => insertParagraphBreak(t, a))}>Paragraph space</UiButton>
+              <UiButton size="sm" variant="ghost" title="Remove bullets, numbers and line breaks (selected lines, or the whole text)" onMouseDown={(e) => e.preventDefault()} onClick={() => formatBody(slideIdx, clearFormatting)}>Clear</UiButton>
+            </div>
             <textarea
+              ref={bodyFieldRef}
               value={slide.body}
               onChange={(e) => updateSlideField(slideIdx, "body", e.target.value)}
               rows={6}
               style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.5, resize: "vertical", fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" }}
             />
+            <div style={{ fontSize: 11, color: "var(--ui-text-3)", marginTop: 4, marginBottom: 10 }}>Enter starts a new line. A blank line adds space between paragraphs.</div>
+            <SliderControl
+              label="Line spacing"
+              min={LINE_SPACING_MIN}
+              max={LINE_SPACING_MAX}
+              step={0.05}
+              value={slide.lineSpacing ?? 1}
+              onChange={(v) => setSlideLineSpacing(slideIdx, Math.round(v * 100) / 100)}
+            />
+            {(slide.lineSpacing ?? 1) !== 1 && (
+              <UiButton size="sm" variant="ghost" onClick={() => setSlideLineSpacing(slideIdx, 1)}>Reset spacing</UiButton>
+            )}
 
             {/* Rewrite with a note. The model gets this slide plus the note,
                 so an instruction like "lead with the number" or "this line is
@@ -2989,7 +3120,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
       isFalImage={!!imgs[0]} shimmer={imgs[0] === null}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={reelsMode} headlineWeight={hookHeadlineWeight} headlineInImage={!!content.hookImageSpec} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} pillar={pillar} paper={paper} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} headlineEmphasis={s.headlineEmphasis} pillar={pillar} paper={paper} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText}
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} headlineEmphasis={s.headlineEmphasis} lineSpacing={s.lineSpacing} pillar={pillar} paper={paper} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={PREVIEW_SCALE} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={contentBgImages[i] ?? undefined} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={reelsMode} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText}
         onSelectElement={(el) => selectElement(i + 1, el)}
         selectedElement={focusedSlide === i + 1 ? selectedElement : null}
         editingElement={editing?.slide === i + 1 ? editing.element : null}
@@ -3011,7 +3142,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
       isFalImage={!!imgs[0]}
       logoScale={logoScale} arrowScale={arrowScale} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} overlays={isV2 ? hookOverlays : undefined} reels={frameReels} frameH={slideFrameH} headlineWeight={hookHeadlineWeight} headlineInImage={!!content.hookImageSpec} emphasis={hook.emphasis} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} pillar={pillar} paper={paper} />,
     ...content.slides.map((s, i) => (
-      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} headlineEmphasis={s.headlineEmphasis} pillar={pillar} paper={paper} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />
+      <ContentSlideComponent key={i + 1} headline={s.headline} body={s.body} citation={s.citation} graphic={s.graphic} figure={s.figure} emphasis={s.emphasis} headlineEmphasis={s.headlineEmphasis} lineSpacing={s.lineSpacing} pillar={pillar} paper={paper} slideIndex={i} slideTotal={content.slides.length} slideTone={structure ? slotFor(structure, i, content.slides.length).tone : undefined} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} bgImageUrl={proxyUrl(contentBgImages[i])} bgImageOverlayOpacity={contentBgOverlayOpacity} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} showSlideNumbers={showSlideNumbers} showCitationBars={showCitationBars} citationFontSize={citationFontSize} reels={frameReels} frameH={slideFrameH} headlineScale={headlineScale} bodyScale={bodyScale} iconScale={iconScale} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} />
     )),
     ...(hasTakeaway && content.takeaway
       ? [<TakeawaySlideComponent key="takeaway" headline={content.takeaway.headline} headlineEmphasis={content.takeaway.headlineEmphasis} points={content.takeaway.points} pillar={pillar} paper={paper} interaction={content.takeaway.interaction} followLine={content.cta.followLine} essayAccent={essayAccent} essayNumber={essayNumber} essayDate={essayDateText} slideTotal={content.slides.length} scale={1} brandStyle={bs} logoScale={logoScale} arrowScale={arrowScale} darkBackground={darkBackground} slideBgColor={slideBgColor} showLuniaLifeWatermark={showLuniaLifeWatermark} prominentWatermark={isV2} stylePreset={stylePreset} showSlideArrows={showSlideArrows} reels={frameReels} frameH={slideFrameH} />]
@@ -3074,7 +3205,41 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         left={<>
           <RailHead>Slides <UiBadge>{slideCount}</UiBadge></RailHead>
           <div style={{ padding: 8 }}>
-            <SlideRail slides={slideNodes} labels={slideLabels} focused={focusedSlide} onSelect={selectSlide} slideW={slideW} slideH={slideH} thumbW={168} />
+            <SlideRail
+              slides={slideNodes}
+              labels={slideLabels}
+              focused={focusedSlide}
+              onSelect={selectSlide}
+              slideW={slideW}
+              slideH={slideH}
+              thumbW={168}
+              canReorder={(i) => isV2 && !slideOpsBusy && i >= 1 && i <= content.slides.length}
+              onReorder={(from, to) => {
+                const order = contentOrder();
+                const [moved] = order.splice(from - 1, 1);
+                order.splice(to - 1, 0, moved);
+                reorderSlides(order, to - 1);
+              }}
+              actions={(i) => {
+                if (!isV2 || i < 1 || i > content.slides.length) return null;
+                const ci = i - 1;
+                const n = content.slides.length;
+                const armed = deleteArmed === ci;
+                return (
+                  <div style={{ display: "flex", justifyContent: "center", gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                    <UiIconButton size="sm" title="Move up" disabled={slideOpsBusy || ci === 0} onClick={() => moveContentSlide(ci, -1)}><UiIcChevron size={14} style={{ transform: "rotate(180deg)" }} /></UiIconButton>
+                    <UiIconButton size="sm" title="Move down" disabled={slideOpsBusy || ci === n - 1} onClick={() => moveContentSlide(ci, 1)}><UiIcChevron size={14} /></UiIconButton>
+                    <UiIconButton size="sm" title="Duplicate slide" disabled={slideOpsBusy || n >= MAX_CONTENT_SLIDES} onClick={() => duplicateContentSlide(ci)}><UiIcCopy size={14} /></UiIconButton>
+                    <UiIconButton size="sm" title="Add a blank slide after this one" disabled={slideOpsBusy || n >= MAX_CONTENT_SLIDES} onClick={() => addContentSlide(ci)}><UiIcPlus size={14} /></UiIconButton>
+                    {armed ? (
+                      <UiButton size="sm" variant="danger" onClick={() => { setDeleteArmed(null); deleteContentSlide(ci); }}>Confirm</UiButton>
+                    ) : (
+                      <UiIconButton size="sm" danger title={n <= MIN_CONTENT_SLIDES ? "A carousel needs at least one content slide" : "Delete slide"} disabled={slideOpsBusy || n <= MIN_CONTENT_SLIDES} onClick={() => setDeleteArmed(ci)}><UiIcTrash size={14} /></UiIconButton>
+                    )}
+                  </div>
+                );
+              }}
+            />
           </div>
         </>}
         right={<>
@@ -3311,9 +3476,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 {/* Action bar */}
                 {(() => {
                   const sIdx = focusedSlide - 1;
-                  const isContent = focusedSlide >= 1 && focusedSlide <= 3;
+                  const isContent = focusedSlide >= 1 && focusedSlide <= content.slides.length;
                   const isHook = focusedSlide === 0;
-                  const isTakeaway = hasTakeaway && focusedSlide === 4;
+                  const isTakeaway = hasTakeaway && focusedSlide === content.slides.length + 1;
                   // When Takeaway is present it IS the last slide (merged CTA) —
                   // there's no separate CTA render to attach icon-editing to.
                   const isCta = focusedSlide === slideCount - 1 && !isTakeaway;

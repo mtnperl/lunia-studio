@@ -1,4 +1,6 @@
 "use client";
+import { hasBodyFormatting } from "@/lib/body-format";
+import FormattedBody from "@/components/carousel/shared/FormattedBody";
 import { useCallback, useState } from "react";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import LuniaLogo from "@/components/carousel/shared/LuniaLogo";
@@ -44,6 +46,8 @@ type Props = {
   frameH?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   /** Multiplier on rendered icon size when the graphic is an icon layout. */
   iconScale?: number;
   showSlideArrows?: boolean;
@@ -108,6 +112,7 @@ export default function EditorialContentSlide({
   frameH, reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  lineSpacing = 1,
   iconScale = 1,
   showCitationBars = true,
   onSelectElement,
@@ -261,7 +266,7 @@ export default function EditorialContentSlide({
         {/* Thin editorial rule */}
         <div style={{ height: 2, width: 96, background: ruleCol, opacity: 0.7 }} />
 
-        <p {...pick('body')} style={{
+        <div {...pick('body')} style={{
           margin: 0,
           fontFamily: EDITORIAL_FONT,
           // Weight 300 (brand body weight) — 200 was never loaded in headless
@@ -270,12 +275,22 @@ export default function EditorialContentSlide({
           fontWeight: FONT_WEIGHT.body,
           fontSize: bodySize,
           color: bodyCol,
-          lineHeight: 1.5,
+          lineHeight: 1.5 * lineSpacing,
           // No artificial cap — let the body fill the column so the page breathes.
+          ...(editingElement === 'body' ? { whiteSpace: 'pre-wrap' as const } : {}),
           ...pick('body').style,
         }}>
-          {body}
-        </p>
+          {editingElement !== 'body' && hasBodyFormatting(body) ? (
+            <FormattedBody
+              body={body}
+              fontSize={bodySize}
+              lineHeight={1.5}
+              lineSpacing={lineSpacing}
+              textStyle={{ fontFamily: EDITORIAL_FONT, fontWeight: FONT_WEIGHT.body, fontSize: bodySize, color: bodyCol }}
+              markerColor={headlineCol}
+            />
+          ) : body}
+        </div>
 
         {/* Hug-body position (default): icon block sits inside the body
             column, right under the copy. The "between" position renders the

@@ -5,6 +5,8 @@
 // the reason to swipe is seen before it is read. Ivory or navy per slot
 // (VIRAL_SLOTS.tone) so a deck has rhythm instead of ten identical cards.
 // Logo stays on the hook and the CTA only; the citation is one small line.
+import { hasListLines } from "@/lib/body-format";
+import FormattedBody from "@/components/carousel/shared/FormattedBody";
 import { useCallback, useState } from "react";
 import ArrowIcons from "@/components/carousel/shared/ArrowIcons";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
@@ -43,6 +45,8 @@ type Props = {
   frameH?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   /** Accepted for call-site parity; the viral ladder sets its own citation size. */
   citationFontSize?: number;
   showSlideArrows?: boolean;
@@ -91,7 +95,7 @@ export default function ViralContentSlide({
   headline, body, citation, graphic, figure, emphasis,
   slideIndex = 0, slideTotal = 3, slideTone,
   scale = 1, id, brandStyle, reels = false, frameH,
-  headlineScale = 1, bodyScale = 1,
+  headlineScale = 1, bodyScale = 1, lineSpacing = 1,
   showSlideArrows = true, showSlideNumbers = true, showCitationBars = true,
   showLuniaLifeWatermark = false, prominentWatermark = false,
   onSelectElement, selectedElement = null, editingElement = null,
@@ -127,8 +131,15 @@ export default function ViralContentSlide({
   const py = reels ? 200 : PAD.y;
 
   const lines = viralLines(body);
-  const loop = lines.length > 1 ? lines[lines.length - 1] : "";
-  const support = lines.length > 1 ? lines.slice(0, -1) : lines;
+  // A typed list keeps its last item: the closing "loop" line is only pulled
+  // out when it is prose, never when it would split a list in two.
+  const listBody = hasListLines(body);
+  const lastIsItem = listBody && hasListLines(lines[lines.length - 1] ?? "");
+  const loop = lines.length > 1 && !lastIsItem ? lines[lines.length - 1] : "";
+  const support = lines.length > 1 && !lastIsItem ? lines.slice(0, -1) : lines;
+  // The formatted body keeps blank lines (paragraph space), so it is cut from
+  // the raw text rather than rebuilt from `support`.
+  const listText = loop ? body.slice(0, body.lastIndexOf(loop)).trimEnd() : body;
   const editingBody = editingElement === "body";
 
   // One ladder, computed from what is actually on the slide, so exactly one
@@ -182,9 +193,19 @@ export default function ViralContentSlide({
             {headline}
           </h1>
 
-          <div {...pick("body")} style={{ display: "flex", flexDirection: "column", gap: type.lineGap, marginTop: 4, ...pick("body").style }}>
-            {(editingBody ? lines : support).map((line, i) => (
-              <div key={i} style={{ fontFamily: FONT, fontWeight: 400, fontSize: type.lineSize, lineHeight: 1.24, color: ink, opacity: navy ? 0.92 : 1 }}>
+          <div {...pick("body")} style={{ display: "flex", flexDirection: "column", gap: Math.round(type.lineGap * lineSpacing), marginTop: 4, ...(editingBody ? { whiteSpace: "pre-wrap" as const } : {}), ...pick("body").style }}>
+            {!editingBody && listBody ? (
+              <FormattedBody
+                body={listText}
+                fontSize={type.lineSize}
+                lineHeight={1.24}
+                lineSpacing={lineSpacing}
+                textStyle={{ fontFamily: FONT, fontWeight: 400, fontSize: type.lineSize, color: ink, opacity: navy ? 0.92 : 1 }}
+                markerColor={navy ? yellow : ink}
+                renderText={(t) => withEmphasis(t, emphasis, emphasisStyle)}
+              />
+            ) : (editingBody ? lines : support).map((line, i) => (
+              <div key={i} style={{ fontFamily: FONT, fontWeight: 400, fontSize: type.lineSize, lineHeight: 1.24 * lineSpacing, color: ink, opacity: navy ? 0.92 : 1 }}>
                 {editingBody ? line : withEmphasis(line, emphasis, emphasisStyle)}
               </div>
             ))}
