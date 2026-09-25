@@ -902,9 +902,12 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     ? `position:absolute;left:${heroPos.x}%;top:${heroPos.y}%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:300px;`
     : "position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;";
   const heroOverlayClass = heroPos ? "hero-cta-overlay hero-cta-free" : "hero-cta-overlay";
+  // The arrow is glued to the last word (&nbsp;): a label that fills the
+  // 300px button wraps as "START SLEEPING / BETTER →", never with the arrow
+  // alone on its own line.
   const heroOverlay = hero?.url && heroCtaLabel && showOnHero
     ? `<div class="${heroOverlayClass}" style="${heroOverlayStyle}">
-         <span style="display:block;background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)} →</span>
+         <span style="display:block;background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)}&nbsp;→</span>
        </div>`
     : "";
   const heroHtml = hero?.url
