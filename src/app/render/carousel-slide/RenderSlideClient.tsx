@@ -115,21 +115,23 @@ function nextFrame(): Promise<void> {
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
-/** Wait until the slide stops re-laying itself out. Free Press and Essay run
- *  their own fit loop, one font step per render, and it takes many frames to
- *  settle. Measuring after a fixed two frames caught them mid-fit, saw the
+/** Wait until the slide has finished laying itself out. Free Press and Essay
+ *  run their own fit loop, one font step per render, awaiting font loads in
+ *  between. Measuring after a fixed two frames caught them mid-fit, saw the
  *  copy clipped, and shrank bodyScale on top, which restarted their loop, so
  *  the two fits compounded and the text came out far smaller than it needed
- *  to be (and by a timing-dependent amount). The markup carries every inline
- *  font size, so it stops changing exactly when the slide has settled. */
-async function waitForStableLayout(root: HTMLElement, stableFrames = 3, maxFrames = 180): Promise<void> {
+ *  to be, by a timing-dependent amount (half size on the macOS CI runner).
+ *  Those slides mark their box data-fit-pending until their own loop is done;
+ *  the markup must also hold still for a few frames, which covers FitBox. */
+async function waitForStableLayout(root: HTMLElement, stableFrames = 3, maxFrames = 300): Promise<void> {
   let last = root.innerHTML;
   let stable = 0;
-  for (let i = 0; i < maxFrames && stable < stableFrames; i++) {
+  for (let i = 0; i < maxFrames; i++) {
     await nextFrame();
     const now = root.innerHTML;
     stable = now === last ? stable + 1 : 0;
     last = now;
+    if (stable >= stableFrames && !root.querySelector("[data-fit-pending]")) return;
   }
 }
 
