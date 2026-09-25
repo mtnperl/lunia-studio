@@ -4,7 +4,7 @@
 
 import { normalizeGraphic } from "./carousel-utils";
 
-const LIST_ITEM = /^\s*[-\u2022\u00b7]\s+/;
+const LIST_ITEM = /^\s*(?:[-\u2022\u00b7]|\d{1,2}[.)])\s+/;
 
 export function splitEssayBody(body: string): { lead: string; items: string[] } {
   const lines = (body ?? "").split("\n");

@@ -3,6 +3,8 @@
 // corners with the deck's pillar lit. No photo, no graphic: the cover carries
 // the picture and the body slides carry the argument.
 
+import { hasListLines } from "@/lib/body-format";
+import FormattedBody from "@/components/carousel/shared/FormattedBody";
 import type { CSSProperties } from "react";
 import SlideWrapper from "@/components/carousel/shared/SlideWrapper";
 import { PaperTexture } from "@/components/carousel/shared/EssayChrome";
@@ -29,6 +31,8 @@ type Props = {
   slideTotal?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   citationFontSize?: number;
   showCitationBars?: boolean;
   // Accepted for call-site compatibility with the other content slides.
@@ -68,7 +72,7 @@ function Emphasised({ text, phrase }: { text: string; phrase?: string }) {
 
 export default function BillboardContentSlide({
   headline, body, citation, headlineEmphasis, emphasis, pillar = DEFAULT_PILLAR, paper, scale = 1, id, reels = false, frameH,
-  slideIndex = 0, slideTotal = 3, headlineScale = 1, bodyScale = 1, citationFontSize, showCitationBars = true,
+  slideIndex = 0, slideTotal = 3, headlineScale = 1, bodyScale = 1, lineSpacing = 1, citationFontSize, showCitationBars = true,
 }: Props) {
   const slideH = frameH ?? (reels ? SLIDE.height.reels : SLIDE.height.carousel);
   const p = billboardPaper(paper);
@@ -80,7 +84,7 @@ export default function BillboardContentSlide({
   const words = body.split(/\s+/).filter(Boolean).length;
   const bodyPx = Math.round(T.body * bodyScale * (words > 90 ? 0.82 : words > 70 ? 0.9 : 1));
   const bodyStyle: CSSProperties = {
-    fontFamily: F.thin, fontWeight: 300, fontSize: bodyPx, lineHeight: 1.45, color: C.ink, maxWidth: 880, whiteSpace: "pre-wrap",
+    fontFamily: F.thin, fontWeight: 300, fontSize: bodyPx, lineHeight: 1.45 * lineSpacing, color: C.ink, maxWidth: 880, whiteSpace: "pre-wrap",
   };
   const paragraphs = body.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
   return (
@@ -90,11 +94,24 @@ export default function BillboardContentSlide({
 
       <div style={{ position: "absolute", left: L.padX, right: L.padX, top: L.contentTop, bottom: 190, display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 44, overflow: "hidden" }}>
         <HeadlinePair text={headline} heavy={headlineEmphasis} thinSize={Math.round(T.thin * headlineScale)} heavySize={Math.round(T.heavy * headlineScale)} align="left" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {paragraphs.map((para, i) => (
-            <div key={i} style={bodyStyle}><Emphasised text={para} phrase={emphasis} /></div>
-          ))}
-        </div>
+        {hasListLines(body) ? (
+          <div style={{ maxWidth: 880 }}>
+            <FormattedBody
+              body={body}
+              fontSize={bodyPx}
+              lineHeight={1.45}
+              lineSpacing={lineSpacing}
+              textStyle={{ fontFamily: F.thin, fontWeight: 300, fontSize: bodyPx, color: C.ink }}
+              renderText={(t) => <Emphasised text={t} phrase={emphasis} />}
+            />
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: Math.round(24 * lineSpacing) }}>
+            {paragraphs.map((para, i) => (
+              <div key={i} style={bodyStyle}><Emphasised text={para} phrase={emphasis} /></div>
+            ))}
+          </div>
+        )}
         {showCitationBars && citation && (
           // Two lines at most. A full journal reference runs to five, and the
           // rule and the handle sit right under this column.

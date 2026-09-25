@@ -47,6 +47,8 @@ export type RenderSlideProps = {
   reels?: boolean;
   headlineScale?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor. */
+  lineSpacing?: number;
   logoScale?: number;
   arrowScale?: number;
   stylePreset?: CarouselStylePreset;

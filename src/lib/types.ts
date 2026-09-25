@@ -286,6 +286,9 @@ export type CarouselContentSlide = {
   headlineEmphasis?: string;
   /** Which beat of the story spine this slide serves. See src/lib/story-spine.ts. */
   beat?: StoryBeat;
+  /** Body line spacing set in the editor. Multiplier on the preset's own
+   *  leading; absent is 1. See src/lib/body-format.ts. */
+  lineSpacing?: number;
 };
 
 // ─── GraphicSpec — curated infographic component selection ────────────────────

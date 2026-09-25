@@ -50,6 +50,8 @@ import { pickableStyle, editableProps, editingStyle } from '@/lib/slide-elements
 // ─── Layout tokens (shared with the render + regression pipeline) ────────────
 import { SLIDE } from '@/lib/brand-tokens';
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
+import { hasBodyFormatting } from '@/lib/body-format';
+import FormattedBody from '../shared/FormattedBody';
 const SLIDE_PADDING = SLIDE.pad;
 const SECTION_GAP = SLIDE.sectionGap;
 // Cap the graphic so it stays compact and hugs the body rather than ballooning
@@ -212,6 +214,8 @@ type Props = {
   frameH?: number;
   headlineScale?: number;           // multiplier on the auto-sized headline (default 1)
   bodyScale?: number;               // multiplier on the auto-sized body (default 1)
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   iconScale?: number;               // multiplier on rendered icon size for icon-layout graphics (default 1)
   stylePreset?: CarouselStylePreset;
   showSlideArrows?: boolean;
@@ -259,6 +263,7 @@ export default function ContentSlide({
   frameH, reels = false,
   headlineScale = 1,
   bodyScale = 1,
+  lineSpacing = 1,
   iconScale = 1,
   stylePreset = "default",
   showSlideArrows = true,
@@ -471,12 +476,27 @@ export default function ContentSlide({
           fontFamily: 'Inter, system-ui, sans-serif',
           fontSize: bodyFontSize,
           color: bodyColor,
-          lineHeight: 1.55,
+          lineHeight: 1.55 * lineSpacing,
           flexShrink: 0,
+          // Typing into the slide: raw text, so line breaks survive innerText.
+          ...(editingElement === 'body' ? { whiteSpace: 'pre-wrap' as const } : {}),
           ...pick('body').style,
         }}>
-          <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
-          {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
+          {editingElement === 'body' ? body : hasBodyFormatting(body) ? (
+            <FormattedBody
+              body={body}
+              fontSize={bodyFontSize}
+              lineHeight={1.55}
+              lineSpacing={lineSpacing}
+              firstLineWeight={isEditorial ? 400 : 700}
+              textStyle={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: bodyFontSize, color: bodyColor, fontWeight: 300 }}
+            />
+          ) : (
+            <>
+              <span style={{ fontWeight: isEditorial ? 400 : 700 }}>{boldSentence}</span>
+              {restBody ? <span style={{ fontWeight: 300 }}>{' '}{restBody}</span> : null}
+            </>
+          )}
         </div>
 
         {/* Graphic zone — sits just below the body and is capped to graphicMaxH

@@ -52,6 +52,8 @@ type Props = {
   frameH?: number;
   headlineScale?: number;
   bodyScale?: number;
+  /** Body line spacing multiplier set in the editor (default 1). */
+  lineSpacing?: number;
   showSlideArrows?: boolean;
   showSlideNumbers?: boolean;
   showCitationBars?: boolean;
@@ -88,7 +90,7 @@ type Props = {
 export default function EssayContentSlide({
   headline, body, citation, emphasis, headlineEmphasis, slideIndex = 0, slideTotal = 3,
   scale = 1, id, brandStyle, arrowScale = 1, citationFontSize, reels = false, frameH,
-  headlineScale = 1, bodyScale = 1, showSlideArrows = true, showSlideNumbers = true, showCitationBars = true,
+  headlineScale = 1, bodyScale = 1, lineSpacing = 1, showSlideArrows = true, showSlideNumbers = true, showCitationBars = true,
   essayAccent: accentId, essayNumber, essayDate: dateText, handle = "@lunia_life", graphic,
   onSelectElement, selectedElement, editingElement, onBeginEditElement, onCommitElement, onCancelEditElement,
 }: Props) {
@@ -102,7 +104,7 @@ export default function EssayContentSlide({
 
   const headlineSize = Math.round(ESSAY_TYPE.headline * headlineScale * compact * (reels ? 1.08 : 1));
   const naturalBody = ESSAY_TYPE.body * bodyScale * compact * (reels ? 1.08 : 1);
-  const fitKey = `${headline}|${body}|${graphic ?? ""}|${naturalBody}|${slideH}`;
+  const fitKey = `${headline}|${body}|${graphic ?? ""}|${naturalBody}|${slideH}|${lineSpacing}`;
   const [fit, setFit] = useState({ key: fitKey, v: 1 });
   const autoFit = fit.key === fitKey ? fit.v : 1;
   const bodySize = Math.round(naturalBody * autoFit);
@@ -177,18 +179,18 @@ export default function EssayContentSlide({
             <div style={{ width: 96, height: 5, background: accent.fill, marginTop: Math.round(headlineSize * 0.3) }} />
           </div>
 
-          <div {...zb} style={{ fontFamily: ESSAY_TEXT, fontWeight: 300, fontSize: bodySize, lineHeight: 1.42, color: ink, whiteSpace: "pre-line", ...zb.style }}>
+          <div {...zb} style={{ fontFamily: ESSAY_TEXT, fontWeight: 300, fontSize: bodySize, lineHeight: 1.42 * lineSpacing, color: ink, whiteSpace: editingBody ? "pre-wrap" : "pre-line", ...zb.style }}>
             {editingBody ? body : (
               <>
                 {lead && <div><EmphasisText text={lead} emphasis={emphasis} color={accent.text} /></div>}
                 {isList && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: Math.round(rowSize * 0.35), marginTop: lead ? Math.round(rowSize * 0.7) : 0 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: Math.round(rowSize * 0.35 * lineSpacing), marginTop: lead ? Math.round(rowSize * 0.7 * lineSpacing) : 0 }}>
                     {items.map((it, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: Math.round(rowSize * 0.6), borderTop: `1px solid ${ESSAY_COLORS.inkHairline}`, paddingTop: Math.round(rowSize * 0.4) }}>
                         <div style={{ fontFamily: ESSAY_DISPLAY, fontSize: Math.round(rowSize * 0.9), lineHeight: 1.3, color: accent.text, minWidth: Math.round(rowSize * 1.2) }}>
                           {String(i + 1).padStart(2, "0")}
                         </div>
-                        <div style={{ fontFamily: ESSAY_TEXT, fontWeight: 300, fontSize: rowSize, lineHeight: 1.3, color: ink }}>
+                        <div style={{ fontFamily: ESSAY_TEXT, fontWeight: 300, fontSize: rowSize, lineHeight: 1.3 * lineSpacing, color: ink }}>
                           <EmphasisText text={it} emphasis={emphasis} color={accent.text} />
                         </div>
                       </div>
