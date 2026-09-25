@@ -993,6 +993,12 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     </a>
   </td></tr>`;
 
+  // .email-container is table-layout:fixed (here and inline on the table),
+  // with hard wrapping on its text. An auto-layout container grows to fit its
+  // widest row, so one unbroken string (a URL, a SKU, a pasted token) in a
+  // table cell or paragraph pushed the email past 600px and it scrolled
+  // sideways in the inbox. The explanation lives here, not in the <style>
+  // block, so it isn't shipped in every email.
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
@@ -1008,7 +1014,8 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:${t.shell};}
+  .email-container{width:600px;max-width:600px;background:${t.shell};table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -1061,7 +1068,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(content.previewText)}</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${t.shell};">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${t.shell};">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:${t.shell};table-layout:fixed;">
       ${renderTopBanner(content.topBanner ?? "", t)}
       ${content.showLogo === false ? "" : renderLogoStrip(content.logoUrl, t)}
       <tr><td style="height:16px;font-size:0;line-height:0;background:${t.shell};">&nbsp;</td></tr>

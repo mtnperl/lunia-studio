@@ -115,6 +115,24 @@ function nextFrame(): Promise<void> {
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
+/** Wait until the slide stops re-laying itself out. Free Press and Essay run
+ *  their own fit loop, one font step per render, and it takes many frames to
+ *  settle. Measuring after a fixed two frames caught them mid-fit, saw the
+ *  copy clipped, and shrank bodyScale on top, which restarted their loop, so
+ *  the two fits compounded and the text came out far smaller than it needed
+ *  to be (and by a timing-dependent amount). The markup carries every inline
+ *  font size, so it stops changing exactly when the slide has settled. */
+async function waitForStableLayout(root: HTMLElement, stableFrames = 3, maxFrames = 180): Promise<void> {
+  let last = root.innerHTML;
+  let stable = 0;
+  for (let i = 0; i < maxFrames && stable < stableFrames; i++) {
+    await nextFrame();
+    const now = root.innerHTML;
+    stable = now === last ? stable + 1 : 0;
+    last = now;
+  }
+}
+
 /** Everything painting outside the slide box or clipped by an overflow-hidden
  *  ancestor. SlideWrapper's own two wrapper divs are exempt (they ARE the
  *  bounds), as is FitBox's measuring inner (it translates via transform). */
@@ -184,9 +202,8 @@ export default function RenderSlideClient(props: RenderSlideProps) {
           img.complete ? Promise.resolve() : img.decode().catch(() => {}),
         ),
       );
-      // Two frames: one for FitBox's ResizeObserver pass, one for its re-render.
-      await nextFrame();
-      await nextFrame();
+      // Let FitBox and any in-slide fit loop finish before judging the layout.
+      await waitForStableLayout(root);
       if (cancelled) return;
 
       const { overflows, clipped } = measureViolations(root, SLIDE.width, slideH);

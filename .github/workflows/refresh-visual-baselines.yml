@@ -53,12 +53,13 @@ jobs:
         run: |
           cd tests/visual/output
           count=0
-          while IFS= read -r diff; do
-            name="${diff%.diff.png}"
+          # A pixel diff leaves NAME.diff.png; a changed size leaves
+          # NAME.size-mismatch (no diff image is possible for those).
+          while IFS= read -r name; do
             cp "$name.png" "../baselines/$name.png"
             echo "refreshed $name"
             count=$((count + 1))
-          done < <(find . -name '*.diff.png' | sed 's|^\./||')
+          done < <(find . \( -name '*.diff.png' -o -name '*.size-mismatch' \) | sed -e 's|^\./||' -e 's|\.diff\.png$||' -e 's|\.size-mismatch$||' | sort -u)
           echo "refreshed $count baseline(s)"
       - name: Commit
         run: |
