@@ -2,11 +2,11 @@
  * Drift guard for the committed Remotion bundle (public/remotion).
  *
  * Why this exists: `prebuild` is `--skip-on-vercel`, so production serves the
- * COMMITTED public/remotion/*.js — Vercel never rebuilds it. If someone edits a
- * carousel graphic / slide (src/components/carousel/**) or the Remotion entry
- * (src/remotion/**) but forgets to run `npm run bundle-remotion`, the live
- * in-app preview (built from source) silently diverges from every HD render and
- * exported PNG (built from the stale bundle) — with no error anywhere.
+ * COMMITTED public/remotion/*.js — Vercel never rebuilds it. If someone edits
+ * the Remotion entry or a video scene (src/remotion/**) but forgets to run
+ * `npm run bundle-remotion`, the video builder's in-app preview (built from
+ * source) silently diverges from every MP4/GIF render (built from the stale
+ * bundle) — with no error anywhere.
  *
  * This script rebuilds the bundle into a TEMP dir and compares only the served
  * `.js` files against what's committed. It never touches public/remotion, so
