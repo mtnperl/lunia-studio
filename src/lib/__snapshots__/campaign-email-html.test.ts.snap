@@ -16,7 +16,8 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#F7F4EF;}
+  .email-container{width:600px;max-width:600px;background:#F7F4EF;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -69,7 +70,7 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">One of every block kind.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F7F4EF;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#F7F4EF;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#F7F4EF;table-layout:fixed;">
       <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253F;line-height:1.4;">
     EVERY BLOCK <span style="background:#ffd800;color:#01253F;padding:2px 8px;border-radius:3px;">KIND</span>
   </td></tr>
@@ -84,7 +85,7 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
            <div style="position:relative;">
              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
              <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better →</span>
+         <span style="display:block;background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
        </div>
            </div>
          </a>
@@ -244,7 +245,8 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -297,7 +299,7 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">One of every block kind.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
     EVERY BLOCK <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">KIND</span>
   </td></tr>
@@ -312,7 +314,7 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
            <div style="position:relative;">
              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
              <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better →</span>
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
        </div>
            </div>
          </a>
@@ -472,7 +474,8 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -525,7 +528,7 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">A header that replaces the hero.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
@@ -569,7 +572,8 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -622,7 +626,7 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">A header that replaces the hero.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
@@ -663,7 +667,8 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -716,7 +721,7 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Two hours before bed decides the whole night.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
     MEMORIAL DAY WEEKEND <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">25% OFF</span>
   </td></tr>
@@ -727,7 +732,7 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
            <div style="position:relative;">
              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
              <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale →</span>
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale&nbsp;→</span>
        </div>
            </div>
          </a>
@@ -787,7 +792,8 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -840,7 +846,7 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Unbreakable strings in a fixed-layout table.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA <span style="background:#ffd800;color:#01253f;padding:2px 8px;border-radius:3px;">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB</span>
   </td></tr>
@@ -885,7 +891,8 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
   body{font-family:Inter,Arial,Helvetica,sans-serif;}
   img{border:0;outline:none;max-width:100%;display:block;}
   table{border-collapse:collapse;border-spacing:0;}
-  .email-container{width:600px;max-width:600px;background:#01253f;}
+  .email-container{width:600px;max-width:600px;background:#01253f;table-layout:fixed;}
+  .email-container td, .email-container p, .email-container a, .email-container span{overflow-wrap:anywhere;word-break:break-word;}
 
   /* Mobile overrides — kick in BELOW 600px viewports. Using 599px (not
      600px) so the desktop preview, which renders the iframe at exactly
@@ -938,7 +945,7 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">It is not just about falling asleep.</div>
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#01253f;">
   <tr><td align="center" style="padding:0;">
-    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;">
+    <table class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#01253f;table-layout:fixed;">
       <tr><td style="background:#ffffff;padding:12px 24px;text-align:left;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:400;letter-spacing:0.06em;text-transform:uppercase;color:#01253f;line-height:1.4;">
     NEW RESEARCH
   </td></tr>
@@ -949,7 +956,7 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
            <div style="position:relative;">
              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
              <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better →</span>
+         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
        </div>
            </div>
          </a>

@@ -1,0 +1,78 @@
+name: Refresh visual baselines
+
+# Baselines must be captured on macOS (see tests/visual/README.md), which is
+# awkward without a Mac at hand. This job renders the suite on the same macOS
+# runner the visual-regression check uses and commits the new PNG for every
+# case that FAILED the pixel diff. Passing cases are left alone, so their
+# baselines don't churn with sub-threshold noise.
+#
+# It only proposes baselines. Look at every changed PNG (old vs new) before
+# the branch merges: a baseline that captures a regression locks it in.
+#
+# Triggers:
+#   - a push to any branch but main whose head commit message contains
+#     [refresh-baselines]: commits back onto that branch.
+#   - Run workflow (manual): commits onto a new branch,
+#     baselines/refresh-<run id>, never onto main.
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+
+jobs:
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-baselines]')
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Puppeteer browser
+        run: npx puppeteer browsers install chrome
+      - name: Build app
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Start app
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3030 &
+          npx wait-on http-get://127.0.0.1:3030/render/carousel-slide --timeout 120000
+      - name: Render and compare
+        # Failures are expected here; they are what gets refreshed.
+        continue-on-error: true
+        run: npm run test:visual
+        env:
+          VISUAL_BASE_URL: http://127.0.0.1:3030
+      - name: Copy failing renders over their baselines
+        run: |
+          cd tests/visual/output
+          count=0
+          # A pixel diff leaves NAME.diff.png; a changed size leaves
+          # NAME.size-mismatch (no diff image is possible for those).
+          while IFS= read -r name; do
+            cp "$name.png" "../baselines/$name.png"
+            echo "refreshed $name"
+            count=$((count + 1))
+          done < <(find . \( -name '*.diff.png' -o -name '*.size-mismatch' \) | sed -e 's|^\./||' -e 's|\.diff\.png$||' -e 's|\.size-mismatch$||' | sort -u)
+          echo "refreshed $count baseline(s)"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual/baselines
+          if git diff --cached --quiet; then
+            echo "No baseline changed."
+            exit 0
+          fi
+          git commit -m "Refresh visual baselines from macOS CI (run ${{ github.run_id }})"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            git push origin "HEAD:refs/heads/baselines/refresh-${{ github.run_id }}"
+          else
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

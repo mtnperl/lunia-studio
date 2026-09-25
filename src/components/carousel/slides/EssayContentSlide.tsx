@@ -105,8 +105,11 @@ export default function EssayContentSlide({
   const headlineSize = Math.round(ESSAY_TYPE.headline * headlineScale * compact * (reels ? 1.08 : 1));
   const naturalBody = ESSAY_TYPE.body * bodyScale * compact * (reels ? 1.08 : 1);
   const fitKey = `${headline}|${body}|${graphic ?? ""}|${naturalBody}|${slideH}|${lineSpacing}`;
-  const [fit, setFit] = useState({ key: fitKey, v: 1 });
+  // `done` + data-fit-pending: same contract as FreePressContentSlide, so the
+  // headless render page waits for this loop before judging the layout.
+  const [fit, setFit] = useState({ key: fitKey, v: 1, done: false });
   const autoFit = fit.key === fitKey ? fit.v : 1;
+  const fitDone = fit.key === fitKey && fit.done;
   const bodySize = Math.round(naturalBody * autoFit);
 
   // The graphic, in the essay's own palette: ink for text and the quiet
@@ -133,7 +136,8 @@ export default function EssayContentSlide({
     const measure = () => {
       const box = boxRef.current, inner = innerRef.current;
       if (!box || !inner || cancelled) return;
-      if (inner.offsetHeight > box.clientHeight + 1 && autoFit > FIT_FLOOR) setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP) });
+      if (inner.offsetHeight > box.clientHeight + 1 && autoFit > FIT_FLOOR) setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP), done: false });
+      else setFit((f) => (f.key === fitKey && f.v === autoFit && f.done ? f : { key: fitKey, v: autoFit, done: true }));
     };
     if (typeof document !== "undefined" && document.fonts) {
       Promise.all([document.fonts.load(`400 ${headlineSize}px "Anton"`).catch(() => {}), document.fonts.ready]).then(() => { if (!cancelled) measure(); });
@@ -168,7 +172,7 @@ export default function EssayContentSlide({
       <ChromeRow top={Math.round(ESSAY_PAD.y * compact)} left={handle.toUpperCase()} right={showSlideNumbers ? <Counter index={position} total={deckTotal} accent={accent.text} /> : undefined} />
       {showSlideArrows && <ArrowIcons color={brandStyle?.secondary ?? ESSAY_COLORS.inkMuted} sizeScale={arrowScale} />}
 
-      <div ref={boxRef} style={{ position: "absolute", left: ESSAY_PAD.x, right: ESSAY_PAD.x, top, bottom, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div ref={boxRef} data-fit-pending={fitDone ? undefined : "true"} style={{ position: "absolute", left: ESSAY_PAD.x, right: ESSAY_PAD.x, top, bottom, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: Math.round(bodySize * 0.9), flexShrink: 0 }}>
           <div>
             <div {...zh} style={{ fontFamily: ESSAY_DISPLAY, fontWeight: 400, fontSize: headlineSize, lineHeight: 0.98, letterSpacing: "0.005em", textTransform: "uppercase", color: ink, ...zh.style }}>

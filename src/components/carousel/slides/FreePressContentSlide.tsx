@@ -174,8 +174,12 @@ export default function FreePressContentSlide({
   // Keyed on the inputs that change how much room the copy needs, so a shorter
   // body resets to full size instead of inheriting the previous shrink.
   const fitKey = `${blocks.join("|")}|${body}|${naturalSize}|${reels}|${lineSpacing}`;
-  const [fit, setFit] = useState({ key: fitKey, v: 1 });
+  // `done` marks the fit as finished for this key. The box carries
+  // data-fit-pending until then, so the headless render page can wait for
+  // this loop instead of judging the slide mid-fit (see RenderSlideClient).
+  const [fit, setFit] = useState({ key: fitKey, v: 1, done: false });
   const autoFit = fit.key === fitKey ? fit.v : 1;
+  const fitDone = fit.key === fitKey && fit.done;
   const bodySize = Math.round(naturalSize * autoFit);
 
   const boxRef = useRef<HTMLDivElement>(null);
@@ -196,7 +200,9 @@ export default function FreePressContentSlide({
       const naturalH = inner.offsetHeight;
       if (!boxH || !naturalH) return;
       if (naturalH > boxH + 1 && autoFit > FIT_FLOOR) {
-        setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP) });
+        setFit({ key: fitKey, v: Math.max(FIT_FLOOR, autoFit * FIT_STEP), done: false });
+      } else {
+        setFit((f) => (f.key === fitKey && f.v === autoFit && f.done ? f : { key: fitKey, v: autoFit, done: true }));
       }
     };
 
@@ -269,6 +275,7 @@ export default function FreePressContentSlide({
             than shrinking into a narrow ribbon. */}
         <div
           ref={boxRef}
+          data-fit-pending={fitDone ? undefined : "true"}
           style={{
             flex: 1,
             minHeight: 0,

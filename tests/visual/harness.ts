@@ -54,6 +54,9 @@ export function compareToBaseline(name: string, actual: Buffer): DiffResult {
   const base = PNG.sync.read(readFileSync(baselinePath));
   const cur = PNG.sync.read(actual);
   if (base.width !== cur.width || base.height !== cur.height) {
+    // No pixel diff is possible, so leave a marker instead; the baseline
+    // refresh workflow treats it like a .diff.png.
+    writeFileSync(path.join(OUTPUT_DIR, `${name}.size-mismatch`), "");
     return {
       status: "size-mismatch",
       expected: `${base.width}x${base.height}`,
