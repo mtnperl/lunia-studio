@@ -30,11 +30,15 @@ const PROMPT_MODELS: { key: "draft" | "craft" | "content"; label: string; title:
  *  listed — the carousel engine's `fal-ai/flux-2/flex` 404s, so a slug sitting
  *  in a constant is not evidence the endpoint exists.
  *
- *  Kept to three. This is a chooser next to a Generate button, not a model
+ *  GPT 2.5 is the exception: listed from fal's published endpoints without a
+ *  live call, and the engine falls back to gpt-image-2 if it errors.
+ *
+ *  Kept to four. This is a chooser next to a Generate button, not a model
  *  catalogue, and the ones left out lost on looking real: Recraft reads as a
  *  film still, Ideogram lays a teal cast over everything. */
 const IMAGE_MODELS: { key: string; label: string; title: string }[] = [
   { key: "gpt-image-2", label: "GPT",      title: "gpt-image-2 — the default. Cleanest and most controllable, and the only one here that can take reference images, but it has a house look that reads as AI on people." },
+  { key: "gpt-image-2.5", label: "GPT 2.5", title: "gpt-image-2.5 Sunburst — newer than GPT, with sharper detail, texture and lighting at the same speed. Also takes reference images. What the hero image uses by default." },
   { key: "flux-2",      label: "FLUX",     title: "FLUX.2 — the most photographic of the three, and the fastest. Best pick when the shot has a person in it." },
   { key: "seedream-5",  label: "Seedream", title: "Seedream 5 Lite — photographic like FLUX with a different eye; worth trying when FLUX keeps missing the scene. Slower." },
 ];
