@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import {
   EMAIL_IMAGE_MODELS,
   DEFAULT_EMAIL_IMAGE_MODEL,
+  HERO_EMAIL_IMAGE_MODEL,
   resolveEmailImageModel,
   targetSize,
 } from "@/lib/email-image-engine";
@@ -14,6 +15,11 @@ describe("email image models", () => {
   it("defaults to gpt-image-2 — the only one that takes reference images", () => {
     expect(DEFAULT_EMAIL_IMAGE_MODEL).toBe("gpt-image-2");
     expect(EMAIL_IMAGE_MODELS).toContain("gpt-image-2");
+  });
+
+  it("gives the hero the newest gpt-image-2 model, which also takes references", () => {
+    expect(HERO_EMAIL_IMAGE_MODEL).toBe("gpt-image-2.5");
+    expect(EMAIL_IMAGE_MODELS).toContain(HERO_EMAIL_IMAGE_MODEL);
   });
 
   it("resolves an unknown or missing model instead of throwing", () => {

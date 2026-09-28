@@ -9,6 +9,7 @@ import {
   CAMPAIGN_IMAGE_LOOK,
   CAMPAIGN_IMAGE_CONSTRAINTS,
   CAMPAIGN_IMAGE_SAFETY_SUFFIX,
+  campaignImageSettings,
 } from "@/lib/campaign-image";
 
 /** The vocabulary of 3D renders and over-processed stock. Asking for any of
@@ -50,5 +51,20 @@ describe("campaign image look", () => {
       expect(CAMPAIGN_IMAGE_CONSTRAINTS.toLowerCase()).toContain(rule);
     }
     expect(CAMPAIGN_IMAGE_SAFETY_SUFFIX).toBe(CAMPAIGN_IMAGE_LOOK + CAMPAIGN_IMAGE_CONSTRAINTS);
+  });
+});
+
+describe("campaign image model per role", () => {
+  it("draws the hero on gpt-image-2.5 at high quality", () => {
+    expect(campaignImageSettings("hero")).toEqual({ model: "gpt-image-2.5", quality: "high" });
+  });
+
+  it("leaves secondaries on the engine default at medium", () => {
+    expect(campaignImageSettings("secondary")).toEqual({ model: undefined, quality: "medium" });
+  });
+
+  it("honours an explicit model pick, hero or not", () => {
+    expect(campaignImageSettings("hero", "flux-2")).toEqual({ model: "flux-2", quality: "medium" });
+    expect(campaignImageSettings("secondary", "gpt-image-2.5")).toEqual({ model: "gpt-image-2.5", quality: "medium" });
   });
 });

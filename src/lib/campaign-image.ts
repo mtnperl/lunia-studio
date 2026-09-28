@@ -4,7 +4,8 @@
 import "server-only";
 import { randomUUID } from "crypto";
 import {
-  generateEmailImage, type EmailImageAspect, type EmailImageModel,
+  generateEmailImage, HERO_EMAIL_IMAGE_MODEL,
+  type EmailImageAspect, type EmailImageModel, type EmailImageQuality,
 } from "@/lib/email-image-engine";
 import { getMoodById } from "@/lib/carousel-visual-moods";
 import { saveAssetIfNew } from "@/lib/kv";
@@ -62,9 +63,23 @@ export type CampaignSlotImageOpts = {
   /** For asset-library registration naming only. */
   topic?: string;
   role?: "hero" | "secondary";
-  /** Which model draws it. Unset = the engine's default (gpt-image-2). */
+  /** Which model draws it. Unset = campaignImageSettings' pick for the role. */
   model?: EmailImageModel;
 };
+
+/** Model and quality when the caller didn't pick a model. The hero gets
+ *  gpt-image-2.5 at "high": it is the first thing every reader sees, shown
+ *  large, and "medium" was visibly not good enough there. Secondaries stay on
+ *  gpt-image-2 at "medium": shown small, where the two are hard to tell apart
+ *  and medium is 3-4x faster. An explicit model pick keeps "medium". */
+export function campaignImageSettings(
+  role: "hero" | "secondary",
+  model?: EmailImageModel,
+): { model?: EmailImageModel; quality: EmailImageQuality } {
+  if (model) return { model, quality: "medium" };
+  if (role === "hero") return { model: HERO_EMAIL_IMAGE_MODEL, quality: "high" };
+  return { model: undefined, quality: "medium" };
+}
 
 /**
  * Generate one campaign lifestyle image. Returns a persistent Blob URL
@@ -84,13 +99,12 @@ export async function generateCampaignSlotImage(opts: CampaignSlotImageOpts): Pr
   const variationAngle = VARIATION_ANGLES[Math.floor(Math.random() * VARIATION_ANGLES.length)];
   const variationBlock = ` Variation cue: ${variationAngle}. (seed: ${variationNonce})`;
 
-  // "medium": text-free lifestyle photos shown small in an email — visually
-  // equivalent to "high" but 3-4× faster.
+  const settings = campaignImageSettings(role, model);
   const url = await generateEmailImage({
     prompt: prompt + moodSuffix + variationBlock + CAMPAIGN_IMAGE_SAFETY_SUFFIX,
     aspect,
-    quality: "medium",
-    model,
+    quality: settings.quality,
+    model: settings.model,
   });
 
   if (url) {
