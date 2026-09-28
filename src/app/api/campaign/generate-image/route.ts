@@ -36,10 +36,11 @@ export async function POST(req: Request) {
       mood: typeof body.mood === "string" ? body.mood : undefined,
       topic: typeof body.topic === "string" ? body.topic.trim() : "",
       role: body.role === "hero" ? "hero" : "secondary",
-      // Unknown names resolve to the default rather than 400ing: the value is
-      // persisted on a block, and a build that drops a model must not make an
-      // existing block un-generatable.
-      model: resolveEmailImageModel(body.imageModel),
+      // Absent means "no pick", which lets the hero get its own model (see
+      // campaignImageSettings). Unknown names resolve to the default rather
+      // than 400ing: the value is persisted on a block, and a build that drops
+      // a model must not make an existing block un-generatable.
+      model: body.imageModel ? resolveEmailImageModel(body.imageModel) : undefined,
     });
 
     return Response.json({ url });

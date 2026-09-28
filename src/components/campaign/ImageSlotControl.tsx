@@ -354,6 +354,13 @@ export default function ImageSlotControl({
                 >
                   {slot.url ? "Regenerate" : "Generate image"}
                 </button>
+                {/* Mirrors campaignImageSettings server-side: the hero draws on
+                    gpt-image-2.5 at high quality, the rest on gpt-image-2. */}
+                {slot.role === "hero" && (
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "var(--subtle)" }}>
+                    GPT Image 2.5, high quality
+                  </span>
+                )}
               </>
             ) : slot.source === "upload" ? (
               <>

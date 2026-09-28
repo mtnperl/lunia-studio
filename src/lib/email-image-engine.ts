@@ -45,10 +45,21 @@ type Size = { width: number; height: number };
 // carries `fal-ai/flux-2/flex`, which returns 404 (see FAL_ENDPOINTS in
 // carousel-image-engine.ts) — a reminder that a slug in a constant is not
 // evidence the endpoint exists.
-export const EMAIL_IMAGE_MODELS = ["gpt-image-2", "flux-2", "seedream-5"] as const;
+//
+// Exception: gpt-image-2.5 (the Sunburst tuning) was added from fal's published
+// endpoint list without a live call, because this environment could not reach
+// fal. generateEmailImage falls back to gpt-image-2 if it errors, so a wrong
+// slug costs one failed request, not a hero with no image.
+export const EMAIL_IMAGE_MODELS = ["gpt-image-2", "gpt-image-2.5", "flux-2", "seedream-5"] as const;
 export type EmailImageModel = (typeof EMAIL_IMAGE_MODELS)[number];
 
 export const DEFAULT_EMAIL_IMAGE_MODEL: EmailImageModel = "gpt-image-2";
+
+/** The hero is the one image every reader sees, so it gets the newest model in
+ *  the gpt-image-2 line rather than the everyday default. Sunburst, not Flare:
+ *  Flare is 2.5 tuned for speed at gpt-image-2's quality, Sunburst keeps
+ *  gpt-image-2's speed and spends it on detail, texture and lighting. */
+export const HERO_EMAIL_IMAGE_MODEL: EmailImageModel = "gpt-image-2.5";
 
 type ModelSpec = {
   slug: string;
@@ -62,7 +73,7 @@ type ModelSpec = {
    *  email size, so they are asked for it directly and the crop is a no-op
    *  re-encode. */
   sizeFor: (aspect: EmailImageAspect) => Size;
-  /** Only gpt-image-2 takes `quality`; the others reject the unknown field. */
+  /** Only the GPT models take `quality`; the others reject the unknown field. */
   usesQuality: boolean;
 };
 
@@ -70,6 +81,14 @@ const MODEL_SPECS: Record<EmailImageModel, ModelSpec> = {
   "gpt-image-2": {
     slug: "openai/gpt-image-2",
     editSlug: "openai/gpt-image-2/edit",
+    sizeFor: nativeSizeFor,
+    usesQuality: true,
+  },
+  // Same input shape as gpt-image-2 (prompt, image_size, quality, image_urls
+  // on edit), so it shares the native-size-then-crop path.
+  "gpt-image-2.5": {
+    slug: "openai/gpt-image-2.5/sunburst/text-to-image",
+    editSlug: "openai/gpt-image-2.5/sunburst/edit",
     sizeFor: nativeSizeFor,
     usesQuality: true,
   },
@@ -132,10 +151,24 @@ type GenerateOpts = {
  * fal URL only if Blob is unconfigured.
  */
 export async function generateEmailImage(opts: GenerateOpts): Promise<string> {
+  const model = resolveEmailImageModel(opts.model);
+  try {
+    return await generateWith(model, opts);
+  } catch (err) {
+    // gpt-image-2.5 is the one model listed here without a verified live call
+    // (see EMAIL_IMAGE_MODELS). If it fails for any reason, the image still
+    // gets drawn by the model this engine has always used.
+    if (model !== "gpt-image-2.5") throw err;
+    console.warn("[email-image-engine] gpt-image-2.5 failed, retrying on gpt-image-2:", err);
+    return generateWith("gpt-image-2", opts);
+  }
+}
+
+async function generateWith(requested: EmailImageModel, opts: GenerateOpts): Promise<string> {
   const { prompt, aspect, referenceImageUrls, quality = DEFAULT_QUALITY } = opts;
   const refs = (referenceImageUrls ?? []).filter(Boolean);
 
-  let model = resolveEmailImageModel(opts.model);
+  let model = requested;
   // References outrank the model pick. They exist to lock Lunia's real product
   // silhouette into the frame, and a model with no edit endpoint here would
   // have to drop them — which produces a hallucinated bottle, the exact
