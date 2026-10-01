@@ -95,6 +95,10 @@ export const MUZE_ROUTES: MachineRoute[] = [
   { method: "POST", path: /^\/api\/carousel-v2\/save$/ },
   // Edit a saved carousel in place (hook, subline, slides, CTA, caption).
   { method: "PATCH", path: /^\/api\/carousel-v2\/[^/]+$/ },
+  // Image generation. Each route is behind the 100/hour per-IP "images" rate limit.
+  { method: "POST", path: /^\/api\/campaign\/generate-image$/ },
+  { method: "POST", path: /^\/api\/carousel-v2\/generate-image$/ },
+  { method: "POST", path: /^\/api\/carousel-v2\/generate-slide-bg$/ },
 ];
 
 export function isMuzeRoute(method: string, pathname: string): boolean {

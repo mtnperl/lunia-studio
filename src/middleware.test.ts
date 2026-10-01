@@ -53,6 +53,9 @@ describe("muze machine access", () => {
     expect(isMuzeRoute("POST", "/api/campaign/generate")).toBe(true);
     expect(isMuzeRoute("GET", "/api/carousel-v2/abc123")).toBe(true);
     expect(isMuzeRoute("PATCH", "/api/carousel-v2/abc123")).toBe(true);
+    expect(isMuzeRoute("POST", "/api/campaign/generate-image")).toBe(true);
+    expect(isMuzeRoute("POST", "/api/carousel-v2/generate-image")).toBe(true);
+    expect(isMuzeRoute("POST", "/api/carousel-v2/generate-slide-bg")).toBe(true);
     expect(isMuzeRoute("PATCH", "/api/campaign/abc123")).toBe(false);
     expect(isMuzeRoute("PUT", "/api/carousel-v2/abc123")).toBe(false);    expect(isMuzeRoute("DELETE", "/api/campaign/abc123")).toBe(false);
     expect(isMuzeRoute("DELETE", "/api/carousel-v2/abc123")).toBe(false);
