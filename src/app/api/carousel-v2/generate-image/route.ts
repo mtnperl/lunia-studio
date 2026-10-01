@@ -1,7 +1,7 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook, HookHeadlineWeight } from '@/lib/types';
-import { chooseImageEngine, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
+import { chooseImageEngine, DEFAULT_GPT_ENGINE, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
@@ -60,7 +60,8 @@ export async function POST(req: Request) {
     // Editorial extras: interpretive lane + paper tone. Both only meaningful
     // when isEditorial. Defaults preserve the previous behavior:
     //   • imageDirection "auto" → server rotates lanes per regen
-    //   • paperTone     "white" → original #EFEFF4 cool ivory palette
+    //   • paperTone     "warm"  → #EFE1C8 warm ivory palette ("white" is the
+    //                             older #EFEFF4 cool ivory, still selectable)
     const VALID_DIRECTIONS = ['auto', 'macro', 'environmental', 'abstract', 'symbolic', 'natural'] as const;
     type EditorialDirection = typeof VALID_DIRECTIONS[number];
     const imageDirection: EditorialDirection = (VALID_DIRECTIONS as readonly string[]).includes(body.imageDirection)
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     type PaperTone = typeof VALID_PAPER_TONES[number];
     const paperTone: PaperTone = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
       ? (body.paperTone as PaperTone)
-      : 'white';
+      : 'warm';
     // Contrast mode. "standard" is the original flat edge-to-edge ivory look and
     // is what every caller gets unless it explicitly asks otherwise. "high"
     // swaps the palette for a two-zone frame — an ivory type band over a
@@ -136,10 +137,10 @@ export async function POST(req: Request) {
     const explicitEngine = (body.imageEngine && ['recraft', 'ideogram', 'flux2', 'gpt-image-2', 'gpt-image-2.5-sunburst'].includes(body.imageEngine))
       ? (body.imageEngine as ImageEngine)
       : undefined;
-    // Lifestyle Health renders best on gpt-image-2 — sunlit DTC-wellness
+    // Lifestyle Health renders best on the GPT lane — sunlit DTC-wellness
     // photography is its strongest lane. Caller-supplied imageEngine still wins.
     const moodDefaultEngine: ImageEngine | undefined =
-      mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific' ? 'gpt-image-2' : undefined;
+      mood.id === 'lifestyle-health' || mood.id === 'editorial-scientific' ? DEFAULT_GPT_ENGINE : undefined;
     const override = explicitEngine ?? moodDefaultEngine;
     const textInImage: boolean = Boolean(body.textInImage);
     // Headline-weight edits always go through gpt-image-2's /edit endpoint —

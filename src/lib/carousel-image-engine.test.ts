@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chooseImageEngine,
+  DEFAULT_GPT_ENGINE,
   FAL_ENDPOINTS,
   getGptImageEndpoint,
   isGptImageEngine,
@@ -17,6 +18,19 @@ describe("carousel image engines", () => {
       imageStyle: "realistic",
       override: "gpt-image-2.5-sunburst",
     })).toBe("gpt-image-2.5-sunburst");
+  });
+
+  it("defaults every GPT-lane preset to Sunburst, and still honours an older pin", () => {
+    for (const stylePreset of ["editorial-scientific", "viral", "free-press", "essay", "billboard"]) {
+      expect(chooseImageEngine({ slideIndex: 0, imageStyle: "realistic", stylePreset })).toBe("gpt-image-2.5-sunburst");
+    }
+    expect(DEFAULT_GPT_ENGINE).toBe("gpt-image-2.5-sunburst");
+    expect(chooseImageEngine({
+      slideIndex: 0,
+      imageStyle: "realistic",
+      stylePreset: "editorial-scientific",
+      override: "gpt-image-2",
+    })).toBe("gpt-image-2");
   });
 
   it("identifies both GPT engines for reference-image routing", () => {

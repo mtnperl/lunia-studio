@@ -774,10 +774,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   const [imageSubject, setImageSubject] = useState<
     "auto" | "person" | "still-life" | "environment"
   >("auto");
-  // "white" = #EFEFF4 (current behavior). "warm" = #EFE1C8 warm ecru ivory.
-  // Only affects AI-generated images (hook + content slide bgs). The rendered
-  // slide backgrounds stay on slideBgColor — intentionally untouched.
-  const [paperTone, setPaperTone] = useState<"white" | "warm">("white");
+  // "warm" = #EFE1C8 warm ecru ivory (the default). "white" = #EFEFF4, the
+  // older cool ivory. Only affects AI-generated images (hook + content slide
+  // bgs). The rendered slide backgrounds stay on slideBgColor — intentionally
+  // untouched.
+  const [paperTone, setPaperTone] = useState<"white" | "warm">("warm");
   // "standard" = the flat edge-to-edge ivory hook (unchanged default).
   // "high" = paper type band over a near-black ground with one luminous focal
   // element. Composes with paperTone, which still picks the paper hue.

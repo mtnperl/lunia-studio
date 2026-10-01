@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       const VALID_PAPER_TONES = ['white', 'warm'] as const;
       const paperTone: 'white' | 'warm' = (VALID_PAPER_TONES as readonly string[]).includes(body.paperTone)
         ? (body.paperTone as 'white' | 'warm')
-        : 'white';
+        : 'warm';
       const includeBottle = slideMentionsProduct(`${headline} ${slideBody} ${topic ?? ''}`);
       const editorialPrompt = buildEditorialBgPrompt({ headline, body: slideBody, topic, includeBottle, paperTone });
 
