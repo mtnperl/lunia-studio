@@ -75,3 +75,49 @@ export function authEnforced(): boolean {
   // Default: enforce. Only the literal string "false" disables enforcement.
   return process.env.AUTH_ENFORCE !== "false";
 }
+
+// ── Machine access (Muze) ────────────────────────────────────────────────────
+// One static key, sent as `Authorization: Bearer <key>` or `x-api-key: <key>`,
+// valid only for the method + path allowlist below. Everything else (delete,
+// Klaviyo push, admin, business, Shopify) stays cookie-only.
+
+type MachineRoute = { method: string; path: RegExp };
+
+export const MUZE_ROUTES: MachineRoute[] = [
+  { method: "GET", path: /^\/api\/assets$/ },
+  { method: "GET", path: /^\/api\/campaign\/library$/ },
+  { method: "GET", path: /^\/api\/campaign\/[^/]+$/ },
+  { method: "POST", path: /^\/api\/campaign\/generate$/ },
+  { method: "POST", path: /^\/api\/campaign\/save$/ },
+  { method: "GET", path: /^\/api\/carousel-v2\/library$/ },
+  { method: "GET", path: /^\/api\/carousel-v2\/[^/]+$/ },
+  { method: "POST", path: /^\/api\/carousel-v2\/generate$/ },
+  { method: "POST", path: /^\/api\/carousel-v2\/save$/ },
+];
+
+export function isMuzeRoute(method: string, pathname: string): boolean {
+  return MUZE_ROUTES.some((r) => r.method === method && r.path.test(pathname));
+}
+
+function presentedKey(headers: Headers): string | null {
+  const bearer = headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+  return (bearer ?? headers.get("x-api-key"))?.trim() || null;
+}
+
+// Compare HMACs of both values so the check is constant-time and length-blind.
+export async function muzeKeyIsValid(headers: Headers): Promise<boolean> {
+  const expected = process.env.MUZE_API_KEY;
+  const given = presentedKey(headers);
+  if (!expected || expected.length < 24 || !given) return false;
+  const k = await key("muze-key-compare");
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.sign("HMAC", k, enc.encode(expected)),
+    crypto.subtle.sign("HMAC", k, enc.encode(given)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i]! ^ y[i]!;
+  return diff === 0;
+}

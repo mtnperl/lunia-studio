@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { signCookie, verifyCookie } from "./lib/auth";
+import { isMuzeRoute, muzeKeyIsValid, signCookie, verifyCookie } from "./lib/auth";
 
 const SECRET = "test-secret-do-not-use-in-prod";
 
@@ -41,5 +41,38 @@ describe("auth cookie", () => {
     expect(await verifyCookie(SECRET, "no-dot")).toBe(false);
     expect(await verifyCookie(SECRET, ".only-sig")).toBe(false);
     expect(await verifyCookie(SECRET, "not-a-number.sig")).toBe(false);
+  });
+});
+
+describe("muze machine access", () => {
+  const KEY = "k".repeat(32);
+  const headers = (h: Record<string, string>) => new Headers(h);
+
+  it("allows only the listed method + path pairs", () => {
+    expect(isMuzeRoute("GET", "/api/assets")).toBe(true);
+    expect(isMuzeRoute("POST", "/api/campaign/generate")).toBe(true);
+    expect(isMuzeRoute("GET", "/api/carousel-v2/abc123")).toBe(true);
+    expect(isMuzeRoute("DELETE", "/api/campaign/abc123")).toBe(false);
+    expect(isMuzeRoute("DELETE", "/api/carousel-v2/abc123")).toBe(false);
+    expect(isMuzeRoute("POST", "/api/campaign/klaviyo")).toBe(false);
+    expect(isMuzeRoute("GET", "/api/shopify")).toBe(false);
+    expect(isMuzeRoute("GET", "/api/admin/blob-cleanup")).toBe(false);
+  });
+
+  it("accepts the key as Bearer or x-api-key", async () => {
+    process.env.MUZE_API_KEY = KEY;
+    expect(await muzeKeyIsValid(headers({ authorization: `Bearer ${KEY}` }))).toBe(true);
+    expect(await muzeKeyIsValid(headers({ "x-api-key": KEY }))).toBe(true);
+  });
+
+  it("rejects a wrong, missing, or unconfigured key", async () => {
+    process.env.MUZE_API_KEY = KEY;
+    expect(await muzeKeyIsValid(headers({ authorization: "Bearer nope" }))).toBe(false);
+    expect(await muzeKeyIsValid(headers({}))).toBe(false);
+    delete process.env.MUZE_API_KEY;
+    expect(await muzeKeyIsValid(headers({ authorization: `Bearer ${KEY}` }))).toBe(false);
+    process.env.MUZE_API_KEY = "short";
+    expect(await muzeKeyIsValid(headers({ authorization: "Bearer short" }))).toBe(false);
+    delete process.env.MUZE_API_KEY;
   });
 });
