@@ -15,6 +15,9 @@ export const FAL_ENDPOINTS: Record<ImageEngine, string> = {
   "gpt-image-2.5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
 };
 
+/** The GPT model new carousel images use unless a caller pins another. */
+export const DEFAULT_GPT_ENGINE: GptImageEngine = "gpt-image-2.5-sunburst";
+
 export function isGptImageEngine(engine: ImageEngine): engine is GptImageEngine {
   return engine === "gpt-image-2" || engine === "gpt-image-2.5-sunburst";
 }
@@ -60,20 +63,22 @@ function pickWeighted(): ImageEngine {
 
 export function chooseImageEngine(opts: ChooseEngineInput): ImageEngine {
   if (opts.override) return opts.override;
-  // Editorial Scientific style: every image goes through gpt-image-2 so the
+  // The GPT lane runs on the newest model, gpt-image-2.5 Sunburst. Callers
+  // can still pin the older one with `override`.
+  // Editorial Scientific style: every image goes through the GPT lane so the
   // bottle / brand look stays consistent across the whole carousel.
-  if (opts.stylePreset === "editorial-scientific" || opts.stylePreset === "viral") return "gpt-image-2";
+  if (opts.stylePreset === "editorial-scientific" || opts.stylePreset === "viral") return DEFAULT_GPT_ENGINE;
   // Free Press covers are documentary photographs that must contain NO text at
   // all, because the headline is composited over them in HTML. The weighted
   // mix below rolls engines that routinely paint incidental signage and
-  // lettering; gpt-image-2 is the one that reliably honours the constraint.
-  if (opts.stylePreset === "free-press") return "gpt-image-2";
+  // lettering; the GPT lane is the one that reliably honours the constraint.
+  if (opts.stylePreset === "free-press") return DEFAULT_GPT_ENGINE;
   // Essay covers are engravings on a white ground, printed onto the paper
-  // with multiply. gpt-image-2 holds the medium and keeps text out.
-  if (opts.stylePreset === "essay") return "gpt-image-2";
+  // with multiply. The GPT lane holds the medium and keeps text out.
+  if (opts.stylePreset === "essay") return DEFAULT_GPT_ENGINE;
   // Billboard covers are photographs in a band with the headline in HTML
   // above and below; like Free Press they must carry no text.
-  if (opts.stylePreset === "billboard") return "gpt-image-2";
+  if (opts.stylePreset === "billboard") return DEFAULT_GPT_ENGINE;
   if (opts.textInImage) return "ideogram";
   // Hook slide gets a weighted mix; CTA and content slides stick with Recraft
   // for atmospheric backgrounds when they generate (today only slide 0 does).
