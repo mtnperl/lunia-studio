@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE_NAME, authEnforced, authIsConfigured, verifyCookie } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, authEnforced, authIsConfigured, isMuzeRoute, muzeKeyIsValid, verifyCookie } from "@/lib/auth";
 
 // Paths that skip auth entirely.
 const PUBLIC_PREFIXES = [
@@ -52,6 +52,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // Vercel Cron carries `Authorization: Bearer <CRON_SECRET>` and no cookie.
   // Let it reach the route; the route checks the secret again itself.
   if (process.env.CRON_SECRET && req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.next();
+  }
+
+  // Muze: API key, allowlisted method + path only. A wrong key falls through
+  // to the normal cookie check and ends in a 401.
+  if (isMuzeRoute(req.method, pathname) && (await muzeKeyIsValid(req.headers))) {
     return NextResponse.next();
   }
 
