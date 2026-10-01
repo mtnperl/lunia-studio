@@ -15,8 +15,15 @@ export const FAL_ENDPOINTS: Record<ImageEngine, string> = {
   "gpt-image-2.5-sunburst": "openai/gpt-image-2.5/sunburst/text-to-image",
 };
 
-/** The GPT model new carousel images use unless a caller pins another. */
-export const DEFAULT_GPT_ENGINE: GptImageEngine = "gpt-image-2.5-sunburst";
+/** The GPT model new carousel images use unless a caller pins another.
+ *
+ *  gpt-image-2, not Sunburst. Sunburst is selectable (override or the editor's
+ *  Model row) but was never verified live on this route, and the first live
+ *  hooks it drew came back as a two-panel image with an invented amber bottle
+ *  on a nightstand, which breaks the no-product-on-hooks rule. Unlike the
+ *  email engine, this route has no fallback if the model misbehaves, so the
+ *  default stays on the model known to work. Move it only after a live check. */
+export const DEFAULT_GPT_ENGINE: GptImageEngine = "gpt-image-2";
 
 export function isGptImageEngine(engine: ImageEngine): engine is GptImageEngine {
   return engine === "gpt-image-2" || engine === "gpt-image-2.5-sunburst";
@@ -63,8 +70,8 @@ function pickWeighted(): ImageEngine {
 
 export function chooseImageEngine(opts: ChooseEngineInput): ImageEngine {
   if (opts.override) return opts.override;
-  // The GPT lane runs on the newest model, gpt-image-2.5 Sunburst. Callers
-  // can still pin the older one with `override`.
+  // The GPT lane runs on DEFAULT_GPT_ENGINE. Callers can pin Sunburst with
+  // `override`.
   // Editorial Scientific style: every image goes through the GPT lane so the
   // bottle / brand look stays consistent across the whole carousel.
   if (opts.stylePreset === "editorial-scientific" || opts.stylePreset === "viral") return DEFAULT_GPT_ENGINE;

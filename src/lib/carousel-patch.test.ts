@@ -90,9 +90,31 @@ describe("applyCarouselPatch", () => {
     expect(r.warnings.join("\n")).toContain("miracle");
   });
 
-  it("warns when an emphasis is no longer inside its text", () => {
+  it("refuses an emphasis that is not inside its text, and saves nothing", () => {
+    // Headline edited, old emphasis "3am" no longer in it.
     const r = applyCarouselPatch(deck(), { hooks: [{ index: 0, headline: "Why you wake at night" }] });
-    expect(r.ok && r.warnings.join("\n")).toContain("hooks[0].emphasis");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.status).toBe(400);
+    expect(r.details?.join("\n")).toContain('hooks[0].emphasis "3am" is not inside the headline');
+    const slide = applyCarouselPatch(deck(), { slides: [{ index: 0, emphasis: "not in the body" }] });
+    expect(slide.ok).toBe(false);
+  });
+
+  it("accepts a headline and its new emphasis in the same patch, or a cleared one", () => {
+    const together = applyCarouselPatch(deck(), {
+      hooks: [{ index: 0, headline: "Why you wake at night", emphasis: "night" }],
+    });
+    expect(together.ok).toBe(true);
+    const cleared = applyCarouselPatch(deck(), { hooks: [{ index: 0, headline: "Why you wake at night", emphasis: "" }] });
+    expect(cleared.ok).toBe(true);
+  });
+
+  it("does not nag about an old mismatch on an entry it did not touch", () => {
+    const old = deck();
+    old.content.hooks[1]!.emphasis = "gone";
+    const r = applyCarouselPatch(old, { hooks: [{ index: 0, subline: "New subline" }] });
+    expect(r.ok).toBe(true);
   });
 
   it("clears a clearable field with an empty string", () => {

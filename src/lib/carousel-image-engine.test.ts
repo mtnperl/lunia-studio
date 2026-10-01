@@ -20,17 +20,18 @@ describe("carousel image engines", () => {
     })).toBe("gpt-image-2.5-sunburst");
   });
 
-  it("defaults every GPT-lane preset to Sunburst, and still honours an older pin", () => {
+  it("keeps every GPT-lane preset on gpt-image-2 by default, and still honours a Sunburst pin", () => {
+    // Sunburst is opt-in until it has been verified live on the carousel route.
     for (const stylePreset of ["editorial-scientific", "viral", "free-press", "essay", "billboard"]) {
-      expect(chooseImageEngine({ slideIndex: 0, imageStyle: "realistic", stylePreset })).toBe("gpt-image-2.5-sunburst");
+      expect(chooseImageEngine({ slideIndex: 0, imageStyle: "realistic", stylePreset })).toBe("gpt-image-2");
     }
-    expect(DEFAULT_GPT_ENGINE).toBe("gpt-image-2.5-sunburst");
+    expect(DEFAULT_GPT_ENGINE).toBe("gpt-image-2");
     expect(chooseImageEngine({
       slideIndex: 0,
       imageStyle: "realistic",
       stylePreset: "editorial-scientific",
-      override: "gpt-image-2",
-    })).toBe("gpt-image-2");
+      override: "gpt-image-2.5-sunburst",
+    })).toBe("gpt-image-2.5-sunburst");
   });
 
   it("identifies both GPT engines for reference-image routing", () => {

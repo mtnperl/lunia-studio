@@ -338,6 +338,30 @@ export function applyCarouselPatch(current: SavedCarousel, raw: unknown): PatchR
     }
   }
 
+  // Emphasis has to be an exact piece of its text or the renderer drops it, so
+  // a patch that leaves one broken is refused. Checked on the edited entries
+  // only, after every change in the patch has landed, so a headline and its
+  // new emphasis can travel together. Decks with an old mismatch elsewhere are
+  // not nagged about it.
+  if (content) {
+    const fix = 'Send an emphasis that is an exact piece of it, or "" to clear it.';
+    for (const i of touchedHooks) {
+      const h = content.hooks[i]!;
+      if (h.emphasis && !h.headline.includes(h.emphasis)) {
+        ctx.errors.push(`hooks[${i}].emphasis "${h.emphasis}" is not inside the headline. ${fix}`);
+      }
+    }
+    for (const i of touchedSlides) {
+      const s = content.slides[i]!;
+      if (s.headlineEmphasis && !s.headline.includes(s.headlineEmphasis)) {
+        ctx.errors.push(`slides[${i}].headlineEmphasis "${s.headlineEmphasis}" is not inside the headline. ${fix}`);
+      }
+      if (s.emphasis && !s.body.includes(s.emphasis)) {
+        ctx.errors.push(`slides[${i}].emphasis "${s.emphasis}" is not inside the body. ${fix}`);
+      }
+    }
+  }
+
   if (ctx.errors.length > 0) {
     return { ok: false, status: 400, error: "Nothing was saved. Fix these and resend.", details: ctx.errors };
   }
@@ -347,25 +371,6 @@ export function applyCarouselPatch(current: SavedCarousel, raw: unknown): PatchR
       status: 400,
       error: `Nothing to change. Allowed keys: ${TOP_KEYS.filter((k) => k !== "ifSavedAt").join(", ")}`,
     };
-  }
-
-  // Emphasis has to be an exact piece of its text or the renderer drops it.
-  if (content) {
-    for (const i of touchedHooks) {
-      const h = content.hooks[i]!;
-      if (h.emphasis && !h.headline.includes(h.emphasis)) {
-        ctx.warnings.push(`hooks[${i}].emphasis is not inside the headline, so it will be dropped`);
-      }
-    }
-    for (const i of touchedSlides) {
-      const s = content.slides[i]!;
-      if (s.headlineEmphasis && !s.headline.includes(s.headlineEmphasis)) {
-        ctx.warnings.push(`slides[${i}].headlineEmphasis is not inside the headline, so it will be dropped`);
-      }
-      if (s.emphasis && !s.body.includes(s.emphasis)) {
-        ctx.warnings.push(`slides[${i}].emphasis is not inside the body, so it will be dropped`);
-      }
-    }
   }
 
   // Editorial hooks have their text painted into the image.

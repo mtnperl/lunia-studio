@@ -1,6 +1,7 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook, HookHeadlineWeight } from '@/lib/types';
+import { resolveEditorialHookSpec } from '@/lib/editorial-hook-spec';
 import { chooseImageEngine, DEFAULT_GPT_ENGINE, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
@@ -202,9 +203,12 @@ export async function POST(req: Request) {
     // `concept`. Legacy specs that only have `subject` still work because
     // buildEditorialHookPrompt falls back to those fields when `concept` is
     // missing.
-    const useEditorialHookFramework =
-      slideIndex === 0 && isEditorial && hookImageSpec &&
-      (Boolean(hookImageSpec.concept) || Boolean(hookImageSpec.subject));
+    //
+    // A caller with no spec still gets the framework when there is a headline
+    // to bake (see resolveEditorialHookSpec), so text is baked and no bottle is
+    // invented.
+    const editorialSpec = resolveEditorialHookSpec({ slideIndex, isEditorial, hookHeadline, topic, spec: hookImageSpec });
+    const useEditorialHookFramework = Boolean(editorialSpec);
 
     // customPrompt — if the caller (Edit hook-image prompt panel in PreviewStep)
     // passes a verbatim prompt string, send THAT to fal/gpt and skip the
@@ -235,7 +239,7 @@ export async function POST(req: Request) {
         })
       : useEditorialHookFramework
       ? buildEditorialHookPrompt({
-          spec: hookImageSpec!,
+          spec: editorialSpec!,
           headline: hookHeadline,
           subline:  hookSubline,
           topic:    topic,
