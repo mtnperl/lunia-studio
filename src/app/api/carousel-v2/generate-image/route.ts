@@ -2,7 +2,7 @@ import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook, HookHeadlineWeight } from '@/lib/types';
 import { chooseImageEngine, DEFAULT_GPT_ENGINE, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
-import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
+import { pickRandomMood, getMoodById, hookStyleBlock, type VisualMood } from '@/lib/carousel-visual-moods';
 
 // Ideogram V3 style values: https://fal.ai/models/fal-ai/ideogram/v3
 const IDEOGRAM_STYLE_MAP: Record<string, string> = {
@@ -253,7 +253,7 @@ export async function POST(req: Request) {
           imageSubject,
           headlineWeight,
         })
-      : `${basePrompt}\n\nVisual mood — ${mood.label}: ${mood.styleBlock}.${referenceDirective}`;
+      : `${basePrompt}\n\nVisual mood — ${mood.label}: ${slideIndex === 0 ? hookStyleBlock(mood) : mood.styleBlock}.${referenceDirective}`;
 
     const prompt = customPrompt ?? assembledPrompt;
 

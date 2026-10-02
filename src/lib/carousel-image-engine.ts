@@ -17,13 +17,12 @@ export const FAL_ENDPOINTS: Record<ImageEngine, string> = {
 
 /** The GPT model new carousel images use unless a caller pins another.
  *
- *  gpt-image-2, not Sunburst. Sunburst is selectable (override or the editor's
- *  Model row) but was never verified live on this route, and the first live
- *  hooks it drew came back as a two-panel image with an invented amber bottle
- *  on a nightstand, which breaks the no-product-on-hooks rule. Unlike the
- *  email engine, this route has no fallback if the model misbehaves, so the
- *  default stays on the model known to work. Move it only after a live check. */
-export const DEFAULT_GPT_ENGINE: GptImageEngine = "gpt-image-2";
+ *  Sunburst. It has drawn live hooks on this route at full 4:5 (2026-10-01),
+ *  so the endpoint and the 1440x1800 size are known to work. The two-panel hook
+ *  with an amber bottle that briefly put the default back on gpt-image-2 came
+ *  from the Editorial Scientific mood prompt asking for a bottle, not from the
+ *  model; see hookStyleBlock. gpt-image-2 stays selectable. */
+export const DEFAULT_GPT_ENGINE: GptImageEngine = "gpt-image-2.5-sunburst";
 
 export function isGptImageEngine(engine: ImageEngine): engine is GptImageEngine {
   return engine === "gpt-image-2" || engine === "gpt-image-2.5-sunburst";

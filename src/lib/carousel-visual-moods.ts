@@ -55,6 +55,20 @@ export const VISUAL_MOODS: VisualMood[] = [
   },
 ];
 
+/** The Editorial Scientific mood asks for "a single Lunia Restore amber bottle
+ *  as the focal product". That suits a product shot but not a carousel hook:
+ *  hooks never show the bottle, and no reference image is attached, so the
+ *  model draws an invented one beside whatever concept the hook asked for (the
+ *  two-panel cover with a bottle on a nightstand). Hooks get the mood with the
+ *  product clause swapped for a no-product line. Every other mood, and every
+ *  non-hook caller such as the email image controls, keeps its block as is. */
+const EDITORIAL_PRODUCT_CLAUSE = "a single Lunia Restore amber bottle as the focal product, ";
+
+export function hookStyleBlock(mood: VisualMood): string {
+  if (mood.id !== "editorial-scientific") return mood.styleBlock;
+  return `${mood.styleBlock.replace(EDITORIAL_PRODUCT_CLAUSE, "")}, no product, no packaging`;
+}
+
 export function pickRandomMood(seed?: string): VisualMood {
   // If a seed is provided, deterministic by seed (so a regenerate with the
   // same topic + slide can reuse the mood). Otherwise, pure random.
