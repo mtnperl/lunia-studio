@@ -1,7 +1,6 @@
 import { fal, buildPrompt } from '@/lib/fal';
 import { checkRateLimit, getAssets } from '@/lib/kv';
 import type { Hook, HookHeadlineWeight } from '@/lib/types';
-import { resolveEditorialHookSpec } from '@/lib/editorial-hook-spec';
 import { chooseImageEngine, DEFAULT_GPT_ENGINE, FAL_ENDPOINTS, getGptImageEndpoint, isGptImageEngine, type ImageEngine } from '@/lib/carousel-image-engine';
 import { pickRandomMood, getMoodById, type VisualMood } from '@/lib/carousel-visual-moods';
 
@@ -204,11 +203,14 @@ export async function POST(req: Request) {
     // buildEditorialHookPrompt falls back to those fields when `concept` is
     // missing.
     //
-    // A caller with no spec still gets the framework when there is a headline
-    // to bake (see resolveEditorialHookSpec), so text is baked and no bottle is
-    // invented.
-    const editorialSpec = resolveEditorialHookSpec({ slideIndex, isEditorial, hookHeadline, topic, spec: hookImageSpec });
-    const useEditorialHookFramework = Boolean(editorialSpec);
+    // No spec means no framework, on purpose. The framework paints the headline
+    // INTO the picture, and the slide only hides its own HTML headline when the
+    // deck carries a hookImageSpec (HookSlide's headlineInImage). A deck with no
+    // spec gets a bare photograph and the slide sets the type over it. Baking the
+    // text for a spec-less deck sets the words twice.
+    const useEditorialHookFramework =
+      slideIndex === 0 && isEditorial && hookImageSpec &&
+      (Boolean(hookImageSpec.concept) || Boolean(hookImageSpec.subject));
 
     // customPrompt — if the caller (Edit hook-image prompt panel in PreviewStep)
     // passes a verbatim prompt string, send THAT to fal/gpt and skip the
@@ -239,7 +241,7 @@ export async function POST(req: Request) {
         })
       : useEditorialHookFramework
       ? buildEditorialHookPrompt({
-          spec: editorialSpec!,
+          spec: hookImageSpec!,
           headline: hookHeadline,
           subline:  hookSubline,
           topic:    topic,
