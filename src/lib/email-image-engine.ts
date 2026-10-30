@@ -26,6 +26,7 @@ import "server-only";
 import sharp from "sharp";
 import { put } from "@vercel/blob";
 import { fal } from "@/lib/fal";
+import { falErrorMessage, isFalAccountError } from "@/lib/fal-error";
 import { EMAIL, GPT_IMAGE_NATIVE_SIZES } from "@/lib/brand-tokens";
 
 export type EmailImageAspect = "16:9" | "4:5" | "1:1";
@@ -157,8 +158,10 @@ export async function generateEmailImage(opts: GenerateOpts): Promise<string> {
   } catch (err) {
     // gpt-image-2.5 is the one model listed here without a verified live call
     // (see EMAIL_IMAGE_MODELS). If it fails for any reason, the image still
-    // gets drawn by the model this engine has always used.
-    if (model !== "gpt-image-2.5") throw err;
+    // gets drawn by the model this engine has always used. Not when the
+    // account itself is refused (locked, out of balance, bad key): the second
+    // model would be refused the same way, so that just doubles the wait.
+    if (model !== "gpt-image-2.5" || isFalAccountError(err)) throw err;
     console.warn("[email-image-engine] gpt-image-2.5 failed, retrying on gpt-image-2:", err);
     return generateWith("gpt-image-2", opts);
   }
@@ -190,7 +193,17 @@ async function generateWith(requested: EmailImageModel, opts: GenerateOpts): Pro
     input.image_urls = refs.slice(0, 10);
   }
 
-  const result = await fal.subscribe(endpoint, { input, logs: false });
+  let result;
+  try {
+    result = await fal.subscribe(endpoint, { input, logs: false });
+  } catch (err) {
+    // fal's ApiError message is just "Forbidden"; the reason is in body.detail.
+    // Keep the status so generateEmailImage can tell an account problem from a
+    // model problem.
+    throw Object.assign(new Error(falErrorMessage(err), { cause: err }), {
+      status: (err as { status?: number } | null)?.status,
+    });
+  }
   const url = (result.data as { images?: { url?: string }[] })?.images?.[0]?.url;
   if (!url) {
     throw new Error(`No image URL in ${endpoint} response`);
