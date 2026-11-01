@@ -204,8 +204,8 @@ function timelineBlock(b: CampaignBlock, t: CampaignTheme): string {
 
 /** "Why we're different" trust argument — a 2-column grid of small image
  *  + caption pairs. imageUrl is a plain pasted URL (no asset picker); a
- *  row with no caption is dropped, an image with no url shows a solid
- *  placeholder (same pattern as imageCell()). */
+ *  row with no caption is dropped, an item with no url shows its caption
+ *  alone. */
 function trustgridBlock(b: CampaignBlock, t: CampaignTheme): string {
   const items = (b.trustItems ?? []).filter((i) => i.caption?.trim());
   if (items.length === 0) return "";
@@ -217,7 +217,7 @@ function trustgridBlock(b: CampaignBlock, t: CampaignTheme): string {
       if (!item) return `<td width="48.91%" style="width:48.91%;">&nbsp;</td>`;
       const img = item.imageUrl?.trim()
         ? `<img src="${esc(item.imageUrl)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
-        : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
+        : "";
       return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${img}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.4;">${esc(item.caption)}</div></td>`;
     };
     html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;${i > 0 ? "margin-top:16px;" : ""}">
@@ -588,9 +588,12 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): s
   const headline = b.headerHeadline?.trim();
   const style = b.headerStyle ?? "card";
 
+  // No picture means no picture: a grey 16:9 slab shipped to Klaviyo looked
+  // like a broken image, and since the library chooser is allowed to answer
+  // "nothing fits", an empty slot is a normal outcome rather than a TODO.
   const image = url
     ? `<img src="${esc(url)}" width="600" style="display:block;width:100%;height:auto;" alt="">`
-    : `<div style="width:100%;aspect-ratio:16/9;background:${t.placeholder};"></div>`;
+    : "";
 
   if (style === "pill") {
     const pill = b.headerPillText?.trim()
@@ -606,8 +609,9 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): s
   }
 
   // card
+  // The card only overlaps the picture when there is one to overlap.
   const card = headline
-    ? `<div style="margin:-28px 24px 0;position:relative;">
+    ? `<div style="margin:${image ? "-28px" : "0"} 24px 0;position:relative;">
          <div style="background:${t.panelBg};border-radius:10px;padding:18px 20px;">
            <div class="headerimage-h${headingSizeClass(b)}" style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 28)}px;font-weight:300;color:${t.inkOnPanel};line-height:1.15;${headingAlignCss(b)}">${renderInline(headline, t)}</div>
          </div>
@@ -637,13 +641,16 @@ function sideBySide(imageCell: string, contentCell: string, imageOnRight: boolea
   </table>`;
 }
 
-function blockImageCell(b: CampaignBlock, t: CampaignTheme, width: string): string {
-  const url = b.imageUrl?.trim();
-  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:middle;">${
-    url
-      ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`
-      : imagePlaceholder("1/1", "8px", t)
-  }</td>`;
+function blockImageCell(b: CampaignBlock, width: string): string {
+  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:middle;"><img src="${esc(b.imageUrl!.trim())}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
+}
+
+/** Picture beside content, or the content alone at full width when the block
+ *  has no picture. Never a grey square: see headerimageBlockRow. */
+function besidePicture(b: CampaignBlock, contentInner: string): string {
+  if (!b.imageUrl?.trim()) return contentInner;
+  const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${contentInner}</td>`;
+  return sideBySide(blockImageCell(b, "39.13%"), content, b.imagePosition === "right");
 }
 
 /** Picture beside copy. The copy reuses `body`, so everything that already
@@ -656,8 +663,7 @@ function imagetextBlock(b: CampaignBlock, t: CampaignTheme): string {
     ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 17)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:8px;${headingAlignCss(b)}">${renderInline(heading, t)}</div>`
     : "";
   const bodyHtml = body ? paragraphs(t, body, "left", !!b.italic, b.weight ?? "light") : "";
-  const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;">${headingHtml}${bodyHtml}</td>`;
-  return sideBySide(blockImageCell(b, t, "39.13%"), content, b.imagePosition === "right");
+  return besidePicture(b, `${headingHtml}${bodyHtml}`);
 }
 
 /** Picture beside a bulleted list, with a user-chosen marker colour. The marker
@@ -676,8 +682,7 @@ function imagebulletsBlock(b: CampaignBlock, t: CampaignTheme): string {
       </tr>`,
     )
     .join("");
-  const content = `<td class="secondary-cell" width="58.70%" style="width:58.70%;vertical-align:middle;"><table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table></td>`;
-  return sideBySide(blockImageCell(b, t, "39.13%"), content, b.imagePosition === "right");
+  return besidePicture(b, `<table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`);
 }
 
 /** A 2-column grid of picture + heading + caption. Always two columns: a
@@ -694,7 +699,7 @@ function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
     const url = c.imageUrl?.trim();
     const img = url
       ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
-      : `<div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;margin-bottom:8px;"></div>`;
+      : "";
     const heading = c.heading?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 15)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;${headingAlignCss(b)}">${renderInline(c.heading, t)}</div>`
       : "";

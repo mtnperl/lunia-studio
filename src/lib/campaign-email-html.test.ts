@@ -606,3 +606,35 @@ describe("image block overlay", () => {
     expect(html).toContain('height="338"');
   });
 });
+
+describe("picture blocks with no picture", () => {
+  // The library chooser may answer "nothing fits". The block then ships its
+  // copy alone instead of a grey square that reads as a broken image.
+  const email = (block: Partial<CampaignBlock>): CampaignContent => ({
+    subjectLines: ["s", "", ""], selectedSubject: 0, previewText: "",
+    blocks: [{ id: "b", body: "", align: "left", ...block } as CampaignBlock],
+    cta: { label: "Go", url: "https://www.lunialife.com" },
+    images: [],
+  });
+  const grey = /aspect-ratio:[^;]+;background:#/;
+
+  it.each([
+    { kind: "imagetext" as const, imageHeading: "Why it works", body: "Because." },
+    { kind: "imagebullets" as const, bulletItems: ["One", "Two"] },
+    { kind: "grid" as const, gridCells: [{ heading: "A", caption: "a" }, { heading: "B", caption: "b" }] },
+    { kind: "headerimage" as const, headerHeadline: "Headline" },
+  ])("$kind keeps its copy and draws no placeholder", (block) => {
+    const html = renderCampaignEmail(email(block));
+    expect(html).not.toMatch(grey);
+    expect(html).toMatch(/Because\.|Two|Headline|>B</);
+  });
+
+  it("drops the side-by-side split, so the copy takes the full width", () => {
+    const html = renderCampaignEmail(email({ kind: "imagetext", imageHeading: "Why it works", body: "Because." }));
+    expect(html).not.toContain('width="58.70%"');
+  });
+
+  it("does not pull the header card up over a picture that is not there", () => {
+    expect(renderCampaignEmail(email({ kind: "headerimage", headerHeadline: "Headline" }))).not.toContain("margin:-28px");
+  });
+});
