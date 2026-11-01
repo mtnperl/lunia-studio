@@ -355,11 +355,9 @@ function renderLogoStrip(url: string | null | undefined, t: CampaignTheme): stri
  *  editable, unlike words baked into the pixels. A dark scrim keeps it legible
  *  over a bright photo.
  *
- *  Outlook (Word rendering engine) drops `position:absolute`, which would make
- *  an overlay-only headline vanish entirely — unlike the hero CTA pill, whose
- *  words are guaranteed by the bottom CTA button. So the same text is repeated
- *  in an mso-only caption bar beneath the image: modern clients see the
- *  overlay, Outlook sees a caption, nobody loses the copy. */
+ *  It is the bottom-aligned content of a bgImageCell, never an absolute
+ *  overlay: Klaviyo and Gmail strip `position`, which dropped the words under
+ *  the photo. */
 function overlayHtml(b: CampaignBlock, radius: string, t: CampaignTheme): string {
   const eyebrow = b.imageOverlayEyebrow?.trim();
   const headline = b.imageOverlayHeadline?.trim();
@@ -370,27 +368,72 @@ function overlayHtml(b: CampaignBlock, radius: string, t: CampaignTheme): string
   const headlineHtml = headline
     ? `<div class="img-overlay-headline${headingSizeClass(b)}" style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 26)}px;font-weight:300;line-height:1.25;${headingAlignCss(b)}">${esc(headline)}</div>`
     : "";
-  return `<div class="img-overlay" style="position:absolute;left:0;right:0;bottom:0;padding:24px;background:linear-gradient(to bottom, ${t.scrimFrom} 0%, ${t.scrimTo} 100%);border-radius:${radius};">
+  // The solid scrimTo first is for clients that drop gradients: a darker band,
+  // but the words stay legible.
+  const bottomRadius = radius === "0" ? "0" : `0 0 ${radius} ${radius}`;
+  return `<div class="img-overlay" style="padding:24px;background:${t.scrimTo};background:linear-gradient(to bottom, ${t.scrimFrom} 0%, ${t.scrimTo} 100%);border-radius:${bottomRadius};">
       ${eyebrowHtml}${headlineHtml}
     </div>`;
 }
 
-/** Outlook-only fallback for overlayHtml — same words, stacked under the
- *  image, so the copy survives a client that cannot position it. */
-function overlayMsoFallback(b: CampaignBlock, t: CampaignTheme): string {
-  const eyebrow = b.imageOverlayEyebrow?.trim();
-  const headline = b.imageOverlayHeadline?.trim();
-  if (!eyebrow && !headline) return "";
-  const parts = [
-    eyebrow
-      ? `<div style="color:${t.onImageAccent};font-family:Inter,Arial,Helvetica,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:6px;">${esc(eyebrow)}</div>`
-      : "",
-    headline
-      ? `<div style="color:${t.onImageText};font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 24)}px;font-weight:300;line-height:1.25;${headingAlignCss(b)}">${esc(headline)}</div>`
-      : "",
-  ].join("");
-  return `<!--[if mso]><div style="padding:16px 0 0;">${parts}</div><![endif]-->`;
+/** Height ÷ width for each slot aspect, plus the class suffix the mobile media
+ *  query keys its height override on. */
+const ASPECT_BOX: Record<CampaignImageSlot["aspect"], { ratio: number; key: string }> = {
+  "4:5": { ratio: 1.25, key: "45" },
+  "1:1": { ratio: 1, key: "11" },
+  "16:9": { ratio: 0.5625, key: "169" },
+};
+
+/** A picture with live content ON it, built so every inbox keeps the content
+ *  on the picture. Klaviyo's sanitizer and Gmail strip `position`, so the old
+ *  absolute overlay fell out under the image. Here the picture is the cell's
+ *  background (CSS for modern clients, the `background` attribute for old
+ *  ones, VML for Outlook) and the content sits in normal flow, placed with
+ *  valign + padding.
+ *
+ *  A background has no intrinsic height, so the cell is sized from the slot's
+ *  aspect: fixed px on desktop, and on mobile a `bg-{column|bleed}-{key}` class
+ *  sets it from the viewport width. ponytail: a client that ignores media
+ *  queries (Gmail app on a non-Google account) keeps the desktop height on a
+ *  phone, so `cover` crops the sides there; the content still sits on the
+ *  picture. A picture whose real aspect differs from its slot is cropped by
+ *  `cover` the same way. */
+function bgImageCell(o: {
+  url: string | null | undefined;
+  aspect: CampaignImageSlot["aspect"];
+  bleed: boolean;
+  radius: string;
+  valign: "top" | "bottom";
+  t: CampaignTheme;
+  content: string;
+}): string {
+  const width = o.bleed ? 600 : 552;
+  const { ratio, key } = ASPECT_BOX[o.aspect] ?? ASPECT_BOX["4:5"];
+  const height = Math.round(width * ratio);
+  // `'` and `)` would end a CSS url(); blob urls never carry them, but escape anyway.
+  const url = o.url ? esc(o.url).replace(/'/g, "%27").replace(/\)/g, "%29") : "";
+  const bgCss = url
+    ? `background:${o.t.placeholder} url('${url}') center center / cover no-repeat;`
+    : `background:${o.t.placeholder};`;
+  const vml = url
+    ? `<!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:${width}px;height:${height}px;"><v:fill type="frame" src="${url}" color="${o.t.placeholder}" /><v:textbox inset="0,0,0,0"><table width="${width}" height="${height}" cellpadding="0" cellspacing="0" border="0"><tr><td valign="${o.valign}"><![endif]-->`
+    : "";
+  const vmlEnd = url ? `<!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->` : "";
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+        <tr><td class="bg-${o.bleed ? "bleed" : "column"}-${key}"${url ? ` background="${url}"` : ""} bgcolor="${o.t.placeholder}" height="${height}" valign="${o.valign}" style="${bgCss}height:${height}px;border-radius:${o.radius};vertical-align:${o.valign};">
+          ${vml}${o.content}${vmlEnd}
+        </td></tr>
+      </table>`;
 }
+
+/** Mobile heights for bgImageCell, one rule per layout × aspect. The px value
+ *  first is the 375px phone, for clients that drop calc(); 28px is the two
+ *  14px .h-padding gutters a column image sits inside, bleed has none. */
+const BG_CELL_MOBILE_CSS = Object.values(ASPECT_BOX)
+  .map(({ ratio, key }) =>
+    `.bg-column-${key}{height:${Math.round(347 * ratio)}px !important;height:calc((100vw - 28px) * ${ratio}) !important;}
+    .bg-bleed-${key}{height:${Math.round(375 * ratio)}px !important;height:calc(100vw * ${ratio}) !important;}`)
+  .join("\n    ");
 
 /** A solid placeholder shown while a slot has no image yet, sized to the
  *  block's aspect so the layout doesn't jump when the real image lands. */
@@ -443,12 +486,14 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
     : imagePlaceholder(aspect, radius, t);
   const padding = bleed ? `0 0 ${gap}px` : `0 24px ${gap}px`;
   const cellClass = bleed ? "" : ' class="h-padding"';
+  const overlay = overlayHtml(b, radius, t);
+  // No overlay: the plain image, exactly as before. With one, the image
+  // becomes the cell background so the words stay on it in every inbox.
+  const body = overlay
+    ? bgImageCell({ url, aspect, bleed, radius, valign: "bottom", t, content: overlay })
+    : inner;
   return `<tr><td${cellClass} style="padding:${padding};">
-      <div style="position:relative;">
-        ${inner}
-        ${overlayHtml(b, radius, t)}
-      </div>
-      ${overlayMsoFallback(b, t)}
+      ${body}
     </td></tr>`;
 }
 
@@ -875,12 +920,10 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   const introBlock = content.blocks[0];
   const closingBlocks = content.blocks.slice(1);
 
-  // Hero — wrapped img + an absolutely-positioned cream CTA pill anchored
-  // bottom-center. The pill is decorative: many email clients (Outlook,
-  // parts of Gmail) drop `position: absolute`, so the underlying <a> wrapper
-  // is still the source of truth that makes the whole hero tappable. The
-  // bottom cream CTA below the email also remains as a guaranteed-render
-  // fallback. Don't try to make this pixel-perfect in Outlook.
+  // Hero — the photo, the whole of it linked to the CTA url, with the CTA pill
+  // ON it. The pill is in normal flow inside a bgImageCell, not absolutely
+  // positioned: Klaviyo and Gmail strip `position`, which dropped the pill
+  // under the photo. The bottom CTA button stays as the guaranteed fallback.
   // Bottom button and hero overlay carry independent styles. heroStyle
   // falls back to style for saves made before the two were split.
   const { bg: ctaBg, fg: ctaFg } = resolveCta(content.cta.style, t, content.cta.bgRole);
@@ -891,32 +934,47 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   );
   const heroCtaLabel = content.cta.label?.trim();
   const showOnHero = content.cta.showOnHero !== false;
-  // Byte-identity: with no position set, emit the exact string this always
-  // emitted. Only a campaign that has actually been repositioned takes the
-  // percent-based branch, so nothing saved before this feature can shift.
+  const heroAspect = hero?.aspect ?? "4:5";
+  // Unset position = bottom-centre, 24px up. A repositioned pill is centred on
+  // (heroX%, heroY%) of the 552px image: valign to the nearer edge, then pad by
+  // the distance from that edge, less half the pill (~46px tall desktop, ~38px
+  // mobile). On mobile the pill goes full width, so only the vertical carries.
+  const heroH = Math.round(552 * (ASPECT_BOX[heroAspect] ?? ASPECT_BOX["4:5"]).ratio);
+  const heroMobileRatio = (ASPECT_BOX[heroAspect] ?? ASPECT_BOX["4:5"]).ratio;
   const heroPositioned = content.cta.heroX !== undefined || content.cta.heroY !== undefined;
   const heroPos = heroPositioned
     ? clampHeroCta(content.cta.heroX ?? 50, content.cta.heroY ?? 88)
     : null;
-  const heroOverlayStyle = heroPos
-    ? `position:absolute;left:${heroPos.x}%;top:${heroPos.y}%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:300px;`
-    : "position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;";
-  const heroOverlayClass = heroPos ? "hero-cta-overlay hero-cta-free" : "hero-cta-overlay";
+  const heroValign: "top" | "bottom" = heroPos && heroPos.y <= 50 ? "top" : "bottom";
+  const edgeFrac = heroPos ? (heroValign === "top" ? heroPos.y : 100 - heroPos.y) / 100 : 0;
+  const heroPadV = heroPos ? Math.max(0, Math.round(edgeFrac * heroH - 23)) : 24;
+  const heroPadL = heroPos ? Math.max(0, Math.min(552 - 300, Math.round(heroPos.x * 5.52 - 150))) : 126;
+  const heroPadSide = heroValign === "top" ? "top" : "bottom";
+  // Per-email mobile rule for a repositioned pill: px for a 375px phone, then
+  // calc() off the viewport for clients that support it.
+  const heroMobileCss = heroPos
+    ? `.hero-cta-free{padding-${heroPadSide}:${Math.max(0, Math.round(edgeFrac * 347 * heroMobileRatio - 19))}px !important;padding-${heroPadSide}:calc((100vw - 28px) * ${+(edgeFrac * heroMobileRatio).toFixed(4)} - 19px) !important;}`
+    : "";
   // The arrow is glued to the last word (&nbsp;): a label that fills the
   // 300px button wraps as "START SLEEPING / BETTER →", never with the arrow
   // alone on its own line.
-  const heroOverlay = hero?.url && heroCtaLabel && showOnHero
-    ? `<div class="${heroOverlayClass}" style="${heroOverlayStyle}">
-         <span style="display:block;background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)}&nbsp;→</span>
-       </div>`
+  const heroOverlay = heroCtaLabel && showOnHero
+    ? `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td class="hero-cta-overlay ${heroPos ? "hero-cta-free" : "hero-cta-default"}" style="padding-${heroPadSide}:${heroPadV}px;padding-left:${heroPadL}px;">
+           <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
+             <td style="background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)}&nbsp;→</td>
+           </tr></table>
+         </td>
+       </tr></table>`
     : "";
+  // No pill: the plain linked photo. A pill: the photo becomes the background.
+  const heroBody = heroOverlay
+    ? bgImageCell({ url: hero?.url, aspect: heroAspect, bleed: false, radius: "8px", valign: heroValign, t, content: heroOverlay })
+    : `<img src="${esc(hero?.url ?? "")}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`;
   const heroHtml = hero?.url
     ? `<tr${slotAttr(hero.id)}><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="${esc(ctaUrl)}" target="_blank" style="text-decoration:none;">
-           <div style="position:relative;">
-             <img src="${esc(hero.url)}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-             ${heroOverlay}
-           </div>
+         <a href="${esc(ctaUrl)}" target="_blank" style="display:block;text-decoration:none;">
+           ${heroBody}
          </a>
        </td></tr>`
     : "";
@@ -1051,12 +1109,16 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    ${heroMobileCss}
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    ${BG_CELL_MOBILE_CSS}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}

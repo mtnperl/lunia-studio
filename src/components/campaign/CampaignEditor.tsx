@@ -3038,10 +3038,9 @@ export default function CampaignEditor({
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Show CTA on hero image</span>
             <span style={{ fontSize: 11, color: "var(--muted)" }}>Remove the button overlay from the hero photo</span>
           </label>
-          {/* Where the pill sits on the hero. Unset means the original
-              bottom-centre placement and the renderer emits the exact markup
-              it always did, so nothing saved before this shifts. Positions are
-              clamped so the pill cannot leave the image. */}
+          {/* Where the pill sits on the hero. Unset means the default
+              bottom-centre placement. Positions are clamped so the pill cannot
+              leave the image. */}
           {content.cta.showOnHero !== false && (() => {
             const positioned = content.cta.heroX !== undefined || content.cta.heroY !== undefined;
             const pos = clampHeroCta(content.cta.heroX ?? 50, content.cta.heroY ?? 88);

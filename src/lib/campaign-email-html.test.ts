@@ -152,43 +152,64 @@ describe("hero CTA positioning", () => {
     images: [{ id: "h", role: "hero", source: "generated", aspect: "4:5", url: "https://example.com/h.png" }],
   });
 
-  it("emits the original markup when no position is set", () => {
-    // Byte-identity for every campaign saved before this feature existed.
-    const html = renderCampaignEmail(withCta({}));
-    expect(html).toContain("left:50%;bottom:24px;transform:translateX(-50%)");
-    // Scoped to the element's class attribute: the free-variant selector
-    // legitimately appears in the <style> block of every email.
-    expect(html).toContain('class="hero-cta-overlay"');
-    expect(html).not.toContain('class="hero-cta-overlay hero-cta-free"');
+  it("keeps the pill on the photo without positioning Klaviyo or Gmail strip", () => {
+    // The regression: Klaviyo's sanitizer dropped position/transform and the
+    // pill fell under the photo, left-aligned. The photo is now the cell's
+    // background and the pill sits in normal flow on it.
+    const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
+    expect(html).not.toContain("position:absolute");
+    expect(html).not.toContain("transform:translate");
+    expect(html).toContain("url('https://example.com/h.png') center center / cover");
+    expect(html).toContain('background="https://example.com/h.png"');
+    expect(html).toContain('<v:fill type="frame" src="https://example.com/h.png"');
   });
 
-  it("switches to percent placement once positioned", () => {
+  it("defaults to bottom-centre, 24px up", () => {
+    const html = renderCampaignEmail(withCta({}));
+    expect(html).toContain('class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;"');
+    expect(html).toContain('valign="bottom"');
+    expect(html).toContain('height="690"');
+  });
+
+  it("pads from the top edge for a pill in the upper half", () => {
+    // 20% of 690 = 138, less half the pill (23); x 30% of 552 = 165.6, less 150.
     const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
-    expect(html).toContain("left:30%;top:20%;transform:translate(-50%,-50%)");
-    expect(html).toContain("hero-cta-free");
-    expect(html).not.toContain("bottom:24px");
+    expect(html).toContain('class="hero-cta-overlay hero-cta-free" style="padding-top:115px;padding-left:16px;"');
+    expect(html).toContain(".hero-cta-free{padding-top:68px !important;padding-top:calc((100vw - 28px) * 0.25 - 19px) !important;}");
   });
 
   it("treats one axis as positioned and defaults the other", () => {
+    // y defaults to 88 → 12% from the bottom: 82.8 - 23.
     const html = renderCampaignEmail(withCta({ heroX: 40 }));
-    expect(html).toContain("left:40%;top:88%");
+    expect(html).toContain('style="padding-bottom:60px;padding-left:71px;"');
   });
 
   it("clamps a position that would push the pill off the image", () => {
+    // Clamped to (28, 92).
     const html = renderCampaignEmail(withCta({ heroX: 0, heroY: 200 }));
-    expect(html).toContain("left:28%;top:92%");
+    expect(html).toContain('style="padding-bottom:32px;padding-left:5px;"');
   });
 
   it("never emits NaN from a corrupt stored value", () => {
     const html = renderCampaignEmail(withCta({ heroX: Number.NaN, heroY: Number.NaN }));
     expect(html).not.toContain("NaN");
-    expect(html).toContain("left:50%;top:50%");
+    expect(html).toContain('style="padding-top:322px;padding-left:126px;"');
   });
 
-  it("keeps the mobile bottom override off the positioned variant", () => {
-    // Forcing a bottom onto a percent-top pill would drag it back to the foot.
-    const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
-    expect(html).toContain(".hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}");
+  it("sizes the cell from the hero's aspect, on desktop and mobile", () => {
+    const wide = renderCampaignEmail({
+      ...withCta({}),
+      images: [{ id: "h", role: "hero", source: "upload", aspect: "16:9", url: "https://example.com/h.png" }],
+    });
+    expect(wide).toContain('class="bg-column-169"');
+    expect(wide).toContain('height="311"');
+    expect(wide).toContain(".bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}");
+  });
+
+  it("renders a plain linked photo when the pill is off", () => {
+    const html = renderCampaignEmail(withCta({ showOnHero: false }));
+    expect(html).toContain('<img src="https://example.com/h.png" width="552"');
+    expect(html).not.toContain('background="https://example.com/h.png"');
   });
 
   it("heroLocked is editor-only and never reaches the email", () => {
@@ -197,7 +218,7 @@ describe("hero CTA positioning", () => {
     expect(locked).toBe(unlocked);
   });
 
-  it("still lets the whole hero be tappable, the Outlook fallback", () => {
+  it("keeps the whole hero tappable", () => {
     const html = renderCampaignEmail(withCta({ heroX: 30, heroY: 20 }));
     expect(html).toContain('<a href="https://www.lunialife.com" target="_blank"');
   });
@@ -556,5 +577,32 @@ describe("headingAlign", () => {
   it("ignores a corrupt value rather than emitting broken CSS", () => {
     const block = { kind: "imagetext" as const, imageHeading: "Why it works", body: "Because." };
     expect(render({ ...block, headingAlign: "diagonal" as never })).toBe(render(block));
+  });
+});
+
+describe("image block overlay", () => {
+  const withOverlay = (layout: "column" | "bleed"): CampaignContent => ({
+    subjectLines: ["s", "", ""], selectedSubject: 0, previewText: "",
+    blocks: [
+      { id: "b", body: "copy", align: "left", kind: "text" },
+      { id: "i", kind: "image", imageSlotId: "s1", imageLayout: layout, imageOverlayEyebrow: "Night 1", imageOverlayHeadline: "Over the photo" },
+    ],
+    cta: { label: "Go", url: "https://www.lunialife.com" },
+    images: [{ id: "s1", role: "secondary", source: "upload", aspect: "16:9", url: "https://example.com/s.png" }],
+  } as CampaignContent);
+
+  it("puts the words on the photo as background-cell content, not an absolute overlay", () => {
+    const html = renderCampaignEmail(withOverlay("column"));
+    expect(html).not.toContain("position:absolute");
+    expect(html).toContain('class="bg-column-169" background="https://example.com/s.png"');
+    expect(html).toContain("Over the photo");
+    // VML carries the photo in Outlook, so the old mso-only caption is gone.
+    expect(html).not.toContain('<!--[if mso]><div style="padding:16px 0 0;">');
+  });
+
+  it("uses the 600px bleed box for bleed", () => {
+    const html = renderCampaignEmail(withOverlay("bleed"));
+    expect(html).toContain('class="bg-bleed-169"');
+    expect(html).toContain('height="338"');
   });
 });

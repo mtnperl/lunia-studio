@@ -50,12 +50,21 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -81,13 +90,18 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
   </td></tr>
       <tr><td style="height:16px;font-size:0;line-height:0;background:#F7F4EF;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
-           <div style="position:relative;">
-             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
-       </div>
-           </div>
+         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
+           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+        <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#e5e0d6" height="690" valign="bottom" style="background:#e5e0d6 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#e5e0d6" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
+           <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
+             <td style="background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+           </tr></table>
+         </td>
+       </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
+        </td></tr>
+      </table>
          </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
@@ -208,11 +222,7 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">One bottle at a time</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$116.79</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$38.93</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;">$1.30</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">Monthly plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$87.60</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$29.20</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#102635;font-weight:300;border-top:1px solid rgba(1,37,63,0.18);">$0.97</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">3 month plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$75.90</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$25.30</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#ffffff;color:#01253F;font-weight:700;border-top:1px solid rgba(1,37,63,0.18);">$0.84</td></tr>
   </table></div>
      </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
-      <div style="position:relative;">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-        
-      </div>
-      
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TUExJVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><p style="margin:0 0 16px;color:#102635;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Copy beside the image, which stacks to full width on mobile.</p></td></tr>
@@ -279,12 +289,21 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -310,13 +329,18 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
   </td></tr>
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
-           <div style="position:relative;">
-             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
-       </div>
-           </div>
+         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
+           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+        <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
+           <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+           </tr></table>
+         </td>
+       </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
+        </td></tr>
+      </table>
          </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
@@ -437,11 +461,7 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     <tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">One bottle at a time</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$116.79</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$38.93</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;">$1.30</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">Monthly plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$87.60</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$29.20</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;color:#ffffff;font-weight:300;border-top:1px solid rgba(245,245,233,0.2);">$0.97</td></tr><tr><td width="25.00%" align="left" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">3 month plan</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$75.90</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$25.30</td><td width="25.00%" align="right" style="padding:10px 8px;font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;word-break:break-word;width:25.00%;background:#f5f5e9;color:#01253f;font-weight:700;border-top:1px solid rgba(245,245,233,0.2);">$0.84</td></tr>
   </table></div>
      </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
-      <div style="position:relative;">
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-        
-      </div>
-      
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzEwMjYzNScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5DT0xVTU48L3RleHQ+CiAgPC9zdmc+" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
     </td></tr><tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEwMjQnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzJDM0Y1MScvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5TUExJVDwvdGV4dD4KICA8L3N2Zz4=" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td><td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td><td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;"><p style="margin:0 0 16px;color:#ffffff;font-size:18.7px;font-weight:300;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.6;text-align:left;">Copy beside the image, which stacks to full width on mobile.</p></td></tr>
@@ -508,12 +528,21 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -606,12 +635,21 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -701,12 +739,21 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -728,13 +775,18 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
-           <div style="position:relative;">
-             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale&nbsp;→</span>
-       </div>
-           </div>
+         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
+           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+        <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
+           <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale&nbsp;→</td>
+           </tr></table>
+         </td>
+       </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
+        </td></tr>
+      </table>
          </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
@@ -826,12 +878,21 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -925,12 +986,21 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
     /* Mobile — image 20% smaller than wrapper, vertically centered. */
     .logo-img{height:74px !important;margin-top:9px !important;}
     .logo-crop{height:92px !important;}
-    /* The bottom override applies only to the DEFAULT placement. A
-       positioned pill uses a percent top, which is already responsive, and
-       forcing a bottom onto it would drag it back to the foot of the image. */
-    .hero-cta-overlay:not(.hero-cta-free){bottom:14px !important;}
-    .hero-cta-overlay{width:calc(100% - 28px) !important;}
-    .hero-cta-overlay span{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    /* Hero pill: full width less 14px gutters. A repositioned pill's
+       vertical padding comes from its own per-email rule below. */
+    .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
+    .hero-cta-default{padding-bottom:14px !important;}
+    .hero-cta-pill{width:100% !important;}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
+    
+    /* Background-image cells (hero with a pill, image blocks with an overlay)
+       keep their aspect on a phone. */
+    .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
+    .bg-bleed-45{height:469px !important;height:calc(100vw * 1.25) !important;}
+    .bg-column-11{height:347px !important;height:calc((100vw - 28px) * 1) !important;}
+    .bg-bleed-11{height:375px !important;height:calc(100vw * 1) !important;}
+    .bg-column-169{height:195px !important;height:calc((100vw - 28px) * 0.5625) !important;}
+    .bg-bleed-169{height:211px !important;height:calc(100vw * 0.5625) !important;}
     /* Image-block overlays — smaller type and padding so the scrim never
        swallows the photo on a narrow screen. */
     .img-overlay{padding:14px !important;}
@@ -952,13 +1022,18 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="text-decoration:none;">
-           <div style="position:relative;">
-             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">
-             <div class="hero-cta-overlay" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:calc(100% - 48px);max-width:300px;">
-         <span style="display:block;background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</span>
-       </div>
-           </div>
+         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
+           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+        <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
+           <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+           </tr></table>
+         </td>
+       </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
+        </td></tr>
+      </table>
          </a>
        </td></tr>
       
