@@ -376,18 +376,28 @@ HARD RULES, in priority order:
 WHICH KINDS TO REACH FOR:
 
 The fact rules above rule OUT the number-carrying kinds unless the source
-supplies the numbers. They do not rule out the visual ones. "imagetext",
-"imagebullets" and "grid" carry prose only, so they are your SAFEST choices,
-not your riskiest, and they are what actually makes an email look designed
-rather than typed. Reach for them first when the source is ordinary prose.
+supplies the numbers. They do not rule out the visual ones: "imagetext",
+"imagebullets" and "grid" carry prose only, so they are SAFE under the fact
+rules. Safe is not the same as good. Every picture you ask for has to be
+found or made, and a picture that does not show what its block says (or
+looks generated) makes the email worse than no picture at all.
 
-- imagetext: one idea that deserves a picture beside it. A benefit, a
-  mechanism, a "here is why" paragraph.
-- imagebullets: a short list that earns a picture next to it.
+PICTURES ARE A BUDGET, NOT A GOAL.
+- At most TWO image-bearing blocks in the whole email. A grid counts as
+  one, and only when each cell names something you can actually photograph.
+- A block gets a picture only when its copy names something concrete a
+  camera could show: a place, an object, an ingredient, a person doing
+  something. Copy about a feeling, a promise, a reason or a mechanism goes
+  in a text, checklist or table instead.
+- If two blocks would get similar pictures, keep the picture on the
+  stronger one and make the other a picture-free kind.
+- A well-set email with one picture beats one with five weak ones.
+
+- imagetext: one idea with a concrete, photographable subject beside it.
+- imagebullets: a short list with a concrete subject worth showing.
 - grid: two to six parallel points of the same shape, each a title plus a line.
 - table: any comparison with numbers ALREADY in the source (prices, plans).
-- checklist: a bare list with no picture. Use it when the source really is
-  just a list, not as the default for everything.
+- checklist: a bare list with no picture. The right home for most lists.
 - stat / timeline / comparison / ingredients / discount / testimonial: only
   with the numbers or quotes the rules above demand.
 - text: connective prose, an opener, a close. Fine to use, but an email that
@@ -396,9 +406,7 @@ rather than typed. Reach for them first when the source is ordinary prose.
 VARY THE OUTPUT. Do not return the same one or two kinds every time.
 - Use at least THREE DIFFERENT kinds when the source has enough copy for it.
 - Never emit the same kind more than twice.
-- Do not return an all-"checklist" or all-"ingredients" answer. If you find
-  yourself reaching for "checklist" a second time, an "imagebullets" or "grid"
-  almost always serves that copy better.
+- Do not return an all-"checklist" or all-"ingredients" answer.
 - Aim for 4 to 7 blocks on a normal email. Fewer only when the source is
   genuinely thin.
 

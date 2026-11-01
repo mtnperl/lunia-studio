@@ -53,6 +53,7 @@ export default function BlockImageControl({
   compact = false,
   blockText,
   emailContext,
+  usedImageUrls,
   promptModel,
   promptInstructions,
   imageModel,
@@ -74,6 +75,9 @@ export default function BlockImageControl({
   blockText?: string;
   /** The rest of the email, for context only. */
   emailContext?: string;
+  /** Pictures already in this email, so "choose from library" never picks
+   *  one of them again. */
+  usedImageUrls?: string[];
   /** Which model tier rewrites the prompt. Unset = "craft". */
   promptModel?: "draft" | "craft" | "content";
   /** Standing instructions fed into every rewrite for this block. */
@@ -157,6 +161,7 @@ export default function BlockImageControl({
           topic,
           focus: blockText ?? suggestPrompt(),
           emailContext,
+          exclude: usedImageUrls,
           model: promptModel,
           instructions: promptInstructions,
         }),

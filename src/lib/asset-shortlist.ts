@@ -78,10 +78,17 @@ export function shortlistByOverlap<T>(
 ): T[] {
   if (items.length <= limit) return items;
 
+  // A matched word is worth log(N / captions containing it). "sleep", "bed"
+  // and "woman" sit in hundreds of captions and score near zero, so a match
+  // on "kitchen" or "powder" (the word that actually says what the block is
+  // about) outranks them instead of tying with them.
   const target = bag(copy);
+  const bags = items.map((item) => bag(describe(item)));
+  const df = new Map<string, number>();
+  for (const b of bags) for (const w of b) if (target.has(w)) df.set(w, (df.get(w) ?? 0) + 1);
   const scored = items.map((item, index) => {
     let score = 0;
-    for (const w of bag(describe(item))) if (target.has(w)) score += 1;
+    for (const w of bags[index]!) if (target.has(w)) score += Math.log(items.length / df.get(w)!);
     return { item, index, score };
   });
 

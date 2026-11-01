@@ -18,6 +18,7 @@ import {
   type CampaignShape,
   type SavedShape, applyPresetSettings } from "@/lib/campaign-shapes";
 import { clampHeroCta } from "@/lib/campaign-editor-state";
+import { collectBlockImageUrls } from "@/lib/campaign-block-images";
 import type {
   CampaignContent, CampaignBlock, CampaignImageSlot, CampaignSnippet, CampaignBlockKind,
   CampaignHeadingSize,
@@ -705,6 +706,16 @@ export default function CampaignEditor({
     const after = applySuggestion(content, pendingBlocks, pendingMeta, "replace");
     return { before: renderCampaignEmail(content), after: renderCampaignEmail(after) };
   }, [pendingBlocks, pendingMode, pendingMeta, content]);
+
+  // Every picture already in the email, so choosing from the library for one
+  // block never hands back a photo another block (or the hero) already shows.
+  const usedImageUrls = useMemo(
+    () => [
+      ...content.images.flatMap((i) => (i.url ? [i.url] : [])),
+      ...collectBlockImageUrls(content.blocks).map((r) => r.url),
+    ],
+    [content.images, content.blocks],
+  );
 
   // Concise email copy (subject + promo + body) handed to the image-prompt
   // generator so regenerated prompts reflect THIS email's message, not a
@@ -2059,6 +2070,7 @@ export default function CampaignEditor({
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
+                        usedImageUrls={usedImageUrls}
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
@@ -2111,6 +2123,7 @@ export default function CampaignEditor({
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
+                        usedImageUrls={usedImageUrls}
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}
@@ -2150,6 +2163,7 @@ export default function CampaignEditor({
                               suggestPrompt={() => suggestImagePrompt({ kind: "grid", gridCells: [c] }, emailImageContext(content))}
                               blockText={blockOwnText({ kind: "grid", gridCells: [c] })}
                               emailContext={emailImageContext(content).copy?.join(" ")}
+                              usedImageUrls={usedImageUrls}
                               onChange={(patch) => setCell(i, patch)}
                               imageSourceUrl={c.imageSourceUrl}
                               imageCrop={c.imageCrop}
@@ -2208,6 +2222,7 @@ export default function CampaignEditor({
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
                         emailContext={emailImageContext(content).copy?.join(" ")}
+                        usedImageUrls={usedImageUrls}
                         onChange={(patch) => updateBlock(b.id, patch)}
                         promptModel={b.promptModel}
                         promptInstructions={b.promptInstructions}

@@ -46,20 +46,22 @@ in Lunia's own voice. Concretely:
 
 1. OPEN with a "headerimage" block. Use headerStyle "card" when the source has
    one strong headline, "pill" when it has a short label plus a headline.
-2. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right", then
-   "left". Two or three of them. This alternation is the single most
-   recognisable part of the look, so do not emit them all on one side.
-3. Include ONE "imagebullets" block for the strongest short list, with
-   bulletColor "aqua" or "yellow".
-4. Include ONE "grid" when the source has three or more parallel points.
-5. Use "table" only when the source already contains prices or plan numbers.
-6. Keep bare "text" blocks to AT MOST ONE. In this mode a paragraph on its own
-   is a last resort; almost everything should carry a picture.
-7. Aim for 5 to 8 blocks.
+2. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right".
+   Two of them, only for copy with a concrete subject a camera could show.
+   This alternation is the single most recognisable part of the look,
+   so do not emit them all on one side.
+3. Then EITHER one "imagebullets" block for the strongest short list (with
+   bulletColor "aqua" or "yellow") OR one "grid" when the source has three or
+   more parallel points. Not both.
+4. Use "table" only when the source already contains prices or plan numbers.
+5. Keep bare "text" blocks to AT MOST ONE. Lists without a photographable
+   subject go in a "checklist", not a picture block.
+6. Aim for 5 to 8 blocks.
 
-Every block that can hold a picture MUST come with its own imagePrompt, and
-they must be different scenes from each other. Repeating the same scene across
-blocks is the failure mode this layout exposes most.`;
+This shape raises the picture budget from two to FOUR (the header counts as
+one). Never more. Every block that holds a picture MUST come with its own
+imagePrompt, and they must be different scenes from each other. Repeating the
+same scene across blocks is the failure mode this layout exposes most.`;
 
 /** Shared tail for guidance strings that name an opening block. */
 const KEEP_IT_HONEST = `Every block must use only words from the source copy. If the source cannot fill a block this shape asks for, drop that block rather than inventing content for it.`;

@@ -49,10 +49,24 @@ const EXCLUDED_TYPES = new Set(["logo", "carousel-style"]);
  *  description is passed over rather than offered on its filename alone:
  *  choosing IMG_4821.jpg on the strength of its name is a coin toss dressed
  *  up as a decision. Run the backfill to bring older assets back in. */
-function candidates(assets: AssetMetadata[]): AssetMetadata[] {
+function candidates(assets: AssetMetadata[], exclude: Set<string>): AssetMetadata[] {
   return assets.filter(
-    (a) => !EXCLUDED_TYPES.has(a.assetType) && (a.description ?? "").trim().length > 0,
+    (a) =>
+      !EXCLUDED_TYPES.has(a.assetType) &&
+      (a.description ?? "").trim().length > 0 &&
+      !exclude.has(a.url) &&
+      !hasBakedText(a),
   );
+}
+
+/** A scene with words painted into it: an ad graphic, not a photograph. 84 of
+ *  the 133 gen-z images are headline cards ("text overlay reads ..."), and the
+ *  prompt's "never pick visible text" rule could not hold while half the
+ *  shortlist was them. Captions quote what the text says, so a quoted string
+ *  is the tell. Product shots are exempt: their label text is the product. */
+const BAKED_TEXT = /\b(headline|text overlay|overlaid text|overlay text|lettering|typography|wordmark)\b|\b(caption|text|words?|sign)\s+(reads?|reading|says)\b|["“][^"”]{3,}["”]/i;
+function hasBakedText(a: AssetMetadata): boolean {
+  return a.assetType !== "product-image" && BAKED_TEXT.test(a.description ?? "");
 }
 
 export async function POST(req: Request) {
@@ -72,11 +86,16 @@ export async function POST(req: Request) {
     const focus: string = (body.focus ?? "").slice(0, 600);
     const userInstructions: string = (body.instructions ?? "").slice(0, 600).trim();
     const model = resolveModel(body.model);
+    // Pictures already in this email. Each block used to be chosen with no
+    // idea what its neighbours got, so similar copy drew the same photo twice.
+    const exclude = new Set<string>(
+      Array.isArray(body.exclude) ? body.exclude.filter((u: unknown): u is string => typeof u === "string") : [],
+    );
 
     // Shortlisted before the prompt is built: see asset-shortlist for why a
     // library of a few thousand images cannot all go in. A small library is
-    // returned untouched, so today this is a no-op.
-    const all = candidates(await getAssets());
+    // returned untouched.
+    const all = candidates(await getAssets(), exclude);
     // Grouped by assetType so a bulk upload of one kind cannot crowd the
     // others out of the shortlist — see asset-shortlist for the failure this
     // prevents.

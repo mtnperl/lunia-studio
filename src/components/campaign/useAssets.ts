@@ -37,9 +37,11 @@ export function useAssets(): AssetMetadata[] | null {
   return assets;
 }
 
-/** First product image in the library, used to give a new block a picture
- *  without spending a generation. Undefined until the library loads, or when
- *  it holds no product images. */
+/** A random product image from the library, used to give a new block a
+ *  picture without spending a generation. It used to be the FIRST one, so
+ *  every new block in every email arrived with the same bottle shot.
+ *  Undefined until the library loads, or when it holds no product images. */
 export function pickSampleImageUrl(assets: AssetMetadata[] | null): string | undefined {
-  return assets?.find((a) => a.assetType === "product-image")?.url ?? undefined;
+  const pool = assets?.filter((a) => a.assetType === "product-image") ?? [];
+  return pool[Math.floor(Math.random() * pool.length)]?.url;
 }

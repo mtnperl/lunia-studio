@@ -34,6 +34,18 @@ describe("shortlistByOverlap", () => {
     expect(out[0]!.id).toBe(7);
   });
 
+  it("ranks a rare matching word above one every caption shares", () => {
+    // "bed" is in every caption; "kitchen" is the word that says what the
+    // block is about. Counting matches tied them; weighting by rarity does not.
+    const items: Asset[] = [
+      ...library(6, "woman on a bed at night"),
+      { id: 50, description: "kitchen counter, glass of water, bed visible through door" },
+      ...library(6, "woman on a bed at night"),
+    ];
+    const out = shortlistByOverlap(items, describe_, "a glass at the kitchen counter before bed", 1);
+    expect(out[0]!.id).toBe(50);
+  });
+
   it("falls back to the newest when nothing matches", () => {
     const items = library(6, "empty hallway").map((a, i) => ({ ...a, id: i }));
     const out = shortlistByOverlap(items, describe_, "rail freight to Rotterdam", 2);

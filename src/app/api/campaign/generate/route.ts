@@ -198,8 +198,10 @@ Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero
     function suggestAsset(): { assetId?: string; url?: string } {
       const pool = productPool;
       if (pool.length === 0) return {};
-      const unused = pool.find((a) => !usedAssetIds.has(a.id));
-      const pick = unused ?? pool[usedAssetIds.size % pool.length];
+      // Random among the unused, not the first unused: the first is the same
+      // bottle shot on every campaign ever generated.
+      const unused = pool.filter((a) => !usedAssetIds.has(a.id));
+      const pick = unused[Math.floor(Math.random() * unused.length)] ?? pool[usedAssetIds.size % pool.length];
       if (!pick) return {};
       usedAssetIds.add(pick.id);
       return { assetId: pick.id, url: pick.url };

@@ -184,13 +184,18 @@ describe("restructure kind variety", () => {
     expect(p()).toMatch(/all-"checklist"/);
   });
 
-  it("tells the model the visual kinds are the SAFEST under the fact rules", () => {
-    // This is the insight the earlier prompt missed: the fact rules rule out
-    // the number-carrying kinds, and the model concluded the prose-only
-    // visual kinds were risky too. They are the opposite.
-    expect(p()).toMatch(/SAFEST choices/);
+  it("tells the model the visual kinds are safe under the fact rules", () => {
+    // The fact rules rule out the number-carrying kinds, and the model once
+    // concluded the prose-only visual kinds were risky too. They are not.
+    expect(p()).toMatch(/SAFE under the fact/);
     expect(p()).toMatch(/imagetext/);
     expect(p()).toMatch(/imagebullets/);
+  });
+
+  it("caps pictures, because the old 'reach for them first' filled emails with weak ones", () => {
+    expect(p()).toMatch(/PICTURES ARE A BUDGET, NOT A GOAL/);
+    expect(p()).toMatch(/At most TWO image-bearing blocks/);
+    expect(p()).not.toMatch(/Reach for them first/);
   });
 
   it("asks for art direction on image blocks", () => {
