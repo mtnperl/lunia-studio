@@ -16,6 +16,7 @@ import {
 } from "@/lib/anthropic";
 import { getAssets, checkRateLimit } from "@/lib/kv";
 import { shortlistByOverlap } from "@/lib/asset-shortlist";
+import { hasBakedText } from "@/lib/asset-baked-text";
 import type { AssetMetadata } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -57,16 +58,6 @@ function candidates(assets: AssetMetadata[], exclude: Set<string>): AssetMetadat
       !exclude.has(a.url) &&
       !hasBakedText(a),
   );
-}
-
-/** A scene with words painted into it: an ad graphic, not a photograph. 84 of
- *  the 133 gen-z images are headline cards ("text overlay reads ..."), and the
- *  prompt's "never pick visible text" rule could not hold while half the
- *  shortlist was them. Captions quote what the text says, so a quoted string
- *  is the tell. Product shots are exempt: their label text is the product. */
-const BAKED_TEXT = /\b(headline|text overlay|overlaid text|overlay text|lettering|typography|wordmark)\b|\b(caption|text|words?|sign)\s+(reads?|reading|says)\b|["“][^"”]{3,}["”]/i;
-function hasBakedText(a: AssetMetadata): boolean {
-  return a.assetType !== "product-image" && BAKED_TEXT.test(a.description ?? "");
 }
 
 export async function POST(req: Request) {
