@@ -4,6 +4,7 @@
 // vercel.json. If CRON_SECRET is set, only requests carrying it (Vercel
 // Cron attaches it automatically) are allowed to trigger the sweep.
 import { del, list } from "@vercel/blob";
+import { getCampaignEmails } from "@/lib/kv";
 
 const TEMP_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -20,13 +21,17 @@ export async function GET(req: Request) {
 
   try {
     const cutoff = Date.now() - TEMP_MAX_AGE_MS;
+    // Uploads and crops placed in a saved email live under temp/ too. Deleting
+    // them would break that email, and every copy already sent from Klaviyo,
+    // so anything a saved email still mentions is kept however old it is.
+    const inUse = new Set(JSON.stringify(await getCampaignEmails()).match(/https:\/\/[^"\\]+\/temp\/[^"\\]+/g) ?? []);
     const expired: string[] = [];
     let cursor: string | undefined;
 
     do {
       const page = await list({ prefix: "temp/", cursor, limit: 1000 });
       for (const blob of page.blobs) {
-        if (new Date(blob.uploadedAt).getTime() < cutoff) {
+        if (new Date(blob.uploadedAt).getTime() < cutoff && !inUse.has(blob.url)) {
           expired.push(blob.url);
         }
       }
