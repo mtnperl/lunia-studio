@@ -766,7 +766,8 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: Campai
  * Handles two gestures: click to select, and drag to reorder. Both talk to the
  * editor by postMessage and touch nothing else about the document. Links are
  * suppressed on click so hitting a CTA selects it instead of navigating the
- * preview away from the email.
+ * preview away from the email. Cmd/Ctrl-click opens the link in a new tab, so
+ * a picture's link can be tried from the preview; hovering shows where it goes.
  *
  * Reorder deliberately posts the SAME (dragged, over) id pair the rail's
  * drag-and-drop uses and lets the editor run the one `reorderBlocks` it
@@ -782,6 +783,10 @@ const INNER_BLOCK_RENDERERS: Record<InnerBlockKind, (b: CampaignBlock, t: Campai
  */
 const SELECT_SCRIPT = `<script>
 (function () {
+  var links = document.querySelectorAll("a[href]");
+  for (var k = 0; k < links.length; k++) {
+    if (links[k].getAttribute("href") !== "#") links[k].title = links[k].href + "  (\u2318/Ctrl-click to open)";
+  }
   var last = null;
   function paint(id) {
     if (last) { last.style.outline = ""; last.style.outlineOffset = ""; }
@@ -793,6 +798,13 @@ const SELECT_SCRIPT = `<script>
     } else { last = null; }
   }
   document.addEventListener("click", function (e) {
+    var link = e.target && e.target.closest && e.target.closest("a[href]");
+    if (link && (e.metaKey || e.ctrlKey) && link.getAttribute("href") !== "#") {
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(link.href, "_blank", "noopener");
+      return;
+    }
     var slot = e.target && e.target.closest && e.target.closest("[data-lunia-slot]");
     if (slot) {
       e.preventDefault();

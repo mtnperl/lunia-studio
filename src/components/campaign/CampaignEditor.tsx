@@ -163,16 +163,24 @@ const PICTURE_KINDS = new Set<BlockKind>(["image", "headerimage", "imagetext", "
 /** Where a click on a picture goes. Empty means the button's link, which the
  *  placeholder shows, so every picture is clickable without touching this. */
 function PictureLink({ value, ctaUrl, onChange }: { value?: string; ctaUrl: string; onChange: (v: string | undefined) => void }) {
+  // The preview swallows plain clicks (they select), so this is the obvious
+  // way to check where the picture really goes.
+  const href = value?.trim() || ctaUrl.trim();
   return (
     <div>
       <label style={fieldLabel}>Picture link</label>
-      <input
-        type="url"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || undefined)}
-        placeholder={ctaUrl.trim() ? `Same as the button: ${ctaUrl.trim()}` : "Set the button link, or paste one here"}
-        style={{ ...input, fontSize: 12 }}
-      />
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="url"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value || undefined)}
+          placeholder={ctaUrl.trim() ? `Same as the button: ${ctaUrl.trim()}` : "Set the button link, or paste one here"}
+          style={{ ...input, fontSize: 12, flex: 1 }}
+        />
+        {href && (
+          <a href={href} target="_blank" rel="noopener noreferrer" title={`Open ${href}`} style={{ fontSize: 12, color: "var(--text)", whiteSpace: "nowrap" }}>Open ↗</a>
+        )}
+      </div>
     </div>
   );
 }
