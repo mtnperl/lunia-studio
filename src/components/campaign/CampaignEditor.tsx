@@ -26,6 +26,9 @@ import type {
 import { renderCampaignEmail } from "@/lib/campaign-email-html";
 import { autoScrollDelta, iframePointToPageY } from "@/lib/drag-autoscroll";
 import ImageSlotControl from "./ImageSlotControl";
+import { ShapePicker } from "./PictureTools";
+import { cropToShape } from "./ImageCropper";
+import { aspectRatioFor } from "@/lib/image-crop";
 import { Spinner } from "./Loaders";
 import { useInsertAtCursor } from "./useInsertAtCursor";
 import { PRODUCT } from "@/lib/lunia-brand-guidelines";
@@ -739,10 +742,14 @@ export default function CampaignEditor({
 
   // Every picture already in the email, so choosing from the library for one
   // block never hands back a photo another block (or the hero) already shows.
+  // Crops are new urls, so the originals they were cut from count too:
+  // otherwise a cropped photo would come straight back in the swap strip.
   const usedImageUrls = useMemo(
     () => [
-      ...content.images.flatMap((i) => (i.url ? [i.url] : [])),
+      ...content.images.flatMap((i) => [i.url, i.sourceUrl].filter((u): u is string => !!u)),
       ...collectBlockImageUrls(content.blocks).map((r) => r.url),
+      ...content.blocks.flatMap((b) => [b.imageSourceUrl, ...(b.gridCells ?? []).map((c) => c.imageSourceUrl)])
+        .filter((u): u is string => !!u),
     ],
     [content.images, content.blocks],
   );
@@ -2095,7 +2102,8 @@ export default function CampaignEditor({
                       <BlockImageControl
                         imageUrl={b.imageUrl}
                         imagePrompt={b.imagePrompt}
-                        aspect="1:1"
+                        aspect={b.imageAspect ?? "1:1"}
+                        onAspectChange={(imageAspect) => updateBlock(b.id, { imageAspect })}
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
@@ -2148,7 +2156,8 @@ export default function CampaignEditor({
                       <BlockImageControl
                         imageUrl={b.imageUrl}
                         imagePrompt={b.imagePrompt}
-                        aspect="1:1"
+                        aspect={b.imageAspect ?? "1:1"}
+                        onAspectChange={(imageAspect) => updateBlock(b.id, { imageAspect })}
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
@@ -2176,6 +2185,7 @@ export default function CampaignEditor({
                       }));
                     return (
                       <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+                        <ShapePicker value={b.imageAspect ?? "1:1"} onChange={(imageAspect) => updateBlock(b.id, { imageAspect })} />
                         {cells.map((c, i) => (
                           <div key={i} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
                             <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -2188,7 +2198,8 @@ export default function CampaignEditor({
                             <BlockImageControl
                               imageUrl={c.imageUrl}
                               imagePrompt={c.imagePrompt}
-                              aspect="1:1"
+                              // One shape for the whole grid, so the cells line up.
+                              aspect={b.imageAspect ?? "1:1"}
                               topic={topic}
                               suggestPrompt={() => suggestImagePrompt({ kind: "grid", gridCells: [c] }, emailImageContext(content))}
                               blockText={blockOwnText({ kind: "grid", gridCells: [c] })}
@@ -2247,7 +2258,8 @@ export default function CampaignEditor({
                       <BlockImageControl
                         imageUrl={b.imageUrl}
                         imagePrompt={b.imagePrompt}
-                        aspect="4:5"
+                        aspect={b.imageAspect ?? "4:5"}
+                        onAspectChange={(imageAspect) => updateBlock(b.id, { imageAspect })}
                         topic={topic}
                         suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                         blockText={blockOwnText(b)}
@@ -2534,6 +2546,7 @@ export default function CampaignEditor({
                             emailContext={emailContext}
                             onChange={updateImage}
                             onGenerated={(url) => markGenerated(slot.id, url)}
+                            usedImageUrls={usedImageUrls}
                           />
                         ) : (
                           <div style={{ fontSize: 11, color: "var(--error)" }}>This image block lost its image slot. Delete it and add a new one.</div>
@@ -3173,9 +3186,26 @@ export default function CampaignEditor({
             <AssetBrowser
               target={targetLabel}
               selectedId={slotTarget?.assetId}
+              // Stays on this tab, so the next try is one more click. The crop
+              // to shape lands a moment later, and only if the pick is still
+              // the picture there.
               onPick={(a) => {
-                if (blockTarget) { updateBlock(blockTarget.id, { imageUrl: a.url, imageSourceUrl: a.url, imageCrop: undefined }); setRailTab("block"); }
-                else if (slotTarget) { updateImage({ ...slotTarget, source: "asset", assetId: a.id, url: a.url }); setSelectedSlotId(slotTarget.id); }
+                if (blockTarget) {
+                  const id = blockTarget.id;
+                  const shape = blockTarget.imageAspect ?? (blockTarget.kind === "headerimage" ? "4:5" : "1:1");
+                  updateBlock(id, { imageUrl: a.url, imageSourceUrl: a.url, imageCrop: undefined });
+                  void cropToShape(a.url, aspectRatioFor(shape)).then((s) => {
+                    const cur = latestContent.current.blocks.find((x) => x.id === id);
+                    if (cur?.imageUrl === a.url && s.url !== a.url) updateBlock(id, { imageUrl: s.url, imageCrop: s.crop });
+                  }, () => {});
+                } else if (slotTarget) {
+                  updateImage({ ...slotTarget, source: "asset", assetId: a.id, url: a.url, sourceUrl: a.url, crop: undefined });
+                  setSelectedSlotId(slotTarget.id);
+                  void cropToShape(a.url, aspectRatioFor(slotTarget.aspect)).then((s) => {
+                    const cur = latestContent.current.images.find((x) => x.id === slotTarget.id);
+                    if (cur?.url === a.url && s.url !== a.url) updateImage({ ...cur, url: s.url, crop: s.crop });
+                  }, () => {});
+                }
               }}
             />
           );
@@ -3219,6 +3249,7 @@ export default function CampaignEditor({
                   emailContext={emailContext}
                   onChange={updateImage}
                   onGenerated={(url) => markGenerated(img.id, url)}
+                  usedImageUrls={usedImageUrls}
                   // Hero carries the primary CTA overlay — no remove control,
                   // so it can't be silently dropped from the email.
                   onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}

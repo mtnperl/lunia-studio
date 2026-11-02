@@ -10,11 +10,12 @@
 // Generation is always an explicit click, never automatic — the same rule
 // ImageSlotControl follows, so adding a block never silently spends a
 // generation.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Spinner } from "./Loaders";
 import AssetPicker from "./AssetPicker";
-import ImageCropper, { renderCrop, proxied } from "./ImageCropper";
-import { aspectRatioFor, centreCrop } from "@/lib/image-crop";
+import ImageCropper, { useShapedPick } from "./ImageCropper";
+import { ShapePicker, SwapStrip, type PictureShape } from "./PictureTools";
+import { aspectRatioFor } from "@/lib/image-crop";
 import type { ImageCrop } from "@/lib/types";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 
@@ -60,10 +61,15 @@ export default function BlockImageControl({
   imageSourceUrl,
   imageCrop,
   onSettingsChange,
+  onAspectChange,
 }: {
   imageUrl?: string;
   imagePrompt?: string;
-  aspect: "1:1" | "4:5" | "16:9";
+  /** The shape the picture is cropped to. Changing it re-crops the picture. */
+  aspect: PictureShape;
+  /** Offer a shape choice here. Omitted by grid cells, whose shape is set
+   *  once on the grid so every cell matches. */
+  onAspectChange?: (shape: PictureShape) => void;
   topic: string;
   /** Text from the block used to seed the prompt when it is empty, so the
    *  button is useful before the user has written a prompt themselves. */
@@ -97,10 +103,25 @@ export default function BlockImageControl({
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
-  const i0 = (img: HTMLImageElement) => ({ w: img.naturalWidth, h: img.naturalHeight });
-  const [cropping, setCropping] = useState(false);
   // The shape a picked image is cropped to — the same one Generate uses.
   const cropAspect = aspectRatioFor(aspect);
+  // Every way a picture arrives (strip, library, chooser, upload) is cropped
+  // to this shape. The renderer sets `height:auto` and shows whatever shape
+  // the source is, so an uncropped pick is how a square photo ends up beside
+  // a tall portrait in one grid row.
+  const { pick, cropping, cropError } = useShapedPick(cropAspect, (img) =>
+    onChange({ imageUrl: img.url, imageSourceUrl: img.sourceUrl, imageCrop: img.crop }));
+  // A new shape re-crops the picture from its original, so a grid set to 4:5
+  // re-cuts all its cells and they line up.
+  const shapedFor = useRef(aspect);
+  useEffect(() => {
+    if (shapedFor.current === aspect) return;
+    shapedFor.current = aspect;
+    const source = imageSourceUrl?.trim() || imageUrl?.trim();
+    if (source) void pick(source);
+    // Only the shape changing should re-crop; the picture changing is a pick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aspect]);
   const [rewriting, setRewriting] = useState(false);
   const [choosing, setChoosing] = useState(false);
   /** Why the model picked (or declined to pick) the last library image.
@@ -177,7 +198,7 @@ export default function BlockImageControl({
         setChoiceNote(data.reason ? `No fit — ${data.reason}` : "Nothing in the library fits this block.");
         return;
       }
-      onChange({ imageUrl: data.url as string });
+      void pick(data.url as string, true);
       setChoiceNote(data.reason ? `Picked — ${data.reason}` : null);
     } catch {
       setError("Network error, please try again");
@@ -224,49 +245,11 @@ export default function BlockImageControl({
         setError(data.error ?? "Upload failed");
         return;
       }
-      await cropAndSet(data.url as string);
+      void pick(data.url as string, true);
     } catch {
       setError("Network error, please try again");
     } finally {
       setUploading(false);
-    }
-  }
-
-  /** Crop a newly chosen image to this slot's shape before it lands.
-   *
-   *  The renderer sets `height:auto` and shows whatever shape the source is,
-   *  so an uncropped pick is how a square photo ends up beside a tall portrait
-   *  in one grid row. Centre crop by default; the source and the rect are kept
-   *  so "Edit crop" can reopen it rather than the crop being baked and lost.
-   *
-   *  A failure here is NOT fatal: the image still lands, uncropped, and the
-   *  Edit crop button is right there. Losing the picture you just chose
-   *  because a canvas step failed would be the worse outcome. */
-  async function cropAndSet(url: string) {
-    setCropping(true);
-    setError(null);
-    try {
-      const probe = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const i = new Image();
-        i.crossOrigin = "anonymous";
-        i.onload = () => resolve(i);
-        i.onerror = () => reject(new Error("load failed"));
-        i.src = proxied(url);
-      });
-      const crop = centreCrop(i0(probe).w, i0(probe).h, cropAspect);
-      // Already the right shape: nothing to crop, and re-encoding it would
-      // only cost quality and a blob.
-      if (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1) {
-        onChange({ imageUrl: url, imageSourceUrl: url, imageCrop: crop });
-        return;
-      }
-      const cropped = await renderCrop(url, crop, cropAspect);
-      onChange({ imageUrl: cropped, imageSourceUrl: url, imageCrop: crop });
-    } catch {
-      setError("Could not crop that image automatically — use Edit crop to set it.");
-      onChange({ imageUrl: url, imageSourceUrl: url });
-    } finally {
-      setCropping(false);
     }
   }
 
@@ -289,7 +272,8 @@ export default function BlockImageControl({
       }
       // Persist the prompt that produced it, so regenerating is one click and
       // the user can edit rather than retype.
-      onChange({ imageUrl: data.url as string, imagePrompt: effectivePrompt });
+      // Drawn at this shape already, so there is no older original to keep.
+      onChange({ imageUrl: data.url as string, imagePrompt: effectivePrompt, imageSourceUrl: undefined, imageCrop: undefined });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -315,7 +299,7 @@ export default function BlockImageControl({
         <input
           type="text"
           value={imageUrl ?? ""}
-          onChange={(e) => onChange({ imageUrl: e.target.value })}
+          onChange={(e) => onChange({ imageUrl: e.target.value, imageSourceUrl: undefined, imageCrop: undefined })}
           placeholder="Image URL, or generate one"
           style={{ ...input, flex: 1 }}
         />
@@ -324,6 +308,14 @@ export default function BlockImageControl({
           <img src={imageUrl} alt="" style={{ width: 28, height: 28, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)", flexShrink: 0 }} />
         )}
       </div>
+      {onAspectChange && <ShapePicker value={aspect} onChange={onAspectChange} />}
+      <SwapStrip
+        currentUrl={imageSourceUrl?.trim() || imageUrl?.trim()}
+        copy={blockText ?? suggestPrompt()}
+        exclude={usedImageUrls}
+        onPick={(a) => { setChoiceNote(null); void pick(a.url, true); }}
+      />
+      {cropError && <div style={{ fontSize: 11, color: "var(--error)" }}>{cropError}</div>}
       {!compact && (
         <textarea
           value={imagePrompt ?? ""}
@@ -506,7 +498,7 @@ export default function BlockImageControl({
         <AssetPicker
           onPick={(asset) => {
             setPickerOpen(false);
-            void cropAndSet(asset.url);
+            void pick(asset.url, true);
           }}
           onClose={() => setPickerOpen(false)}
         />

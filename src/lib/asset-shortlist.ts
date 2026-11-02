@@ -77,7 +77,18 @@ export function shortlistByOverlap<T>(
   groupOf?: (item: T) => string,
 ): T[] {
   if (items.length <= limit) return items;
+  return rankByOverlap(items, describe, copy, groupOf).slice(0, limit);
+}
 
+/** Every item, best match for `copy` first, interleaved across `groupOf` the
+ *  same way the shortlist is (see shortlistByOverlap for why). The editor's
+ *  swap strip uses it to put the likeliest pictures under your cursor. */
+export function rankByOverlap<T>(
+  items: T[],
+  describe: (item: T) => string,
+  copy: string,
+  groupOf?: (item: T) => string,
+): T[] {
   // A matched word is worth log(N / captions containing it). "sleep", "bed"
   // and "woman" sit in hundreds of captions and score near zero, so a match
   // on "kitchen" or "powder" (the word that actually says what the block is
@@ -110,7 +121,7 @@ export function shortlistByOverlap<T>(
   const queues = [...buckets.values()];
   const out: T[] = [];
   let cursor = 0;
-  while (out.length < limit && queues.some((q) => q.length > 0)) {
+  while (queues.some((q) => q.length > 0)) {
     const q = queues[cursor % queues.length]!;
     const next = q.shift();
     if (next) out.push(next.item);

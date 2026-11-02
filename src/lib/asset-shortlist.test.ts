@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shortlistByOverlap } from "./asset-shortlist";
+import { rankByOverlap, shortlistByOverlap } from "./asset-shortlist";
 
 type Asset = { id: number; description: string };
 const describe_ = (a: Asset) => a.description;
@@ -124,5 +124,17 @@ describe("shortlistByOverlap — group diversity", () => {
   it("never returns a duplicate", () => {
     const out = shortlistByOverlap(library, desc, "bottle asleep phone", 250, kind);
     expect(new Set(out).size).toBe(out.length);
+  });
+});
+
+describe("rankByOverlap", () => {
+  it("keeps every item, even in a small library, best match first", () => {
+    const items = [
+      ...library(5, "a woman asleep in bed"),
+      { id: 99, description: "magnesium powder on a kitchen counter" },
+    ];
+    const ranked = rankByOverlap(items, describe_, "magnesium in the evening");
+    expect(ranked).toHaveLength(6);
+    expect(ranked[0]!.id).toBe(99);
   });
 });

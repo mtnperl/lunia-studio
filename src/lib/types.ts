@@ -807,6 +807,10 @@ export type CampaignImageSlot = {
   url?: string | null;
   /** Where a click on this picture goes. Unset = the CTA url. */
   linkUrl?: string;
+  /** Where `url` was cropped from, and how: the same pair, for the same
+   *  reason, as `imageSourceUrl` / `imageCrop` on CampaignBlock. */
+  sourceUrl?: string;
+  crop?: ImageCrop;
 };
 
 /** Every block kind, in one place. This array is the single source of truth:
@@ -1005,6 +1009,10 @@ export type CampaignBlock = {
    *  before this existed), which is exactly the case "Edit crop" exists for. */
   imageSourceUrl?: string;
   imageCrop?: ImageCrop;
+  /** The shape this block's picture is cropped to; a grid's cells all share
+   *  it, so they line up. Unset = the kind's default (headerimage 4:5, the
+   *  rest square). */
+  imageAspect?: "1:1" | "4:5" | "16:9";
   /** Which model DRAWS this block's picture — distinct from `promptModel`,
    *  which only picks who writes the words. A bare string rather than the
    *  engine's union: types.ts is imported by client components and the engine

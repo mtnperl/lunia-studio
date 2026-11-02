@@ -62,6 +62,57 @@ export async function renderCrop(sourceUrl: string, crop: ImageCrop, aspect: Asp
   return data.url as string;
 }
 
+export type ShapedImage = { url: string; sourceUrl: string; crop: ImageCrop };
+
+/** Centre-crop `url` to `aspect`. An image already that shape comes back as
+ *  is: re-encoding it would only cost quality and a blob. */
+export async function cropToShape(url: string, aspect: AspectRatio): Promise<ShapedImage> {
+  const img = await loadImage(url);
+  const crop = centreCrop(img.naturalWidth, img.naturalHeight, aspect);
+  if (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1) return { url, sourceUrl: url, crop };
+  return { url: await renderCrop(url, crop, aspect), sourceUrl: url, crop };
+}
+
+/** How long a swap has to stay put before it is cropped. Flicking through ten
+ *  pictures with the arrow keys should upload one crop, not ten. */
+const SETTLE_MS = 700;
+
+/**
+ * Put a picture in and crop it to shape. With `settle`, the raw picture lands
+ * at once (the preview updates on the click) and the crop follows once no
+ * newer pick has arrived; without it, the crop is the only update. A failed
+ * crop leaves the raw picture in place: losing the pick over a canvas step
+ * would be worse, and Edit crop is right there.
+ */
+export function useShapedPick(aspect: AspectRatio, apply: (img: ShapedImage | { url: string; sourceUrl: string; crop?: undefined }) => void) {
+  const seq = useRef(0);
+  const applyRef = useRef(apply);
+  useEffect(() => { applyRef.current = apply; });
+  const [cropping, setCropping] = useState(false);
+  const [cropError, setCropError] = useState<string | null>(null);
+
+  async function pick(url: string, settle = false) {
+    const mine = ++seq.current;
+    setCropError(null);
+    if (settle) {
+      applyRef.current({ url, sourceUrl: url });
+      await new Promise((r) => setTimeout(r, SETTLE_MS));
+      if (mine !== seq.current) return;
+    }
+    setCropping(true);
+    try {
+      const shaped = await cropToShape(url, aspect);
+      if (mine === seq.current) applyRef.current(shaped);
+    } catch {
+      if (mine === seq.current) setCropError("Could not crop that image automatically. Use Edit crop to set it.");
+    } finally {
+      if (mine === seq.current) setCropping(false);
+    }
+  }
+
+  return { pick, cropping, cropError };
+}
+
 /** One press of − or +. A quarter of a step is fine enough to frame with and
  *  coarse enough that reaching 5x does not take twenty clicks. */
 const ZOOM_STEP = 0.25;

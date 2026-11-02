@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { CampaignImageSlot } from "@/lib/types";
+import type { AssetMetadata, CampaignImageSlot } from "@/lib/types";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
+import { aspectRatioFor } from "@/lib/image-crop";
 import AssetPicker from "./AssetPicker";
+import ImageCropper, { useShapedPick } from "./ImageCropper";
+import { ShapePicker, SwapStrip } from "./PictureTools";
 import { ImageGenStatus, Spinner } from "./Loaders";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 
@@ -49,7 +52,10 @@ export default function ImageSlotControl({
   onChange,
   onGenerated,
   onRemove,
+  usedImageUrls,
 }: {
+  /** Pictures already elsewhere in this email, kept out of the swap strip. */
+  usedImageUrls?: string[];
   slot: CampaignImageSlot;
   label: string;
   topic: string;
@@ -83,6 +89,36 @@ export default function ImageSlotControl({
   const latestSlot = useRef(slot);
   useEffect(() => { latestSlot.current = slot; }, [slot]);
 
+  // Same crop-to-shape every block picture gets; see BlockImageControl.
+  const [cropOpen, setCropOpen] = useState(false);
+  const { pick, cropping, cropError } = useShapedPick(aspectRatioFor(slot.aspect), (img) => {
+    const cur = latestSlot.current;
+    // A generated slot only accepts a url the parent was told about first;
+    // anything else is treated as the revert bug and rolled back.
+    if (cur.source === "generated") onGenerated?.(img.url);
+    commitSlot({ ...cur, url: img.url, sourceUrl: img.sourceUrl, crop: img.crop });
+  });
+  /** onChange, plus the ref, so a crop that lands right after this merges
+   *  into it rather than into the render before. */
+  function commitSlot(next: CampaignImageSlot) {
+    latestSlot.current = next;
+    onChange(next);
+  }
+  function pickAsset(asset: AssetMetadata) {
+    commitSlot({ ...latestSlot.current, source: "asset", assetId: asset.id, url: asset.url, sourceUrl: asset.url, crop: undefined });
+    void pick(asset.url, true);
+  }
+  // A new shape re-crops from the original.
+  const shapedFor = useRef(slot.aspect);
+  useEffect(() => {
+    if (shapedFor.current === slot.aspect) return;
+    shapedFor.current = slot.aspect;
+    const source = slot.sourceUrl?.trim() || slot.url?.trim();
+    if (source) void pick(source);
+    // Only the shape changing should re-crop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot.aspect]);
+
   // A generated slot always shows a ready-to-edit prompt — even one loaded
   // from an older save that has none.
   const effectivePrompt =
@@ -103,6 +139,8 @@ export default function ImageSlotControl({
       mood: slot.mood ?? DEFAULT_MOOD,
       assetId: undefined,
       url: null,
+      sourceUrl: undefined,
+      crop: undefined,
     });
   }
 
@@ -114,6 +152,8 @@ export default function ImageSlotControl({
       source: "upload",
       assetId: undefined,
       url: null,
+      sourceUrl: undefined,
+      crop: undefined,
     });
   }
 
@@ -129,7 +169,8 @@ export default function ImageSlotControl({
         setError(data.error ?? "Upload failed");
         return;
       }
-      onChange({ ...latestSlot.current, source: "upload", assetId: undefined, url: data.url });
+      commitSlot({ ...latestSlot.current, source: "upload", assetId: undefined, url: data.url, sourceUrl: data.url, crop: undefined });
+      void pick(data.url as string);
     } catch {
       setError("Network error, please try again");
     } finally {
@@ -200,6 +241,8 @@ export default function ImageSlotControl({
         mood: latestSlot.current.mood ?? DEFAULT_MOOD,
         assetId: undefined,
         url: null,
+        sourceUrl: undefined,
+        crop: undefined,
       });
       setSeeding(false);
     }
@@ -241,6 +284,9 @@ export default function ImageSlotControl({
         prompt: effectivePrompt,
         url: data.url,
         assetId: undefined,
+        // Generated at the slot's shape already; nothing to re-crop from.
+        sourceUrl: undefined,
+        crop: undefined,
       });
     } catch {
       setError("Network error, please try again");
@@ -443,10 +489,49 @@ export default function ImageSlotControl({
           selectedId={slot.assetId}
           onClose={() => setPickerOpen(false)}
           onPick={(asset) => {
-            onChange({ ...slot, assetId: asset.id, url: asset.url });
+            pickAsset(asset);
             setPickerOpen(false);
           }}
         />
+      )}
+
+      {!generating && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <ShapePicker value={slot.aspect} onChange={(aspect) => onChange({ ...latestSlot.current, aspect })} />
+            {slot.url && (
+              <button type="button" style={miniBtn(cropOpen)} onClick={() => setCropOpen((v) => !v)} title="Reframe this picture">
+                {cropOpen ? "Close crop" : "Edit crop"}
+              </button>
+            )}
+            {cropping && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)" }}>
+                <Spinner size={9} /> Cropping…
+              </span>
+            )}
+          </div>
+          {cropError && <p style={{ fontSize: 10, color: "var(--error)", margin: 0 }}>{cropError}</p>}
+          {cropOpen && slot.url && (
+            <ImageCropper
+              // Re-crop from the original where we have it, never a crop of a crop.
+              sourceUrl={slot.sourceUrl?.trim() || slot.url}
+              aspect={aspectRatioFor(slot.aspect)}
+              initialCrop={slot.sourceUrl?.trim() ? slot.crop : undefined}
+              onCancel={() => setCropOpen(false)}
+              onApply={({ url, crop, sourceUrl }) => {
+                if (latestSlot.current.source === "generated") onGenerated?.(url);
+                commitSlot({ ...latestSlot.current, url, sourceUrl, crop });
+                setCropOpen(false);
+              }}
+            />
+          )}
+          <SwapStrip
+            currentUrl={slot.sourceUrl?.trim() || slot.url || undefined}
+            copy={emailContext ?? topic}
+            exclude={usedImageUrls}
+            onPick={pickAsset}
+          />
+        </div>
       )}
     </div>
   );
