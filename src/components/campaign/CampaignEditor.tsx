@@ -720,9 +720,11 @@ export default function CampaignEditor({
   });
 
   // `selectable` adds block ids and a click listener to the PREVIEW document
-  // only. Export, Klaviyo and the snapshot tests call the renderer with no
-  // options, so the email that actually ships is unchanged.
+  // only. Copy HTML, the download and the Klaviyo push MUST use `emailHtml`: the preview's
+  // listener swallows every click, so shipping it left the hero dead in the
+  // copied email.
   const html = useMemo(() => renderCampaignEmail(content, { selectable: true }), [content]);
+  const emailHtml = useMemo(() => renderCampaignEmail(content), [content]);
 
   // Rendered before/after for a pending RESTRUCTURE. Built from the real
   // renderer, not an approximation, because this diff is the only thing
@@ -1116,7 +1118,7 @@ export default function CampaignEditor({
   }
 
   function exportHtml() {
-    const blob = new Blob([html], { type: "text/html" });
+    const blob = new Blob([emailHtml], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1465,7 +1467,7 @@ export default function CampaignEditor({
 
   async function copyHtml() {
     try {
-      await navigator.clipboard.writeText(html);
+      await navigator.clipboard.writeText(emailHtml);
       setCopyLabel("Copied");
       setTimeout(() => setCopyLabel("Copy HTML"), 2000);
     } catch {
@@ -1484,7 +1486,7 @@ export default function CampaignEditor({
       const res = await fetch("/api/campaign/klaviyo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html, topic, subject }),
+        body: JSON.stringify({ html: emailHtml, topic, subject }),
       });
       const data = await res.json();
       if (!res.ok || !data.editorUrl) {
