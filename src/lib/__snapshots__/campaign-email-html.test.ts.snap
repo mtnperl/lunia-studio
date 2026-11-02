@@ -55,8 +55,9 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -90,19 +91,17 @@ exports[`renderCampaignEmail > renders all-kinds-cream identically 1`] = `
   </td></tr>
       <tr><td style="height:16px;font-size:0;line-height:0;background:#F7F4EF;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
-           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
         <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#e5e0d6" height="690" valign="bottom" style="background:#e5e0d6 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
-          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#e5e0d6" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#e5e0d6" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><a class="hero-fill" href="https://www.lunialife.com" target="_blank" style="display:block;height:593px;font-size:0;line-height:0;text-decoration:none;">&nbsp;</a><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
          <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
            <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
-             <td style="background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+             <td style="background:#01253F;color:#F7F4EF;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;"><a href="https://www.lunialife.com" target="_blank" style="display:block;padding:11px 14px;color:#F7F4EF;text-decoration:none;">Start sleeping better&nbsp;→</a></td>
            </tr></table>
          </td>
        </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
         </td></tr>
       </table>
-         </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
          <div style="background:#01253F;color:#F7F4EF;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">ALL KINDS RENDERED</div>
@@ -294,8 +293,9 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -329,19 +329,17 @@ exports[`renderCampaignEmail > renders all-kinds-navy identically 1`] = `
   </td></tr>
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
-           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
         <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
-          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><a class="hero-fill" href="https://www.lunialife.com" target="_blank" style="display:block;height:593px;font-size:0;line-height:0;text-decoration:none;">&nbsp;</a><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
          <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
            <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
-             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;"><a href="https://www.lunialife.com" target="_blank" style="display:block;padding:11px 14px;color:#01253f;text-decoration:none;">Start sleeping better&nbsp;→</a></td>
            </tr></table>
          </td>
        </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
         </td></tr>
       </table>
-         </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
          <div style="background:#f5f5e9;color:#01253f;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">ALL KINDS RENDERED</div>
@@ -533,8 +531,9 @@ exports[`renderCampaignEmail > renders headerimage-card identically 1`] = `
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -640,8 +639,9 @@ exports[`renderCampaignEmail > renders headerimage-pill identically 1`] = `
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -744,8 +744,9 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -775,19 +776,17 @@ exports[`renderCampaignEmail > renders long-copy-with-promo-and-asset identicall
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
-           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
         <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
-          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><a class="hero-fill" href="https://www.lunialife.com" target="_blank" style="display:block;height:593px;font-size:0;line-height:0;text-decoration:none;">&nbsp;</a><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
          <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
            <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
-             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Shop the sale&nbsp;→</td>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;"><a href="https://www.lunialife.com" target="_blank" style="display:block;padding:11px 14px;color:#01253f;text-decoration:none;">Shop the sale&nbsp;→</a></td>
            </tr></table>
          </td>
        </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
         </td></tr>
       </table>
-         </a>
        </td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
          <div style="background:#f5f5e9;color:#01253f;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:14px 12px;border-radius:6px;">MEMORIAL DAY WEEKEND SALE</div>
@@ -883,8 +882,9 @@ exports[`renderCampaignEmail > renders overflow-stress identically 1`] = `
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -991,8 +991,9 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    .hero-fill{height:359px !important;height:calc((100vw - 28px) * 1.25 - 75px) !important;}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     .bg-column-45{height:434px !important;height:calc((100vw - 28px) * 1.25) !important;}
@@ -1022,19 +1023,17 @@ exports[`renderCampaignEmail > renders three-generated-standard identically 1`] 
       
       <tr><td style="height:16px;font-size:0;line-height:0;background:#01253f;">&nbsp;</td></tr>
       <tr><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="https://www.lunialife.com" target="_blank" style="display:block;text-decoration:none;">
-           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
         <tr><td class="bg-column-45" background="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" bgcolor="#0c3354" height="690" valign="bottom" style="background:#0c3354 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=') center center / cover no-repeat;height:690px;border-radius:8px;vertical-align:bottom;">
-          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:552px;height:690px;"><v:fill type="frame" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDI0JyBoZWlnaHQ9JzEyODAnPgogICAgPHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsbD0nIzAxMjUzRicvPgogICAgPHRleHQgeD0nNTAlJyB5PSc1MCUnIGZpbGw9JyNGN0Y0RUYnIGZvbnQtZmFtaWx5PSdJbnRlcixzYW5zLXNlcmlmJyBmb250LXNpemU9JzczJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBkb21pbmFudC1iYXNlbGluZT0nbWlkZGxlJz5IRVJPIDQ6NTwvdGV4dD4KICA8L3N2Zz4=" color="#0c3354" /><v:textbox inset="0,0,0,0"><table width="552" height="690" cellpadding="0" cellspacing="0" border="0"><tr><td valign="bottom"><![endif]--><a class="hero-fill" href="https://www.lunialife.com" target="_blank" style="display:block;height:593px;font-size:0;line-height:0;text-decoration:none;">&nbsp;</a><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
          <td class="hero-cta-overlay hero-cta-default" style="padding-bottom:24px;padding-left:126px;">
            <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
-             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">Start sleeping better&nbsp;→</td>
+             <td style="background:#f5f5e9;color:#01253f;font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;"><a href="https://www.lunialife.com" target="_blank" style="display:block;padding:11px 14px;color:#01253f;text-decoration:none;">Start sleeping better&nbsp;→</a></td>
            </tr></table>
          </td>
        </tr></table><!--[if mso]></td></tr></table></v:textbox></v:rect><![endif]-->
         </td></tr>
       </table>
-         </a>
        </td></tr>
       
       <tr><td class="h-padding" style="padding:0 24px 16px;">

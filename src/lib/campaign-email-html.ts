@@ -497,7 +497,7 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
   // No overlay: the plain image, exactly as before. With one, the image
   // becomes the cell background so the words stay on it in every inbox.
   const body = overlay
-    ? linkImg(bgImageCell({ url, aspect, bleed, radius, valign: "bottom", t, content: overlay }), url ? b.linkUrl : undefined)
+    ? bgImageCell({ url, aspect, bleed, radius, valign: "bottom", t, content: linkImg(overlay, url ? b.linkUrl : undefined) })
     : inner;
   return `<tr><td${cellClass} style="padding:${padding};">
       ${body}
@@ -979,17 +979,35 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   const heroMobileCss = heroPos
     ? `.hero-cta-free{padding-${heroPadSide}:${Math.max(0, Math.round(edgeFrac * 347 * heroMobileRatio - 19))}px !important;padding-${heroPadSide}:calc((100vw - 28px) * ${+(edgeFrac * heroMobileRatio).toFixed(4)} - 19px) !important;}`
     : "";
+  const heroHref = esc(hero?.linkUrl?.trim() || ctaUrl);
+  const heroLink = `href="${heroHref}" target="_blank"`;
   // The arrow is glued to the last word (&nbsp;): a label that fills the
   // 300px button wraps as "START SLEEPING / BETTER →", never with the arrow
   // alone on its own line.
-  const heroOverlay = heroCtaLabel && showOnHero
-    ? `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+  //
+  // Links live INSIDE the cells. A link wrapped around a <table> is invalid
+  // HTML4, and Klaviyo's re-parse closes it before the table, which left the
+  // whole hero dead. So the pill is its own link, and a linked filler covers
+  // the photo between the pill and the far edge. The filler is sized for a
+  // TWO-line pill (~69px desktop, ~57px mobile, plus 4px slack): a label that
+  // wraps must not stretch the cell, and a one-line pill only leaves a thin
+  // unlinked strip beside it.
+  const pill = `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
          <td class="hero-cta-overlay ${heroPos ? "hero-cta-free" : "hero-cta-default"}" style="padding-${heroPadSide}:${heroPadV}px;padding-left:${heroPadL}px;">
            <table class="hero-cta-pill" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;"><tr>
-             <td style="background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;padding:11px 14px;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;">${esc(heroCtaLabel)}&nbsp;→</td>
+             <td style="background:${heroBg};color:${heroFg};font-family:Inter,Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;text-align:center;letter-spacing:0.12em;border-radius:2px;text-transform:uppercase;"><a ${heroLink} style="display:block;padding:11px 14px;color:${heroFg};text-decoration:none;">${esc(heroCtaLabel ?? "")}&nbsp;→</a></td>
            </tr></table>
          </td>
-       </tr></table>`
+       </tr></table>`;
+  const fill = `<a class="hero-fill" ${heroLink} style="display:block;height:${Math.max(0, heroH - heroPadV - 73)}px;font-size:0;line-height:0;text-decoration:none;">&nbsp;</a>`;
+  const heroOverlay = heroCtaLabel && showOnHero
+    ? (heroValign === "top" ? pill + fill : fill + pill)
+    : "";
+  const fillMobile = heroPos
+    ? { px: Math.round(347 * heroMobileRatio * (1 - edgeFrac) - 42), calc: `(100vw - 28px) * ${+((1 - edgeFrac) * heroMobileRatio).toFixed(4)} - 42px` }
+    : { px: Math.round(347 * heroMobileRatio - 75), calc: `(100vw - 28px) * ${heroMobileRatio} - 75px` };
+  const heroFillCss = heroOverlay
+    ? `.hero-fill{height:${Math.max(0, fillMobile.px)}px !important;height:calc(${fillMobile.calc}) !important;}`
     : "";
   // No pill: the plain linked photo. A pill: the photo becomes the background.
   const heroBody = heroOverlay
@@ -997,9 +1015,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     : `<img src="${esc(hero?.url ?? "")}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`;
   const heroHtml = hero?.url
     ? `<tr${slotAttr(hero.id)}><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="${esc(hero.linkUrl?.trim() || ctaUrl)}" target="_blank" style="display:block;text-decoration:none;">
-           ${heroBody}
-         </a>
+         ${heroOverlay ? heroBody : `<a ${heroLink} style="display:block;text-decoration:none;">${heroBody}</a>`}
        </td></tr>`
     : "";
 
@@ -1142,8 +1158,9 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     .hero-cta-overlay{padding-left:14px !important;padding-right:14px !important;}
     .hero-cta-default{padding-bottom:14px !important;}
     .hero-cta-pill{width:100% !important;}
-    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;padding:9px 12px !important;}
-    ${heroMobileCss}
+    .hero-cta-pill td{font-size:15px !important;line-height:1.3 !important;}
+    .hero-cta-pill a{padding:9px 12px !important;}
+    ${heroMobileCss}${heroFillCss}
     /* Background-image cells (hero with a pill, image blocks with an overlay)
        keep their aspect on a phone. */
     ${BG_CELL_MOBILE_CSS}

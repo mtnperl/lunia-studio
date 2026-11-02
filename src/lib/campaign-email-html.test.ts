@@ -679,3 +679,32 @@ describe("every picture is a link", () => {
     expect(html).not.toMatch(/<a [^>]*><img src="https:\/\/cdn/);
   });
 });
+
+describe("links never wrap a table", () => {
+  // Klaviyo re-parses pasted HTML; an <a> around a <table> is invalid HTML4 and
+  // gets closed before the table, which left the hero with a pill dead.
+  const wrapsTable = (html: string) => {
+    const re = /<(\/?)(a|table)\b/gi;
+    let open = false;
+    for (let m; (m = re.exec(html)); ) {
+      const tag = m[2]!.toLowerCase();
+      if (tag === "a") open = !m[1];
+      else if (!m[1] && open) return true;
+    }
+    return false;
+  };
+
+  for (const fixture of EMAIL_FIXTURES) {
+    it(fixture.name, () => expect(wrapsTable(renderCampaignEmail(fixture.content))).toBe(false));
+  }
+
+  it("the hero with a pill links the pill and the photo above it", () => {
+    const html = renderCampaignEmail({
+      subjectLines: ["s", "", ""], selectedSubject: 0, previewText: "", blocks: [],
+      cta: { label: "Go", url: "https://www.lunialife.com/shop" },
+      images: [{ id: "h", role: "hero", source: "upload", aspect: "4:5", url: "https://cdn.example/h.png", linkUrl: "https://x.test/hero" }],
+    });
+    expect(html.match(/href="https:\/\/x\.test\/hero"/g)).toHaveLength(2);
+    expect(html).toMatch(/class="hero-fill" href="https:\/\/x\.test\/hero"[^>]*height:593px/);
+  });
+});
