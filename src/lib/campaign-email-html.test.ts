@@ -638,3 +638,44 @@ describe("picture blocks with no picture", () => {
     expect(renderCampaignEmail(email({ kind: "headerimage", headerHeadline: "Headline" }))).not.toContain("margin:-28px");
   });
 });
+
+describe("every picture is a link", () => {
+  const pic = "https://cdn.example/p.png";
+  const email = (block: Partial<CampaignBlock>, extra: Partial<CampaignContent> = {}): CampaignContent => ({
+    subjectLines: ["s", "", ""], selectedSubject: 0, previewText: "",
+    blocks: [{ id: "b", body: "", align: "left", ...block } as CampaignBlock],
+    cta: { label: "Go", url: "https://www.lunialife.com/shop" },
+    images: [],
+    ...extra,
+  });
+  const linked = (html: string, href: string) =>
+    new RegExp(`<a href="${href.replace(/[.?/]/g, "\\$&")}"[^>]*><img src="${pic.replace(/[.?/]/g, "\\$&")}"`).test(html);
+
+  it.each([
+    { kind: "imagetext" as const, imageHeading: "H", imageUrl: pic },
+    { kind: "imagebullets" as const, bulletItems: ["One"], imageUrl: pic },
+    { kind: "headerimage" as const, headerHeadline: "H", imageUrl: pic },
+    { kind: "grid" as const, gridCells: [{ heading: "A", imageUrl: pic }] },
+    { kind: "trustgrid" as const, trustItems: [{ caption: "A", imageUrl: pic }] },
+  ])("$kind links its picture to the CTA by default, and to its own link when set", (block) => {
+    expect(linked(renderCampaignEmail(email(block)), "https://www.lunialife.com/shop")).toBe(true);
+    expect(linked(renderCampaignEmail(email({ ...block, linkUrl: "https://x.test/a" })), "https://x.test/a")).toBe(true);
+  });
+
+  it("links image-block and secondary slots, and the hero follows its own link", () => {
+    const slot = (id: string, role: "hero" | "secondary", linkUrl?: string) =>
+      ({ id, role, source: "upload" as const, aspect: "1:1" as const, url: pic, linkUrl });
+    const html = renderCampaignEmail(email(
+      { kind: "image", imageSlotId: "s1", linkUrl: "https://x.test/block" },
+      { images: [slot("h", "hero", "https://x.test/hero"), slot("s1", "secondary"), slot("s2", "secondary", "https://x.test/s2")] },
+    ));
+    expect(html).toContain('<a href="https://x.test/hero"');
+    expect(linked(html, "https://x.test/block")).toBe(true);
+    expect(linked(html, "https://x.test/s2")).toBe(true);
+  });
+
+  it("adds no link when there is no CTA url and none set", () => {
+    const html = renderCampaignEmail(email({ kind: "imagetext", imageHeading: "H", imageUrl: pic }, { cta: { label: "Go", url: "" } }));
+    expect(html).not.toMatch(/<a [^>]*><img src="https:\/\/cdn/);
+  });
+});

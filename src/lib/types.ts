@@ -805,6 +805,8 @@ export type CampaignImageSlot = {
    *  days (see /api/campaign/cleanup-temp-images) and is never added to the
    *  permanent asset library. */
   url?: string | null;
+  /** Where a click on this picture goes. Unset = the CTA url. */
+  linkUrl?: string;
 };
 
 /** Every block kind, in one place. This array is the single source of truth:
@@ -975,6 +977,9 @@ export type CampaignBlock = {
    *  their picture, so it travels with the block when it is moved, copied or
    *  banked as a snippet. */
   imageUrl?: string;
+  /** Where a click on this block's picture(s) goes, every kind with one
+   *  (image, grid and trustgrid cells included). Unset = the CTA url. */
+  linkUrl?: string;
   /** The prompt that produced `imageUrl`, kept so regenerating is one click
    *  and so the user can edit it rather than retyping. */
   imagePrompt?: string;

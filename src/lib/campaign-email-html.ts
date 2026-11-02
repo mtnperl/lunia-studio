@@ -202,6 +202,13 @@ function timelineBlock(b: CampaignBlock, t: CampaignTheme): string {
     .join("");
 }
 
+/** Every picture in the email is a link: to its own linkUrl when the editor
+ *  set one, else to the CTA url (blockRow and the slot renderers resolve that
+ *  before calling in). No href, or no picture, returns the input untouched. */
+function linkImg(img: string, href: string | undefined): string {
+  return img && href ? `<a href="${esc(href)}" target="_blank" style="display:block;text-decoration:none;">${img}</a>` : img;
+}
+
 /** "Why we're different" trust argument — a 2-column grid of small image
  *  + caption pairs. imageUrl is a plain pasted URL (no asset picker); a
  *  row with no caption is dropped, an item with no url shows its caption
@@ -218,7 +225,7 @@ function trustgridBlock(b: CampaignBlock, t: CampaignTheme): string {
       const img = item.imageUrl?.trim()
         ? `<img src="${esc(item.imageUrl)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
         : "";
-      return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${img}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.4;">${esc(item.caption)}</div></td>`;
+      return `<td width="48.91%" style="width:48.91%;vertical-align:top;">${linkImg(img, b.linkUrl)}<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:13px;font-weight:300;color:${t.text};line-height:1.4;">${esc(item.caption)}</div></td>`;
     };
     html += `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;${i > 0 ? "margin-top:16px;" : ""}">
       <tr>${cell(left)}<td width="12" style="width:12px;font-size:0;">&nbsp;</td>${cell(right)}</tr>
@@ -464,7 +471,7 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
     const imageOnRight = b.imageSplitSide === "right";
     const imgCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
       url
-        ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`
+        ? linkImg(`<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`, b.linkUrl)
         : imagePlaceholder(aspect, "8px", t)
     }</td>`;
     const textCell = `<td class="secondary-cell" width="48.91%" style="width:48.91%;vertical-align:middle;">${
@@ -482,7 +489,7 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
   const radius = bleed ? "0" : "8px";
   const width = bleed ? "600" : "552";
   const inner = url
-    ? `<img src="${esc(url)}" width="${width}" style="display:block;width:100%;height:auto;border-radius:${radius};" alt="">`
+    ? linkImg(`<img src="${esc(url)}" width="${width}" style="display:block;width:100%;height:auto;border-radius:${radius};" alt="">`, b.linkUrl)
     : imagePlaceholder(aspect, radius, t);
   const padding = bleed ? `0 0 ${gap}px` : `0 24px ${gap}px`;
   const cellClass = bleed ? "" : ' class="h-padding"';
@@ -490,21 +497,21 @@ function imageBlockRow(b: CampaignBlock, slot: CampaignImageSlot | undefined, t:
   // No overlay: the plain image, exactly as before. With one, the image
   // becomes the cell background so the words stay on it in every inbox.
   const body = overlay
-    ? bgImageCell({ url, aspect, bleed, radius, valign: "bottom", t, content: overlay })
+    ? linkImg(bgImageCell({ url, aspect, bleed, radius, valign: "bottom", t, content: overlay }), url ? b.linkUrl : undefined)
     : inner;
   return `<tr><td${cellClass} style="padding:${padding};">
       ${body}
     </td></tr>`;
 }
 
-function imageCell(url: string | null | undefined, width: string, t: CampaignTheme, slotAttr = ""): string {
+function imageCell(url: string | null | undefined, width: string, t: CampaignTheme, slotAttr = "", href?: string): string {
   // class="secondary-cell" lets the mobile media query stack these cells.
   if (!url) {
     return `<td class="secondary-cell"${slotAttr} width="${width}" style="width:${width};vertical-align:top;"><div style="width:100%;aspect-ratio:1/1;background:${t.placeholder};border-radius:8px;"></div></td>`;
   }
-  return `<td class="secondary-cell"${slotAttr} width="${width}" style="width:${width};vertical-align:top;"><img src="${esc(
+  return `<td class="secondary-cell"${slotAttr} width="${width}" style="width:${width};vertical-align:top;">${linkImg(`<img src="${esc(
     url,
-  )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
+  )}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`, href)}</td>`;
 }
 
 /** A comparison / pricing table. Fixed layout with hard word-breaking, which
@@ -592,7 +599,7 @@ function headerimageBlockRow(b: CampaignBlock, t: CampaignTheme, gap: number): s
   // like a broken image, and since the library chooser is allowed to answer
   // "nothing fits", an empty slot is a normal outcome rather than a TODO.
   const image = url
-    ? `<img src="${esc(url)}" width="600" style="display:block;width:100%;height:auto;" alt="">`
+    ? linkImg(`<img src="${esc(url)}" width="600" style="display:block;width:100%;height:auto;" alt="">`, b.linkUrl)
     : "";
 
   if (style === "pill") {
@@ -642,7 +649,7 @@ function sideBySide(imageCell: string, contentCell: string, imageOnRight: boolea
 }
 
 function blockImageCell(b: CampaignBlock, width: string): string {
-  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:middle;"><img src="${esc(b.imageUrl!.trim())}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt=""></td>`;
+  return `<td class="secondary-cell" width="${width}" style="width:${width};vertical-align:middle;">${linkImg(`<img src="${esc(b.imageUrl!.trim())}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`, b.linkUrl)}</td>`;
 }
 
 /** Picture beside content, or the content alone at full width when the block
@@ -698,7 +705,7 @@ function gridBlock(b: CampaignBlock, t: CampaignTheme): string {
     if (!c) return `<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>`;
     const url = c.imageUrl?.trim();
     const img = url
-      ? `<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`
+      ? linkImg(`<img src="${esc(url)}" width="270" style="display:block;width:100%;height:auto;border-radius:8px;margin-bottom:8px;" alt="">`, b.linkUrl)
       : "";
     const heading = c.heading?.trim()
       ? `<div style="font-family:Inter,Arial,Helvetica,sans-serif;font-size:${headingPx(b, 15)}px;font-weight:600;color:${t.inkAccent};line-height:1.3;margin-bottom:4px;${headingAlignCss(b)}">${renderInline(c.heading, t)}</div>`
@@ -978,7 +985,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     : `<img src="${esc(hero?.url ?? "")}" width="552" style="display:block;width:100%;height:auto;border-radius:8px;" alt="">`;
   const heroHtml = hero?.url
     ? `<tr${slotAttr(hero.id)}><td class="h-padding" style="padding:0 24px 16px;">
-         <a href="${esc(ctaUrl)}" target="_blank" style="display:block;text-decoration:none;">
+         <a href="${esc(hero.linkUrl?.trim() || ctaUrl)}" target="_blank" style="display:block;text-decoration:none;">
            ${heroBody}
          </a>
        </td></tr>`
@@ -1009,7 +1016,11 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
   // "space between blocks" is a property of the email, not of a block.
   const blockGap = resolveBlockSpacing(content.blockSpacing);
 
-  const blockRow = (b: CampaignBlock) => {
+  // A picture with no link of its own goes where the CTA goes. Resolved once
+  // here, so saved emails pick it up on their next copy or push.
+  const ctaHref = content.cta.url?.trim() || undefined;
+  const blockRow = (raw: CampaignBlock) => {
+    const b = { ...raw, linkUrl: raw.linkUrl?.trim() || ctaHref };
     // Image blocks own their whole row: "bleed" must escape the 24px cell
     // padding, so they can't be nested in the shared padded text wrapper.
     if (b.kind === "image") {
@@ -1042,9 +1053,9 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
     secondaryHtml += `<tr><td class="h-padding" style="padding:0 24px 16px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="table-layout:fixed;">
         <tr>
-          ${imageCell(left?.url, "48.91%", t, slotAttr(left?.id))}
+          ${imageCell(left?.url, "48.91%", t, slotAttr(left?.id), left?.linkUrl?.trim() || ctaHref)}
           <td class="secondary-spacer" width="12" style="width:12px;font-size:0;">&nbsp;</td>
-          ${right ? imageCell(right.url, "48.91%", t, slotAttr(right.id)) : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
+          ${right ? imageCell(right.url, "48.91%", t, slotAttr(right.id), right.linkUrl?.trim() || ctaHref) : '<td class="secondary-cell" width="48.91%" style="width:48.91%;">&nbsp;</td>'}
         </tr>
       </table>
     </td></tr>`;

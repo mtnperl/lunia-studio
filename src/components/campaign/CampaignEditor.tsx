@@ -157,6 +157,26 @@ const input: React.CSSProperties = {
   fontFamily: "inherit", color: "var(--text)", padding: "8px 12px",
   borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface)",
 };
+// Kinds whose picture(s) the renderer links; one link per block, cells included.
+const PICTURE_KINDS = new Set<BlockKind>(["image", "headerimage", "imagetext", "imagebullets", "grid", "trustgrid"]);
+
+/** Where a click on a picture goes. Empty means the button's link, which the
+ *  placeholder shows, so every picture is clickable without touching this. */
+function PictureLink({ value, ctaUrl, onChange }: { value?: string; ctaUrl: string; onChange: (v: string | undefined) => void }) {
+  return (
+    <div>
+      <label style={fieldLabel}>Picture link</label>
+      <input
+        type="url"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        placeholder={ctaUrl.trim() ? `Same as the button: ${ctaUrl.trim()}` : "Set the button link, or paste one here"}
+        style={{ ...input, fontSize: 12 }}
+      />
+    </div>
+  );
+}
+
 // Secondary text-button, sized for real clicking (min-height 32px, 12px text,
 // --text at rest so it never reads as disabled). `active` = selected state
 // (accent-dim wash + accent border), distinct from a solid primary Button.
@@ -2533,6 +2553,12 @@ export default function CampaignEditor({
                       </div>
                     </div>
                   )}
+
+                  {PICTURE_KINDS.has(kind) && (
+                    <div style={{ padding: "0 10px 10px" }}>
+                      <PictureLink value={b.linkUrl} ctaUrl={content.cta.url} onChange={(linkUrl) => updateBlock(b.id, { linkUrl })} />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -3187,6 +3213,9 @@ export default function CampaignEditor({
                   // so it can't be silently dropped from the email.
                   onRemove={img.role === "hero" ? undefined : () => removeImage(img.id)}
                 />
+                <div style={{ marginTop: 8 }}>
+                  <PictureLink value={img.linkUrl} ctaUrl={content.cta.url} onChange={(linkUrl) => updateImage({ ...img, linkUrl })} />
+                </div>
                 </div>
               );
             })}
