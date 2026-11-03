@@ -201,6 +201,23 @@ const miniBtn = (active = false): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
+/** A rail dropdown button. The list is the shared Menu, which renders in a
+ *  portal and keeps itself on screen. The hand-rolled lists it replaces hung
+ *  off the button's right edge, so a button that wrapped to the left of the
+ *  rail opened a list the rail clipped to nothing. Each owns its open state. */
+function RailDropdown({ label, title, disabled, items }: { label: React.ReactNode; title: string; disabled?: boolean; items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLButtonElement | null>(null);
+  return (
+    <>
+      <button ref={ref} style={miniBtn(open)} onClick={() => setOpen((v) => !v)} disabled={disabled} title={title} aria-haspopup="menu" aria-expanded={open}>
+        {label} <IcChevron size={14} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
+      </button>
+      <UiMenu open={open} onClose={() => setOpen(false)} anchorRef={ref} items={items} ariaLabel={title} />
+    </>
+  );
+}
+
 // ── Block toolbar primitives ────────────────────────────────────────────────
 // Apple-style controls per DESIGN.md: 1px borders, near-black active state,
 // no shadows / lift / emoji. Grouping related actions into segmented controls
@@ -549,9 +566,6 @@ export default function CampaignEditor({
   // and brand facts — see useInsertAtCursor.ts.
   const insertHook = useInsertAtCursor();
   const [snippets, setSnippets] = useState<CampaignSnippet[]>([]);
-  const [snippetPickerOpen, setSnippetPickerOpen] = useState(false);
-  const [personalizationPickerOpen, setPersonalizationPickerOpen] = useState(false);
-  const [brandFactsPickerOpen, setBrandFactsPickerOpen] = useState(false);
   const [savingSnippetFor, setSavingSnippetFor] = useState<string | null>(null);
   const [addBlockMenuOpen, setAddBlockMenuOpen] = useState(false);
   const addBlockRef = useRef<HTMLButtonElement | null>(null);
@@ -601,7 +615,6 @@ export default function CampaignEditor({
   function insertSnippet(snippet: CampaignSnippet) {
     const c = latestContent.current;
     commit({ ...c, blocks: [...c.blocks, { ...snippet.block, id: newId() }] });
-    setSnippetPickerOpen(false);
   }
 
   // Always-fresh mirror of `content`. Async handlers (image generation, banner
@@ -1712,104 +1725,28 @@ export default function CampaignEditor({
           <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
             <span style={sectionLabel}>Insert</span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", position: "relative" }}>
-              <div style={{ position: "relative" }}>
-                <button style={miniBtn(addBlockMenuOpen)} onClick={() => setAddBlockMenuOpen((v) => !v)}><IcPlus size={14} /> Block <IcChevron size={14} style={{ transform: addBlockMenuOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} /></button>
-                {addBlockMenuOpen && (
-                  <div style={{
-                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
-                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "none", minWidth: 130, overflow: "hidden",
-                  }}>
-                    {BLOCK_KINDS.map((k) => (
-                      <button
-                        key={k.key}
-                        title={k.title}
-                        onClick={() => { addBlock(k.key); setAddBlockMenuOpen(false); }}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
-                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
-                          color: "var(--text)", cursor: "pointer",
-                        }}
-                      >{k.label}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ position: "relative" }}>
-                <button style={miniBtn(false)} onClick={() => setSnippetPickerOpen((v) => !v)} disabled={snippets.length === 0} title={snippets.length === 0 ? "No saved snippets yet" : "Insert a saved snippet as a new block"}>
-                  Snippets <IcChevron size={14} style={{ transform: snippetPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
-                </button>
-                {snippetPickerOpen && snippets.length > 0 && (
-                  <div style={{
-                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
-                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "none", minWidth: 200, maxHeight: 240, overflowY: "auto",
-                  }}>
-                    {snippets.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => insertSnippet(s)}
-                        title={s.block.body || s.name}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
-                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
-                          color: "var(--text)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        }}
-                      >{s.name}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ position: "relative" }}>
-                <button style={miniBtn(false)} onClick={() => setPersonalizationPickerOpen((v) => !v)} title="Insert a Klaviyo merge tag into the focused block">
-                  Personalize <IcChevron size={14} style={{ transform: personalizationPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
-                </button>
-                {personalizationPickerOpen && (
-                  <div style={{
-                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
-                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "none", minWidth: 180, overflow: "hidden",
-                  }}>
-                    {PERSONALIZATION_TOKENS.map((t) => (
-                      <button
-                        key={t.token}
-                        onClick={() => { insertIntoFocusedBlock(t.token); setPersonalizationPickerOpen(false); }}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
-                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
-                          color: "var(--text)", cursor: "pointer",
-                        }}
-                      >{t.label}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ position: "relative" }}>
-                <button style={miniBtn(false)} onClick={() => setBrandFactsPickerOpen((v) => !v)} title="Insert a canonical Lunia fact into the focused block">
-                  Brand facts <IcChevron size={14} style={{ transform: brandFactsPickerOpen ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-out)" }} />
-                </button>
-                {brandFactsPickerOpen && (
-                  <div style={{
-                    position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 5,
-                    background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 6,
-                    boxShadow: "none", minWidth: 220, maxHeight: 260, overflowY: "auto",
-                  }}>
-                    {BRAND_FACTS.map((f) => (
-                      <button
-                        key={f.label}
-                        onClick={() => { insertIntoFocusedBlock(f.text); setBrandFactsPickerOpen(false); }}
-                        title={f.text}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left", padding: "7px 10px",
-                          fontSize: 12, fontFamily: "inherit", border: "none", background: "transparent",
-                          color: "var(--text)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        }}
-                      >{f.label}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <RailDropdown
+                label={<><IcPlus size={14} /> Block</>}
+                title="Add a block"
+                items={BLOCK_KINDS.map((k) => ({ label: k.label, title: k.title, onSelect: () => addBlock(k.key) }))}
+              />
+              <RailDropdown
+                label="Snippets"
+                title={snippets.length === 0 ? "No saved snippets yet" : "Insert a saved snippet as a new block"}
+                disabled={snippets.length === 0}
+                items={snippets.map((s) => ({ label: s.name, title: s.block.body || s.name, onSelect: () => insertSnippet(s) }))}
+              />
+              <RailDropdown
+                label="Personalize"
+                title="Insert a Klaviyo merge tag into the focused block"
+                items={PERSONALIZATION_TOKENS.map((t) => ({ label: t.label, onSelect: () => insertIntoFocusedBlock(t.token) }))}
+              />
+              <RailDropdown
+                label="Brand facts"
+                title="Insert a canonical Lunia fact into the focused block"
+                items={BRAND_FACTS.map((f) => ({ label: f.label, title: f.text, onSelect: () => insertIntoFocusedBlock(f.text) }))}
+              />
             </div>
           </div>
           <style>{`

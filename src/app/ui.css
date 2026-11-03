@@ -208,7 +208,8 @@ textarea.ui-input { padding: var(--ui-space-3) var(--ui-space-4); resize: vertic
 .ui-popover[data-side="right"]                      { transform-origin: left center; }
 .ui-popover[data-side="left"]                       { transform-origin: right center; }
 .ui-popover:not([data-side])                        { transform-origin: top left; }
-.ui-popover--menu { padding: var(--ui-space-2); min-width: 180px; }
+/* A long menu scrolls inside the viewport instead of running off it. */
+.ui-popover--menu { padding: var(--ui-space-2); min-width: 180px; max-width: 320px; max-height: calc(100vh - 16px); overflow-y: auto; }
 .ui-menu-item {
   display: flex; align-items: center; gap: var(--ui-space-4); width: 100%;
   min-height: var(--ui-control-sm); padding: 0 var(--ui-space-4);

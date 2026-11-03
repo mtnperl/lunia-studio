@@ -5,7 +5,7 @@ import { Shortcut } from "./Kbd";
 import type { Placement } from "./usePosition";
 
 export type MenuItem =
-  | { type?: "item"; label: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; onSelect: () => void }
+  | { type?: "item"; label: string; title?: string; icon?: ReactNode; shortcut?: string; danger?: boolean; disabled?: boolean; onSelect: () => void }
   | { type: "separator" }
   | { type: "heading"; label: string };
 
@@ -74,6 +74,7 @@ function MenuList({ items, onClose }: { items: MenuItem[]; onClose: () => void }
             data-active={active === i}
             tabIndex={active === i ? 0 : -1}
             aria-disabled={disabled || undefined}
+            title={it.title}
             className={`ui-menu-item${it.danger ? " ui-menu-item--danger" : ""}`}
             onMouseEnter={() => !disabled && setActive(i)}
             onClick={() => { if (disabled) return; onClose(); it.onSelect(); }}
