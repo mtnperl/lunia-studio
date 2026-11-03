@@ -10,15 +10,9 @@ export const maxDuration = 180;
  * IDs are silently dropped (the asset may have been deleted between analyze
  * and generate).
  *
- * One asset type is ALWAYS auto-attached for every email image, with no
- * dependence on Claude's picks or the UI:
- *   - product-image   → the Lunia Restore bottle (the editorial template
- *                        always shows it)
- * Everything else (lifestyle / other) is opt-in via referenceAssetIds.
- *
- * The LOGO is deliberately never attached. Passing it as a reference is what
- * made gpt-image-2 bake a wordmark into every email image; emails carry the
- * brand in their own chrome, not inside the artwork.
+ * Only the references chosen for this image slot are attached. No product
+ * asset is automatic: forcing the bottle into every image created repetitive
+ * product-first layouts. The logo is never attached.
  */
 async function resolveReferenceUrls(opts: {
   assetIds?: string[];
@@ -29,21 +23,14 @@ async function resolveReferenceUrls(opts: {
   const allAssets = await getAssets();
   const idSet = new Set(ids);
 
-  // 1. Always include the product/bottle image(s). Never the logo.
-  const autoUrls = allAssets
-    .filter((a) => a.assetType === "product-image")
-    .map((a) => a.url);
-
-  // 2. Include any explicitly-selected non-auto assets (lifestyle / other).
-  // Product is already covered above; the logo is excluded outright, so a
-  // stale referenceAssetIds entry pointing at it can't reintroduce it.
+  // Include only explicitly selected assets. Exclude logos even if a stale
+  // saved review or client request still carries a logo ID.
   const selectedUrls = allAssets
-    .filter((a) => idSet.has(a.id) && a.assetType !== "logo" && a.assetType !== "product-image")
+    .filter((a) => idSet.has(a.id) && a.assetType !== "logo")
     .map((a) => a.url);
 
-  // 3. Append any user-uploaded one-off URLs
+  // Append user-uploaded one-off URLs
   const all = [
-    ...autoUrls,
     ...selectedUrls,
     ...extras.filter(Boolean),
   ];
@@ -114,7 +101,7 @@ export async function POST(req: Request) {
     }));
     if (!marked) return Response.json({ error: "review not found" }, { status: 404 });
 
-    // Resolve the full reference URL list (logo + selected assets + user uploads).
+    // Resolve only selected references and user uploads. No forced bottle or logo.
     const referenceImageUrls = await resolveReferenceUrls({
       assetIds: refAssetIds,
       extraUrls: refUrls,

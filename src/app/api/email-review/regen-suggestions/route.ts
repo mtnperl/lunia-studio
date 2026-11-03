@@ -13,7 +13,7 @@ export const maxDuration = 120;
 
 // Email review images always use gpt-image-2. Regen suggestions must also
 // use gpt-image-2 — accept it as primary, fall back to it for anything unexpected.
-const VALID_ENGINES: FlowReviewImageEngine[] = ["gpt-image-2", "recraft", "ideogram", "flux2"];
+const EMAIL_REVIEW_ENGINE: FlowReviewImageEngine = "gpt-image-2";
 
 type Suggestion = { engine: FlowReviewImageEngine; prompt: string; rationale: string; referenceAssetIds: string[] };
 
@@ -31,15 +31,12 @@ function safeParseSuggestions(raw: string, validAssetIds: Set<string>): Suggesti
   const out: Suggestion[] = [];
   for (const c of candidate.slice(0, 3)) {
     if (!c || typeof c !== "object") continue;
-    const engineRaw = (c as { engine?: string }).engine;
     const promptRaw = (c as { prompt?: string }).prompt;
     const rationaleRaw = (c as { rationale?: string }).rationale;
     const refIdsRaw = (c as { referenceAssetIds?: unknown }).referenceAssetIds;
     if (typeof promptRaw !== "string" || promptRaw.trim().length < 50) continue;
     // Always default to gpt-image-2 — that's the only engine email review uses.
-    const engine: FlowReviewImageEngine = VALID_ENGINES.includes(engineRaw as FlowReviewImageEngine)
-      ? (engineRaw as FlowReviewImageEngine)
-      : "gpt-image-2";
+    const engine = EMAIL_REVIEW_ENGINE;
     // Validate Claude's asset IDs against the live library (it can hallucinate).
     const referenceAssetIds = Array.isArray(refIdsRaw)
       ? (refIdsRaw.filter((id): id is string => typeof id === "string" && validAssetIds.has(id)))
@@ -83,6 +80,8 @@ export async function POST(req: Request) {
           email.previewText ? `Preview text: ${email.previewText}` : "",
           `Flow type: ${review.flow.flowType}`,
           `Image slot: ${prompt.placement} placement, ${prompt.aspect} aspect`,
+          prompt.imageJob ? `Image job: ${prompt.imageJob}` : "",
+          prompt.visualConcept ? `Visual concept: ${prompt.visualConcept}` : "",
           ``,
           `Email body copy (first 800 chars):`,
           (email.bodyText ?? email.html ?? "").slice(0, 800),
@@ -95,7 +94,7 @@ export async function POST(req: Request) {
     const assetCatalog: AssetCatalogEntry[] = allAssets
       .filter((a) => a.assetType !== "logo")
       .map((a) => ({ id: a.id, assetType: a.assetType, name: a.name }));
-    const validAssetIds = new Set(allAssets.map((a) => a.id));
+    const validAssetIds = new Set(allAssets.filter((a) => a.assetType !== "logo").map((a) => a.id));
 
     const msg = await createContentMessage({
       model: CONTENT_MODEL,
@@ -107,6 +106,12 @@ export async function POST(req: Request) {
           currentPrompt: prompt.prompt,
           currentEngine: prompt.engine,
           emailContext,
+          flowArtDirection: review.flowArtDirection,
+          siblingImages: review.imagePrompts
+            .filter((sibling) => sibling.id !== prompt.id)
+            .map(({ emailId, placement, imageJob, visualConcept, prompt: siblingPrompt }) => ({
+              emailId, placement, imageJob, visualConcept, prompt: siblingPrompt,
+            })),
           userComment,
           assetCatalog,
         }),

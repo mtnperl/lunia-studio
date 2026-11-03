@@ -18,6 +18,7 @@ import type {
   EmailFlow,
   EmailFlowAsset,
   FlowCompletenessGap,
+  FlowArtDirection,
   FlowReviewImagePrompt,
   FlowReviewSection,
   SavedFlowReview,
@@ -33,6 +34,7 @@ type Phase1Output = {
   ifYouOnlyDoThree: string[];
   flowCompleteness?: FlowCompletenessGap;
   sections: FlowReviewSection[];           // timing, subjects, design, strategy
+  flowArtDirection: FlowArtDirection;
   imagePrompts: ImagePromptDraft[];
 };
 
@@ -163,6 +165,31 @@ function validatePhase1(out: Phase1Output | null): { ok: boolean; reason?: strin
     return { ok: false, reason: "Phase 1: missing sections" };
   if (!Array.isArray(out.imagePrompts))
     return { ok: false, reason: "Phase 1: missing imagePrompts" };
+  const direction = out.flowArtDirection;
+  if (!direction || [direction.throughline, direction.palette, direction.lightAndTexture,
+    direction.compositionLanguage, direction.typographyPolicy, direction.sequenceArc]
+    .some((value) => typeof value !== "string" || value.trim().length < 3)
+    || !Array.isArray(direction.avoid) || direction.avoid.some((item) => typeof item !== "string"))
+    return { ok: false, reason: "Phase 1: missing complete flowArtDirection" };
+  const slotCounts = new Map<string, number>();
+  const ids = new Set<string>();
+  for (const image of out.imagePrompts) {
+    if (!image || typeof image.id !== "string" || !image.id || ids.has(image.id))
+      return { ok: false, reason: "Phase 1: image prompt IDs must be present and unique" };
+    ids.add(image.id);
+    if (typeof image.emailId !== "string" || !image.emailId || typeof image.prompt !== "string"
+      || image.prompt.trim().length < 30 || typeof image.imageJob !== "string" || image.imageJob.trim().length < 8
+      || typeof image.visualConcept !== "string" || image.visualConcept.trim().length < 8
+      || !Array.isArray(image.referenceAssetIds)
+      || image.referenceAssetIds.some((id) => typeof id !== "string")
+      || image.engine !== "gpt-image-2"
+      || !["16:9", "4:5", "1:1"].includes(image.aspect)
+      || !["above_cta", "below_cta", "between_paragraphs", "hero"].includes(image.placement))
+      return { ok: false, reason: `Phase 1: image ${image.id} is missing its prompt, job, concept, or references` };
+    const count = (slotCounts.get(image.emailId) ?? 0) + 1;
+    if (count > 2) return { ok: false, reason: `Phase 1: email ${image.emailId} has more than two image slots` };
+    slotCounts.set(image.emailId, count);
+  }
   return { ok: true };
 }
 
@@ -200,8 +227,7 @@ export async function POST(req: Request) {
 
     // Pull the brand asset library and pass it into the prompt so Claude can
     // pick reference assets (product/lifestyle/ingredient) for each image.
-    // Logo is auto-attached server-side at generate time so we exclude it here
-    // to avoid Claude listing it (it would just get deduped anyway).
+    // The model chooses references per concept. Never offer logo assets.
     const allAssets = await getAssets();
     const assetCatalog: AssetCatalogEntry[] = allAssets
       .filter((a) => a.assetType !== "logo")
@@ -232,6 +258,10 @@ export async function POST(req: Request) {
         error: `Analyze Phase 1 failed: ${v1.reason}`,
         raw: p1text.slice(0, 2000),
       }, { status: 502 });
+    }
+    const flowEmailIds = new Set(preprocessed.emails.map((email) => email.id));
+    if (p1.imagePrompts.some((image) => !flowEmailIds.has(image.emailId))) {
+      return Response.json({ error: "Analyze Phase 1 failed: image prompt references an email outside this flow" }, { status: 502 });
     }
     console.log(`[email-review/analyze] Phase 1 ok — ${p1.sections.length} sections, ${p1.imagePrompts.length} prompts, elapsed=${Date.now() - t0}ms`);
 
@@ -294,12 +324,13 @@ export async function POST(req: Request) {
 
     // Validate the asset IDs Claude picked. Drop anything that doesn't exist
     // in the live asset library (Claude can hallucinate IDs).
-    const validAssetIds = new Set(allAssets.map((a) => a.id));
+    const validAssetIds = new Set(allAssets.filter((a) => a.assetType !== "logo").map((a) => a.id));
 
     const review: SavedFlowReview = {
       id: randomUUID(),
       flow: preprocessed,
       sections: mergedSections,
+      flowArtDirection: p1.flowArtDirection,
       imagePrompts: p1.imagePrompts.map((p) => {
         const refAssetIds = (p.referenceAssetIds ?? []).filter((id) => validAssetIds.has(id));
         return {

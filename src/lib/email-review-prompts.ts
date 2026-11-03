@@ -2,13 +2,13 @@
 // FRAMEWORK_VERSION should bump whenever the underlying framework doc changes.
 // Brand guidelines are in lunia-brand-guidelines.ts — always import from there.
 
-import { BRAND_GUIDELINES, BOTTLE_VISUAL_SPEC, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
+import { BRAND_GUIDELINES, BRAND_VERSION } from "@/lib/lunia-brand-guidelines";
 
-export const FRAMEWORK_VERSION = "v1.0";
+export const FRAMEWORK_VERSION = "v1.1";
 
 // The core framework — distilled from Lunia_Email_Flow_Review_Framework.docx.
 // Kept inline so the build doesn't depend on the .docx existing on disk.
-const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.0 (Brand Guidelines v${BRAND_VERSION})
+const FRAMEWORK_RUBRIC = `# LUNIA LIFE — Email Flow Review Framework v1.1 (Brand Guidelines v${BRAND_VERSION})
 
 You are running an email flow review for Lunia Life, a science-first sleep
 and wellness supplement brand.
@@ -268,117 +268,46 @@ flagged with a specific rationale in flowCompleteness.rationale. A flow
 with MORE than the canonical count is overbuilt and should also be
 flagged — recommend which positions to cut. Equal count → no gap.
 
-## Image prompt scaffold — Lunia editorial template (FIXED STRUCTURE)
+## Flow-level image direction and image jobs
 
-Every email image is rendered with OpenAI GPT Image 2 via fal. GPT Image 2
-renders typography accurately, so the image carries its OWN headline, body,
-and overlay text — this is intentional and required. Do NOT write "no text"
-prompts. The text IS the design.
+Plan the complete sequence before writing any image prompt. Read every
+email's role, subject, preview, body, CTA, and place in the sequence. Return
+one compact \`flowArtDirection\` used by all images: a content-led visual
+throughline, palette, light/material treatment, composition language,
+typography policy, sequence arc, and explicit avoid list. Choose these from
+Lunia's supplied brand guidance and the actual message. Do not prescribe one
+campaign look (including AG1's) across unrelated flows.
 
-Write EVERY imagePrompt using this exact template. Only the *content*
-changes per email (headline, body, overlay, the woman's expression and
-the reason for it, the flat-lay objects) — the structure, colours, fonts,
-and brand framing are fixed and must appear verbatim every time.
+Then decide image-by-image whether an image earns its space. Return zero to
+two images per email. Each image must support a specific message or reading
+moment and name its job, concept, and distinct role in the sequence. The
+email is the whole composition: the art must complement its actual copy and
+CTA, not restate the email as a poster. Adjacent images should share the
+art direction while varying framing, distance, subject, or visual device in
+a way that advances the sequence. Do not repeat a hero idea in a second slot
+just to fill a quota.
 
-### The template (fill the [BRACKETS], keep everything else verbatim)
+Write a production-ready prompt describing the concrete subject, action,
+framing, light, material, color, crop, and relevant reference assets. Default
+to no text, lettering, icons, logos, badges, diagrams, or interface elements
+inside generated art. Only request designed typography when the email's
+message materially depends on it; quote exact short copy and specify its
+placement. Never invent a claim or show a product detail that conflicts with
+the supplied reference. Show the bottle only when product presence advances
+this email's job, not as a mandatory prop. Each prompt must explicitly
+translate the shared palette, light/material treatment, and composition
+language into concrete instructions rather than merely naming the mood.
 
-"""
-Create an image for Lunia Life. It should feel exclusive, calm,
-aspirational, premium. Show half of a woman's face (she is in her late
-30s), [EXPRESSION + REASON tied to this email's topic — e.g. "calm and
-clear-eyed because she finally sleeps deeply", "radiant because her skin
-repaired overnight"].
+Use the uploaded asset library selectively. Choose product, lifestyle, or
+other assets only when they are genuinely useful references for this concept.
+Never attach a logo as an image reference. Return only valid asset IDs.
 
-Headline (Inter Regular): [HEADLINE — short, declarative, max ~6 words,
-drawn from this email's core promise]
-
-Body (Inter Light 300): [BODY — 2–3 sentences, the email's central
-science/benefit in plain language, always ending with a sentence that
-names "Lunia Restore" and what it does, e.g. "Lunia Restore supports
-deeper, more restorative sleep without melatonin."]
-
-Overlay (Inter Regular): [OVERLAY — a 3–5 word phrase naming the
-"window" or "moment" this email is about, e.g. "The overnight repair
-window."]
-
-Composition: Editorial flat lay with [3–5 OBJECTS chosen for this
-topic — always include the Lunia Restore bottle; pair it with topic-
-appropriate props such as pillow, ceramic mug, single dried flower,
-linen, folded eye mask, sprig of botanical].
-
-Colours: background #EFEFF4, main #01253f, secondary #2C3F51. No other
-brand colours. No purple, magenta, lavender, or neon.
-
-Fonts: Inter — Regular (400) for headline and overlay, Light (300) for
-body. Crisp, perfectly legible, correctly spelled typography. Do not
-invent letterforms.
-
-Use relevant minimal line icons to the right of each body line — each
-icon must visually match what that line says (e.g. a moon for deep
-sleep, a droplet for hydration, a leaf for botanicals). Thin stroke,
-#01253f, consistent weight.
-
-Use the uploaded reference image for the Lunia Restore bottle — match
-its exact shape, label, and proportions. Do not redesign the bottle.
-Do NOT render the Lunia logo, wordmark, or any brand mark anywhere in
-the image. The email carries the brand in its own chrome; a logo inside
-the artwork is a hard no.
-"""
-
-### Filling the template — rules
-
-- "change the content according to the topic of the prompt": read the
-  subject line, preview, headline, body, and CTA of THIS email. The
-  headline / body / overlay / woman's expression / flat-lay objects all
-  derive from that email's specific message. Two emails never get the
-  same headline or body.
-- The woman is a brand constant: always present, always half-face,
-  always late 30s. Only her expression and the *reason* for it changes
-  with the topic. Never omit her, never change her age band.
-- The Restore bottle is ALWAYS in the flat lay and ALWAYS comes from
-  the uploaded reference (see Reference asset selection below). Mention
-  it in the Composition line so GPT Image 2 places it correctly.
-- Never use em dashes inside the generated headline/body/overlay copy.
-- Body must always end naming "Lunia Restore" and a concrete benefit.
-
-### Two image prompts per email — always
-
-Generate EXACTLY 2 imagePrompts for every email, both using the template
-above:
-- **hero** placement: opens the email. Headline + body lead with the
-  emotional core of the subject line.
-- **above_cta** or **below_cta** placement: closes the argument. Same
-  template, but headline/body/overlay reframed to express what clicking
-  the CTA delivers.
-
-Vary the woman's expression and the flat-lay objects between the two so
-the email has visual rhythm, but keep the structure identical.
-
-## Reference asset selection
-For every imagePrompt, choose which assets from the brand asset library
-(supplied in the input as a JSON list of \`{ id, assetType, name }\`)
-should be attached as references. Output the chosen IDs as
-\`referenceAssetIds: string[]\`.
-
-Selection rules:
-- The Restore bottle (any "product-image" asset) is attached
-  automatically server-side for every email image. Do NOT list it in
-  referenceAssetIds — it is always present regardless.
-- NEVER list a "logo" asset. The logo is never attached and must never
-  be rendered inside an email image.
-- referenceAssetIds is therefore ONLY for occasional extra lifestyle /
-  "other" assets when this specific email's topic genuinely calls for
-  one (rare). Default to \`[]\`.
-- If no product-image asset exists in the library, the bottle falls back
-  to the canonical text spec below. Either way, still return \`[]\` unless
-  adding a lifestyle extra.
-
-### Lunia Restore bottle — canonical visual spec (TEXT FALLBACK ONLY)
-Only used when no product-image asset is available to attach as a
-reference. When a reference image exists, the reference wins — do not
-contradict it with this text.
-
-  ${BOTTLE_VISUAL_SPEC}
+Reject on sight: stock-photo shorthand, generic smiling sleeper portraits,
+unrelated props, arbitrary moons/stars/brain graphics, floating ingredients,
+fake science visuals, excessive gradients, repeated centered bottle-on-linen
+layouts, copy duplicated from the email, unsupported health claims, and
+prompts whose metaphor needs explaining. A premium mood word is not a
+concept. Explain why every proposed image belongs in its slot.
 
 ## Patterns to kill on sight
 - "Complete your order" subject lines
@@ -420,19 +349,24 @@ type AnalyzeOutput = {
     bodyMarkdown: string;       // markdown with H2/H3 headers, tables, code blocks for image prompts
     flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
   }[];                          // exactly 5 entries, in order: timing, subjects, rewrites, design, strategy
+  flowArtDirection: {
+    throughline: string; palette: string; lightAndTexture: string;
+    compositionLanguage: string; typographyPolicy: string;
+    sequenceArc: string; avoid: string[];
+  };
   imagePrompts: {
     id: string;                 // stable id like "img-e1-hero" or "img-e1-above_cta"
     emailId: string;            // matches the EmailFlowAsset.id from input
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";      // always — every email image uses GPT Image 2
-    prompt: string;             // full 8-step structured prompt, lifestyle archetype by default
-    referenceAssetIds: string[];// bottle (product-image) auto-attaches server-side; do NOT list it. NEVER list a logo asset. Almost always []. Only list a lifestyle/other asset id when the email specifically needs one.
-    rationale?: string;         // one-line: why this image, which lifestyle archetype was chosen
+    prompt: string;             // production-ready scene prompt, grounded in the whole flow
+    imageJob: string;           // what this image does for this specific email
+    visualConcept: string;      // concrete scene, composition and role in the visual sequence
+    referenceAssetIds: string[];// selected valid non-logo references; product is not auto-attached
+    rationale?: string;         // why this concept and slot fit the email
   }[];
-  // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
-  // "above_cta" or "below_cta". Both must be lifestyle unless the email is a
-  // confirmed first-touch conversion email with explicit product copy.
+  // 0-2 images per email. Do not add a slot unless it advances the email.
 };
 \`\`\`
 
@@ -491,19 +425,24 @@ type Phase1Output = {
     bodyMarkdown: string;
     flags?: { severity: "compliance" | "warning"; text: string; emailId?: string }[];
   }[];                            // exactly 4 entries: timing, subjects, design, strategy
+  flowArtDirection: {
+    throughline: string; palette: string; lightAndTexture: string;
+    compositionLanguage: string; typographyPolicy: string;
+    sequenceArc: string; avoid: string[];
+  };
   imagePrompts: {
-    id: string;                   // e.g. "img-e1-hero" or "img-e1-above_cta"
+    id: string;                   // stable ID such as "img-e1-hero"
     emailId: string;
     placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
     aspect: "16:9" | "4:5" | "1:1";
     engine: "gpt-image-2";        // always — every email image uses GPT Image 2
-    prompt: string;               // full 8-step structured prompt, lifestyle archetype by default
-    referenceAssetIds: string[];  // bottle (product-image) auto-attaches server-side; do NOT list it. NEVER list a logo asset. Almost always []. Only a lifestyle/other id when the email truly needs one.
-    rationale?: string;           // which lifestyle archetype was chosen and why
+    prompt: string;
+    imageJob: string;
+    visualConcept: string;
+    referenceAssetIds: string[];  // selected useful non-logo assets; none are auto-attached
+    rationale?: string;
   }[];
-  // RULE: generate EXACTLY 2 imagePrompts per email — one "hero" and one
-  // "above_cta" or "below_cta". Both must be lifestyle unless the email is a
-  // confirmed first-touch conversion email with explicit product copy.
+  // 0-2 images per email; omit any slot without a distinct email-specific job.
 };
 \`\`\`
 
@@ -771,15 +710,17 @@ Honor every brand rule (no em dashes, max 1 exclamation per email, no banned phr
 export function buildRegenSuggestionsPrompt(args: {
   currentPrompt: string;
   currentEngine: string;
-  emailContext: string;        // headline + body + intent of the slot
-  userComment?: string;        // optional "what was wrong with the current image"
+  emailContext: string;
+  flowArtDirection?: unknown;
+  siblingImages?: { emailId: string; placement: string; imageJob?: string; visualConcept?: string; prompt: string }[];
+  userComment?: string;
   assetCatalog?: AssetCatalogEntry[];
 }): string {
   const comment = args.userComment?.trim()
-    ? `\nUser comment on what to change:\n"${args.userComment}"\n`
+    ? `\nUser feedback on the current image: \"${args.userComment}\"\n`
     : "";
   const catalog = formatAssetCatalog(args.assetCatalog ?? []);
-  return `You are a senior editorial art director for Lunia Life. The current image prompt for an email asset is:\n\nCurrent engine: ${args.currentEngine}\nCurrent prompt:\n"""\n${args.currentPrompt}\n"""\n\nEmail slot context:\n"""\n${args.emailContext}\n"""\n${comment}\n## Lunia editorial template (FIXED — every alternative must follow this)\nAll email images are rendered with GPT Image 2 and carry their OWN headline, body, and overlay text — text rendering is intentional and required. Every alternative must use this exact template; only the bracketed content changes between alternatives:\n\n"""\nCreate an image for Lunia Life. It should feel exclusive, calm, aspirational, premium. Show half of a woman's face (she is in her late 30s), [EXPRESSION + REASON tied to this email's topic].\n\nHeadline (Inter Regular): [HEADLINE — short, declarative, max ~6 words, from this email's core promise]\n\nBody (Inter Light 300): [BODY — 2–3 sentences, the email's central science/benefit, always ending with a sentence naming "Lunia Restore" and what it does]\n\nOverlay (Inter Regular): [OVERLAY — 3–5 word phrase naming the "window"/"moment" this email is about]\n\nComposition: Editorial flat lay with [3–5 topic-appropriate objects — ALWAYS include the Lunia Restore bottle].\n\nColours: background #EFEFF4, main #01253f, secondary #2C3F51. No purple, magenta, lavender, or neon.\n\nFonts: Inter — Regular (400) for headline and overlay, Light (300) for body. Crisp, perfectly legible, correctly spelled typography.\n\nUse relevant minimal line icons to the right of each body line, thin stroke #01253f, each matching what its line says.\n\nUse the uploaded reference image for the Lunia Restore bottle — match its exact shape, label, proportions. Do NOT render the Lunia logo, wordmark, or any brand mark anywhere in the image.\n"""\n\n## How the 3 alternatives must differ\nKeep the template structure identical. Vary at least 2 of: the woman's expression + reason, the headline angle, the flat-lay object set, the overlay phrasing, hero vs. closing framing. Each alternative must still pass the test "this makes sense when you read the email", and must keep the fixed colours, Inter fonts, and bottle reference, and must never render a logo. Never use em dashes inside generated copy. Body always ends naming "Lunia Restore".\n\n## Brand asset library — pick references for EACH alternative\n${catalog}\n\nThe Restore bottle (any "product-image" asset) is auto-attached server-side for every email image — do NOT list it in \`referenceAssetIds\`, and NEVER list a "logo" asset. Set \`referenceAssetIds\` to \`[]\` unless this specific email genuinely needs an extra lifestyle/other asset (rare), in which case list only that id.\n\n## Bottle text fallback (only if no product reference image exists in the library)\n"""\n${BOTTLE_VISUAL_SPEC}\n"""\nWhen a reference image exists, the reference wins — do not contradict it.\n\nAll email review images use GPT Image 2 — always set engine to "gpt-image-2".\n\nJSON shape:\n\`\`\`ts\n{ engine: "gpt-image-2"; prompt: string; rationale: string; referenceAssetIds: string[] }[]\n\`\`\`\n\nRationale: one sentence — what this alternative changes and why it fits this specific email.`;
+  return `You are the visual editor for a complete Lunia Life email flow. Regenerate one image slot while preserving the approved flow direction and making the images work together.\n\nFlow art direction:\n${JSON.stringify(args.flowArtDirection ?? {}, null, 2)}\n\nCurrent image prompt:\n${args.currentPrompt}\n\nEmail and slot context:\n${args.emailContext}\n\nSibling image concepts and prompts (avoid repeating their composition or job):\n${JSON.stringify(args.siblingImages ?? [], null, 2)}\n${comment}\nCreate exactly 3 materially distinct alternatives. Every alternative must: (1) serve this email's actual message and slot, (2) follow the flow palette, light, material and composition rules, (3) complement rather than copy sibling images, and (4) give a concrete scene, subject/action, framing, light, surface, color and crop. Vary the visual idea, not decorative props. Default to no lettering, icons, logo, badges, diagrams or interface. Do not add an image if the concept needs invented claims, stock-photo shorthand, arbitrary sleep symbols or unrelated props. Show the product only when it advances the email's job.\n\nAsset catalog:\n${catalog}\nChoose only useful references from this list. Never choose a logo. Do not assume any asset is automatically attached. Return valid asset IDs only.\n\nAll alternatives use engine \"gpt-image-2\". Return ONLY a JSON array of exactly three objects: { \"engine\": \"gpt-image-2\", \"prompt\": string, \"rationale\": string, \"referenceAssetIds\": string[] }. Rationale: one sentence naming the distinct concept and why it belongs in this slot.`;
 }
 
 // ─── Create-flow prompt ────────────────────────────────────────────────────────

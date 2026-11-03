@@ -120,8 +120,6 @@ export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
   const ready = review.imagePrompts.filter((p) => p.status === "ready").length;
   const generating = review.imagePrompts.filter((p) => p.status === "generating").length;
 
-  if (total === 0) return null;
-
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -133,7 +131,7 @@ export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
             {ready} of {total} rendered{generating > 0 ? ` · ${generating} generating` : ""}
           </div>
         </div>
-        <button
+        {total > 0 && <button
           onClick={generateAll}
           disabled={batching}
           style={{
@@ -150,18 +148,32 @@ export default function FlowImagesGrid({ review, onReviewUpdate }: Props) {
           }}
         >
           {batching ? "Restarting batch…" : generating > 0 ? `Restart batch (cancels ${generating})` : "🌄 Generate all images"}
-        </button>
+        </button>}
       </header>
+      {review.flowArtDirection && (
+        <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #d6cfbe", borderRadius: 6, display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 10, color: "#5b5340", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Flow art direction</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, color: "#102635" }}>{review.flowArtDirection.throughline}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, fontSize: 11, lineHeight: 1.5, color: "#5b5340" }}>
+            <div><strong>Palette:</strong> {review.flowArtDirection.palette}</div>
+            <div><strong>Light and texture:</strong> {review.flowArtDirection.lightAndTexture}</div>
+            <div><strong>Composition:</strong> {review.flowArtDirection.compositionLanguage}</div>
+            <div><strong>Sequence:</strong> {review.flowArtDirection.sequenceArc}</div>
+            {review.flowArtDirection.avoid.length > 0 && <div><strong>Avoid:</strong> {review.flowArtDirection.avoid.join(" · ")}</div>}
+          </div>
+        </div>
+      )}
+      {total === 0 && <div style={{ padding: "12px 14px", border: "1px dashed #d6cfbe", borderRadius: 6, color: "#5b5340", fontSize: 12 }}>No generated image slots were recommended. The flow review found no image that earns space in this sequence.</div>}
       {batchError && (
         <div style={{ padding: "8px 12px", background: "rgba(176, 65, 62, 0.08)", border: "1px solid rgba(176, 65, 62, 0.3)", borderRadius: 6, fontSize: 12, color: "#B0413E" }}>
           {batchError}
         </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 12 }}>
+      {total > 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 12 }}>
         {review.imagePrompts.map((p) => (
           <ImagePromptCard key={p.id} reviewId={review.id} prompt={p} onUpdate={updatePrompt} />
         ))}
-      </div>
+      </div>}
     </section>
   );
 }

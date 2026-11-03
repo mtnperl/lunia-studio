@@ -1495,20 +1495,23 @@ export type FlowReviewImagePrompt = {
   placement: "above_cta" | "below_cta" | "between_paragraphs" | "hero";
   aspect: "16:9" | "4:5" | "1:1";
   engine: FlowReviewImageEngine;
-  prompt: string;               // 8-step structured prompt
+  prompt: string;               // production-ready scene prompt tied to the email and flow
+  imageJob?: string;            // the specific reader-facing job this image earns in its email
+  visualConcept?: string;       // the concrete scene/composition, distinct from sibling images
+  rationale?: string;           // why this image belongs in its slot
   imageUrl?: string;
   status: "pending" | "generating" | "ready" | "error";
   errorMessage?: string;
   /**
    * Asset IDs (from AssetMetadata) Claude selected as references for this
-   * image. The logo asset is always implicitly attached server-side; this
-   * list is just the product/lifestyle picks for this specific email.
+   * image. Only explicitly selected product or lifestyle assets are attached. The
+   * logo is always excluded.
    */
   referenceAssetIds?: string[];
   /**
    * Extra reference image URLs the user attached manually (e.g. uploaded
    * one-off shots for this image only). Combined with referenceAssetIds
-   * server-side before calling gpt-image-2/edit.
+   * server-side when rendering this image.
    */
   referenceImageUrls?: string[];
   // Set by /api/email-review/regen-suggestions before re-render. User picks one
@@ -1516,6 +1519,16 @@ export type FlowReviewImagePrompt = {
   regenSuggestions?: { engine: FlowReviewImageEngine; prompt: string; rationale: string; referenceAssetIds?: string[] }[];
   // Previously rendered images stay accessible so the user can compare. Newest first.
   history?: { prompt: string; engine: FlowReviewImageEngine; imageUrl: string; renderedAt: string }[];
+};
+
+export type FlowArtDirection = {
+  throughline: string;
+  palette: string;
+  lightAndTexture: string;
+  compositionLanguage: string;
+  typographyPolicy: string;
+  sequenceArc: string;
+  avoid: string[];
 };
 
 export type KlaviyoWritebackResult = {
@@ -1562,8 +1575,10 @@ export type SavedFlowReview = {
   flow: EmailFlow;              // snapshot of inputs
   sections: FlowReviewSection[];
   imagePrompts: FlowReviewImagePrompt[];
+  /** One visual system shared by all image slots in this review. Optional for legacy saved reviews. */
+  flowArtDirection?: FlowArtDirection;
   ifYouOnlyDoThree: string[];   // 3 bullets pulled out of the headline section
-  frameworkVersion: string;     // e.g. "v1.0"
+  frameworkVersion: string;     // e.g. "v1.1"
   writebacks?: KlaviyoWritebackResult[];
   /** Set by /api/email-review/analyze. Drives the "add more emails" banner. */
   flowCompleteness?: FlowCompletenessGap;

@@ -28,12 +28,8 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
 
-  // Product (the Lunia bottle) is ALWAYS auto-attached server-side and renders
-  // locked. The logo is never attached — it must not be baked into email
-  // artwork — so it is neither auto nor selectable here.
-  const autoAssets = assets.filter((a) => a.assetType === "product-image");
-  // Selectable = lifestyle / other — opt-in per image.
-  const selectableAssets = assets.filter((a) => a.assetType !== "logo" && a.assetType !== "product-image");
+  // Product references are optional per image. The logo is never selectable.
+  const selectableAssets = assets.filter((a) => a.assetType !== "logo");
   const selectedIds = new Set(prompt.referenceAssetIds ?? []);
   const extraUrls = prompt.referenceImageUrls ?? [];
 
@@ -104,12 +100,7 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
       )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {/* Bottle — always attached, locked */}
-        {autoAssets.map((a) => (
-          <Thumb key={a.id} url={a.url} label="bottle · auto" locked />
-        ))}
-
-        {/* Lifestyle / other — opt-in per image */}
+        {/* Assets are selected per image slot, including product images. */}
         {selectableAssets.map((a) => {
           const checked = selectedIds.has(a.id);
           return (
@@ -137,9 +128,9 @@ function ReferencesPanel({ prompt, assets, onToggleAsset, onAddReferenceUrl, onR
           />
         ))}
 
-        {autoAssets.length === 0 && selectableAssets.length === 0 && extraUrls.length === 0 && (
+        {selectableAssets.length === 0 && extraUrls.length === 0 && (
           <div style={{ fontSize: 11, color: "#8b8270", fontStyle: "italic", padding: "4px 0" }}>
-            No brand assets uploaded yet. Upload the Lunia logo (tag <strong>logo</strong>) and the Restore bottle (tag <strong>product-image</strong>) in the Assets tab — both auto-attach to every email image. Or click <strong>+ Upload</strong> for a one-off reference.
+            No brand assets uploaded yet. Add a product or lifestyle reference only when it serves this image&apos;s job.
           </div>
         )}
       </div>
@@ -243,9 +234,8 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
     referenceAssetIdsOverride?: string[],
   ) {
     setBusy(true);
-    // When rendering a regen alternative, the suggestion carries its own
-    // referenceAssetIds (it always re-picks the bottle for the new template).
-    // Otherwise fall back to whatever's currently on the prompt.
+    // A regen alternative can make its own reference selection. Otherwise use
+    // the references currently selected for this specific image.
     const refAssetIds = referenceAssetIdsOverride ?? prompt.referenceAssetIds ?? [];
     // Optimistically mark as generating so the MiniReviewLoader shows immediately
     // (the batch path in FlowImagesGrid does the same — keep consistent).
@@ -314,6 +304,12 @@ export default function ImagePromptCard({ reviewId, prompt, onUpdate }: Props) {
         </div>
         <CopyButton text={prompt.prompt} label="Copy prompt" />
       </div>
+
+      {(prompt.imageJob || prompt.visualConcept) && <div style={{ padding: "10px 12px", background: "#fff", border: "1px solid #e8e2d2", borderRadius: 6, fontSize: 12, lineHeight: 1.5, color: "#5b5340" }}>
+        {prompt.imageJob && <div><strong style={{ color: "#102635" }}>Image job:</strong> {prompt.imageJob}</div>}
+        {prompt.visualConcept && <div style={{ marginTop: 4 }}><strong style={{ color: "#102635" }}>Concept:</strong> {prompt.visualConcept}</div>}
+        {prompt.rationale && <div style={{ marginTop: 4, fontStyle: "italic" }}>{prompt.rationale}</div>}
+      </div>}
 
       {prompt.status === "generating" ? (
         <MiniReviewLoader
