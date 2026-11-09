@@ -231,7 +231,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
     }).catch(() => setError("Clipboard unavailable"));
   }
 
-  const labelStyle = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" } as const;
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" } as const;
   // Only a device that pre-builds can be waiting on a build.
   const preparing = shareCapable && ready < 2 && !prepError;
   const [preview1, preview2] = renderTwoSlides(format, variant, paper, PREVIEW_SCALE, fontScale);
@@ -239,7 +239,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Pick a variant</h2>
+      <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 6, letterSpacing: "var(--ui-tracking-tight)" }}>Pick a variant</h2>
       <p style={{ color: "var(--muted)", marginBottom: 20, fontSize: 14 }}>
         {variants.length} {label} piece{variants.length === 1 ? "" : "s"} for: <span style={{ color: "var(--text)", fontWeight: 600 }}>{topic}</span>
       </p>
@@ -257,17 +257,17 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
                   flex: "1 1 220px", textAlign: "left",
                   border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
                   borderRadius: 8, padding: "10px 12px", cursor: "pointer",
-                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  background: sel ? "var(--ui-selection-tint)" : "var(--bg)",
                   fontFamily: "inherit", position: "relative",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: sel ? "var(--accent)" : "var(--text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, color: sel ? "var(--accent)" : "var(--text)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>
                     Variant {i + 1}
                   </div>
                   {hasViolations && (
-                    <span title={v.violations!.join("\n")} style={{ fontSize: 10, fontWeight: 700, color: "#b85c5c", background: "rgba(184,92,92,0.12)", padding: "1px 6px", borderRadius: 3 }}>
-                      ⚠ {v.violations!.length}
+                    <span title={v.violations!.join("\n")} style={{ fontSize: 11, fontWeight: 600, color: "#b85c5c", background: "rgba(184,92,92,0.12)", padding: "1px 6px", borderRadius: 3 }}>
+                      {v.violations!.length} {v.violations!.length === 1 ? "flag" : "flags"}
                     </span>
                   )}
                 </div>
@@ -301,7 +301,7 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
         <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => setEditing((v) => !v)}
-            style={{ background: editing ? "var(--text)" : "var(--surface)", color: editing ? "var(--bg)" : "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+            style={{ background: editing ? "var(--text)" : "var(--surface)", color: editing ? "var(--bg)" : "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
           >
             {editing ? "Done editing" : "Edit the text"}
           </button>
@@ -324,14 +324,14 @@ export default function TwoSlidePreviewStep({ format, topic, variants, selected,
       </div>}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={handleDownload} disabled={downloading || preparing} title={preparing ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: downloading || preparing ? "wait" : "pointer", opacity: preparing ? 0.6 : 1, fontFamily: "inherit" }}>
+        <button onClick={handleDownload} disabled={downloading || preparing} title={preparing ? "Preparing the PNGs" : shareCapable ? "Opens the share sheet with both slides. Save Image puts them in Photos together." : "Downloads both slides"} style={{ background: "var(--accent)", color: "var(--ui-on-ink)", border: "none", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 600, cursor: downloading || preparing ? "wait" : "pointer", opacity: preparing ? 0.6 : 1, fontFamily: "inherit" }}>
           {downloading ? (shareCapable ? "Opening share sheet..." : "Downloading...") : preparing ? `Preparing PNGs ${ready}/2` : shareCapable ? "Save both to Photos" : "Download PNGs"}
         </button>
-        <button onClick={handleSave} disabled={saving} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: saving ? "wait" : "pointer", fontFamily: "inherit" }}>
+        <button onClick={handleSave} disabled={saving} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 600, cursor: saving ? "wait" : "pointer", fontFamily: "inherit" }}>
           {saving ? "Saving..." : savedId ? "Save changes" : "Save to library"}
         </button>
         {savedId && (
-          <button onClick={handleCopyShareLink} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <button onClick={handleCopyShareLink} style={{ background: "var(--surface)", color: "var(--text)", border: "1.5px solid var(--border)", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {linkCopyLabel}
           </button>
         )}

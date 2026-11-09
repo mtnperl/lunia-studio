@@ -6,7 +6,7 @@
 
 import { PAPER_VIGNETTE_MAX, PEN_PRESETS, type PaperSettings } from "@/lib/brand-tokens";
 
-const labelStyle = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 64 } as const;
+const labelStyle = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 64 } as const;
 const valueStyle = { fontSize: 12, fontVariantNumeric: "tabular-nums", color: "var(--text)", minWidth: 40, textAlign: "right" } as const;
 
 function Slider({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (v: number) => void }) {

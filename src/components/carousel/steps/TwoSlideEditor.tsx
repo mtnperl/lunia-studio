@@ -39,7 +39,7 @@ function getAt(obj: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((n, k) => (n == null ? undefined : (n as Record<string, unknown>)[k]), obj);
 }
 
-const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 } as const;
+const labelStyle = { display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 4 } as const;
 const inputStyle = { width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: 13, fontFamily: "inherit", color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6 } as const;
 const groupStyle = { border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px", background: "var(--surface)", display: "flex", flexDirection: "column", gap: 10 } as const;
 
@@ -206,7 +206,7 @@ export default function TwoSlideEditor({ format, variant, onChange }: Props) {
       </div>
       {violations.length > 0 && (
         <div style={{ fontSize: 12, color: "#b85c5c", background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.25)", borderRadius: 8, padding: "10px 12px", lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>The lint would send this back to the writer:</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>The lint would send this back to the writer:</div>
           {violations.map((v, i) => <div key={i}>• {v}</div>)}
         </div>
       )}

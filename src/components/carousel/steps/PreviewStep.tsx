@@ -150,18 +150,20 @@ const MAX_CONTENT_SLIDES = 10;
 // ─── Toolbar button style (v2 toolbar) ────────────────────────────────────────
 function toolbarBtnStyle(active: boolean): React.CSSProperties {
   return {
-    padding: "5px 12px",
-    borderRadius: 5,
-    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-    background: active ? "var(--accent-dim)" : "transparent",
-    color: active ? "var(--accent)" : "var(--muted)",
-    fontSize: 11,
-    fontWeight: active ? 700 : 500,
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: "var(--ui-control-sm)",
+    padding: "0 12px",
+    borderRadius: "var(--ui-radius-2)",
+    border: `1px solid ${active ? "var(--ui-text)" : "var(--ui-border)"}`,
+    background: active ? "var(--ui-selection-tint)" : "var(--ui-bg)",
+    color: active ? "var(--ui-text)" : "var(--ui-text-2)",
+    fontSize: 12,
+    fontWeight: 500,
     fontFamily: "inherit",
     cursor: "pointer",
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
     whiteSpace: "nowrap",
+    transition: "background-color var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out)",
   };
 }
 
@@ -221,7 +223,7 @@ function ToolbarMenu({ label, active = false, disabled = false, items }: {
         disabled={disabled}
         style={{ ...toolbarBtnStyle(active || open), opacity: disabled ? 0.5 : 1, cursor: disabled ? "not-allowed" : "pointer" }}
       >
-        {label} ▾
+        {label}<UiIcChevron size={14} strokeWidth={1.75} style={{ marginLeft: 4, verticalAlign: "-2px" }} />
       </button>
       {open && (
         <div style={{
@@ -235,11 +237,11 @@ function ToolbarMenu({ label, active = false, disabled = false, items }: {
               onClick={() => { if (it.disabled) return; setOpen(false); it.onClick(); }}
               disabled={it.disabled}
               style={{
-                textAlign: "left", padding: "7px 10px", borderRadius: 5, border: "none",
-                background: it.active ? "var(--accent-dim)" : "transparent",
-                color: it.active ? "var(--accent)" : "var(--text)",
-                fontSize: 11, fontWeight: it.active ? 700 : 500, fontFamily: "inherit",
-                letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap",
+                textAlign: "left", minHeight: "var(--ui-control-md)", padding: "0 12px", borderRadius: "var(--ui-radius-1)", border: "none",
+                background: it.active ? "var(--ui-selection-tint)" : "transparent",
+                color: "var(--ui-text)",
+                fontSize: 13, fontWeight: it.active ? 500 : 400, fontFamily: "inherit",
+                whiteSpace: "nowrap",
                 cursor: it.disabled ? "not-allowed" : "pointer", opacity: it.disabled ? 0.5 : 1,
               }}
               onMouseEnter={(e) => { if (!it.active && !it.disabled) e.currentTarget.style.background = "var(--surface-h)"; }}
@@ -278,7 +280,7 @@ function OverlayRow({ label, hint, enabled, onToggle, children, compact = false 
             style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
           />
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
-          <span style={{ fontSize: 10, color: "var(--muted)" }}>{hint}</span>
+          <span style={{ fontSize: 11, color: "var(--muted)" }}>{hint}</span>
         </label>
         <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
       </div>
@@ -303,7 +305,7 @@ function OverlayRow({ label, hint, enabled, onToggle, children, compact = false 
         />
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{label}</span>
       </label>
-      <span style={{ fontSize: 10, color: "var(--muted)", letterSpacing: "0.02em" }}>{hint}</span>
+      <span style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.02em" }}>{hint}</span>
       <div style={{ pointerEvents: enabled ? "auto" : "none" }}>{children}</div>
     </div>
   );
@@ -319,7 +321,7 @@ function SliderControl({ label, min, max, step, value, onChange }: {
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
+      <label style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
       <input
         type="range"
         min={min}
@@ -329,7 +331,7 @@ function SliderControl({ label, min, max, step, value, onChange }: {
         onChange={(e) => onChange(parseFloat(e.target.value))}
         style={{ width: 100, accentColor: "var(--accent)", cursor: "pointer" }}
       />
-      <span style={{ fontSize: 10, color: "var(--muted)", fontVariantNumeric: "tabular-nums", minWidth: 32, textAlign: "right" }}>
+      <span style={{ fontSize: 11, color: "var(--muted)", fontVariantNumeric: "tabular-nums", minWidth: 32, textAlign: "right" }}>
         {value.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2)}
       </span>
     </div>
@@ -345,7 +347,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
+      <label style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</label>
       <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 5, overflow: "hidden" }}>
         {options.map((o, i) => (
           <button
@@ -356,7 +358,7 @@ function Segmented<T extends string>({ label, options, value, onChange }: {
               color: value === o.value ? "#fff" : "var(--muted)",
               border: "none",
               borderLeft: i === 0 ? "none" : "1px solid var(--border)",
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 600,
               letterSpacing: "0.04em",
               textTransform: "uppercase",
@@ -1989,10 +1991,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
   // settings branch when the size rows moved to the elements they resize.
   const sizeRow = (label: string, vals: readonly number[], labels: string[], cur: number, set: (v: number) => void) => (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>{label}</span>
       {vals.map((s, idx) => (
         <button key={s} onClick={() => set(s)} style={{
-          padding: "3px 8px", fontSize: 11, fontWeight: 700,
+          padding: "3px 8px", fontSize: 11, fontWeight: 600,
           background: cur === s ? "var(--text)" : "var(--surface)",
           color: cur === s ? "var(--bg)" : "var(--muted)",
           border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
@@ -2011,7 +2013,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         title: "Settings",
         body: (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Looks</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>Looks</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {looks === null && <div style={{ fontSize: 12, color: "var(--muted)" }}>Loading looks</div>}
               {looks && looks.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>No saved looks yet. Set the style below, name it, and save it to reuse on the next carousel.</div>}
@@ -2027,7 +2029,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               </form>
               {lookError && <div style={{ fontSize: 11, color: "var(--error)" }}>{lookError}</div>}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Branding &amp; format</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>Branding &amp; format</div>
             {/* Only what applies to the WHOLE deck lives here. Headline, body,
                 citation and icon sizing moved onto the elements they resize —
                 click that part of the slide. Six identical S/M/L/XL rows in one
@@ -2035,54 +2037,54 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             {sizeRow("Logo", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], logoScale, setLogoScale)}
             {sizeRow("Arrows", [0.75, 1, 1.4, 1.8], ["S", "M", "L", "XL"], arrowScale, setArrowScale)}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Lunia Life</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Lunia Life</span>
               <button onClick={() => setShowLuniaLifeWatermark((v) => !v)} style={{
-                padding: "3px 10px", fontSize: 11, fontWeight: 700,
+                padding: "3px 10px", fontSize: 11, fontWeight: 600,
                 background: showLuniaLifeWatermark ? "var(--text)" : "var(--surface)",
                 color: showLuniaLifeWatermark ? "var(--bg)" : "var(--muted)",
                 border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
               }}>{showLuniaLifeWatermark ? "On" : "Off"}</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Format</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Format</span>
               <button onClick={() => setReelsMode(false)} style={{
-                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                padding: "3px 8px", fontSize: 11, fontWeight: 600,
                 background: !reelsMode ? "var(--accent)" : "var(--surface)",
                 color: !reelsMode ? "var(--bg)" : "var(--muted)",
                 border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
               }}>4:5</button>
               <button onClick={() => setReelsMode(true)} style={{
-                padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                padding: "3px 8px", fontSize: 11, fontWeight: 600,
                 background: reelsMode ? "var(--accent)" : "var(--surface)",
                 color: reelsMode ? "var(--bg)" : "var(--muted)",
                 border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
               }}>9:16</button>
             </div>
             {/* Decoration toggles — hide arrows, slide numbers, or citation bars on any carousel. */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Decoration</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginTop: 4 }}>Decoration</div>
             {([
               { label: "Arrows", value: showSlideArrows, set: setShowSlideArrows },
               { label: "Numbers", value: showSlideNumbers, set: setShowSlideNumbers },
               { label: "Citations bar", value: showCitationBars, set: setShowCitationBars },
             ] as const).map((row) => (
               <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>{row.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>{row.label}</span>
                 <button onClick={() => row.set((v) => !v)} style={{
-                  padding: "3px 10px", fontSize: 11, fontWeight: 700,
+                  padding: "3px 10px", fontSize: 11, fontWeight: 600,
                   background: row.value ? "var(--text)" : "var(--surface)",
                   color: row.value ? "var(--bg)" : "var(--muted)",
                   border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
                 }}>{row.value ? "Show" : "Hide"}</button>
               </div>
             ))}
-            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginTop: 4 }}>Text &amp; content</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginTop: 4 }}>Text &amp; content</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Slides bg</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Slides bg</span>
               {([{ label: "Dark", color: "#01253f" }, { label: "Light", color: "#F7F4EF" }] as const).map(({ label, color }) => {
                 const active = slideBgColor?.toLowerCase() === color.toLowerCase();
                 return (
                   <button key={color} onClick={() => { setSlideBgColor(color); setDarkBackground(color === "#F7F4EF"); }} style={{
-                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    padding: "3px 8px", fontSize: 11, fontWeight: 600,
                     background: active ? "var(--text)" : "var(--surface)",
                     color: active ? "var(--bg)" : "var(--muted)",
                     border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
@@ -2095,7 +2097,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               })}
               <label style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 6px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer" }}>
                 <input type="color" value={slideBgColor ?? "#01253f"} onChange={(e) => { const c = e.target.value; setSlideBgColor(c); setDarkBackground(c.toLowerCase() === "#f7f4ef"); }} style={{ width: 18, height: 18, padding: 0, border: "none", background: "transparent", cursor: "pointer" }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Custom</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>Custom</span>
               </label>
               {slideBgColor !== undefined && (
                 <button onClick={() => setSlideBgColor(undefined)} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit" }}>×</button>
@@ -2103,17 +2105,17 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             </div>
             {contentBgImages.some((u) => !!u) && (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Bg dim</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Bg dim</span>
                 <input type="range" min={0} max={0.9} step={0.05} value={contentBgOverlayOpacity} onChange={(e) => setContentBgOverlayOpacity(parseFloat(e.target.value))} style={{ width: 110 }} />
-                <span style={{ fontSize: 10, color: "var(--muted)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
+                <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 28, textAlign: "right" }}>{Math.round(contentBgOverlayOpacity * 100)}%</span>
               </div>
             )}
             {isEssay && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Accent</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Accent</span>
                 {([{ value: "yellow", label: "Yellow", swatch: "#FFD800" }, { value: "red", label: "Red", swatch: "#D8321E" }] as const).map(({ value, label, swatch }) => (
                   <button key={value} onClick={() => setEssayAccent(value)} title={value === "yellow" ? "Signal Yellow, from the brand book" : "Essay-poster red"} style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 11, fontWeight: 600,
                     background: essayAccent === value ? "var(--text)" : "var(--surface)",
                     color: essayAccent === value ? "var(--bg)" : "var(--muted)",
                     border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
@@ -2123,10 +2125,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             )}
             {isBillboard && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Pillar</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Pillar</span>
                 {BILLBOARD_PILLARS.map((p) => (
                   <button key={p} onClick={() => setPillar(p)} title="The corner label lit on every slide" style={{
-                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    padding: "3px 8px", fontSize: 11, fontWeight: 600,
                     background: pillar === p ? "var(--text)" : "var(--surface)",
                     color: pillar === p ? "var(--bg)" : "var(--muted)",
                     border: "1px solid var(--border)", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
@@ -2139,7 +2141,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             )}
             {/* Hook slide only — boldness of the first-slide headline text. "Default" preserves today's weight. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Hook weight</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Hook weight</span>
               {([
                 { value: "default", label: "Default" },
                 { value: "medium", label: "Medium" },
@@ -2160,7 +2162,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                       setLastBakedHeadlineWeight(value);
                     }
                   }} title={pregenUrl ? "Pregenerated — switches instantly" : undefined} style={{
-                    padding: "3px 8px", fontSize: 11, fontWeight: 700,
+                    padding: "3px 8px", fontSize: 11, fontWeight: 600,
                     background: hookHeadlineWeight === value ? "var(--text)" : "var(--surface)",
                     color: hookHeadlineWeight === value ? "var(--bg)" : "var(--muted)",
                     border: `1px solid ${pregenUrl ? "var(--accent)" : "var(--border)"}`, borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
@@ -2174,7 +2176,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 to hit "New image" or "Generate other weights" in the Refine image panel. */}
             {isEditorial && imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight && (
               <div style={{ fontSize: 11, color: "var(--warning, #b45309)", display: "flex", alignItems: "center", gap: 5 }}>
-                ⚠ Regenerate the hook image to apply this weight
+                Regenerate the hook image to apply this weight
               </div>
             )}
           </div>
@@ -2196,7 +2198,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px",
       };
       const groupLabel = (t: string) => (
-        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{t}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 8 }}>{t}</div>
       );
 
       let body: React.ReactNode = null;
@@ -2320,14 +2322,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
         title: `${slideLabels[focusedSlide]} text`,
         body: (
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Headline</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Headline</label>
             <input
               type="text"
               value={slide.headline}
               onChange={(e) => updateSlideField(slideIdx, "headline", e.target.value)}
               style={{ width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.4, fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)", marginBottom: 12 }}
             />
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Main text</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Main text</label>
             {/* Formatting lives in the text itself ("• ", "1. ", blank line),
                 so it survives save, share, export and every preset. */}
             <div role="toolbar" aria-label="Text formatting" style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
@@ -2360,7 +2362,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 so an instruction like "lead with the number" or "this line is
                 wrong" lands on the copy in front of you. */}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--ui-border)" }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Rewrite with a note</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Rewrite with a note</label>
               <textarea
                 value={slideNote[slideIdx] ?? ""}
                 onChange={(e) => setSlideNote((m) => ({ ...m, [slideIdx]: e.target.value }))}
@@ -2398,8 +2400,8 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
       if (!takeaway) return null;
       const points = takeaway.points;
       const fieldStyle: React.CSSProperties = { width: "100%", boxSizing: "border-box", fontSize: 13, lineHeight: 1.4, fontFamily: "inherit", color: "var(--text)", padding: "7px 10px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--bg)" };
-      const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 };
-      const miniBtn: React.CSSProperties = { padding: "2px 7px", fontSize: 11, fontWeight: 700, background: "var(--surface)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.4 };
+      const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 };
+      const miniBtn: React.CSSProperties = { padding: "2px 7px", fontSize: 11, fontWeight: 600, background: "var(--surface)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.4 };
 
       const setPoints = (next: string[]) => updateTakeaway({ points: next });
       const updatePoint = (i: number, value: string) => setPoints(points.map((p, idx) => (idx === i ? value : p)));
@@ -2442,12 +2444,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                 <label style={{ ...labelStyle, marginBottom: 0 }}>Recap points</label>
-                <span style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>{points.length}/3</span>
+                <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>{points.length}/3</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {points.map((p, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ flexShrink: 0, width: 18, fontSize: 11, fontWeight: 700, color: "var(--muted)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
+                    <span style={{ flexShrink: 0, width: 18, fontSize: 11, fontWeight: 600, color: "var(--muted)", textAlign: "center", fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
                     <input
                       type="text"
                       value={p}
@@ -2516,11 +2518,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             {/* Suggestions row — un-applied until the user acts */}
             <div style={{ border: "1px dashed var(--accent-mid)", borderRadius: 6, padding: "8px 10px", background: "var(--accent-dim)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>AI suggestions</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>AI suggestions</span>
                 <button
                   onClick={() => handleSuggestIcons(slideIdx, { force: true })}
                   disabled={loadingSuggestions}
-                  style={{ background: "transparent", border: "1px solid var(--accent-mid)", borderRadius: 3, fontSize: 9, color: "var(--accent)", cursor: loadingSuggestions ? "not-allowed" : "pointer", fontFamily: "inherit", padding: "1px 6px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                  style={{ background: "transparent", border: "1px solid var(--accent-mid)", borderRadius: 3, fontSize: 11, color: "var(--accent)", cursor: loadingSuggestions ? "not-allowed" : "pointer", fontFamily: "inherit", padding: "1px 6px", fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}
                 >
                   {loadingSuggestions ? "Picking…" : "Suggest 3"}
                 </button>
@@ -2544,14 +2546,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                           style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 8px", border: "1px dashed var(--accent-mid)", borderRadius: 6, background: "var(--bg)", cursor: "pointer" }}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: ic.svg }} />
-                          <span style={{ fontSize: 8, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{ic.label}</span>
+                          <span style={{ fontSize: 11, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>{ic.label}</span>
                         </button>
                       );
                     })}
                   </div>
                   <button
                     onClick={() => applyIconSuggestions(iconSuggestions)}
-                    style={{ width: "100%", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 5, padding: "6px 0", fontSize: 11, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", letterSpacing: "0.04em", textTransform: "uppercase" }}
+                    style={{ width: "100%", background: "var(--accent)", color: "var(--ui-on-ink)", border: "none", borderRadius: 5, padding: "6px 0", fontSize: 11, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}
                   >
                     Use these {iconSuggestions.length} icons
                   </button>
@@ -2566,7 +2568,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               {selected.length > 0 && (
                 <button
                   onClick={() => toggleShowLabels(slideIdx)}
-                  style={{ background: showLabels ? "var(--accent-dim)" : "transparent", border: `1px solid ${showLabels ? "var(--accent-mid)" : "var(--border)"}`, borderRadius: 3, fontSize: 9, color: showLabels ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                  style={{ background: showLabels ? "var(--accent-dim)" : "transparent", border: `1px solid ${showLabels ? "var(--accent-mid)" : "var(--border)"}`, borderRadius: 3, fontSize: 11, color: showLabels ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}
                 >
                   Labels {showLabels ? "On" : "Off"}
                 </button>
@@ -2575,18 +2577,18 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 const pos = getIconRowPosition(slideIdx);
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 0, border: "1px solid var(--border)", borderRadius: 3, overflow: "hidden" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase", padding: "2px 7px", borderRight: "1px solid var(--border)" }}>Position</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", padding: "2px 7px", borderRight: "1px solid var(--border)" }}>Position</span>
                     <button
                       onClick={() => setIconRowPosition(slideIdx, "hug-body")}
                       title="Icon row hugs the body text (default)"
-                      style={{ background: pos === "hug-body" ? "var(--accent-dim)" : "transparent", border: "none", borderRight: "1px solid var(--border)", fontSize: 9, color: pos === "hug-body" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                      style={{ background: pos === "hug-body" ? "var(--accent-dim)" : "transparent", border: "none", borderRight: "1px solid var(--border)", fontSize: 11, color: pos === "hug-body" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}
                     >
                       Hug body
                     </button>
                     <button
                       onClick={() => setIconRowPosition(slideIdx, "between")}
                       title="Icon row centred between body text and citation"
-                      style={{ background: pos === "between" ? "var(--accent-dim)" : "transparent", border: "none", fontSize: 9, color: pos === "between" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}
+                      style={{ background: pos === "between" ? "var(--accent-dim)" : "transparent", border: "none", fontSize: 11, color: pos === "between" ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}
                     >
                       Centered
                     </button>
@@ -2594,19 +2596,19 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 );
               })()}
               {selected.length > 0 && (
-                <button onClick={() => clearSlideIcons(slideIdx)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 9, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>Clear</button>
+                <button onClick={() => clearSlideIcons(slideIdx)} style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 3, fontSize: 11, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "2px 7px", fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}>Clear</button>
               )}
             </div>
 
             {/* Layout picker */}
             <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Layout</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>Layout</span>
               {(["row", "column", "grid", "scattered"] as const).map((lyt) => (
                 <button key={lyt} onClick={() => applyIconLayout(slideIdx, lyt)} style={{
-                  padding: "2px 7px", fontSize: 9, fontWeight: 700,
+                  padding: "2px 7px", fontSize: 11, fontWeight: 600,
                   background: iconPickerLayout === lyt ? "var(--accent)" : "var(--bg)",
                   color: iconPickerLayout === lyt ? "#fff" : "var(--muted)",
-                  border: "1px solid var(--border)", borderRadius: 3, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.04em",
+                  border: "1px solid var(--border)", borderRadius: 3, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)",
                 }}>{lyt}</button>
               ))}
             </div>
@@ -2617,9 +2619,9 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 <button key={cat} onClick={() => setIconPickerCategory(cat)} style={{
                   flex: 1, padding: "6px 2px", border: "none",
                   borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
-                  background: "transparent", fontSize: 9, fontWeight: iconPickerCategory === cat ? 700 : 500,
+                  background: "transparent", fontSize: 11, fontWeight: iconPickerCategory === cat ? 700 : 500,
                   color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
-                  cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em", fontFamily: "inherit",
+                  cursor: "pointer", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontFamily: "inherit",
                 }}>{cat}</button>
               ))}
             </div>
@@ -2637,7 +2639,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.35 : 1,
                   }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke={isSelected ? "var(--accent)" : "var(--muted)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }} dangerouslySetInnerHTML={{ __html: ic.svg }} />
-                    <span style={{ fontSize: 8, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.04em" }}>{ic.label}</span>
+                    <span style={{ fontSize: 11, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>{ic.label}</span>
                   </button>
                 );
               })}
@@ -2720,11 +2722,11 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", fontSize: 12, fontFamily: "inherit", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, resize: "vertical" }}
             />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, gap: 8 }}>
-              <span style={{ fontSize: 10, color: "var(--muted)" }}>{draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}</span>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>{draft.trim() ? `${draft.trim().length}/400` : "Empty = fresh variation"}</span>
               <button
                 onClick={() => handleRegenerateGraphic(slideIdx, draft)}
                 disabled={isBusy || atLimit}
-                style={{ background: "var(--accent)", color: "#fff", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: (isBusy || atLimit) ? "not-allowed" : "pointer", opacity: (isBusy || atLimit) ? 0.6 : 1 }}
+                style={{ background: "var(--accent)", color: "var(--ui-on-ink)", border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: (isBusy || atLimit) ? "not-allowed" : "pointer", opacity: (isBusy || atLimit) ? 0.6 : 1 }}
               >
                 {isBusy ? "Generating…" : atLimit ? "Limit reached" : (draft.trim() ? "Regenerate with comment" : "Regenerate")}
               </button>
@@ -2749,7 +2751,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 ...DEFAULT_HOOK_OVERLAYS,
                 frame: { ...DEFAULT_HOOK_OVERLAYS.frame, color: config.brandStyle?.accent ?? DEFAULT_HOOK_OVERLAYS.frame.color },
               })}
-              style={{ alignSelf: "flex-start", background: "transparent", border: "1px solid var(--border)", borderRadius: 5, fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "4px 8px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600 }}
+              style={{ alignSelf: "flex-start", background: "transparent", border: "1px solid var(--border)", borderRadius: 5, fontSize: 11, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "4px 8px", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", fontWeight: 600 }}
             >
               Reset
             </button>
@@ -2775,7 +2777,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", opacity: wash.mode === "none" ? 0.5 : 1, pointerEvents: wash.mode === "none" ? "none" : "auto" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: wash.mode === "light" ? 1 : 0.4 }}>
-                  <label style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Color</label>
+                  <label style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600 }}>Color</label>
                   <input type="color" value={wash.color} disabled={wash.mode !== "light"} onChange={(e) => setWash({ color: e.target.value })} style={{ width: 28, height: 22, border: "1px solid var(--border)", borderRadius: 4, padding: 0, background: "transparent", cursor: wash.mode === "light" ? "pointer" : "not-allowed" }} />
                 </div>
                 <SliderControl label="Opacity" min={0} max={1} step={0.05} value={wash.opacity} onChange={(v) => setWash({ opacity: v })} />
@@ -2803,7 +2805,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}>Style</span>
               {IMAGE_STYLE_CHIPS.map((chip) => {
                 const active = imageStyle === chip.value;
                 return (
@@ -2812,7 +2814,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                     background: active ? "var(--accent-dim)" : "transparent",
                     color: active ? "var(--accent)" : "var(--muted)",
-                    fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                   }}>{chip.label}</button>
                 );
               })}
@@ -2822,10 +2824,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             <div style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)" }}>
               <button
                 onClick={() => setFullPromptOpen((v) => !v)}
-                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)" }}
               >
                 <span>Full prompt sent to engine{content.hookImagePromptOverride ? " (edited)" : ""}</span>
-                <span style={{ color: "var(--muted)" }}>{fullPromptOpen ? "▾" : "▸"}</span>
+                <UiIcChevron size={14} strokeWidth={1.75} style={{ color: "var(--muted)", transform: fullPromptOpen ? "none" : "rotate(-90deg)", transition: "transform var(--ui-dur-2) var(--ui-ease-in-out)" }} />
               </button>
               {fullPromptOpen && (
                 <div style={{ padding: "0 10px 10px" }}>
@@ -2848,7 +2850,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     placeholder="Server-assembled prompt will appear here. Edit to override."
                     style={{ width: "100%", boxSizing: "border-box", fontSize: 11, lineHeight: 1.5, resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--surface)" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--muted)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 11, color: "var(--muted)" }}>
                     <span>{content.hookImagePromptOverride ? "Override is active — sent verbatim on next regen." : "Showing server default — edit to override."}</span>
                     {content.hookImagePromptOverride && (
                       <button
@@ -2856,7 +2858,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                           setFullPromptOverride("");
                           onContentChange({ ...config, content: { ...config.content, hookImagePromptOverride: undefined } });
                         }}
-                        style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit" }}
+                        style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 8px", fontSize: 11, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit" }}
                       >
                         Reset to default
                       </button>
@@ -2865,7 +2867,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 </div>
               )}
             </div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Current prompt</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Current prompt</label>
             <textarea
               value={currentImagePrompt}
               onChange={(e) => setImagePromptDraft(e.target.value)}
@@ -2873,7 +2875,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
               placeholder="No prompt yet — add guidelines below to generate one."
               style={{ width: "100%", boxSizing: "border-box", fontSize: 12, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit", color: currentImagePrompt ? "var(--text)" : "var(--subtle)", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 5, background: "var(--bg)", marginBottom: 12 }}
             />
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Guidelines (optional)</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Guidelines (optional)</label>
             <textarea
               value={imageGuidelines}
               onChange={(e) => setImageGuidelines(e.target.value)}
@@ -2883,7 +2885,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             />
             {(fetchingSuggestions || suggestedPrompts.length > 0) && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 6 }}>
                   {fetchingSuggestions ? "Loading suggestions…" : "Suggested concepts — click to use"}
                 </div>
                 {fetchingSuggestions ? (
@@ -2893,13 +2895,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                   </div>
                 ) : suggestedPrompts.map((s, i) => (
                   <div key={i} onClick={() => { setImagePromptDraft(s); onContentChange({ ...config, content: { ...config.content, imagePrompt: s } }); }} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", marginBottom: 6, fontSize: 12, color: "var(--text)", lineHeight: 1.5, cursor: "pointer", display: "flex", gap: 8 }} title="Click to use this prompt">
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i === 0 ? "A" : "B"}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i === 0 ? "A" : "B"}</span>
                     <span>{s}</span>
                   </div>
                 ))}
               </div>
             )}
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Model</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Model</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
               {([{
                 value: "auto",
@@ -2918,14 +2920,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                     background: active ? "var(--accent-dim)" : "transparent",
                     color: active ? "var(--accent)" : "var(--muted)",
-                    fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                    fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                   }}>{opt.label}</button>
                 );
               })}
             </div>
             {isEditorial && (
               <>
-                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Direction</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Direction</label>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                   {([
                     { value: "auto",          label: "Auto" },
@@ -2942,12 +2944,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
                         color: active ? "var(--accent)" : "var(--muted)",
-                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                       }}>{opt.label}</button>
                     );
                   })}
                 </div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Subject</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Subject</label>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                   {([
                     { value: "auto",        label: "Auto" },
@@ -2962,12 +2964,12 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
                         color: active ? "var(--accent)" : "var(--muted)",
-                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                       }}>{opt.label}</button>
                     );
                   })}
                 </div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Paper tone</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Paper tone</label>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {([
                     { value: "white", label: "White ivory", swatch: "#EFEFF4" },
@@ -2981,7 +2983,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
                         color: active ? "var(--accent)" : "var(--muted)",
-                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                       }}>
                         <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
                         {opt.label}
@@ -2993,7 +2995,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     frame into a paper type zone over a near-black subject zone
                     with one luminous focal element. Composes with Paper tone,
                     which still picks the paper hue. */}
-                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>Contrast</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 }}>Contrast</label>
                 <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                   {([
                     { value: "standard", label: "Standard",      swatch: paperTone === "warm" ? "#EFE1C8" : "#EFEFF4" },
@@ -3007,7 +3009,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
                         background: active ? "var(--accent-dim)" : "transparent",
                         color: active ? "var(--accent)" : "var(--muted)",
-                        fontSize: 11, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "inherit",
+                        fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer", fontFamily: "inherit",
                       }}>
                         <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: opt.swatch, border: "1px solid var(--border)" }} />
                         {opt.label}
@@ -3025,7 +3027,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             {/* Previous hook images — click any thumb to revert. Session-only. */}
             {hookImageHistory.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 6 }}>
                   Previous images — click to revert
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -3053,14 +3055,14 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                 disabled={regeneratingPrompt || regeneratingImage}
                 style={{ background: "var(--surface)", color: (regeneratingPrompt || regeneratingImage) ? "var(--subtle)" : "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "9px 14px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: (regeneratingPrompt || regeneratingImage) ? "not-allowed" : "pointer" }}
               >
-                {regeneratingPrompt ? "Generating…" : "↺ 3 directions"}
+                {regeneratingPrompt ? "Generating…" : "3 directions"}
               </button>
               <button
                 onClick={handleRegenerateHookImage}
                 disabled={regeneratingImage || regeneratingPrompt}
-                style={{ flex: 1, background: (regeneratingImage || regeneratingPrompt) ? "var(--border)" : "var(--accent)", color: (regeneratingImage || regeneratingPrompt) ? "var(--muted)" : "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: (regeneratingImage || regeneratingPrompt) ? "not-allowed" : "pointer" }}
+                style={{ flex: 1, background: (regeneratingImage || regeneratingPrompt) ? "var(--border)" : "var(--accent)", color: (regeneratingImage || regeneratingPrompt) ? "var(--muted)" : "var(--ui-on-ink)", border: "none", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: (regeneratingImage || regeneratingPrompt) ? "not-allowed" : "pointer" }}
               >
-                {regeneratingImage ? "Generating…" : "↺ New image"}
+                {regeneratingImage ? "Generating…" : "New image"}
               </button>
             </div>
             {/* "Generate other weights" — edits the current image into the other 3 boldness
@@ -3078,7 +3080,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                     style={{
                       width: "100%", background: "transparent",
                       color: (generatingWeightVariants || missing.length === 0) ? "var(--subtle)" : "var(--accent)",
-                      border: "1px dashed var(--accent)", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                      border: "1px dashed var(--accent)", borderRadius: 6, padding: "9px 16px", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
                       cursor: (generatingWeightVariants || missing.length === 0) ? "not-allowed" : "pointer",
                     }}
                   >
@@ -3088,7 +3090,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                       ? "✓ All weights generated"
                       : `✨ Generate other weights (${missing.length} more image${missing.length === 1 ? "" : "s"})`}
                   </button>
-                  <p style={{ fontSize: 10, color: "var(--muted)", margin: "6px 0 0" }}>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0" }}>
                     Edits this image at each other boldness level — same composition, different headline weight. Takes a few minutes.
                   </p>
                 </div>
@@ -3096,10 +3098,10 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
             })()}
             {promptAlternatives.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>More directions — click to use</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 6 }}>More directions — click to use</div>
                 {promptAlternatives.map((alt, i) => (
                   <div key={i} onClick={() => { setImagePromptDraft(alt); onContentChange({ ...config, content: { ...config.content, imagePrompt: alt } }); }} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px", marginBottom: 6, fontSize: 12, color: "var(--text)", lineHeight: 1.5, cursor: "pointer", display: "flex", gap: 8 }} title="Click to use this prompt">
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i + 2}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", borderRadius: 4, padding: "2px 5px", flexShrink: 0, height: "fit-content" }}>{i + 2}</span>
                     <span>{alt}</span>
                   </div>
                 ))}
@@ -3284,7 +3286,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                             }}
                           >
                             {hookAngleLabel(h.angle) && (
-                              <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 4 }}>
+                              <div style={{ fontSize: 11, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", color: "var(--subtle)", marginBottom: 4 }}>
                                 {hookAngleLabel(h.angle)}
                               </div>
                             )}
@@ -3462,13 +3464,13 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                   {regeneratingGraphic === focusedSlide - 1 && (
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, pointerEvents: "none" }}>
                       <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.15)", borderTopColor: "var(--accent)", animation: "spin 0.7s linear infinite" }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--text)", textTransform: "uppercase" }}>generating</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", color: "var(--text)", textTransform: "uppercase" }}>generating</span>
                     </div>
                   )}
                   {focusedSlide === 0 && regeneratingImage && (
                     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none", background: "rgba(0,0,0,0.18)" }}>
                       <div style={{ width: 36, height: 36, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", animation: "spin 0.7s linear infinite" }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#fff", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>generating image…</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", color: "#fff", textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>generating image…</span>
                     </div>
                   )}
               </div>
@@ -3489,7 +3491,7 @@ export default function PreviewStep({ config, hookTone, onRestart, onRecast, onC
                   const ctaIconsAvailable = isCta && isEditorial;
                   return (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: slideW }}>
-                      <ToolbarButton label={isDownloading ? "Exporting…" : "↓ PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
+                      <ToolbarButton label={isDownloading ? "Exporting…" : "Download PNG"} onClick={() => downloadSlide(focusedSlide)} disabled={isDownloading || downloadingAll} />
                       <ToolbarButton label="Style" active={railTab === "style"} onClick={() => setRailTab("style")} />
                       {isHook && <ToolbarButton label="Refine image" active={inspectorMode === "image"} badge={isEditorial && !!imgs[0] && hookHeadlineWeight !== lastBakedHeadlineWeight} onClick={() => { const willOpen = inspectorMode !== "image"; setInspectorMode(willOpen ? "image" : null); if (willOpen) fetchSuggestedPrompts(); }} />}
                       {isHook && <ToolbarButton label="Overlays" active={inspectorMode === "overlays"} onClick={() => openInspector("overlays")} />}

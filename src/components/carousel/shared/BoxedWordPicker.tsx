@@ -28,7 +28,7 @@ export default function BoxedWordPicker({ headline, value, onChange, accent }: P
   } as const);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 78 }}>Boxed word</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", minWidth: 78 }}>Boxed word</span>
       {words.map((w, i) => {
         const selected = !!resolved && w.toLowerCase() === resolved.toLowerCase();
         return (
