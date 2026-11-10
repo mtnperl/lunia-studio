@@ -2565,7 +2565,8 @@ export default function CampaignEditor({
                           style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
                         />
                       </div>
-                      {(kind === "lead" || kind === "heading") && (
+                      {/* Heading aligns through the header row's L/C/R above. */}
+                      {kind === "lead" && (
                         <div style={segWrap}>
                           <SegButton active={b.align !== "center"} onClick={() => updateBlock(b.id, { align: "left" })} title="Align left"><IcAlignLeft /></SegButton>
                           <SegButton active={b.align === "center"} onClick={() => updateBlock(b.id, { align: "center" })} title="Align center" last><IcAlignCenter /></SegButton>
@@ -2585,7 +2586,6 @@ export default function CampaignEditor({
                           imageUrl={b.imageUrl}
                           imagePrompt={b.imagePrompt}
                           aspect="1:1"
-                          onAspectChange={() => {}}
                           topic={topic}
                           suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
                           blockText={blockOwnText(b)}
