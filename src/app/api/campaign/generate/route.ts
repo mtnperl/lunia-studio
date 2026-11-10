@@ -1,4 +1,3 @@
-import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG } from "@/lib/anthropic";
 import { checkRateLimit, getAssets } from "@/lib/kv";
 import { generateCampaignSlotImage } from "@/lib/campaign-image";
 import { CAMPAIGN_IMAGE_MOOD_TRIO } from "@/lib/brand-tokens";
@@ -6,28 +5,21 @@ import type { CampaignContent, CampaignImageSlot } from "@/lib/types";
 import { randomUUID } from "crypto";
 
 import { stripDashes } from "@/lib/strip-dashes";
-// Long enough for the LLM pass + three parallel gpt-image-2 generations.
-export const maxDuration = 240;
+import { runLayoutPass } from "@/lib/campaign-layout-pass";
+import { buildGeneratePrompt, blocksToSourceText } from "@/lib/campaign-layout-prompts";
+import { sampleBlock } from "@/lib/campaign-block-samples";
+// The layout pass (one thinking call, plus a fast fix when the design review
+// blocks) and then the pictures, generated in parallel.
+export const maxDuration = 300;
 
-const LUNIA_VOICE_SPEC = `Lunia Life brand voice: Aspirational, minimal, wellness-science grounded. Tone: calm confidence. No hype. No FOMO manipulation. Language: clear, direct, sophisticated. Target reader: health-conscious adult, 28-45, optimizing their sleep. Write like a trusted expert friend, not a marketer. Lunia Life sells a sleep supplement (magnesium glycinate, L-theanine, apigenin. Transparent dosing. Melatonin-free).
 
-HARD BRAND RULE — NEVER use em dashes (—) or en dashes (–) ANYWHERE in any field you return. Use commas, periods, semicolons, parentheses, or short sentences instead. Em dashes are a hard no in Lunia copy. This rule overrides any stylistic instinct you have and applies to every string in the JSON output.`;
-
-type RawImage = {
-  role: "hero" | "secondary";
-  source: "generated" | "asset";
-  prompt?: string;
-  /** 0-based index of the text block this image illustrates. */
-  blockIndex?: number;
-};
-
+/** The fields of the generate answer that are not the layout itself. */
 type RawCampaign = {
-  subjectLines: string[];
-  previewText: string;
+  subjectLines?: string[];
+  previewText?: string;
   promoBand?: string;
-  blocks: { body: string; align?: "left" | "center"; italic?: boolean }[];
-  cta: string;
-  images: RawImage[];
+  ctaLabel?: string;
+  heroPrompt?: string;
 };
 
 export async function POST(req: Request) {
@@ -83,25 +75,15 @@ export async function POST(req: Request) {
         logoUrl: logoAsset?.url ?? null,
         showLogo: false,
         promoBand: undefined,
+        // The same mix of kinds a real generation now produces, from the
+        // block samples, so a dry run exercises the layouts people will see.
         blocks: [
-          {
-            id: randomUUID(),
-            body: "This is a test campaign rendered without any AI calls. Every line of copy here is fixed sample text, and every image is pulled straight from the asset library. Use this mode to dogfood layout changes, font choices, spacing, and the top banner / logo / hero overlay without spending tokens.",
-            align: "left",
-            italic: false,
-          },
-          {
-            id: randomUUID(),
-            body: "A calmer nervous system is the foundation. Everything else, the deeper sleep, the steadier mornings, the clearer days, follows from there.",
-            align: "center",
-            italic: false,
-          },
-          {
-            id: randomUUID(),
-            body: "Test italic urgency line.",
-            align: "left",
-            italic: true,
-          },
+          sampleBlock("lead", randomUUID()),
+          sampleBlock("imagetext", randomUUID(), sec1.url),
+          sampleBlock("steps", randomUUID()),
+          sampleBlock("pullquote", randomUUID()),
+          sampleBlock("product", randomUUID(), sec2.url),
+          sampleBlock("badges", randomUUID()),
         ],
         cta: { label: "Test CTA", url: ctaUrl },
         images: [
@@ -114,182 +96,103 @@ export async function POST(req: Request) {
       return Response.json({ topic, content: testContent });
     }
 
-    // The claims ledger is gone (2026-09-22, with the subject library). It
-    // used to quote sourced figures into this prompt. Email copy is now
-    // written from the brief and the voice spec alone, so a number here has
-    // nothing behind it: keep campaign claims general, or carry the figure in
-    // the brief where a human put it.
-    const prompt = `${LUNIA_VOICE_SPEC}
+    // The claims ledger is gone (2026-09-22, with the subject library). Email
+    // copy is written from the brief, the voice spec and the verified product
+    // facts; a number with nothing behind it does not go in.
+    //
+    // The layout is no longer fixed. It used to be "intro paragraph, a 2-up
+    // picture row, two closing paragraphs", which is three blocks of text in a
+    // row on every email. Now the model writes a designed layout from the same
+    // block vocabulary "Make it visual" uses, and the same design review runs
+    // on it (campaign-layout-pass) before it is returned.
+    const prompt = buildGeneratePrompt({ topic, occasion, offer, tone });
 
-Write a complete marketing email campaign for Lunia Life.
-
-Campaign brief:
-- Topic / angle: ${topic}
-${occasion ? `- Occasion: ${occasion}` : ""}
-${offer ? `- Offer: ${offer}` : ""}
-- Desired tone: ${tone}
-
-The email layout is fixed: a hero image, an optional promo band, an intro text block, a row of 2–4 secondary images, one or two closing text blocks (the last is a short italic urgency line), and a single CTA button.
-
-Image rules — CRITICAL:
-- Provide EXACTLY three "source": "generated" images: one hero + two secondary. Each one must be tied to a specific text block of the email: set "blockIndex" to the index (0-based) of the block it illustrates, and write a detailed photorealistic "prompt" that visually expresses THAT block's specific message (not a generic wellness scene). The prompt MUST NOT contain any text, words, signage, logos, bottles, or product packaging — only an editorial wellness lifestyle scene. Describe scene, light, mood, palette.
-- The hero is always the first generated image and illustrates the campaign's core angle (blockIndex 0).
-- The three generated prompts must describe three clearly DIFFERENT scenes (different setting, subject, and time of day) — they will also be rendered in three different photographic styles downstream.
-- Optionally add ONE extra "source": "asset" secondary showing the Lunia product. Assets are NOT generated — they come from an uploaded library. Always give "assetTypeHint": "product-image" (bottle/product shots). Include it only when a bottle shot genuinely strengthens this campaign. NEVER request the Lunia logo as an image — the logo is chrome, not content, and must never appear as a body image.
-
-Return ONLY valid JSON, no markdown, matching this exact schema:
-
-{
-  "subjectLines": ["string", "string", "string"],
-  "previewText": "string — preheader, extends the subject",
-  "promoBand": "string — short uppercase-style promo line e.g. 'MEMORIAL DAY WEEKEND SALE'; empty string if this is not a promotional email",
-  "blocks": [
-    { "body": "string — intro text block, left-aligned", "align": "left", "italic": false },
-    { "body": "string — closing text block, centered", "align": "center", "italic": false },
-    { "body": "string — short italic urgency line", "align": "left", "italic": true }
-  ],
-  "cta": "string — CTA button label, e.g. 'Start Sleeping Better'",
-  "images": [
-    { "role": "hero", "source": "generated", "blockIndex": 0, "prompt": "..." },
-    { "role": "secondary", "source": "generated", "blockIndex": 1, "prompt": "..." },
-    { "role": "secondary", "source": "generated", "blockIndex": 2, "prompt": "..." },
-    { "role": "secondary", "source": "asset", "assetTypeHint": "product-image" }
-  ]
-}
-
-Provide exactly 3 subjectLines, 2–3 blocks, exactly 3 generated images (1 hero + 2 secondary), and at most 1 asset image.`;
-
-    const response = await createContentMessage({
-      model: CONTENT_MODEL,
-      max_tokens: CONTENT_MAX_TOKENS_LONG,
-      thinking: CONTENT_THINKING,
-      messages: [{ role: "user", content: prompt }],
+    const pass = await runLayoutPass({
+      prompt,
+      sourceText: (draft) => `Brief: ${topic}${occasion ? `\nOccasion: ${occasion}` : ""}${offer ? `\nOffer: ${offer}` : ""}\n\n${blocksToSourceText(draft)}`,
     });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    const raw = textBlock && textBlock.type === "text" ? textBlock.text : "";
-    const jsonText = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-
-    let parsed: RawCampaign;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      console.error("[api/campaign/generate] JSON parse failed:", raw.slice(0, 400));
+    if (!pass.ok) {
       return Response.json({ error: "Generation failed, please try again." }, { status: 422 });
     }
-
-    if (!parsed.images?.length || !parsed.blocks?.length || !parsed.subjectLines?.length) {
+    const parsed = (pass.firstJson ?? {}) as RawCampaign;
+    const subjectLines = Array.isArray(parsed.subjectLines) ? parsed.subjectLines.filter((x) => typeof x === "string" && x.trim()) : [];
+    if (subjectLines.length === 0) {
       return Response.json({ error: "Incomplete campaign, please try again." }, { status: 422 });
     }
 
-    // Resolve AI-suggested assets for "asset" slots. Rotate through the pool
-    // so every asset-source image gets a DIFFERENT asset where possible;
-    // we only repeat when the pool runs out. Previously this just grabbed
-    // the first matching asset every time → hero + secondaries collapsed to
-    // the same bottle shot.
     // The logo is email chrome (the header strip), never body content. Only
-    // product-image assets are eligible for an image slot, and there is no
-    // fallback to the logo pool — an empty product library yields no asset
-    // slot at all rather than quietly dropping the wordmark into the body.
+    // product-image assets are eligible for a picture, and there is no
+    // fallback to the logo pool.
     const assets = await getAssets();
     const logoAsset = assets.find((a) => a.assetType === "logo");
     const productPool = assets.filter((a) => a.assetType === "product-image");
-    const usedAssetIds = new Set<string>();
-    function suggestAsset(): { assetId?: string; url?: string } {
-      const pool = productPool;
-      if (pool.length === 0) return {};
-      // Random among the unused, not the first unused: the first is the same
-      // bottle shot on every campaign ever generated.
-      const unused = pool.filter((a) => !usedAssetIds.has(a.id));
-      const pick = unused[Math.floor(Math.random() * unused.length)] ?? pool[usedAssetIds.size % pool.length];
-      if (!pick) return {};
-      usedAssetIds.add(pick.id);
-      return { assetId: pick.id, url: pick.url };
+
+    const blocks = pass.blocks;
+    // A product card shows the real product, never a generated bottle.
+    for (const b of blocks) {
+      if (b.kind === "product" && !b.imageUrl && productPool.length) {
+        b.imageUrl = productPool[Math.floor(Math.random() * productPool.length)]!.url;
+      }
     }
 
-    // ── The three-image contract ───────────────────────────────────────────
-    // Every campaign ships exactly 3 generated images (1 hero + 2 secondary),
-    // each tied to a text block and assigned a DISTINCT visual mood from the
-    // brand-safe trio, so no two images in one email read as the same style.
-    // At most one extra asset (bottle) secondary is kept from the LLM output.
-    const rawGenerated = parsed.images.filter((i) => i.source === "generated");
-    const rawAsset = parsed.images.filter((i) => i.source === "asset").slice(0, 1);
-
-    const fallbackPromptFor = (blockIndex: number): string => {
-      const block = parsed.blocks[blockIndex]?.body ?? parsed.blocks[0]?.body ?? topic;
-      return `A calm, photoreal wellness lifestyle scene that visually expresses: "${block.slice(0, 200)}". Soft natural light, warm neutral tones, a quiet restful mood.`;
+    const opensWithHeader = blocks[0]?.kind === "headerimage";
+    const heroSlot: CampaignImageSlot | null = opensWithHeader ? null : {
+      id: randomUUID(),
+      role: "hero",
+      source: "generated",
+      aspect: "4:5",
+      prompt: parsed.heroPrompt?.trim() || `A calm, photoreal scene that expresses: "${topic.slice(0, 200)}". Soft natural light, a quiet restful mood.`,
+      mood: CAMPAIGN_IMAGE_MOOD_TRIO[0],
+      url: null,
     };
 
-    // Normalize to exactly 3 generated slots, synthesizing block-tied prompts
-    // for any the model failed to supply.
-    const generatedSlots: CampaignImageSlot[] = [0, 1, 2].map((i) => {
-      const raw = rawGenerated[i];
-      const role: "hero" | "secondary" = i === 0 ? "hero" : "secondary";
-      const aspect: "4:5" | "1:1" = role === "hero" ? "4:5" : "1:1";
-      const blockIndex = typeof raw?.blockIndex === "number" ? raw.blockIndex : Math.min(i, parsed.blocks.length - 1);
-      return {
-        id: randomUUID(),
-        role,
-        source: "generated",
-        aspect,
-        prompt: raw?.prompt?.trim() || fallbackPromptFor(blockIndex),
-        mood: CAMPAIGN_IMAGE_MOOD_TRIO[i],
-        url: null,
-      };
-    });
-
-    // Unresolvable asset slots are dropped rather than kept as empty
-    // placeholders — an asset image only exists when a real product shot
-    // backs it.
-    const assetSlots: CampaignImageSlot[] = rawAsset
-      .map(() => suggestAsset())
-      .filter((a): a is { assetId: string; url: string } => !!a.assetId && !!a.url)
-      .map(({ assetId, url }) => ({
-        id: randomUUID(), role: "secondary" as const, source: "asset" as const, aspect: "1:1" as const, assetId, url,
-      }));
-
-    // Auto-generate the three images in parallel at creation time. A failed
-    // slot keeps url: null — the editor's per-slot Generate button remains the
-    // manual fallback, so one flaky generation never fails the campaign.
+    // Auto-generate the pictures in parallel at creation time: the hero (when
+    // there is one) and every picture block that has a prompt and no picture.
+    // A failed one keeps no url; the block's own Generate button is the manual
+    // fallback, so one flaky generation never fails the campaign.
     if (process.env.FAL_KEY) {
+      type Job = { prompt: string; aspect: "4:5" | "1:1"; role: "hero" | "secondary"; set: (url: string) => void };
+      const jobs: Job[] = [];
+      if (heroSlot) jobs.push({ prompt: heroSlot.prompt!, aspect: "4:5", role: "hero", set: (u) => { heroSlot.url = u; } });
+      for (const b of blocks) {
+        if (b.kind === "product") continue;
+        if (b.imagePrompt && !b.imageUrl) {
+          jobs.push({ prompt: b.imagePrompt, aspect: b.kind === "headerimage" ? "4:5" : "1:1", role: b.kind === "headerimage" ? "hero" : "secondary", set: (u) => { b.imageUrl = u; } });
+        }
+        b.gridCells?.forEach((c) => {
+          if (c.imagePrompt && !c.imageUrl) jobs.push({ prompt: c.imagePrompt, aspect: "1:1", role: "secondary", set: (u) => { c.imageUrl = u; } });
+        });
+      }
       await Promise.allSettled(
-        generatedSlots.map(async (slot) => {
+        jobs.slice(0, 6).map(async (job, i) => {
           try {
-            slot.url = await generateCampaignSlotImage({
-              prompt: slot.prompt!,
-              aspect: slot.aspect,
-              mood: slot.mood,
+            job.set(await generateCampaignSlotImage({
+              prompt: job.prompt,
+              aspect: job.aspect,
+              mood: CAMPAIGN_IMAGE_MOOD_TRIO[i % CAMPAIGN_IMAGE_MOOD_TRIO.length],
               topic,
-              role: slot.role,
-            });
+              role: job.role,
+            }));
           } catch (err) {
-            console.warn(`[api/campaign/generate] auto-image (${slot.role}) failed:`, err);
+            console.warn(`[api/campaign/generate] auto-image (${job.role}) failed:`, err);
           }
         }),
       );
     }
 
-    const images: CampaignImageSlot[] = [...generatedSlots, ...assetSlots];
-
-
     const content: CampaignContent = {
-      subjectLines: parsed.subjectLines.slice(0, 3).map(stripDashes),
+      subjectLines: [...subjectLines, "", "", ""].slice(0, 3).map(stripDashes),
       selectedSubject: 0,
       previewText: stripDashes(parsed.previewText ?? ""),
       logoUrl: logoAsset?.url ?? null,
       showLogo: false,
       promoBand: parsed.promoBand?.trim() ? stripDashes(parsed.promoBand) : undefined,
-      blocks: parsed.blocks.map((b) => ({
-        id: randomUUID(),
-        body: stripDashes(b.body ?? ""),
-        align: b.align === "center" ? "center" : "left",
-        italic: !!b.italic,
-      })),
-      cta: { label: stripDashes(parsed.cta ?? "Shop now"), url: ctaUrl },
-      images,
+      blocks,
+      cta: { label: stripDashes(pass.meta.ctaLabel ?? parsed.ctaLabel ?? "Shop now"), url: ctaUrl },
+      images: heroSlot ? [heroSlot] : [],
     };
 
-    return Response.json({ topic, content });
+    return Response.json({ topic, content, review: pass.review });
   } catch (err) {
     console.error("[api/campaign/generate]", err);
     return Response.json({ error: "Generation failed" }, { status: 500 });

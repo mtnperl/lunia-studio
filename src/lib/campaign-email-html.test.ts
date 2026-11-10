@@ -253,6 +253,11 @@ describe("headingSize", () => {
     { kind: "grid", basePx: 15, block: { gridCells: [{ heading: "One", caption: "First" }] } },
     { kind: "image", basePx: 26, block: { imageOverlayHeadline: "Over the photo" } },
     { kind: "headerimage", basePx: 28, block: { headerHeadline: "Top of the email", headerStyle: "card" } },
+    { kind: "heading", basePx: 30, block: { headline: "A new section" } },
+    { kind: "steps", basePx: 15, block: { steps: [{ title: "First", text: "Do this" }] } },
+    { kind: "faq", basePx: 16, block: { faqs: [{ q: "Does it?", a: "Yes." }] } },
+    { kind: "beforeafter", basePx: 11, block: { beforeItems: ["Old"], afterItems: ["New"] } },
+    { kind: "product", basePx: 20, block: { productName: "Lunia Restore" } },
   ];
 
   /** Same ladder as the renderer's HEADING_SCALES. */
@@ -306,7 +311,7 @@ describe("headingSize", () => {
     // A new kind with a header that nobody wired to headingSize would ship a
     // control that does nothing. Listing the body-only kinds explicitly means
     // adding a kind forces a decision about which list it belongs in.
-    const BODY_ONLY = ["text", "checklist", "testimonial", "trustgrid", "imagebullets"];
+    const BODY_ONLY = ["text", "checklist", "testimonial", "trustgrid", "imagebullets", "lead", "pullquote", "badges", "reviews", "founder"];
     const headed = HEADED.map((h) => h.kind);
     expect([...headed, ...BODY_ONLY].sort()).toEqual([...CAMPAIGN_BLOCK_KINDS].sort());
   });

@@ -180,3 +180,33 @@ EMAIL_FIXTURES.push({
   name: "all-kinds-cream",
   content: { ...allKindsNavy.content, theme: "cream" },
 });
+
+/** The DTC rhythm blocks (2026-11), on both themes. Their own fixture rather
+ *  than part of all-kinds, so the all-kinds baselines stay byte-identical. */
+for (const theme of ["navy", "cream"] as const) {
+  EMAIL_FIXTURES.push({
+    name: `dtc-kinds-${theme}`,
+    content: {
+      subjectLines: ["The DTC blocks", "", ""],
+      selectedSubject: 0,
+      previewText: "Lead, heading, pull quote, steps, FAQ, before and after, badges, product, reviews, founder.",
+      logoUrl: null,
+      showLogo: false,
+      theme,
+      blocks: [
+        { id: "d-lead", kind: "lead", body: "Better sleep is rarely about the worst night.", eyebrow: "Tonight", align: "left" },
+        { id: "d-heading", kind: "heading", body: "Every dose printed on the label.", eyebrow: "How it works", headline: "Three ingredients, three jobs", align: "left" },
+        { id: "d-steps", kind: "steps", body: "", align: "left", steps: [{ title: "Up to 2 capsules", text: "30 to 60 minutes before bed" }, { title: "Keep the last hour dim", text: "Bright light pushes back" }] },
+        { id: "d-pull", kind: "pullquote", body: "Built for every night, not for the worst one.", align: "left" },
+        { id: "d-faq", kind: "faq", body: "", align: "left", faqs: [{ q: "Does it contain melatonin?", a: "No. It is melatonin-free." }, { q: "How do I take it?", a: "Up to 2 capsules before bed." }] },
+        { id: "d-ba", kind: "beforeafter", body: "", align: "left", beforeLabel: "Most sleep aids", afterLabel: "Lunia Restore", beforeItems: ["Melatonin", "Proprietary blend"], afterItems: ["Melatonin-free", "Every dose on the label"] },
+        { id: "d-badges", kind: "badges", body: "", align: "left", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
+        { id: "d-product", kind: "product", body: "", align: "left", productName: "Lunia Restore", productPrice: "$38.93", productComparePrice: "$59.90", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imageUrl: ph("1:1", "PRODUCT", "#102635") },
+        { id: "d-reviews", kind: "reviews", body: "", align: "left", reviews: [{ quote: "Fixture review one.", author: "Fixture A.", stars: 5 }, { quote: "Fixture review two.", author: "Fixture B.", stars: 4 }] },
+        { id: "d-founder", kind: "founder", body: "A short note in the first person.", align: "left", attribution: "Fixture, founder", imageUrl: ph("1:1", "FACE", "#2C3F51") },
+      ],
+      cta: { label: "Start sleeping better", url: "https://www.lunialife.com" },
+      images: [{ id: "h", role: "hero", source: "generated", aspect: "4:5", url: ph("4:5", "HERO 4:5", "#01253F") }],
+    },
+  });
+}

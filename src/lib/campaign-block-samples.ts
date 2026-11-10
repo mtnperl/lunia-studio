@@ -106,6 +106,59 @@ export const BLOCK_SAMPLES: Record<CampaignBlockKind, Partial<CampaignBlock>> = 
     headerStyle: "card",
     headerHeadline: "Stronger mornings start the night before",
   },
+  lead: {
+    eyebrow: "Tonight",
+    body: "Better sleep is rarely about the worst night. It is about what every night has in common.",
+  },
+  heading: {
+    eyebrow: "How it works",
+    headline: "Three ingredients, three jobs",
+    body: "Every dose printed on the label.",
+  },
+  pullquote: {
+    body: "Built for every night, not for the worst one.",
+  },
+  steps: {
+    steps: [
+      { title: "Up to 2 capsules", text: "30 to 60 minutes before bed" },
+      { title: "Keep the last hour dim", text: "Bright light is the main thing pushing back" },
+      { title: "Give it a full week", text: "Judge it on night seven, not night one" },
+    ],
+  },
+  faq: {
+    faqs: [
+      { q: "Does it contain melatonin?", a: "No. Lunia Restore is melatonin-free, so there is nothing to taper off." },
+      { q: "How do I take it?", a: PRODUCT.dose },
+    ],
+  },
+  beforeafter: {
+    beforeLabel: "Most sleep aids",
+    afterLabel: PRODUCT.name,
+    beforeItems: ["Melatonin", "Proprietary blend", "Doses you cannot see"],
+    afterItems: ["Melatonin-free", "Three named ingredients", "Every dose on the label"],
+  },
+  badges: {
+    badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"],
+  },
+  product: {
+    productName: PRODUCT.name,
+    productPrice: money(PRODUCT.price1Bottle),
+    productComparePrice: money(PRODUCT.compareAtPrice),
+    productNote: `${PRODUCT.capsulesPerBottle} capsules, ${PRODUCT.servingsPerBottle} nights`,
+    buttonLabel: "Shop now",
+  },
+  reviews: {
+    // Deliberately unusable as-is, for the same reason as testimonial.
+    reviews: [
+      { quote: "Replace this with a real review before sending.", author: "Sample, not a real customer", stars: 5 },
+      { quote: "Replace this with a second real review.", author: "Sample, not a real customer", stars: 5 },
+    ],
+  },
+  founder: {
+    // A person's words cannot be sampled honestly, so this is a visible prompt.
+    body: "Replace this with a few lines in your own voice: why you started Lunia, and what you want this email to do.",
+    attribution: "Your name, founder",
+  },
 };
 
 /** A ready-to-edit block of the given kind.
@@ -129,7 +182,7 @@ export function sampleBlock(kind: CampaignBlockKind, id: string, imageUrl?: stri
   // Kind "image" is excluded: it points at a slot in content.images, which the
   // editor creates alongside it.
   if (imageUrl) {
-    if (kind === "imagetext" || kind === "imagebullets" || kind === "headerimage") {
+    if (kind === "imagetext" || kind === "imagebullets" || kind === "headerimage" || kind === "product") {
       block.imageUrl = imageUrl;
     } else if (kind === "grid") {
       block.gridCells = (block.gridCells ?? []).map((c) => ({ ...c, imageUrl }));
@@ -169,6 +222,11 @@ export function emptyBlock(kind: CampaignBlockKind, id: string): CampaignBlock {
   if (kind === "grid") base.gridCells = [];
   if (kind === "table") base.tableHeaders = ["", ""];
   if (kind === "image") base.imageLayout = "column";
+  if (kind === "steps") base.steps = [];
+  if (kind === "faq") base.faqs = [];
+  if (kind === "badges") base.badges = [];
+  if (kind === "reviews") base.reviews = [];
+  if (kind === "beforeafter") { base.beforeItems = []; base.afterItems = []; }
   return base;
 }
 

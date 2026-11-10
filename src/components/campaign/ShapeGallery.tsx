@@ -29,7 +29,7 @@ function thumbnailContent(shape: CampaignShape): CampaignContent {
     showLogo: false,
     topBanner: shape.topBanner,
     promoBand: shape.promoBand,
-    blocks: (shape.starter ?? []).map(layoutBlockToCampaignBlock),
+    blocks: (shape.starter ?? []).map((x) => layoutBlockToCampaignBlock(x)),
     cta: { label: shape.ctaLabel ?? "Shop now", url: "#", showOnHero: false },
     images: [],
   };

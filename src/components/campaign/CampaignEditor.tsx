@@ -70,6 +70,16 @@ const BLOCK_KIND_META: Record<BlockKind, { label: string; title: string }> = {
   imagebullets: { label: "Image + bullets", title: "A picture beside a bulleted list with a colour you choose" },
   grid: { label: "Grid", title: "A 2-column grid of picture + heading + caption, each able to generate its own image" },
   headerimage: { label: "Header image", title: "A header treatment that replaces the hero: headline card over the image, or highlighted headline above it" },
+  lead: { label: "Lead", title: "A large, light opening paragraph with an optional eyebrow" },
+  heading: { label: "Section heading", title: "An eyebrow and a large headline that starts a new section" },
+  pullquote: { label: "Pull quote", title: "One line set large between two short rules" },
+  steps: { label: "Steps", title: "Numbered steps, a title and one line each" },
+  faq: { label: "FAQ", title: "Questions and answers, for objections" },
+  beforeafter: { label: "Before / after", title: "Two columns of short lines, the second one emphasised" },
+  badges: { label: "Badges", title: "A row of up to four outlined trust tags" },
+  product: { label: "Product card", title: "Picture, name, price, one line and its own button" },
+  reviews: { label: "Reviews", title: "Two or three short customer reviews, stacked" },
+  founder: { label: "Founder note", title: "A short signed note with an optional round portrait" },
 };
 
 /** Menu order. Defaults to declaration order in CAMPAIGN_BLOCK_KINDS; listing
@@ -137,6 +147,13 @@ function blockPreviewText(b: CampaignBlock): string {
     b.bulletItems?.filter(Boolean).join(", ") ||
     b.tableHeaders?.filter(Boolean).join(" / ") ||
     b.gridCells?.map((c) => c.heading ?? c.caption).filter(Boolean).join(", ") ||
+    b.headline ||
+    b.productName ||
+    b.steps?.map((x) => x.title).filter(Boolean).join(", ") ||
+    b.faqs?.map((x) => x.q).filter(Boolean).join(" / ") ||
+    b.badges?.filter(Boolean).join(", ") ||
+    b.reviews?.map((x) => x.quote).find(Boolean) ||
+    b.afterItems?.filter(Boolean).join(", ") ||
     (b.kind === "image"
       ? [b.imageOverlayHeadline, b.imageSplitText].find((t) => t?.trim()) ?? "Image"
       : "") ||
@@ -263,6 +280,7 @@ const BLOCK_HEADING_SIZES: { key: CampaignHeadingSize; label: string; title: str
 const HEADING_KINDS = new Set<BlockKind>([
   "stat", "discount", "timeline", "comparison", "ingredients",
   "table", "imagetext", "grid", "image", "headerimage",
+  "heading", "steps", "faq", "beforeafter", "product",
 ]);
 
 /** What the header line actually IS, per kind — so the control says which
@@ -278,6 +296,11 @@ const HEADING_FIELD_LABEL: Partial<Record<BlockKind, string>> = {
   grid: "the cell headings",
   image: "the overlay headline",
   headerimage: "the headline",
+  heading: "the headline",
+  steps: "the step titles",
+  faq: "the questions",
+  beforeafter: "the column labels",
+  product: "the product name",
 };
 
 // Space between blocks — the gap below every body block. Presets on the 8px
@@ -1322,7 +1345,7 @@ export default function CampaignEditor({
     if (!hasCopy) {
       const ctx = emailImageContext(c);
       setPendingBlocks(
-        (shape.starter ?? []).map(layoutBlockToCampaignBlock).map((block) => ({
+        (shape.starter ?? []).map((x) => layoutBlockToCampaignBlock(x)).map((block) => ({
           block: withImagePrompt(block, ctx),
           included: true,
         })),
@@ -1345,7 +1368,7 @@ export default function CampaignEditor({
         headers: { "Content-Type": "application/json" },
         // The SHAPE ID, never its guidance: guidance is interpolated into an
         // LLM prompt and is resolved server-side.
-        body: JSON.stringify({ blocks: c.blocks, subject, topic, shapeId: shape.id }),
+        body: JSON.stringify({ blocks: c.blocks, images: c.images, subject, topic, shapeId: shape.id }),
       });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data.blocks)) {
@@ -1360,11 +1383,17 @@ export default function CampaignEditor({
       setPendingMode("replace");
       setShapeGalleryOpen(false);
       const dropped = (Number(data.droppedForSchema) || 0) + (Number(data.droppedForTokens) || 0);
-      setRestructureDropped(
-        dropped > 0
-          ? `${dropped} block${dropped === 1 ? "" : "s"} came back unusable and ${dropped === 1 ? "was" : "were"} dropped. The rest is below.`
-          : null,
-      );
+      const notes: string[] = [];
+      if (dropped > 0) notes.push(`${dropped} block${dropped === 1 ? "" : "s"} came back unusable and ${dropped === 1 ? "was" : "were"} dropped. The rest is below.`);
+      // The design review ran before this came back. Say what it caught, and
+      // anything it could not fix, so the diff is read with that in mind.
+      type Finding = { severity: string; message: string };
+      const review = data.review as { before?: Finding[]; after?: Finding[]; fixed?: boolean } | undefined;
+      const caught = (review?.before ?? []).filter((f) => f.severity === "error").length;
+      const left = (review?.after ?? []).filter((f) => f.severity === "error");
+      if (review?.fixed && caught > 0) notes.push(`Design review caught ${caught} layout problem${caught === 1 ? "" : "s"} and fixed ${caught - left.length === caught ? "them" : `${caught - left.length}`}.`);
+      if (left.length > 0) notes.push(`Still worth a look: ${left.map((f) => f.message).join(" ")}`);
+      setRestructureDropped(notes.length ? notes.join(" ") : null);
     } catch (err) {
       setRestructureError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -2491,6 +2520,204 @@ export default function CampaignEditor({
                       </div>
                     );
                   })()}
+
+                  {(kind === "lead" || kind === "heading" || kind === "pullquote" || kind === "founder") && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      {(kind === "lead" || kind === "heading") && (
+                        <input
+                          type="text"
+                          value={b.eyebrow ?? ""}
+                          onChange={(e) => updateBlock(b.id, { eyebrow: e.target.value })}
+                          placeholder="Eyebrow, e.g. How it works (optional)"
+                          style={{ ...input, fontSize: 12 }}
+                        />
+                      )}
+                      {kind === "heading" && (
+                        <input
+                          type="text"
+                          value={b.headline ?? ""}
+                          onChange={(e) => updateBlock(b.id, { headline: e.target.value })}
+                          placeholder="Section headline"
+                          style={{ ...input, fontSize: 13 }}
+                        />
+                      )}
+                      <div>
+                        <InlineStyleToolbar
+                          blockId={b.id}
+                          value={b.body}
+                          onChange={(next) => updateBlock(b.id, { body: next })}
+                          getSelection={insertHook.getSelection}
+                          setSelection={insertHook.setSelection}
+                          preserveSelectionOnClick={insertHook.preserveSelectionOnClick}
+                        />
+                        <AutoTextarea
+                          registerRef={insertHook.registerTextarea(b.id)}
+                          onFocus={() => insertHook.onFocusBlock(b.id)}
+                          value={b.body}
+                          onChange={(e) => updateBlock(b.id, { body: e.target.value })}
+                          minHeight={kind === "founder" ? 84 : 52}
+                          placeholder={
+                            kind === "lead" ? "One or two sentences, set large and light"
+                              : kind === "heading" ? "Subline under the headline (optional)"
+                              : kind === "pullquote" ? "One line worth saying twice"
+                              : "The note, in your own voice"
+                          }
+                          style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                        />
+                      </div>
+                      {(kind === "lead" || kind === "heading") && (
+                        <div style={segWrap}>
+                          <SegButton active={b.align !== "center"} onClick={() => updateBlock(b.id, { align: "left" })} title="Align left"><IcAlignLeft /></SegButton>
+                          <SegButton active={b.align === "center"} onClick={() => updateBlock(b.id, { align: "center" })} title="Align center" last><IcAlignCenter /></SegButton>
+                        </div>
+                      )}
+                      {(kind === "pullquote" || kind === "founder") && (
+                        <input
+                          type="text"
+                          value={b.attribution ?? ""}
+                          onChange={(e) => updateBlock(b.id, { attribution: e.target.value })}
+                          placeholder={kind === "founder" ? "Signature, e.g. Mathan, founder" : "Attribution (optional, leave empty for the brand's own words)"}
+                          style={{ ...input, fontSize: 12 }}
+                        />
+                      )}
+                      {kind === "founder" && (
+                        <BlockImageControl
+                          imageUrl={b.imageUrl}
+                          imagePrompt={b.imagePrompt}
+                          aspect="1:1"
+                          onAspectChange={() => {}}
+                          topic={topic}
+                          suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
+                          blockText={blockOwnText(b)}
+                          emailContext={emailImageContext(content).copy?.join(" ")}
+                          usedImageUrls={usedImageUrls}
+                          onChange={(patch) => updateBlock(b.id, patch)}
+                          promptModel={b.promptModel}
+                          promptInstructions={b.promptInstructions}
+                          imageModel={b.imageModel}
+                          imageSourceUrl={b.imageSourceUrl}
+                          imageCrop={b.imageCrop}
+                          onSettingsChange={(patch) => updateBlock(b.id, patch)}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {kind === "steps" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <RepeatableRows
+                        rows={(b.steps ?? []).map((s) => ({ title: s.title ?? "", text: s.text ?? "" }))}
+                        fields={[
+                          { key: "title", placeholder: "Step title" },
+                          { key: "text", placeholder: "One line" },
+                        ]}
+                        onChange={(next) => updateBlock(b.id, { steps: next })}
+                        addLabel="+ Step"
+                      />
+                    </div>
+                  )}
+
+                  {kind === "faq" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <RepeatableRows
+                        rows={(b.faqs ?? []).map((f) => ({ q: f.q ?? "", a: f.a ?? "" }))}
+                        fields={[
+                          { key: "q", placeholder: "Question" },
+                          { key: "a", placeholder: "Answer" },
+                        ]}
+                        onChange={(next) => updateBlock(b.id, { faqs: next })}
+                        addLabel="+ Question"
+                      />
+                    </div>
+                  )}
+
+                  {kind === "beforeafter" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", gap: 10 }}>
+                      {([
+                        { side: "before", label: b.beforeLabel, items: b.beforeItems, ph: "Before, e.g. Most sleep aids" },
+                        { side: "after", label: b.afterLabel, items: b.afterItems, ph: "After, e.g. Lunia Restore" },
+                      ] as const).map((col) => (
+                        <div key={col.side} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <input
+                            type="text"
+                            value={col.label ?? ""}
+                            onChange={(e) => updateBlock(b.id, col.side === "before" ? { beforeLabel: e.target.value } : { afterLabel: e.target.value })}
+                            placeholder={col.ph}
+                            style={{ ...input, fontSize: 12 }}
+                          />
+                          <AutoTextarea
+                            value={(col.items ?? []).join("\n")}
+                            onChange={(e) => {
+                              const lines = e.target.value.split("\n");
+                              updateBlock(b.id, col.side === "before" ? { beforeItems: lines } : { afterItems: lines });
+                            }}
+                            minHeight={70}
+                            placeholder="One line per point"
+                            style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {kind === "badges" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <AutoTextarea
+                        value={(b.badges ?? []).join("\n")}
+                        onChange={(e) => updateBlock(b.id, { badges: e.target.value.split("\n") })}
+                        minHeight={70}
+                        placeholder={"Up to four, one per line, e.g.\nMelatonin-free\nEvery dose on the label"}
+                        style={{ ...input, lineHeight: 1.55, fontSize: 12, background: "var(--bg)" }}
+                      />
+                    </div>
+                  )}
+
+                  {kind === "product" && (
+                    <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                      <input type="text" value={b.productName ?? ""} onChange={(e) => updateBlock(b.id, { productName: e.target.value })} placeholder="Product name" style={{ ...input, fontSize: 13 }} />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <input type="text" value={b.productPrice ?? ""} onChange={(e) => updateBlock(b.id, { productPrice: e.target.value })} placeholder="Price, e.g. $38.93" style={{ ...input, fontSize: 12, flex: 1 }} />
+                        <input type="text" value={b.productComparePrice ?? ""} onChange={(e) => updateBlock(b.id, { productComparePrice: e.target.value })} placeholder="Compare at (optional)" style={{ ...input, fontSize: 12, flex: 1 }} />
+                      </div>
+                      <input type="text" value={b.productNote ?? ""} onChange={(e) => updateBlock(b.id, { productNote: e.target.value })} placeholder="One line, e.g. 60 capsules, 30 nights" style={{ ...input, fontSize: 12 }} />
+                      <input type="text" value={b.buttonLabel ?? ""} onChange={(e) => updateBlock(b.id, { buttonLabel: e.target.value })} placeholder="Button label (default: Shop now)" style={{ ...input, fontSize: 12 }} />
+                      <input type="text" value={b.linkUrl ?? ""} onChange={(e) => updateBlock(b.id, { linkUrl: e.target.value })} placeholder="Link (default: the email's CTA link)" style={{ ...input, fontSize: 12 }} />
+                      <BlockImageControl
+                        imageUrl={b.imageUrl}
+                        imagePrompt={b.imagePrompt}
+                        aspect={b.imageAspect ?? "1:1"}
+                        onAspectChange={(imageAspect) => updateBlock(b.id, { imageAspect })}
+                        topic={topic}
+                        suggestPrompt={() => suggestImagePrompt(b, emailImageContext(content))}
+                        blockText={blockOwnText(b)}
+                        emailContext={emailImageContext(content).copy?.join(" ")}
+                        usedImageUrls={usedImageUrls}
+                        onChange={(patch) => updateBlock(b.id, patch)}
+                        promptModel={b.promptModel}
+                        promptInstructions={b.promptInstructions}
+                        imageModel={b.imageModel}
+                        imageSourceUrl={b.imageSourceUrl}
+                        imageCrop={b.imageCrop}
+                        onSettingsChange={(patch) => updateBlock(b.id, patch)}
+                      />
+                    </div>
+                  )}
+
+                  {kind === "reviews" && (
+                    <div style={{ padding: "8px 10px 10px" }}>
+                      <RepeatableRows
+                        rows={(b.reviews ?? []).map((r) => ({ quote: r.quote ?? "", author: r.author ?? "" }))}
+                        fields={[
+                          { key: "quote", placeholder: "A real review, word for word" },
+                          { key: "author", placeholder: "e.g. Sarah K., verified customer" },
+                        ]}
+                        onChange={(next) => updateBlock(b.id, {
+                          reviews: next.map((r, i) => ({ ...r, stars: b.reviews?.[i]?.stars ?? 5 })),
+                        })}
+                        addLabel="+ Review"
+                      />
+                    </div>
+                  )}
 
                   {kind === "ingredients" && (
                     <div style={{ padding: "8px 10px 10px", display: "flex", flexDirection: "column", gap: 10 }}>

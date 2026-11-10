@@ -80,7 +80,7 @@ Return ONLY valid JSON, no markdown fences: { "alternates": [ <block1>, <block2>
       return Response.json({ error: "Regeneration failed, please try again." }, { status: 422 });
     }
 
-    const alternates = result.data.alternates.map(layoutBlockToCampaignBlock);
+    const alternates = result.data.alternates.map((x) => layoutBlockToCampaignBlock(x));
     return Response.json({ alternates });
   } catch (err) {
     console.error("[api/campaign/regenerate-block]", err);
