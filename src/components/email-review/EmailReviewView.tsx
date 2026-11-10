@@ -14,6 +14,7 @@ import CreateFlowPanel from "@/components/email-review/CreateFlowPanel";
 import CarouselToEmailPanel from "@/components/email-review/CarouselToEmailPanel";
 import EmailPreviewPanel from "@/components/email-review/EmailPreviewPanel";
 import type { EmailFlow, SavedCarousel, SavedFlowReview } from "@/lib/types";
+import { Button } from "@/components/ui";
 
 type Mode = "input" | "running" | "review";
 
@@ -151,39 +152,39 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
     return (
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "32px 32px 80px", display: "flex", flexDirection: "column", gap: 20 }}>
         <header>
-          <h1 style={{ fontFamily: "var(--font-ui, Inter)", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>Email flow review</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "var(--ui-tracking-tight)", color: "var(--ui-text)" }}>Email flow review</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted)" }}>
             Pull a flow from Klaviyo, upload one manually, or describe a new flow and let Claude draft it from scratch.
           </p>
         </header>
 
         {error && (
-          <div style={{ padding: "10px 14px", background: "rgba(184, 92, 92, 0.08)", border: "1px solid rgba(184, 92, 92, 0.3)", borderRadius: 8, fontSize: 13, color: "var(--error)" }}>{error}</div>
+          <div style={{ padding: "10px 14px", background: "var(--ui-danger-tint)", border: "1px solid var(--ui-border)", borderRadius: 8, fontSize: 13, color: "var(--error)" }}>{error}</div>
         )}
 
         {showInputType === "choose" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <button onClick={() => setShowInputType("klaviyo")} style={inputCardStyle}>
+            <button onClick={() => setShowInputType("klaviyo")} className="ui-card-btn" style={inputCardStyle}>
               <span style={cardKickerStyle}>Klaviyo</span>
               <span style={cardTitleStyle}>Review a Klaviyo flow →</span>
               <span style={cardSubStyle}>Browse + select. We pull every email + send delay automatically.</span>
             </button>
-            <button onClick={() => setShowInputType("upload")} style={inputCardStyle}>
+            <button onClick={() => setShowInputType("upload")} className="ui-card-btn" style={inputCardStyle}>
               <span style={cardKickerStyle}>Upload</span>
               <span style={cardTitleStyle}>Review an existing flow →</span>
               <span style={cardSubStyle}>Paste email copy manually. Works without a Klaviyo connection.</span>
             </button>
-            <button onClick={() => setShowInputType("create")} style={{ ...inputCardStyle, borderColor: "#BFFBF8", background: "rgba(191,251,248,0.06)" }}>
-              <span style={{ ...cardKickerStyle, color: "#1a6b68" }}>Create</span>
+            <button onClick={() => setShowInputType("create")} className="ui-card-btn" style={inputCardStyle}>
+              <span style={cardKickerStyle}>Create</span>
               <span style={cardTitleStyle}>Create a new flow →</span>
               <span style={cardSubStyle}>Describe the use case and Claude drafts a publish-ready flow from scratch.</span>
             </button>
             <button
               onClick={() => setShowInputType("carousel")}
-              style={{ ...inputCardStyle, borderColor: "#FFD800", background: "rgba(255,216,0,0.05)" }}
+              className="ui-card-btn" style={inputCardStyle}
             >
-              <span style={{ ...cardKickerStyle, color: "#856c00" }}>Carousel</span>
-              <span style={cardTitleStyle}>✉ From carousel →</span>
+              <span style={cardKickerStyle}>Carousel</span>
+              <span style={cardTitleStyle}>From carousel →</span>
               <span style={cardSubStyle}>Pick a carousel from the library. Claude converts it to a publish-ready email flow instantly.</span>
             </button>
           </div>
@@ -222,14 +223,11 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
           // Cold-start: user clicked "From carousel" without a pre-loaded carousel.
           // Show a lightweight picker that populates activeCarousel and mounts the panel.
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#102635", fontFamily: "Arial, sans-serif" }}>Choose a carousel from the library</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>Go to the <strong>Carousel library</strong> tab and click <strong>✉ Make email</strong> on any carousel.</div>
-            <button
-              onClick={() => setShowInputType("choose")}
-              style={{ alignSelf: "flex-start", padding: "7px 14px", fontSize: 12, fontWeight: 600, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit" }}
-            >
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)" }}>Choose a carousel from the library</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>Go to the <strong>Carousel library</strong> tab and click <strong>Make email</strong> on any carousel.</div>
+            <Button variant="secondary" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => setShowInputType("choose")}>
               ← Back
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -261,25 +259,22 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
     <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 32px 80px", display: "flex", flexDirection: "column", gap: 22 }}>
       <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text-2)", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase" }}>
             Lunia email flow review · framework {review.frameworkVersion}
           </div>
-          <h1 style={{ fontFamily: "Arial, sans-serif", fontSize: 28, fontWeight: 700, margin: "4px 0 0", color: "#102635", letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, margin: "4px 0 0", color: "var(--ui-text)", letterSpacing: "var(--ui-tracking-tight)" }}>
             {review.flow.flowName}
           </h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--ui-text-3)", fontFamily: "var(--ui-font-mono)" }}>
             {review.flow.flowType.replace(/_/g, " ")} · {review.flow.source} · {review.flow.emails.length} emails · {new Date(review.createdAt).toLocaleString()}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <CopyButton text={copyEntire} label="Copy entire review" size="md" variant="outline" />
           <ExportDocxButton reviewId={review.id} flowName={review.flow.flowName} />
-          <button
-            onClick={() => { setMode("input"); setReview(null); setShowInputType("choose"); }}
-            style={{ padding: "7px 14px", fontSize: 12, background: "transparent", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}
-          >
+          <Button variant="secondary" size="sm" onClick={() => { setMode("input"); setReview(null); setShowInputType("choose"); }}>
             ← New review
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -299,11 +294,14 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
         />
       )}
 
-      <section style={{ background: "#102635", color: "#fff", borderRadius: 12, padding: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#BFFBF8", letterSpacing: "0.08em", textTransform: "uppercase" }}>If you only do three things</div>
-        <ol style={{ margin: "12px 0 0", paddingLeft: 22, fontFamily: "Arial, sans-serif", fontSize: 14, lineHeight: 1.55 }}>
+      <section style={{ background: "var(--ui-surface)", border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-4)", padding: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--ui-text)" }}>If you only do three things</h2>
+        <ol style={{ margin: "16px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 12 }}>
           {review.ifYouOnlyDoThree.map((item, i) => (
-            <li key={i} style={{ marginBottom: 8 }}>{item}</li>
+            <li key={i} style={{ display: "flex", gap: 16, fontSize: 15, lineHeight: 1.55, color: "var(--ui-text)" }}>
+              <span style={{ flexShrink: 0, width: 24, fontFamily: "var(--ui-font-mono)", fontSize: 13, lineHeight: "23px", color: "var(--ui-text-3)" }}>{String(i + 1).padStart(2, "0")}</span>
+              <span>{item}</span>
+            </li>
           ))}
         </ol>
       </section>
@@ -315,19 +313,14 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
             display: "inline-flex",
             alignSelf: "flex-start",
             alignItems: "center",
-            gap: 7,
-            padding: "5px 12px",
-            background: "rgba(255,216,0,0.10)",
-            border: "1px solid rgba(255,216,0,0.40)",
-            borderRadius: 20,
-            fontSize: 11,
-            fontFamily: "Arial, sans-serif",
-            color: "#856c00",
-            fontWeight: 600,
-            letterSpacing: "0.02em",
+            gap: 8,
+            padding: "4px 10px",
+            background: "var(--ui-selection-tint)",
+            borderRadius: "var(--ui-radius-2)",
+            fontSize: 12,
+            color: "var(--ui-text-2)",
           }}
         >
-          <span>✉</span>
           <span>From carousel: {review.flow.flowName.split("—")[0]?.trim() || review.flow.carouselId}</span>
         </div>
       )}
@@ -444,7 +437,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
       {/* Per-email Klaviyo writeback row — only meaningful for Klaviyo-sourced flows */}
       {review.flow.source === "klaviyo" && (
         <section style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 style={{ margin: 0, fontFamily: "Arial, sans-serif", fontSize: 18, fontWeight: 700, color: "#102635" }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--ui-text)" }}>
             Push rewrites to Klaviyo
           </h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
@@ -454,7 +447,7 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {review.flow.emails.map((email, i) => (
               <div key={email.id} style={{ background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>Email {i + 1} — {email.subject || "(no subject)"}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Email {i + 1} — {email.subject || "(no subject)"}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <KlaviyoPushButton reviewId={review.id} emailId={email.id} sourceTemplateId={email.id} target="body" contentVersion="A" bodyHtml={email.html} label={`Push body Version A`} />
                   <KlaviyoPushButton reviewId={review.id} emailId={email.id} sourceTemplateId={email.id} target="body" contentVersion="B" bodyHtml={email.html} label={`Push body Version B`} />
@@ -469,33 +462,27 @@ export default function EmailReviewView({ initialFlow, initialReviewId, initialC
 }
 
 const inputCardStyle: React.CSSProperties = {
-  padding: "22px 24px",
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: 12,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  textAlign: "left",
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
+  padding: "20px 24px",
+  borderRadius: "var(--ui-radius-4)",
+  gap: 6,
 };
 
 const cardKickerStyle: React.CSSProperties = {
   fontSize: 11,
-  fontWeight: 700,
-  color: "var(--accent)",
-  letterSpacing: "0.08em",
+  fontWeight: 600,
+  color: "var(--ui-text-2)",
+  letterSpacing: "var(--ui-tracking-caps)",
   textTransform: "uppercase",
 };
 
 const cardTitleStyle: React.CSSProperties = {
-  fontSize: 17,
-  fontWeight: 700,
-  color: "var(--text)",
+  fontSize: 16,
+  fontWeight: 600,
+  color: "var(--ui-text)",
 };
 
 const cardSubStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: "var(--muted)",
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: "var(--ui-text-2)",
 };

@@ -6,6 +6,7 @@ function randomUUID(): string {
 }
 import LuniaLinter from "@/components/email-review/LuniaLinter";
 import type { EmailFlow, EmailFlowAsset, EmailFlowType } from "@/lib/types";
+import { Button } from "@/components/ui";
 
 const FLOW_TYPES: { key: EmailFlowType; label: string }[] = [
   { key: "abandoned_checkout", label: "Abandoned checkout" },
@@ -132,7 +133,7 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Upload an email flow</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Upload an email flow</div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
           Paste the body text of each email. Subject + preview + send delay are required. Metrics are optional but make Section 2 (timing) much sharper.
         </div>
@@ -144,8 +145,8 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
         alignItems: "center",
         gap: 12,
         padding: "12px 16px",
-        background: emailGap > 0 ? "#FFFBE6" : "#E8F4EC",
-        border: `1px solid ${emailGap > 0 ? "#FFD800" : "rgba(31,111,58,0.35)"}`,
+        background: emailGap > 0 ? "var(--ui-surface)" : "var(--ui-surface)",
+        border: `1px solid ${emailGap > 0 ? "var(--ui-border-strong)" : "var(--ui-border)"}`,
         borderRadius: 10,
         flexWrap: "wrap",
       }}>
@@ -153,47 +154,31 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
           <span style={{
             flexShrink: 0,
             padding: "3px 10px",
-            background: emailGap > 0 ? "#102635" : "#1f6f3a",
-            color: "#fff",
+            background: emailGap > 0 ? "var(--ui-ink)" : "var(--ui-success)",
+            color: "var(--ui-on-ink)",
             fontSize: 12,
-            fontWeight: 700,
+            fontWeight: 600,
             borderRadius: 5,
             letterSpacing: "0.02em",
-            fontFamily: "Arial, sans-serif",
           }}>
             {emails.length} / {canon.count} emails
           </span>
-          <span style={{ fontSize: 13, color: emailGap > 0 ? "#5a4500" : "#1f6f3a", fontFamily: "Arial, sans-serif" }}>
+          <span style={{ fontSize: 13, color: emailGap > 0 ? "var(--ui-text-2)" : "var(--ui-success)" }}>
             {emailGap > 0
               ? `Framework recommends ${canon.count} emails for this flow type · ${canon.timing}`
               : `At the recommended count · ${canon.timing}`}
           </span>
         </div>
         {emailGap > 0 && (
-          <button
-            onClick={fillToCanon}
-            style={{
-              flexShrink: 0,
-              padding: "6px 14px",
-              fontSize: 12,
-              fontWeight: 700,
-              background: "#102635",
-              color: "#fff",
-              border: "1px solid #102635",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.02em",
-            }}
-          >
+          <Button variant="secondary" size="sm" onClick={fillToCanon}>
             + Add {emailGap} empty slot{emailGap === 1 ? "" : "s"}
-          </button>
+          </Button>
         )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Field label="Flow type">
-          <select
+          <select className="ui-input"
             value={flowType}
             onChange={(e) => setFlowType(e.target.value as EmailFlowType)}
             style={selectStyle}
@@ -202,7 +187,7 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
           </select>
         </Field>
         <Field label="Flow name">
-          <input
+          <input className="ui-input"
             type="text"
             value={flowName}
             onChange={(e) => setFlowName(e.target.value)}
@@ -211,7 +196,7 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
           />
         </Field>
         <Field label="Trigger" style={{ gridColumn: "1 / -1" }}>
-          <input
+          <input className="ui-input"
             type="text"
             value={trigger}
             onChange={(e) => setTrigger(e.target.value)}
@@ -225,7 +210,7 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
         {emails.map((e, idx) => (
           <div key={e.id} style={{ background: "var(--surface-r)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Email {idx + 1}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Email {idx + 1}</div>
               {emails.length > 1 && (
                 <button
                   onClick={() => removeEmail(idx)}
@@ -237,20 +222,22 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-              <Field label="Subject"><input value={e.subject} onChange={(ev) => setField(idx, { subject: ev.target.value })} style={inputStyle} placeholder="Subject line" /></Field>
-              <Field label="Preview text"><input value={e.previewText} onChange={(ev) => setField(idx, { previewText: ev.target.value })} style={inputStyle} placeholder="Preview / preheader" /></Field>
-              <Field label="Sender name"><input value={e.senderName} onChange={(ev) => setField(idx, { senderName: ev.target.value })} style={inputStyle} placeholder="Lunia Life" /></Field>
-              <Field label="Sender email"><input value={e.senderEmail} onChange={(ev) => setField(idx, { senderEmail: ev.target.value })} style={inputStyle} placeholder="info@lunialife.com" /></Field>
-              <Field label="Send delay (hours from trigger)"><input value={e.sendDelayHours} onChange={(ev) => setField(idx, { sendDelayHours: ev.target.value })} style={inputStyle} placeholder="3" /></Field>
-              <Field label="Open rate / Click rate / RPR (optional)" style={{ display: "flex", gap: 6 }}>
-                <input value={e.metricsOpen} onChange={(ev) => setField(idx, { metricsOpen: ev.target.value })} placeholder="OR%" style={smallInputStyle} />
-                <input value={e.metricsClick} onChange={(ev) => setField(idx, { metricsClick: ev.target.value })} placeholder="CR%" style={smallInputStyle} />
-                <input value={e.metricsRpr} onChange={(ev) => setField(idx, { metricsRpr: ev.target.value })} placeholder="$RPR" style={smallInputStyle} />
+              <Field label="Subject"><input className="ui-input" value={e.subject} onChange={(ev) => setField(idx, { subject: ev.target.value })} style={inputStyle} placeholder="Subject line" /></Field>
+              <Field label="Preview text"><input className="ui-input" value={e.previewText} onChange={(ev) => setField(idx, { previewText: ev.target.value })} style={inputStyle} placeholder="Preview / preheader" /></Field>
+              <Field label="Sender name"><input className="ui-input" value={e.senderName} onChange={(ev) => setField(idx, { senderName: ev.target.value })} style={inputStyle} placeholder="Lunia Life" /></Field>
+              <Field label="Sender email"><input className="ui-input" value={e.senderEmail} onChange={(ev) => setField(idx, { senderEmail: ev.target.value })} style={inputStyle} placeholder="info@lunialife.com" /></Field>
+              <Field label="Send delay (hours from trigger)"><input className="ui-input" value={e.sendDelayHours} onChange={(ev) => setField(idx, { sendDelayHours: ev.target.value })} style={inputStyle} placeholder="3" /></Field>
+              <Field label="Open rate / Click rate / RPR (optional)">
+                <div style={{ display: "flex", gap: 6 }}>
+                <input className="ui-input" value={e.metricsOpen} onChange={(ev) => setField(idx, { metricsOpen: ev.target.value })} placeholder="OR%" style={smallInputStyle} />
+                <input className="ui-input" value={e.metricsClick} onChange={(ev) => setField(idx, { metricsClick: ev.target.value })} placeholder="CR%" style={smallInputStyle} />
+                <input className="ui-input" value={e.metricsRpr} onChange={(ev) => setField(idx, { metricsRpr: ev.target.value })} placeholder="$RPR" style={smallInputStyle} />
+                </div>
               </Field>
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 6 }}>Email body</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600, marginBottom: 6 }}>Email body</div>
               <LuniaLinter
                 value={e.bodyText}
                 onChange={(v) => setField(idx, { bodyText: v })}
@@ -264,20 +251,12 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-        <button onClick={addEmail} style={ghostButtonStyle}>+ Add another email</button>
+        <Button variant="secondary" size="md" onClick={addEmail}>+ Add another email</Button>
         <div style={{ display: "flex", gap: 8 }}>
-          {onCancel && <button onClick={onCancel} style={ghostButtonStyle}>Cancel</button>}
-          <button
-            onClick={() => onSubmit(buildFlow())}
-            disabled={!canSubmit}
-            style={{
-              ...primaryButtonStyle,
-              opacity: canSubmit ? 1 : 0.5,
-              cursor: canSubmit ? "pointer" : "not-allowed",
-            }}
-          >
+          {onCancel && <Button variant="secondary" size="md" onClick={onCancel}>Cancel</Button>}
+          <Button variant="primary" size="md" onClick={() => onSubmit(buildFlow())} disabled={!canSubmit}>
             Use this flow →
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -287,34 +266,17 @@ export default function FlowUploadStep({ onSubmit, onCancel }: Props) {
 function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
-      <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--ui-text-2)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600 }}>{label}</span>
       {children}
     </label>
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  fontSize: 13,
-  background: "var(--surface)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: 6,
-  fontFamily: "inherit",
-  width: "100%",
-  boxSizing: "border-box",
-};
+const inputStyle: React.CSSProperties = {};
 
-const smallInputStyle: React.CSSProperties = {
-  ...inputStyle,
-  padding: "8px 10px",
-  width: 70,
-};
+const smallInputStyle: React.CSSProperties = { width: 72 };
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: "auto",
-};
+const selectStyle: React.CSSProperties = { appearance: "auto" };
 
 const ghostButtonStyle: React.CSSProperties = {
   padding: "7px 12px",
@@ -331,9 +293,9 @@ const ghostButtonStyle: React.CSSProperties = {
 const primaryButtonStyle: React.CSSProperties = {
   padding: "8px 16px",
   fontSize: 13,
-  fontWeight: 700,
+  fontWeight: 600,
   background: "var(--accent)",
-  color: "#fff",
+  color: "var(--ui-on-ink)",
   border: "1px solid var(--accent)",
   borderRadius: 6,
   fontFamily: "inherit",

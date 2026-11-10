@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
+import { Button } from "@/components/ui";
 
 type Props = {
   reviewId: string;
@@ -61,26 +62,9 @@ export default function ExportDocxButton({ reviewId, flowName }: Props) {
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, position: "relative" }}>
-      <button
-        onClick={exportDocx}
-        disabled={busy}
-        style={{
-          padding: "6px 12px",
-          fontSize: 12,
-          fontWeight: 700,
-          background: "var(--surface)",
-          color: "var(--muted)",
-          border: "1px solid var(--border)",
-          borderRadius: 5,
-          cursor: busy ? "wait" : "pointer",
-          fontFamily: "inherit",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-        }}
-        title="Export the review as a Word doc matching the framework template"
-      >
-        {busy ? "Exporting…" : "↓ Word doc"}
-      </button>
+      <Button variant="secondary" size="md" onClick={exportDocx} disabled={busy} title="Export the review as a Word doc matching the framework template">
+        {busy ? "Exporting…" : "Export Word doc"}
+      </Button>
       {error && <span style={{ fontSize: 11, color: "var(--error)" }}>{error}</span>}
       {busy && (
         <span style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 280, zIndex: 10 }}>

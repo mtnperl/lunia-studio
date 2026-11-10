@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { AdditionalEmail, FlowCompletenessGap, SavedFlowReview } from "@/lib/types";
+import { Button } from "@/components/ui";
 
 type Props = {
   reviewId: string;
@@ -43,9 +44,9 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
 
   const overbuilt = completeness.gap < 0;
   const atCanon = completeness.gap === 0 && remaining === 0;
-  const accent = overbuilt ? "#9a6b00" : remaining > 0 ? "#102635" : "#1f6f3a";
-  const tint = overbuilt ? "#FFFBE6" : remaining > 0 ? "#FFFBE6" : "#E8F4EC";
-  const border = overbuilt ? "#FFD800" : remaining > 0 ? "#FFD800" : "rgba(31,111,58,0.35)";
+  const accent = overbuilt ? "var(--ui-warning)" : remaining > 0 ? "var(--ui-text)" : "var(--ui-success)";
+  const tint = overbuilt ? "var(--ui-warning-tint)" : remaining > 0 ? "var(--ui-surface)" : "var(--ui-success-tint)";
+  const border = "var(--ui-border)";
 
   return (
     <section style={{
@@ -65,24 +66,26 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: atCanon ? "#1f6f3a" : remaining > 0 ? "#102635" : "#9a6b00",
-          color: "#fff",
+          background: "var(--ui-bg)",
+          border: "1px solid var(--ui-border)",
+          color: accent,
+          fontFamily: "var(--ui-font-mono)",
+          fontVariantNumeric: "tabular-nums",
           borderRadius: 10,
           padding: "8px 14px",
-          fontFamily: "Arial, sans-serif",
           lineHeight: 1,
           gap: 2,
           minWidth: 64,
           textAlign: "center",
         }}>
-          <span style={{ fontSize: 22, fontWeight: 700 }}>{completeness.currentCount}<span style={{ fontSize: 13, opacity: 0.7 }}>/{completeness.canonicalCount}</span></span>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85 }}>emails</span>
+          <span style={{ fontSize: 22, fontWeight: 600 }}>{completeness.currentCount}<span style={{ fontSize: 13, opacity: 0.7 }}>/{completeness.canonicalCount}</span></span>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", opacity: 0.85 }}>emails</span>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: accent, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", marginBottom: 4 }}>
             {overbuilt ? "Flow may be overbuilt" : remaining > 0 ? `${remaining} email${remaining === 1 ? "" : "s"} short of the framework recommendation` : "Flow is at the recommended count"}
           </div>
-          <div style={{ fontSize: 14, color: "#1A1A1A", fontFamily: "Arial, sans-serif", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: "var(--ui-text)", lineHeight: 1.5 }}>
             {completeness.rationale}
           </div>
         </div>
@@ -90,19 +93,19 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
 
       {remaining > 0 && completeness.suggestedAdditions && completeness.suggestedAdditions.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#5a4500", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ui-text-2)", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", marginBottom: 6 }}>
             Suggested additions
           </div>
           <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
             {completeness.suggestedAdditions.slice(0, remaining).map((s) => (
-              <li key={s.position} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "#1A1A1A", fontFamily: "Arial, sans-serif", lineHeight: 1.55 }}>
-                <span style={{ flexShrink: 0, padding: "2px 8px", background: "#102635", color: "#fff", fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", borderRadius: 3, marginTop: 2 }}>
+              <li key={s.position} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "var(--ui-text)", lineHeight: 1.55 }}>
+                <span style={{ flexShrink: 0, padding: "2px 8px", background: "var(--ui-ink)", color: "var(--ui-on-ink)", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", borderRadius: 3, marginTop: 2 }}>
                   E{s.position}
                 </span>
                 <span style={{ flex: 1 }}>
-                  <strong style={{ color: "#102635" }}>{s.role}</strong>{" "}
-                  <span style={{ color: "#5b5340" }}>· send at +{s.sendDelayHours}h</span><br />
-                  <span style={{ color: "#1A1A1A" }}>{s.purpose}</span>
+                  <strong style={{ color: "var(--ui-text)" }}>{s.role}</strong>{" "}
+                  <span style={{ color: "var(--ui-text-2)" }}>· send at +{s.sendDelayHours}h</span><br />
+                  <span style={{ color: "var(--ui-text)" }}>{s.purpose}</span>
                 </span>
               </li>
             ))}
@@ -112,50 +115,22 @@ export default function FlowCompletenessBanner({ reviewId, completeness, existin
 
       {remaining > 0 && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            onClick={() => generate(remaining)}
-            disabled={busy}
-            style={{
-              padding: "8px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              background: busy ? "rgba(16,38,53,0.5)" : "#102635",
-              color: "#fff",
-              border: "1px solid #102635",
-              borderRadius: 6,
-              cursor: busy ? "wait" : "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.02em",
-            }}
-          >
+          <Button variant="primary" size="md" onClick={() => generate(remaining)} disabled={busy}>
             {busy ? "Generating…" : `+ Generate ${remaining} missing email${remaining === 1 ? "" : "s"}`}
-          </button>
+          </Button>
           {remaining > 1 && !busy && (
-            <button
-              onClick={() => generate(1)}
-              style={{
-                padding: "8px 12px",
-                fontSize: 12,
-                background: "transparent",
-                color: accent,
-                border: `1px solid ${border}`,
-                borderRadius: 6,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontWeight: 600,
-              }}
-            >
+            <Button variant="secondary" size="md" onClick={() => generate(1)}>
               Or just 1
-            </button>
+            </Button>
           )}
-          <span style={{ fontSize: 11, color: "#5b5340", fontFamily: "Arial, sans-serif" }}>
+          <span style={{ fontSize: 11, color: "var(--ui-text-2)" }}>
             Inter typography · voice-matched to your rewrites · Opus 4.7 with thinking
           </span>
         </div>
       )}
 
       {busy && <MiniReviewLoader label={`drafting ${remaining} new email${remaining === 1 ? "" : "s"}`} detail="MATCHING VOICE" engine="opus 4.7 · with thinking" />}
-      {error && <div style={{ padding: "8px 12px", background: "rgba(176, 65, 62, 0.08)", border: "1px solid rgba(176, 65, 62, 0.3)", borderRadius: 6, fontSize: 12, color: "#B0413E" }}>{error}</div>}
+      {error && <div style={{ padding: "8px 12px", background: "var(--ui-danger-tint)", border: "1px solid var(--ui-border)", borderRadius: 6, fontSize: 12, color: "var(--ui-danger)" }}>{error}</div>}
     </section>
   );
 }

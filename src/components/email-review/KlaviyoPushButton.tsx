@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { KlaviyoWritebackResult } from "@/lib/types";
+import { Button } from "@/components/ui";
 
 type Props = {
   reviewId: string;
@@ -67,9 +68,9 @@ export default function KlaviyoPushButton({ reviewId, emailId, sourceTemplateId,
         style={{
           padding: "5px 12px",
           fontSize: 11,
-          fontWeight: 700,
+          fontWeight: 600,
           background: "var(--success)",
-          color: "#fff",
+          color: "var(--ui-on-ink)",
           border: "1px solid var(--success)",
           borderRadius: 5,
           textDecoration: "none",
@@ -86,68 +87,21 @@ export default function KlaviyoPushButton({ reviewId, emailId, sourceTemplateId,
   if (confirming) {
     return (
       <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <button
-          onClick={push}
-          disabled={busy}
-          style={{
-            padding: "5px 11px",
-            fontSize: 11,
-            fontWeight: 700,
-            background: "var(--accent)",
-            color: "#fff",
-            border: "1px solid var(--accent)",
-            borderRadius: 5,
-            cursor: busy ? "wait" : "pointer",
-            fontFamily: "inherit",
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-          }}
-        >
+        <Button variant="primary" size="sm" onClick={push} disabled={busy}>
           {busy ? "Pushing…" : "Confirm push"}
-        </button>
-        <button
-          onClick={() => setConfirming(false)}
-          disabled={busy}
-          style={{
-            padding: "5px 11px",
-            fontSize: 11,
-            background: "transparent",
-            color: "var(--subtle)",
-            border: "1px solid var(--border)",
-            borderRadius: 5,
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setConfirming(false)} disabled={busy}>
           Cancel
-        </button>
+        </Button>
       </span>
     );
   }
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <button
-        onClick={() => setConfirming(true)}
-        disabled={disabled}
-        title={disabled ? "No source template id available — Klaviyo writeback only works for Klaviyo-sourced flows" : "Clones the source template, applies the rewrite, swaps as a draft. You publish manually from Klaviyo."}
-        style={{
-          padding: "5px 11px",
-          fontSize: 11,
-          fontWeight: 700,
-          background: "transparent",
-          color: disabled ? "var(--subtle)" : "var(--accent)",
-          border: `1px solid ${disabled ? "var(--border)" : "var(--accent)"}`,
-          borderRadius: 5,
-          cursor: disabled ? "not-allowed" : "pointer",
-          fontFamily: "inherit",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          opacity: disabled ? 0.5 : 1,
-        }}
-      >
+      <Button variant="secondary" size="sm" onClick={() => setConfirming(true)} disabled={disabled} title={disabled ? "No source template id available — Klaviyo writeback only works for Klaviyo-sourced flows" : "Clones the source template, applies the rewrite, swaps as a draft. You publish manually from Klaviyo."}>
         {label}
-      </button>
+      </Button>
       {error && <span style={{ fontSize: 11, color: "var(--error)" }}>{error}</span>}
     </span>
   );

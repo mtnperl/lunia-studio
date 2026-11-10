@@ -1,6 +1,7 @@
 "use client";
 import { useConfirm } from "@/components/ui";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui";
 
 type ReviewSummary = {
   id: string;
@@ -53,7 +54,7 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-ui, Inter)", fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", color: "var(--text)" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0, letterSpacing: "var(--ui-tracking-tight)", color: "var(--ui-text)" }}>
             Saved flow reviews
           </h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--muted)" }}>
@@ -61,23 +62,9 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
           </p>
         </div>
         {onNewReview && (
-          <button
-            onClick={onNewReview}
-            style={{
-              padding: "8px 16px",
-              fontSize: 13,
-              fontWeight: 700,
-              background: "var(--accent)",
-              color: "#fff",
-              border: "1px solid var(--accent)",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              letterSpacing: "0.02em",
-            }}
-          >
+          <Button variant="primary" size="md" onClick={onNewReview}>
             + Run a new review
-          </button>
+          </Button>
         )}
       </header>
 
@@ -85,29 +72,14 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
         <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Loading…</div>
       ) : reviews.length === 0 ? (
         <div style={{ padding: 36, background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: 12, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 28 }}>📭</div>
           <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 600 }}>No saved reviews yet</div>
           <div style={{ fontSize: 12, color: "var(--subtle)", maxWidth: 420, lineHeight: 1.5 }}>
             Head to <strong>Flow reviews</strong> in the sidebar to run your first review — either from a Klaviyo flow or by uploading one manually.
           </div>
           {onNewReview && (
-            <button
-              onClick={onNewReview}
-              style={{
-                marginTop: 8,
-                padding: "8px 16px",
-                fontSize: 13,
-                fontWeight: 700,
-                background: "var(--accent)",
-                color: "#fff",
-                border: "1px solid var(--accent)",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
+            <Button variant="primary" size="md" onClick={onNewReview}>
               Run a new review →
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -165,11 +137,11 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
                   gap: 8,
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", lineHeight: 1.3, wordBreak: "break-word", paddingRight: 30 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", lineHeight: 1.3, wordBreak: "break-word", paddingRight: 30 }}>
                   {r.flowName || "(unnamed flow)"}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--subtle)", display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{r.flowType.replace(/_/g, " ")}</span>
+                  <span style={{ textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontWeight: 600 }}>{r.flowType.replace(/_/g, " ")}</span>
                   <span>· {r.source}</span>
                   <span>· {r.emailCount} email{r.emailCount === 1 ? "" : "s"}</span>
                 </div>
@@ -182,7 +154,7 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
                   </Pill>
                   {r.writebacksCount > 0 && <Pill color="accent">{r.writebacksCount} pushed</Pill>}
                 </div>
-                <div style={{ fontSize: 10, color: "var(--subtle)", marginTop: "auto" }}>{new Date(r.createdAt).toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: "auto" }}>{new Date(r.createdAt).toLocaleString()}</div>
               </button>
             </div>
           ))}
@@ -194,22 +166,22 @@ export default function EmailFlowsLibrary({ onPickReview, onNewReview }: Props) 
 
 function Pill({ children, color }: { children: React.ReactNode; color: "error" | "success" | "accent" | "neutral" }) {
   const bg =
-    color === "error"   ? "rgba(176, 65, 62, 0.10)"
-  : color === "success" ? "rgba(31, 111, 58, 0.10)"
-  : color === "accent"  ? "rgba(16, 38, 53, 0.08)"
+    color === "error"   ? "var(--ui-danger-tint)"
+  : color === "success" ? "var(--ui-success-tint)"
+  : color === "accent"  ? "var(--ui-selection-tint)"
                         : "var(--surface-r)";
   const border =
-    color === "error"   ? "rgba(176, 65, 62, 0.3)"
-  : color === "success" ? "rgba(31, 111, 58, 0.3)"
-  : color === "accent"  ? "rgba(16, 38, 53, 0.2)"
+    color === "error"   ? "transparent"
+  : color === "success" ? "transparent"
+  : color === "accent"  ? "transparent"
                         : "var(--border)";
   const fg =
-    color === "error"   ? "#B0413E"
-  : color === "success" ? "#1f6f3a"
-  : color === "accent"  ? "#102635"
+    color === "error"   ? "var(--ui-danger)"
+  : color === "success" ? "var(--ui-success)"
+  : color === "accent"  ? "var(--ui-text)"
                         : "var(--muted)";
   return (
-    <span style={{ padding: "2px 8px", borderRadius: 10, background: bg, border: `1px solid ${border}`, color: fg, fontSize: 10, fontWeight: 600, letterSpacing: "0.02em" }}>
+    <span style={{ padding: "2px 8px", borderRadius: "var(--ui-radius-1)", background: bg, border: `1px solid ${border}`, color: fg, fontSize: 11, fontWeight: 500 }}>
       {children}
     </span>
   );

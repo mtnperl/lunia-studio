@@ -11,10 +11,10 @@ type Props = {
 };
 
 const FINDING_BG: Record<LintFinding["type"], string> = {
-  em_dash: "rgba(176, 65, 62, 0.18)",
-  exclamation_excess: "rgba(255, 184, 28, 0.22)",
-  banned_phrase: "rgba(176, 65, 62, 0.18)",
-  banned_badge: "rgba(176, 65, 62, 0.28)",
+  em_dash: "var(--ui-danger-tint)",
+  exclamation_excess: "var(--ui-warning-tint)",
+  banned_phrase: "var(--ui-danger-tint)",
+  banned_badge: "var(--ui-danger-tint)",
 };
 
 const FINDING_LABEL: Record<LintFinding["type"], string> = {
@@ -93,7 +93,7 @@ export default function LuniaLinter({ value, onChange, placeholder, rows = 12, a
               key={i}
               style={{
                 background: FINDING_BG[seg.finding.type],
-                borderBottom: `1.5px wavy ${seg.finding.type === "exclamation_excess" ? "#fdab3d" : "#b0413e"}`,
+                borderBottom: `1.5px wavy ${seg.finding.type === "exclamation_excess" ? "var(--ui-warning)" : "var(--ui-danger)"}`,
                 borderRadius: 2,
               }}
               title={seg.finding.message}
@@ -139,8 +139,8 @@ export default function LuniaLinter({ value, onChange, placeholder, rows = 12, a
                 padding: "2px 7px",
                 borderRadius: 4,
                 background: FINDING_BG[f.type],
-                color: "#7a1f1c",
-                border: "1px solid rgba(176, 65, 62, 0.35)",
+                color: "var(--ui-danger)",
+                border: "1px solid var(--ui-border)",
               }}
               title={f.message}
             >
