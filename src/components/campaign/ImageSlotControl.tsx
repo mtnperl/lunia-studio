@@ -5,6 +5,8 @@ import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import { aspectRatioFor } from "@/lib/image-crop";
 import AssetPicker from "./AssetPicker";
 import ImageCropper, { useShapedPick } from "./ImageCropper";
+import { assetHasText, findFormatVariant } from "@/lib/asset-selection";
+import { useAssets } from "./useAssets";
 import { ShapePicker, SwapStrip } from "./PictureTools";
 import { ImageGenStatus, Spinner } from "./Loaders";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
@@ -73,6 +75,7 @@ export default function ImageSlotControl({
   onRemove?: () => void;
 }) {
   const [generating, setGenerating] = useState(false);
+  const assets = useAssets();
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   // Seeding an email-relevant prompt while switching an asset slot → generated
   // (the "Generate new" affordance). Separate from regeneratingPrompt so the
@@ -106,7 +109,7 @@ export default function ImageSlotControl({
   }
   function pickAsset(asset: AssetMetadata) {
     commitSlot({ ...latestSlot.current, source: "asset", assetId: asset.id, url: asset.url, sourceUrl: asset.url, crop: undefined });
-    void pick(asset.url, true);
+    void pick(asset.url, true, assetHasText(asset));
   }
   // A new shape re-crops from the original.
   const shapedFor = useRef(slot.aspect);
@@ -114,7 +117,16 @@ export default function ImageSlotControl({
     if (shapedFor.current === slot.aspect) return;
     shapedFor.current = slot.aspect;
     const source = slot.sourceUrl?.trim() || slot.url?.trim();
-    if (source) void pick(source);
+    if (source) {
+      const variant = findFormatVariant(assets ?? [], source, aspectRatioFor(slot.aspect));
+      const current = assets?.find((a) => a.url === source);
+      if (!variant && current && assetHasText(current)) {
+        setError("No matching captioned format exists. Keeping the full image so words are not cut off. Use Edit crop to reframe it manually.");
+        return;
+      }
+      if (variant) commitSlot({ ...latestSlot.current, assetId: variant.id });
+      void pick(variant?.url ?? source, false, !!variant && assetHasText(variant));
+    }
     // Only the shape changing should re-crop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot.aspect]);

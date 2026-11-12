@@ -1,5 +1,5 @@
 "use client";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState } from "react";
 import HookSlide from "@/components/carousel/slides/HookSlide";
 import { BrandStyle, CarouselContent, CarouselContrastMode, CarouselStylePreset, type Hook } from "@/lib/types";
 import type { CarouselImageStyle } from "@/components/carousel/steps/TopicStep";
@@ -7,7 +7,6 @@ import { useCarouselApi } from "@/components/carousel/api-context";
 import { VISUAL_MOODS } from "@/lib/carousel-visual-moods";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { Button } from "@/components/ui/Button";
-import { IcCheck, IcChevron, IcRefresh, Label } from "@/components/ui";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 import { HOOK_ANGLES, DEFAULT_SPREAD, hookAngleLabel } from "@/lib/hook-angles";
 import { readJsonResponse } from "@/lib/fetch-json";
@@ -173,227 +172,445 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
     }
   }
 
-  const panel: CSSProperties = { marginBottom: 24, border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", overflow: "hidden" };
-  const panelHead: CSSProperties = {
-    width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-    background: "var(--ui-surface)", border: "none", minHeight: 40, padding: "8px 16px",
-    fontSize: 13, fontWeight: 500, color: "var(--ui-text)", cursor: "pointer",
-    fontFamily: "inherit", textAlign: "left",
-  };
-  const chevron = (open: boolean) => <IcChevron size={16} strokeWidth={1.75} style={{ color: "var(--ui-text-2)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform var(--ui-dur-2) var(--ui-ease-in-out)" }} />;
-  const well: CSSProperties = { background: "var(--ui-bg)", border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-2)", padding: "8px 12px", marginBottom: 8 };
-  const note: CSSProperties = { fontSize: 12, color: "var(--ui-text-2)", lineHeight: 1.5, margin: "0 0 8px" };
-  const bare: CSSProperties = { width: "100%", fontSize: 13, lineHeight: 1.5, fontFamily: "inherit", color: "var(--ui-text)", background: "transparent", border: "none", outline: "none", padding: 0 };
-
   return (
     <div>
-      <h2 style={{ fontSize: "var(--ui-text-24)", lineHeight: "var(--ui-lh-24)", fontWeight: 600, margin: "0 0 var(--ui-space-3)", letterSpacing: "var(--ui-tracking-tight)" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>
         Choose your hook
       </h2>
-      <p style={{ color: "var(--ui-text-2)", margin: "0 0 var(--ui-space-8)", fontSize: 14 }}>
-        Pick the opening slide that will stop the scroll
+      <p style={{ color: "var(--muted)", marginBottom: 28, fontSize: 14 }}>
+        Pick the opening slide that will stop the scroll.
       </p>
 
-      <div role="radiogroup" aria-label="Hooks" style={{ display: "flex", gap: 20, overflowX: "auto", padding: "4px 4px 8px", marginBottom: 32 }}>
+      <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 8, marginBottom: 36 }}>
         {content.hooks.map((h, i) => {
           const isSelected = selectedHook === i;
-          const angle = hookAngleLabel(h.angle);
           return (
-            <button
+            <div
               key={i}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              aria-label={`Hook ${i + 1}${angle ? `, ${angle}` : ""}`}
               onClick={() => { onSelectHook(i); setAlternatives([]); }}
-              className="ui-focusable"
-              style={{ flexShrink: 0, cursor: "pointer", background: "none", border: "none", padding: 0, fontFamily: "inherit", textAlign: "center" }}
-            >
-              <div style={{
+              style={{
+                flexShrink: 0,
+                cursor: "pointer",
                 position: "relative",
-                borderRadius: "var(--ui-radius-3)",
+                borderRadius: 10,
                 overflow: "hidden",
-                outline: `2px solid ${isSelected ? "var(--ui-text)" : "transparent"}`,
+                outline: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 outlineOffset: 2,
-                transition: "outline-color var(--ui-dur-2) var(--ui-ease-out)",
+                transition: "outline-color 0.15s",
+                boxShadow: isSelected ? "0 0 0 6px rgba(30,122,138,0.15)" : "none",
+              }}
+            >
+              <HookSlide headline={h.headline} subline={h.subline} sourceNote={h.sourceNote} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} />
+
+              {isSelected && (
+                <div style={{
+                  position: "absolute", top: 10, right: 10,
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: "var(--accent)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2.5 7L5.5 10L11.5 4" stroke="var(--bg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              )}
+
+              <div style={{
+                marginTop: 8, textAlign: "center",
+                fontSize: 12, fontWeight: isSelected ? 700 : 500,
+                color: isSelected ? "var(--accent)" : "var(--muted)",
+                paddingBottom: 4,
               }}>
-                <HookSlide headline={h.headline} subline={h.subline} sourceNote={h.sourceNote} topic={topic} scale={0.28} brandStyle={brandStyle ?? undefined} />
-                {isSelected && (
-                  <div style={{
-                    position: "absolute", top: 8, right: 8,
-                    width: 24, height: 24, borderRadius: "50%",
-                    background: "var(--ui-ink)", color: "var(--ui-on-ink)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <IcCheck size={14} strokeWidth={2} />
+                {isSelected ? `✓ Hook ${i + 1} selected` : `Hook ${i + 1}`}
+                {hookAngleLabel(h.angle) && (
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--subtle)", marginTop: 3, fontWeight: 500 }}>
+                    {hookAngleLabel(h.angle)}
                   </div>
                 )}
               </div>
-              <div style={{ marginTop: 8, paddingBottom: 4, fontSize: 12, fontWeight: 500, color: isSelected ? "var(--ui-text)" : "var(--ui-text-2)" }}>
-                Hook {i + 1}
-                {angle && <div style={{ fontSize: 11, fontWeight: 400, color: "var(--ui-text-3)", marginTop: 2 }}>{angle}</div>}
-              </div>
-            </button>
+            </div>
           );
         })}
       </div>
 
       {/* Rewrite hook copy — expandable */}
-      <div style={panel}>
-        <button type="button" aria-expanded={hooksPanelOpen} onClick={() => setHooksPanelOpen((v) => !v)} style={panelHead}>
-          <span>
+      <div style={{ marginBottom: 28, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          onClick={() => setHooksPanelOpen((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "var(--surface)", border: "none", padding: "10px 14px",
+            fontSize: 12, fontWeight: 600, color: "var(--muted)", cursor: "pointer",
+            fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             Rewrite hook copy
-            <span style={{ fontWeight: 400, color: "var(--ui-text-2)", marginLeft: 8 }}>Fresh hooks for this same deck</span>
+            <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 4 }}>
+              — fresh hooks for this same deck
+            </span>
           </span>
-          {chevron(hooksPanelOpen)}
+          <span style={{ fontSize: 16, lineHeight: 1, transform: hooksPanelOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+            ›
+          </span>
         </button>
 
         {hooksPanelOpen && (
-          <div style={{ padding: "12px 16px 16px", borderTop: "1px solid var(--ui-border)" }}>
-            <p style={note}>Keeps your content slides and CTA. Adds 3 new hook options to the ones above, then pick your favourite.</p>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
+              Keeps your 3 content slides and CTA. Replaces the hook options above with 3 new ones, then pick your favourite.
+            </p>
 
-            <div style={well}>
-              <Label kind="field">Guidelines (optional)</Label>
+            <div style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              padding: "10px 12px",
+              marginBottom: 8,
+            }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 6,
+              }}>
+                Guidelines (optional)
+              </label>
               <AutoTextarea
                 value={hooksGuidelines}
                 onChange={(e) => setHooksGuidelines(e.target.value)}
                 minHeight={40}
-                placeholder="e.g. punchier, lead with a number, more myth-busting, less clickbait"
-                style={bare}
+                placeholder="e.g. punchier, lead with a number, more myth-busting, less clickbait..."
+                style={{
+                  width: "100%", fontSize: 12, lineHeight: 1.5,
+                  fontFamily: "inherit",
+                  color: "var(--text)", background: "transparent",
+                  border: "none", outline: "none", padding: 0,
+                }}
               />
             </div>
 
-            {hooksRegenError && <p style={{ ...note, color: "var(--ui-danger)" }}>{hooksRegenError}</p>}
+            {hooksRegenError && (
+              <p style={{ fontSize: 12, color: "var(--error)", margin: "0 0 8px" }}>{hooksRegenError}</p>
+            )}
 
-            <Button variant="primary" size="sm" busy={regeneratingHooks} onClick={handleRegenerateHooks}>
-              Regenerate 3 hooks
-            </Button>
+            <button
+              onClick={handleRegenerateHooks}
+              disabled={regeneratingHooks}
+              style={{
+                background: regeneratingHooks ? "var(--surface)" : "var(--text)",
+                color: regeneratingHooks ? "var(--muted)" : "var(--bg)",
+                border: "none", borderRadius: 6,
+                padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                fontFamily: "inherit", cursor: regeneratingHooks ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
+              }}
+            >
+              {regeneratingHooks ? (
+                <>
+                  <span style={{
+                    display: "inline-block", width: 12, height: 12,
+                    border: "2px solid var(--muted)", borderTopColor: "transparent",
+                    borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                  }} />
+                  Writing 3 new hooks...
+                </>
+              ) : (
+                "Regenerate 3 hooks"
+              )}
+            </button>
 
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--ui-border)" }}>
-              <Label kind="field">Or write a spread</Label>
-              <p style={note}>One hook per angle, all opening this same deck. Pick the doors you want tried.</p>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 4,
+              }}>
+                Or write a spread
+              </label>
+              <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px", lineHeight: 1.5 }}>
+                One hook per angle, all opening this same deck. Pick the doors you want tried.
+              </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {HOOK_ANGLES.map((a) => (
-                  <Chip key={a.id} on={spreadAngles.includes(a.id)} title={a.job} onClick={() => toggleAngle(a.id)}>{a.label}</Chip>
-                ))}
+                {HOOK_ANGLES.map((a) => {
+                  const on = spreadAngles.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleAngle(a.id)}
+                      title={a.job}
+                      aria-pressed={on}
+                      style={{
+                        padding: "5px 10px", borderRadius: 6, fontSize: 12, fontFamily: "inherit", cursor: "pointer",
+                        border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                        background: on ? "var(--accent-dim)" : "var(--bg)",
+                        color: on ? "var(--text)" : "var(--muted)",
+                        transition: "border-color 0.15s, background 0.15s",
+                      }}
+                    >
+                      {a.label}
+                    </button>
+                  );
+                })}
               </div>
-              <div style={{ marginTop: 12 }}>
-                <Button variant="primary" size="sm" busy={spreadBusy} disabled={regeneratingHooks} onClick={handleSpread}>
-                  Write {spreadAngles.length} hooks by angle
-                </Button>
-              </div>
+              <button
+                onClick={handleSpread}
+                disabled={spreadBusy || regeneratingHooks}
+                style={{
+                  marginTop: 10,
+                  background: spreadBusy ? "var(--surface)" : "var(--text)",
+                  color: spreadBusy ? "var(--muted)" : "var(--bg)",
+                  border: "none", borderRadius: 6,
+                  padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "inherit", cursor: spreadBusy ? "not-allowed" : "pointer",
+                }}
+              >
+                {spreadBusy ? "Writing the spread..." : `Write ${spreadAngles.length} hooks by angle`}
+              </button>
             </div>
           </div>
         )}
       </div>
 
       {/* Image prompt — expandable */}
-      <div style={panel}>
-        <button type="button" aria-expanded={promptOpen} onClick={() => setPromptOpen((v) => !v)} style={panelHead}>
-          <span>
+      <div style={{ marginBottom: 28, border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+        <button
+          onClick={() => setPromptOpen((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "var(--surface)", border: "none", padding: "10px 14px",
+            fontSize: 12, fontWeight: 600, color: "var(--muted)", cursor: "pointer",
+            fontFamily: "inherit", textAlign: "left",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 14 }}>🎨</span>
             Hook image prompt
-            <span style={{ fontWeight: 400, color: "var(--ui-text-2)", marginLeft: 8 }}>Sent to Recraft V3 when you click Preview</span>
+            <span style={{ fontWeight: 400, color: "var(--muted)", marginLeft: 4 }}>
+              — sent to Recraft V3 when you click Preview
+            </span>
           </span>
-          {chevron(promptOpen)}
+          <span style={{ fontSize: 16, lineHeight: 1, transform: promptOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+            ›
+          </span>
         </button>
 
         {promptOpen && (
-          <div style={{ padding: "12px 16px 16px", borderTop: "1px solid var(--ui-border)" }}>
-            <ChipRow label="Style">
-              {IMAGE_STYLE_CHIPS.map((chip) => (
-                <Chip key={chip.value} on={imageStyle === chip.value} onClick={() => onImageStyleChange?.(chip.value)}>{chip.label}</Chip>
-              ))}
-            </ChipRow>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+            {/* Image style chips */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Style:</span>
+              {IMAGE_STYLE_CHIPS.map((chip) => {
+                const active = imageStyle === chip.value;
+                return (
+                  <button
+                    key={chip.value}
+                    onClick={() => onImageStyleChange?.(chip.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Mood chips — controls the styleBlock appended after Claude's subject prompt. */}
-            <ChipRow label="Mood">
-              {MOOD_CHIPS.map((chip) => (
-                <Chip key={chip.value ?? "auto"} on={moodId === chip.value || (chip.value === null && !moodId)} onClick={() => onMoodChange?.(chip.value)}>{chip.label}</Chip>
-              ))}
-            </ChipRow>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Mood:</span>
+              {MOOD_CHIPS.map((chip) => {
+                const active = moodId === chip.value || (chip.value === null && !moodId);
+                return (
+                  <button
+                    key={chip.value ?? "auto"}
+                    onClick={() => onMoodChange?.(chip.value)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      background: active ? "var(--accent-dim)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--muted)",
+                      fontSize: 11,
+                      fontWeight: active ? 700 : 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.1s",
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
             {/* Contrast — this panel is the last stop before the FIRST hook image
                 is generated, so the setting has to be reachable here and not only
                 on the topic screen. Editorial Scientific only: elsewhere the
                 image route never reads it. */}
             {isEditorialPreset(stylePreset) && (
-              <ChipRow label="Contrast">
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Contrast:</span>
                 {([
                   { value: "standard" as CarouselContrastMode, label: "Standard" },
                   { value: "high" as CarouselContrastMode, label: "Bold post" },
-                ]).map((chip) => (
-                  <Chip key={chip.value} on={contrastMode === chip.value} onClick={() => onContrastChange?.(chip.value)}>{chip.label}</Chip>
-                ))}
+                ]).map((chip) => {
+                  const active = contrastMode === chip.value;
+                  return (
+                    <button
+                      key={chip.value}
+                      onClick={() => onContrastChange?.(chip.value)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 20,
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--muted)",
+                        fontSize: 11,
+                        fontWeight: active ? 700 : 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        transition: "all 0.1s",
+                      }}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
                 {contrastMode === "high" && (
-                  <span style={{ fontSize: 12, color: "var(--ui-text-2)" }}>One bright subject on a dark ground, ivory type, one yellow phrase</span>
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                    One bright subject on a dark ground, ivory type, one yellow phrase.
+                  </span>
                 )}
-              </ChipRow>
+              </div>
             )}
-            <p style={note}>Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.</p>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>
+              Claude wrote this prompt for hook {selectedHook + 1}. Edit it directly, or add guidelines and regenerate.
+            </p>
             <AutoTextarea
               value={imagePrompt}
               onChange={(e) => onImagePromptChange?.(e.target.value)}
               minHeight={84}
-              placeholder="No image prompt generated yet"
+              placeholder="No image prompt generated yet."
               style={{
                 width: "100%", fontSize: 13, lineHeight: 1.6,
                 fontFamily: "inherit",
-                color: imagePrompt ? "var(--ui-text)" : "var(--ui-text-3)",
+                color: imagePrompt ? "var(--text)" : "var(--subtle)",
                 marginBottom: 12,
               }}
             />
 
             {/* Guidelines + regenerate */}
-            <div style={well}>
-              <Label kind="field">Guidelines (optional)</Label>
+            <div style={{
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              padding: "10px 12px",
+              marginBottom: 8,
+            }}>
+              <label style={{
+                fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                display: "block", marginBottom: 6,
+              }}>
+                Guidelines (optional)
+              </label>
               <AutoTextarea
                 value={guidelines}
                 onChange={(e) => setGuidelines(e.target.value)}
                 minHeight={40}
-                placeholder="e.g. warmer tones, focus on water droplets, more abstract, moonlight scene"
-                style={bare}
+                placeholder="e.g. warmer tones, focus on water droplets, more abstract, moonlight scene..."
+                style={{
+                  width: "100%", fontSize: 12, lineHeight: 1.5,
+                  fontFamily: "inherit",
+                  color: "var(--text)", background: "transparent",
+                  border: "none", outline: "none", padding: 0,
+                }}
               />
             </div>
 
-            {regenError && <p style={{ ...note, color: "var(--ui-danger)" }}>{regenError}</p>}
+            {regenError && (
+              <p style={{ fontSize: 12, color: "#dc2626", margin: "0 0 8px" }}>{regenError}</p>
+            )}
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <Button variant="primary" size="sm" busy={regenerating} icon={<IcRefresh size={14} strokeWidth={1.75} />} onClick={handleRegeneratePrompt}>
-                Generate 3 prompt directions
-              </Button>
-              <span style={{ fontSize: 12, color: "var(--ui-text-2)" }}>Prompts retune to the selected mood</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <button
+                onClick={handleRegeneratePrompt}
+                disabled={regenerating}
+                style={{
+                  background: regenerating ? "var(--surface)" : "var(--text)",
+                  color: regenerating ? "var(--muted)" : "var(--bg)",
+                  border: "none", borderRadius: 6,
+                  padding: "8px 16px", fontSize: 12, fontWeight: 700,
+                  fontFamily: "inherit", cursor: regenerating ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6, transition: "opacity 0.15s",
+                }}
+              >
+                {regenerating ? (
+                  <>
+                    <span style={{
+                      display: "inline-block", width: 12, height: 12,
+                      border: "2px solid var(--muted)", borderTopColor: "transparent",
+                      borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                    }} />
+                    Generating 3 directions...
+                  </>
+                ) : (
+                  <>↺ Generate 3 prompt directions</>
+                )}
+              </button>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                Prompts retune to the selected mood.
+              </span>
             </div>
 
             {/* Alternative prompt suggestions */}
             {alternatives.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <Label kind="field">Two more directions, click one to use it</Label>
+              <div style={{ marginTop: 12 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: "var(--muted)",
+                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+                }}>
+                  2 more directions — click to use
+                </div>
                 {alternatives.map((alt, i) => (
-                  <button
+                  <div
                     key={i}
-                    type="button"
-                    className="ui-focusable"
-                    onClick={() => onImagePromptChange?.(alt)}
-                    title="Use this prompt"
                     style={{
-                      width: "100%", textAlign: "left",
-                      background: "var(--ui-bg)",
-                      border: "1px solid var(--ui-border)",
-                      borderRadius: "var(--ui-radius-2)",
-                      padding: "8px 12px",
-                      marginBottom: 8,
-                      fontSize: 12, fontFamily: "inherit",
-                      color: "var(--ui-text)",
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      marginBottom: 6,
+                      fontSize: 12,
+                      color: "var(--text)",
                       lineHeight: 1.5,
                       cursor: "pointer",
-                      transition: "border-color var(--ui-dur-2) var(--ui-ease-out)",
+                      transition: "border-color 0.15s",
                       display: "flex", alignItems: "flex-start", gap: 8,
                     }}
+                    onClick={() => onImagePromptChange?.(alt)}
+                    title="Click to use this prompt"
                   >
-                    <span style={{ fontSize: 11, fontFamily: "var(--ui-font-mono)", color: "var(--ui-text-3)", flexShrink: 0, marginTop: 1 }}>
-                      {String(i + 2).padStart(2, "0")}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: "var(--accent)",
+                      background: "var(--accent-dim)", borderRadius: 4,
+                      padding: "2px 5px", flexShrink: 0, marginTop: 1,
+                      fontFamily: "var(--font-ui)",
+                    }}>
+                      {i + 2}
                     </span>
                     <span>{alt}</span>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -403,36 +620,5 @@ export default function HookStep({ content, selectedHook, onSelectHook, onNext, 
 
       <Button variant="primary" size="lg" onClick={onNext}>Preview carousel →</Button>
     </div>
-  );
-}
-
-function ChipRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div role="group" aria-label={label} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-      <span style={{ fontSize: 12, color: "var(--ui-text-2)", minWidth: 64, flexShrink: 0 }}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
-function Chip({ on, onClick, title, children }: { on: boolean; onClick: () => void; title?: string; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      title={title}
-      onClick={onClick}
-      className="ui-focusable"
-      style={{
-        height: 28, padding: "0 12px", borderRadius: "var(--ui-radius-2)", fontSize: 12, fontFamily: "inherit", cursor: "pointer",
-        fontWeight: on ? 500 : 400,
-        border: `1px solid ${on ? "var(--ui-text)" : "var(--ui-border)"}`,
-        background: on ? "var(--ui-selection-tint)" : "var(--ui-bg)",
-        color: on ? "var(--ui-text)" : "var(--ui-text-2)",
-        transition: "border-color var(--ui-dur-1) var(--ui-ease-out), background-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out)",
-      }}
-    >
-      {children}
-    </button>
   );
 }

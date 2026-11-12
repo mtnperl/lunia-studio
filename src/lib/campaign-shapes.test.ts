@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { reviewLayout } from "./campaign-layout-review";
 import {
   CAMPAIGN_SHAPES, getShape, resolveShapeGuidance,
   captureShapeStructure, deriveShapeGuidance, savedShapeToCampaignShape,
@@ -21,8 +20,8 @@ function strings(v: unknown, out: string[] = []): string[] {
 const withStarter = CAMPAIGN_SHAPES.filter((s) => s.starter?.length);
 
 describe("the shape registry", () => {
-  it("ships fifteen shapes plus the model-chosen entry", () => {
-    expect(CAMPAIGN_SHAPES).toHaveLength(16);
+  it("ships ten shapes plus the model-chosen entry", () => {
+    expect(CAMPAIGN_SHAPES).toHaveLength(11);
     expect(CAMPAIGN_SHAPES[0]!.id).toBe("auto");
   });
 
@@ -91,7 +90,7 @@ describe("starter blocks", () => {
       const content: CampaignContent = {
         subjectLines: [shape.name, "", ""], selectedSubject: 0, previewText: "",
         theme: shape.theme,
-        blocks: shape.starter!.map((x) => layoutBlockToCampaignBlock(x)),
+        blocks: shape.starter!.map(layoutBlockToCampaignBlock),
         cta: { label: shape.ctaLabel ?? "Go", url: "https://www.lunialife.com" }, images: [],
       };
       const html = renderCampaignEmail(content);
@@ -111,23 +110,6 @@ describe("starter blocks", () => {
         if (b.kind === "grid") {
           for (const c of b.gridCells) expect(c.imagePrompt, `${shape.id}/grid`).toBeTruthy();
         }
-      }
-    }
-  });
-
-  it("pass the design review, so an empty email never starts as a wall of text", () => {
-    for (const shape of withStarter) {
-      const blocks = shape.starter!.map((x) => layoutBlockToCampaignBlock(x));
-      const errors = reviewLayout(blocks).filter((i) => i.severity === "error");
-      expect(errors.map((e) => e.message), shape.id).toEqual([]);
-    }
-  });
-
-  it("fabricate no reviews or founder notes in the newer kinds either", () => {
-    for (const shape of withStarter) {
-      for (const b of shape.starter!) {
-        if (b.kind === "reviews") for (const r of b.reviews) expect(r.quote.toLowerCase(), shape.id).toContain("replace this");
-        if (b.kind === "founder") expect(b.body.toLowerCase(), shape.id).toContain("replace this");
       }
     }
   });

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { randomUUID } from "crypto";
 import { getCampaigns, saveCampaign } from "@/lib/kv";
 import { UGCCampaign } from "@/lib/types";
 import { logEntry, logExit } from "@/lib/ugc-api";
@@ -63,6 +62,3 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Failed to create campaign" }, { status: 500 });
   }
 }
-
-// Used by client to generate stable creator ids server-side.
-export { randomUUID };

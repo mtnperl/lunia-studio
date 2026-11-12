@@ -1,28 +1,48 @@
-// "Make it visual": re-express an existing campaign's copy as a designed set of
-// blocks. Its result REPLACES the body, so it reads every field of every block
-// (see blockToSourceText), is offered the email's own pictures and the user's
-// saved snippets by reference, and runs the design review before returning
-// (see campaign-layout-pass). The layout it builds is named by a shapeId,
-// resolved server-side.
+// "Make it visual": re-express an existing campaign's copy as a richer set of
+// blocks. It is forbidden from writing anything: it takes the whole blocks
+// array as input and its result REPLACES the body rather than appending to it.
+// The layout it builds is named by a shapeId, resolved server-side.
 //
 // Fact preservation is enforced by prompt only. The code-enforced verifier was
 // considered and cut during the 2026-08-21 CEO review, so the caller's
 // before/after diff is the sole check — never apply this result silently.
-import { checkRateLimit, getSavedShapes, getCampaignSnippets } from "@/lib/kv";
-import { buildRestructurePrompt, blocksToSourceText } from "@/lib/campaign-layout-prompts";
-import { runLayoutPass, collectPictures, snippetRefs } from "@/lib/campaign-layout-pass";
-import type { CampaignBlock, CampaignImageSlot } from "@/lib/types";
+import {
+  createContentMessage,
+  CONTENT_MODEL,
+  CONTENT_THINKING,
+  CONTENT_MAX_TOKENS_LONG,
+  extractText,
+} from "@/lib/anthropic";
+import { checkRateLimit } from "@/lib/kv";
+import {
+  buildRestructurePrompt,
+  blocksToSourceText,
+  LayoutBlockSchema,
+  LayoutEnvelopeSchema,
+  MAX_LAYOUT_BLOCKS,
+  layoutBlockToCampaignBlock,
+} from "@/lib/campaign-layout-prompts";
+import type { CampaignBlock } from "@/lib/types";
+
+import { stripDashes } from "@/lib/strip-dashes";
+import { blockTokensBalanced } from "@/lib/campaign-inline-style";
 import {
   resolveShapeGuidance,
   isSavedShapeId,
   savedShapeIdOf,
   deriveShapeGuidance,
 } from "@/lib/campaign-shapes";
+import { getSavedShapes } from "@/lib/kv";
+// One LLM call with thinking enabled over a whole email's copy. The batch
+// ("restructure this whole flow") path is driven from the client as one request
+// per email, so this budget is per-email and never has to cover a whole flow.
+// No vercel.json entry exists for campaign routes, so this in-file value wins.
+export const maxDuration = 120;
 
-// One thinking call over a whole email, plus at most one fast fix pass when
-// the design review blocks. The flow-level batch is one request per email, so
-// this budget never has to cover a whole flow.
-export const maxDuration = 300;
+function stripJsonFence(raw: string): string {
+  return raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+}
+
 
 export async function POST(req: Request): Promise<Response> {
   const ip =
@@ -38,9 +58,6 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const body = await req.json();
     const blocks: CampaignBlock[] = Array.isArray(body.blocks) ? body.blocks : [];
-    // Image slots, so a picture placed by a kind "image" block can be reused.
-    // Optional: older clients send blocks only.
-    const images: CampaignImageSlot[] = Array.isArray(body.images) ? body.images : [];
     const subject: string = (body.subject ?? "").trim();
     const topic: string = (body.topic ?? "").trim();
     // The client names a SHAPE; the guidance text is resolved here, from the
@@ -73,27 +90,77 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const pictures = collectPictures(blocks, images);
-    // Snippets are a nice-to-have; a storage hiccup must not cost the layout.
-    const snippets = snippetRefs(await getCampaignSnippets().catch(() => []));
-
-    const result = await runLayoutPass({
-      prompt: buildRestructurePrompt(blocks, subject, topic, guidance, { pictures, snippets }),
-      sourceText: source,
-      pictures,
-      snippets,
+    const prompt = buildRestructurePrompt(blocks, subject, topic, guidance);
+    const response = await createContentMessage({
+      model: CONTENT_MODEL,
+      max_tokens: CONTENT_MAX_TOKENS_LONG,
+      thinking: CONTENT_THINKING,
+      messages: [{ role: "user", content: prompt }],
     });
-    if (!result.ok) return Response.json({ error: result.error }, { status: 422 });
+
+    const raw = extractText(response);
+    const jsonText = stripJsonFence(raw);
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(jsonText);
+    } catch {
+      // A model refusal lands here too — it is prose, so it fails to parse the
+      // same way malformed JSON does.
+      console.error("[api/campaign/restructure] JSON parse failed:", raw.slice(0, 400));
+      return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
+    }
+
+    const envelope = LayoutEnvelopeSchema.safeParse(parsedJson);
+    if (!envelope.success) {
+      console.error("[api/campaign/restructure] envelope validation failed:", envelope.error.message);
+      return Response.json({ error: "Restructure failed, please try again." }, { status: 422 });
+    }
+
+    // Per block, not all-or-nothing. One block with an unrecognised `kind`
+    // used to discard the whole restructure — thirty seconds of work and every
+    // good block with it — and the user was told only to try again.
+    const rejectedKinds: unknown[] = [];
+    const valid = envelope.data.blocks.flatMap((b) => {
+      const parsed = LayoutBlockSchema.safeParse(b);
+      if (parsed.success) return [parsed.data];
+      rejectedKinds.push((b as { kind?: unknown })?.kind ?? "(no kind)");
+      return [];
+    });
+    if (rejectedKinds.length > 0) {
+      // The KINDS, not just zod's message: "no matching discriminator at
+      // blocks.1.kind" never said which kind it was, which was the one fact
+      // needed to act on it.
+      console.warn(`[api/campaign/restructure] dropped ${rejectedKinds.length} block(s) with an unusable shape:`, JSON.stringify(rejectedKinds));
+    }
+    const droppedForSchema = rejectedKinds.length;
+
+    const mapped = valid.slice(0, MAX_LAYOUT_BLOCKS).map(layoutBlockToCampaignBlock);
+
+    // The prompt asks the model to keep an inline-styling token pair inside one
+    // block; this is the check. A split pair would leave an unterminated opener
+    // in one block and an orphan close in another, and the renderer would
+    // faithfully print a literal "[[lg]]" into the email. Dropping the block is
+    // better than shipping that, and the count is reported so the drop is
+    // visible rather than silent.
+    const restructured = mapped.filter(blockTokensBalanced);
+    const droppedForTokens = mapped.length - restructured.length;
+    if (droppedForTokens > 0) {
+      console.warn(`[api/campaign/restructure] dropped ${droppedForTokens} block(s) with split styling tokens`);
+    }
+
+    if (restructured.length === 0) {
+      return Response.json({ error: "Restructure produced nothing usable, please try again." }, { status: 422 });
+    }
 
     return Response.json({
-      droppedForSchema: result.droppedForSchema,
-      droppedForTokens: result.droppedForTokens,
-      topBanner: result.meta.topBanner,
-      promoBand: result.meta.promoBand,
-      ctaLabel: result.meta.ctaLabel,
-      blocks: result.blocks,
+      droppedForSchema,
+      droppedForTokens,
+      topBanner: envelope.data.topBanner ? stripDashes(envelope.data.topBanner) : undefined,
+      promoBand: envelope.data.promoBand ? stripDashes(envelope.data.promoBand) : undefined,
+      ctaLabel: envelope.data.ctaLabel ? stripDashes(envelope.data.ctaLabel) : undefined,
+      blocks: restructured,
       sourceBlockCount: blocks.length,
-      review: result.review,
     });
   } catch (err) {
     console.error("[api/campaign/restructure]", err);

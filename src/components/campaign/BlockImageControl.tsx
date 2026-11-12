@@ -17,6 +17,8 @@ import ImageCropper, { useShapedPick } from "./ImageCropper";
 import { ShapePicker, SwapStrip, type PictureShape } from "./PictureTools";
 import { aspectRatioFor } from "@/lib/image-crop";
 import type { ImageCrop } from "@/lib/types";
+import { assetHasText, findFormatVariant } from "@/lib/asset-selection";
+import { useAssets, refreshAssets } from "./useAssets";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 
 /** Model tiers offered per block. Tiers rather than raw ids — see the
@@ -100,6 +102,7 @@ export default function BlockImageControl({
   onSettingsChange?: (patch: { promptModel?: "draft" | "craft" | "content"; promptInstructions?: string; imageModel?: string }) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const assets = useAssets();
   const [uploading, setUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [cropOpen, setCropOpen] = useState(false);
@@ -118,7 +121,15 @@ export default function BlockImageControl({
     if (shapedFor.current === aspect) return;
     shapedFor.current = aspect;
     const source = imageSourceUrl?.trim() || imageUrl?.trim();
-    if (source) void pick(source);
+    if (source) {
+      const variant = findFormatVariant(assets ?? [], source, cropAspect);
+      const current = assets?.find((a) => a.url === source);
+      if (!variant && current && assetHasText(current)) {
+        setChoiceNote("No matching captioned format exists. Keeping the full image so words are not cut off. Use Edit crop to reframe it manually.");
+        return;
+      }
+      void pick(variant?.url ?? source, false, !!variant && assetHasText(variant));
+    }
     // Only the shape changing should re-crop; the picture changing is a pick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aspect]);
@@ -198,7 +209,8 @@ export default function BlockImageControl({
         setChoiceNote(data.reason ? `No fit — ${data.reason}` : "Nothing in the library fits this block.");
         return;
       }
-      void pick(data.url as string, true);
+      void pick(data.url as string, true, data.hasText === true);
+      void refreshAssets().catch(() => {});
       setChoiceNote(data.reason ? `Picked — ${data.reason}` : null);
     } catch {
       setError("Network error, please try again");
@@ -313,7 +325,7 @@ export default function BlockImageControl({
         currentUrl={imageSourceUrl?.trim() || imageUrl?.trim()}
         copy={blockText ?? suggestPrompt()}
         exclude={usedImageUrls}
-        onPick={(a) => { setChoiceNote(null); void pick(a.url, true); }}
+        onPick={(a) => { setChoiceNote(null); void pick(a.url, true, assetHasText(a)); }}
       />
       {cropError && <div style={{ fontSize: 11, color: "var(--error)" }}>{cropError}</div>}
       {!compact && (
@@ -498,7 +510,7 @@ export default function BlockImageControl({
         <AssetPicker
           onPick={(asset) => {
             setPickerOpen(false);
-            void pick(asset.url, true);
+            void pick(asset.url, true, assetHasText(asset));
           }}
           onClose={() => setPickerOpen(false)}
         />

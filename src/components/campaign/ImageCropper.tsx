@@ -91,9 +91,14 @@ export function useShapedPick(aspect: AspectRatio, apply: (img: ShapedImage | { 
   const [cropping, setCropping] = useState(false);
   const [cropError, setCropError] = useState<string | null>(null);
 
-  async function pick(url: string, settle = false) {
+  async function pick(url: string, settle = false, preserveFullImage = false) {
     const mine = ++seq.current;
     setCropError(null);
+    if (preserveFullImage) {
+      setCropping(false);
+      applyRef.current({ url, sourceUrl: url });
+      return;
+    }
     if (settle) {
       applyRef.current({ url, sourceUrl: url });
       await new Promise((r) => setTimeout(r, SETTLE_MS));

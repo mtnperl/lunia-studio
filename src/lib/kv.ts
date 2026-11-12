@@ -150,6 +150,7 @@ const RATE_LIMITS: Record<string, number> = {
   "klaviyo-write": 12, // template writebacks (deliberately tight — every write is a real change)
   login: 10,      // login attempts per IP
   "choose-asset": 120,   // picking a library image per block — cheap, and clicked per block
+  "asset-review": 120,   // bounded six-image batches for the one-time library audit
 };
 
 export async function clearRateLimits(): Promise<number> {
@@ -269,6 +270,33 @@ const ASSETS_KEY = "lunia:assets";
 
 export async function getAssets(): Promise<AssetMetadata[]> {
   return readCollection<AssetMetadata>(ASSETS_KEY);
+}
+
+export type AssetDetailsPatch = Pick<AssetMetadata, "id"> & Partial<Pick<AssetMetadata,
+  "preference" | "familyId" | "width" | "height" | "textReview">>;
+
+/** Patch only these fields against the latest value atomically. Concurrent
+ * reviews and curation must not overwrite each other's metadata. */
+export async function patchAssetDetails(patches: AssetDetailsPatch[]): Promise<void> {
+  if (!patches.length) return;
+  await getAssets(); // Restore the collection from its durable snapshot if needed.
+  const byId = new Map(patches.map((p) => [p.id, p]));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const raw = await getRedis().get(ASSETS_KEY);
+    if (!raw) throw new Error("Asset collection is unavailable. Please retry.");
+    const assets = (JSON.parse(raw) as AssetMetadata[]).map((a) => ({ ...a, ...byId.get(a.id) }));
+    // Compare-and-set without Lua JSON re-encoding (which turns [] into {}).
+    const updated = await getRedis().eval(`
+      if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+      redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+      return 1
+    `, 1, ASSETS_KEY, raw, JSON.stringify(assets), TTL_SECONDS);
+    if (updated === 1) {
+      await backupCollectionToBlob(ASSETS_KEY, assets);
+      return;
+    }
+  }
+  throw new Error("Images changed during the update. Please retry.");
 }
 
 export async function saveAsset(asset: AssetMetadata): Promise<void> {

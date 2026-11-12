@@ -3,7 +3,6 @@ import { useState } from "react";
 import CopyButton from "@/components/email-review/CopyButton";
 import MarkdownRenderer from "@/components/email-review/MarkdownRenderer";
 import type { EmailFlowAsset } from "@/lib/types";
-import { IcChevron } from "@/components/ui";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,11 +26,12 @@ function MetaLabel({ children }: { children: React.ReactNode }) {
   return (
     <span
       style={{
-        fontSize: 11,
-        fontWeight: 600,
+        fontSize: 10,
+        fontWeight: 700,
         letterSpacing: "0.08em",
         textTransform: "uppercase",
         color: "var(--subtle)",
+        fontFamily: "Arial, sans-serif",
         paddingTop: 3,
       }}
     >
@@ -50,7 +50,7 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
-        borderLeft: "4px solid var(--ui-border)",
+        borderLeft: "4px solid #BFFBF8",
         borderRadius: 12,
         overflow: "hidden",
       }}
@@ -58,7 +58,7 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
       {/* Header */}
       <header
         style={{
-          background: "var(--ui-surface)",
+          background: "#F5F2EC",
           padding: "12px 18px",
           display: "flex",
           alignItems: "center",
@@ -74,10 +74,10 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
           <span
             style={{
               padding: "3px 9px",
-              background: "var(--ui-ink)",
-              color: "var(--ui-on-ink)",
-              fontSize: 11,
-              fontWeight: 600,
+              background: "#102635",
+              color: "#fff",
+              fontSize: 10,
+              fontWeight: 700,
               letterSpacing: "0.06em",
               borderRadius: 3,
               textTransform: "uppercase",
@@ -86,17 +86,17 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
             E{email.position}
           </span>
           {email.role && (
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ui-text)" }}>
+            <span style={{ fontFamily: "Arial, sans-serif", fontSize: 14, fontWeight: 700, color: "#102635" }}>
               {email.role}
             </span>
           )}
-          <span style={{ fontSize: 12, color: "var(--ui-text-2)", fontWeight: 400 }}>
+          <span style={{ fontFamily: "Arial, sans-serif", fontSize: 12, color: "#5b5340", fontWeight: 400 }}>
             +{email.sendDelayHours}h
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <CopyButton text={emailMarkdown(email, rationale)} label="Copy" />
-          <IcChevron size={16} strokeWidth={1.75} style={{ color: "var(--ui-text-3)", transition: "transform var(--ui-dur-2) var(--ui-ease-in-out)", transform: expanded ? "rotate(180deg)" : "none" }} />
+          <span style={{ fontSize: 11, color: "#5b5340" }}>{expanded ? "▲" : "▼"}</span>
         </div>
       </header>
 
@@ -108,17 +108,18 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
               display: "grid",
               gridTemplateColumns: "max-content 1fr",
               gap: "7px 14px",
+              fontFamily: "Arial, sans-serif",
               fontSize: 13,
             }}
           >
             <MetaLabel>Subject</MetaLabel>
-            <div style={{ color: "var(--ui-text)", fontWeight: 600 }}>{email.subject}</div>
+            <div style={{ color: "#1A1A1A", fontWeight: 700 }}>{email.subject}</div>
 
             <MetaLabel>Preview</MetaLabel>
-            <div style={{ color: "var(--ui-text)" }}>{email.previewText}</div>
+            <div style={{ color: "#1A1A1A" }}>{email.previewText}</div>
 
             <MetaLabel>Sender</MetaLabel>
-            <div style={{ color: "var(--ui-text)" }}>
+            <div style={{ color: "#1A1A1A" }}>
               {email.senderName}{" "}
               <span style={{ color: "var(--subtle)" }}>&lt;{email.senderEmail}&gt;</span>
             </div>
@@ -126,7 +127,7 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
 
           {/* Body */}
           {email.bodyText && (
-            <div style={{ borderTop: "1px dashed var(--ui-border)", paddingTop: 12 }}>
+            <div style={{ borderTop: "1px dashed #d6cfbe", paddingTop: 12 }}>
               <MarkdownRenderer>{email.bodyText}</MarkdownRenderer>
             </div>
           )}
@@ -141,10 +142,11 @@ export default function EmailCard({ email, rationale }: { email: EmailFlowAsset;
                 borderRadius: 6,
                 fontSize: 12,
                 color: "var(--muted)",
+                fontStyle: "italic",
                 lineHeight: 1.5,
               }}
             >
-              <strong style={{ color: "var(--ui-text)", fontWeight: 500, marginRight: 6 }}>Why</strong>
+              <strong style={{ color: "var(--text)", fontStyle: "normal", marginRight: 6 }}>Why:</strong>
               {rationale}
             </div>
           )}

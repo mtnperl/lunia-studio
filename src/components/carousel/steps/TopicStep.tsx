@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CarouselContrastMode, CarouselFormat, CarouselStylePreset, EngagementSubType, HookTone, type CarouselLook, type CarouselLookSettings } from "@/lib/types";
 import { isBuildable, type CarouselRow } from "@/lib/carousel-rows";
-import { Badge, CardButton, IcCheck, Input, Label, Select as UiSelect, Tabs } from "@/components/ui";
+import { Badge, Select as UiSelect } from "@/components/ui";
 import { STRUCTURES, STRUCTURE_IDS, structureFromLegacy, type CarouselStructure } from "@/lib/carousel-structures";
 import { Button } from "@/components/ui/Button";
 
@@ -279,98 +279,154 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
 
 
-  const hint: CSSProperties = { fontSize: "var(--ui-text-12)", color: "var(--ui-text-2)", lineHeight: "var(--ui-lh-12)", margin: "var(--ui-space-4) 0 0" };
-  const group: CSSProperties = { marginBottom: "var(--ui-space-8)" };
-
   return (
     <div>
       {varyFrom && (
-        <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", marginBottom: 20, border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-2)", background: "var(--ui-surface-2)", fontSize: 13 }}>
-          <span style={{ flex: 1 }}>Varying <strong style={{ fontWeight: 600 }}>{varyFrom}</strong>. The new carousel keeps its slide structure and look. Pick the new subject below</span>
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", marginBottom: 18, border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-2)", background: "var(--ui-surface-2)", fontSize: 13 }}>
+          <span style={{ flex: 1 }}>Varying <strong>{varyFrom}</strong>. The new carousel keeps its slide structure and look. Pick the new subject below.</span>
           {onClearVary && <button type="button" className="ui-btn ui-btn--sm ui-btn--ghost" onClick={onClearVary}>Start plain instead</button>}
         </div>
       )}
-      <h2 style={{ fontSize: "var(--ui-text-24)", lineHeight: "var(--ui-lh-24)", fontWeight: 600, margin: "0 0 var(--ui-space-3)", letterSpacing: "var(--ui-tracking-tight)" }}>{varyFrom ? "Choose the new subject" : "Choose a topic"}</h2>
-      <p style={{ color: "var(--ui-text-2)", margin: "0 0 var(--ui-space-8)", fontSize: 14 }}>Pick the format first: the library only offers subjects written for it</p>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>{varyFrom ? "Choose the new subject" : "Choose a topic"}</h2>
+      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Pick the format first: the library only offers subjects written for it.</p>
 
-      <div style={group}>
-        <Label kind="section">Format</Label>
-        <Tabs<CarouselFormat>
-          ariaLabel="Format"
-          value={carouselFormat}
-          onChange={setCarouselFormat}
-          items={[
-            { value: "standard", label: "Structured" },
-            { value: "engagement", label: "Engagement" },
-            { value: "did_you_know", label: "Did You Know" },
-            { value: "chartbook", label: "Chartbook" },
-            { value: "primer", label: "Primer" },
-          ]}
-        />
+      {/* Carousel format toggle */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Format</label>
+        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          {([
+            { val: "standard" as CarouselFormat, label: "Structured", desc: "Pick how the deck argues" },
+            { val: "engagement" as CarouselFormat, label: "Engagement", desc: "Drive comments" },
+            { val: "did_you_know" as CarouselFormat, label: "Did You Know", desc: "2-slide frozen template" },
+            { val: "chartbook" as CarouselFormat, label: "Chartbook", desc: "2 slides: a question, one figure" },
+            { val: "primer" as CarouselFormat, label: "Primer", desc: "2 slides: a cover, one reference slide" },
+          ]).map((opt) => (
+            <button
+              key={opt.val}
+              onClick={() => setCarouselFormat(opt.val)}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: carouselFormat === opt.val ? "var(--text)" : "var(--bg)",
+                color: carouselFormat === opt.val ? "var(--bg)" : "var(--muted)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         {carouselFormat === "engagement" && (
-          <p style={hint}>Engagement carousels end with a comment CTA. Readers comment a keyword to get a guide.</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Engagement carousels end with a comment CTA — readers comment a keyword to get a guide.
+          </p>
         )}
         {carouselFormat === "did_you_know" && (
-          <p style={hint}>Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Did You Know is a frozen 2-slide template. No graphics, no AI imagery, just typography. Generates 3 fact variants per topic.
+          </p>
         )}
         {carouselFormat === "chartbook" && (
-          <p style={hint}>Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.
+          </p>
         )}
         {carouselFormat === "primer" && (
-          <p style={hint}>Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, marginBottom: 0 }}>
+            Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.
+          </p>
         )}
       </div>
 
+
       {/* Mode toggle + quick-test sample-subject button */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <Tabs<Mode>
-          ariaLabel="Topic source"
-          value={mode}
-          onChange={setMode}
-          items={[{ value: "list", label: "Row library" }, { value: "custom", label: "Custom topic" }]}
-        />
-        <Button
-          size="sm"
-          variant="ghost"
-          title="Fill a sample topic so you can simulate a post without picking a real subject"
+        <div style={{ display: "flex", gap: 0, border: "1.5px solid var(--border)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          {(["list", "custom"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              style={{
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                background: mode === m ? "var(--accent)" : "var(--surface)",
+                color: mode === m ? "#fff" : "var(--muted)",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {m === "list" ? "Row library" : "Custom topic"}
+            </button>
+          ))}
+        </div>
+        <button
           onClick={() => {
             const pick = SAMPLE_SUBJECTS[Math.floor(Math.random() * SAMPLE_SUBJECTS.length)];
             setMode("custom");
             setCustom(pick);
             setSelectedSubject(null);
           }}
+          title="Fill a sample topic so you can simulate a post without picking a real subject"
+          style={{
+            padding: "7px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--muted)",
+            background: "transparent",
+            border: "1px dashed var(--border-strong)",
+            borderRadius: 7,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.02em",
+          }}
         >
           Try sample subject
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          busy={loadingSuggestions}
+        </button>
+        <button
+          onClick={fetchSuggestions}
           disabled={loadingSuggestions}
           title="Surface diverse, unused topics pulled from your subject library"
-          onClick={fetchSuggestions}
+          style={{
+            padding: "7px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--accent)",
+            background: "var(--accent-dim)",
+            border: "1px solid var(--accent-mid)",
+            borderRadius: 7,
+            cursor: loadingSuggestions ? "wait" : "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.02em",
+          }}
         >
-          ✨ Suggest topics
-        </Button>
+          {loadingSuggestions ? "Thinking…" : "✨ Suggest topics"}
+        </button>
       </div>
 
       {/* Suggestions panel — diverse, unused picks from the real subject library */}
       {(suggestions.length > 0 || suggestError) && (
-        <div style={{ marginBottom: 24, padding: 16, border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", background: "var(--ui-surface)" }}>
+        <div style={{ marginBottom: 24, padding: 16, border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: suggestions.length ? 12 : 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ui-text-2)" }}>
-              Suggested from your library, unused only
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Suggested for you · spread across your library, unused only
             </div>
-            <Button size="sm" variant="ghost" onClick={() => { setSuggestions([]); setSuggestError(null); }}>Dismiss</Button>
+            <button
+              onClick={() => { setSuggestions([]); setSuggestError(null); }}
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+            >
+              × Dismiss
+            </button>
           </div>
-          {suggestError && <div style={{ fontSize: 13, color: "var(--ui-danger)" }}>{suggestError}</div>}
+          {suggestError && <div style={{ fontSize: 13, color: "var(--error)" }}>{suggestError}</div>}
           <div style={{ display: "grid", gap: 8 }}>
             {suggestions.map((s) => (
-              <CardButton
+              <button
                 key={s.id}
-                role="toggle"
-                title={s.title}
-                description={s.category}
                 onClick={() => {
                   const match = subjects.find((su) => su.id === s.id);
                   if (!match) return;
@@ -381,7 +437,17 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
                   // deck exists. Stamping here burned rows that were picked
                   // and then abandoned.
                 }}
-              />
+                style={{
+                  textAlign: "left", padding: "10px 12px", borderRadius: 8,
+                  border: "1px solid var(--border)", background: "var(--bg)",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>{s.title}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", flexShrink: 0 }}>{s.category}</span>
+                </div>
+              </button>
             ))}
           </div>
         </div>
@@ -389,31 +455,58 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
       {/* List mode */}
       {mode === "list" && (
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 28 }}>
+          {/* Filters */}
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 200px" }}>
-              <Input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search subjects" aria-label="Search subjects" />
-            </div>
-            <div style={{ flex: "0 0 220px" }}>
-              <UiSelect value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Type">
-                {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-              </UiSelect>
-            </div>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search subjects..."
+              style={{
+                flex: "1 1 200px",
+                padding: "8px 12px",
+                fontSize: 13,
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                fontFamily: "inherit",
+                background: "var(--bg)",
+                color: "var(--text)",
+                outline: "none",
+              }}
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                fontSize: 13,
+                border: "1.5px solid var(--border)",
+                borderRadius: 7,
+                fontFamily: "inherit",
+                background: "var(--bg)",
+                color: "var(--text)",
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
-          <div style={{ fontSize: 12, color: "var(--ui-text-3)", marginBottom: 8, fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
             {loadingSubjects
-              ? "Loading…"
+              ? "Loading..."
               : `${filteredSubjects.length} of ${pool.length} rows${usedCount > 0 ? ` · ${usedCount} already built` : ""}`}
           </div>
 
           {/* Row list */}
-          <div role="listbox" aria-label="Subjects" style={{ border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", overflow: "hidden", maxHeight: 340, overflowY: "auto" }}>
+          <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", maxHeight: 340, overflowY: "auto" }}>
             {filteredSubjects.length === 0 && !loadingSubjects && (
-              <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--ui-text-2)", fontSize: 13 }}>
+              <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
                 {subjects.length === 0
                   ? "No rows imported yet. Import the review sheet on the Rows screen."
-                  : "No rows match your filter"}
+                  : "No rows match your filter."}
               </div>
             )}
             {filteredSubjects.map((s) => {
@@ -422,32 +515,33 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
               return (
                 <div
                   key={s.id}
-                  role="option"
-                  aria-selected={isSelected}
-                  tabIndex={0}
                   onClick={() => setSelectedSubject(s)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedSubject(s); } }}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    minHeight: 40,
-                    padding: "8px 16px",
-                    borderBottom: "1px solid var(--ui-border)",
+                    padding: "10px 14px",
+                    borderBottom: "1px solid var(--border)",
                     cursor: "pointer",
-                    background: isSelected ? "var(--ui-selection-tint)" : "var(--ui-bg)",
-                    boxShadow: isSelected ? "inset 2px 0 0 var(--ui-text)" : "none",
-                    transition: "background-color var(--ui-dur-1) var(--ui-ease-out)",
+                    background: isSelected ? "rgba(34,197,94,0.12)" : "var(--bg)",
+                    transition: "background 0.1s",
+                    outline: isSelected ? "1.5px solid #15803d" : "none",
+                    outlineOffset: -1,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: isSelected ? 500 : 400, color: "var(--ui-text)", lineHeight: 1.4 }}>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: isSelected ? 700 : 400,
+                    color: isSelected ? "#15803d" : "var(--text)",
+                    lineHeight: 1.4,
+                  }}>
                     {s.subject}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
-                    <span title="Evidence and story scores from the review sheet" style={{ fontSize: 11, fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--ui-text-3)" }}>
+                    <span title="Evidence and story scores from the review sheet" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", padding: "1px 5px", borderRadius: 3, border: "1px solid var(--border)", color: "var(--subtle)" }}>
                       E{s.evidence} S{s.story}
                     </span>
-                    <span style={{ fontSize: 11, color: "var(--ui-text-3)" }}>{s.carouselType}</span>
+                    <span style={{ fontSize: 10, color: isSelected ? "#15803d" : "var(--subtle)" }}>{s.carouselType}</span>
                     {used && (
                       <span title={`Built ${s.usedAt!.slice(0, 10)}. Picking it again writes a second deck from the same row.`}>
                         <Badge tone="success">Used</Badge>
@@ -460,24 +554,25 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           </div>
 
           {selectedRow && (
-            <div style={{ marginTop: 12, padding: "12px 16px", background: "var(--ui-surface)", border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500, color: "var(--ui-text)" }}>
-                <IcCheck size={16} strokeWidth={1.75} style={{ color: "var(--ui-success)", flexShrink: 0 }} />
-                {topic}
-              </div>
-              <div style={{ marginTop: 4, marginLeft: 24, fontSize: 12, color: "var(--ui-text-2)", lineHeight: 1.5 }}>
-                <div>Six reviewed slides and three hooks come from the sheet. Only the caption and the last slide are written now.</div>
-                <div style={{ marginTop: 4, fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums", color: "var(--ui-text-3)" }}>Evidence {selectedRow.evidence}/5 · Story {selectedRow.story}/5</div>
-                {selectedRow.why && <div style={{ marginTop: 4 }}>{selectedRow.why}</div>}
-                {selectedRow.citation && (
-                  <div style={{ marginTop: 4 }}>
-                    Source:{" "}
-                    {selectedRow.citationUrl
-                      ? <a href={selectedRow.citationUrl} target="_blank" rel="noreferrer" style={{ color: "var(--ui-focus)" }}>{selectedRow.citation}</a>
-                      : selectedRow.citation}
-                  </div>
-                )}
-              </div>
+            <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#15803d" }}>
+              ✓ {topic}
+              <span style={{ display: "block", marginTop: 4, fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>
+                Six reviewed slides and three hooks come from the sheet. Only the caption and the last slide are written now.
+              </span>
+            </div>
+          )}
+          {selectedRow && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+              <div>Evidence {selectedRow.evidence}/5 · Story {selectedRow.story}/5</div>
+              {selectedRow.why && <div style={{ marginTop: 2 }}>{selectedRow.why}</div>}
+              {selectedRow.citation && (
+                <div style={{ marginTop: 2 }}>
+                  Source:{" "}
+                  {selectedRow.citationUrl
+                    ? <a href={selectedRow.citationUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>{selectedRow.citation}</a>
+                    : selectedRow.citation}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -485,27 +580,58 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
       {/* Custom mode */}
       {mode === "custom" && (
-        <div style={{ marginBottom: 32 }}>
-          <Input
-            size="lg"
+        <div style={{ marginBottom: 28 }}>
+          <input
             type="text"
             value={custom}
             maxLength={500}
-            invalid={topicTooLong}
-            aria-label="Custom topic"
             onChange={(e) => setCustom(e.target.value)}
             placeholder="e.g. Why magnesium beats melatonin for deep sleep"
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              fontSize: 15,
+              border: `1.5px solid ${topicTooLong ? "#e53e3e" : "var(--border)"}`,
+              borderRadius: 8,
+              fontFamily: "inherit",
+              outline: "none",
+              background: "var(--bg)",
+              color: "var(--text)",
+              boxSizing: "border-box",
+            }}
           />
-          {topicTooLong && <div style={{ fontSize: 12, color: "var(--ui-danger)", marginTop: 4 }}>Maximum 500 characters</div>}
+          {topicTooLong && <div style={{ fontSize: 12, color: "#e53e3e", marginTop: 4 }}>Maximum 500 characters</div>}
         </div>
       )}
 
       {/* Engagement sub-type (only for engagement format) */}
       {carouselFormat === "engagement" && (
-        <div style={group}>
-          <Label kind="section">Engagement type</Label>
-          <OptionGrid cols={2} value={engagementSubType} onChange={setEngagementSubType}
-            options={ENGAGEMENT_SUBTYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label, desc: o.description }))} />
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Engagement type</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {ENGAGEMENT_SUBTYPE_OPTIONS.map((opt) => {
+              const sel = engagementSubType === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => setEngagementSubType(opt.value)}
+                  style={{
+                    flex: 1,
+                    border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                    transition: "all 0.12s",
+                    boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -514,56 +640,62 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           to memorise which is which. The recommender still returns legacy
           tones; they are mapped to structures for the badges. */}
       {carouselFormat === "standard" && (
-      <div style={group}>
-        <Label kind="section">Structure</Label>
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Structure</label>
         {(() => {
           const recStructures = hookRec.map((r) => structureFromLegacy(r.tone, "standard", stylePreset));
           return (
             <>
               {hookRec.length > 0 && (
-                <div style={{ fontSize: 12, color: "var(--ui-text-2)", marginBottom: 12 }}>
-                  Suggested for this topic: <strong style={{ fontWeight: 600, color: "var(--ui-text)" }}>{STRUCTURES[recStructures[0]].label}</strong>{hookRec[0].reason ? ` · ${hookRec[0].reason}` : ""}
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+                  Suggested for this topic: <strong style={{ color: "var(--text)" }}>{STRUCTURES[recStructures[0]].label}</strong>{hookRec[0].reason ? ` · ${hookRec[0].reason}` : ""}
                 </div>
               )}
-              <div role="radiogroup" aria-label="Structure" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                 {STRUCTURE_IDS.map((id) => {
                   const spec = STRUCTURES[id];
+                  const sel = structure === id;
                   const recIdx = recStructures.indexOf(id);
+                  const isRec = recIdx !== -1;
                   return (
-                    <div key={id} style={{ position: "relative" }}>
-                      <CardButton
-                        selected={structure === id}
-                        onClick={() => setStructure(id)}
-                        style={{ height: "100%", paddingRight: 36 }}
-                        title={<>{spec.label}{recIdx !== -1 && <span style={{ marginLeft: 6, verticalAlign: "middle" }}><Badge>{recIdx === 0 ? "Top pick" : "Suggested"}</Badge></span>}</>}
-                        description={spec.info.example}
-                      />
+                    <div
+                      key={id}
+                      onClick={() => setStructure(id)}
+                      style={{
+                        position: "relative",
+                        border: `1.5px solid ${sel ? "var(--accent)" : isRec ? "var(--accent-mid)" : "var(--border)"}`,
+                        borderRadius: 8, padding: "10px 34px 10px 12px", cursor: "pointer",
+                        background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                        transition: "all 0.12s",
+                        boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                      }}
+                    >
                       <button
                         type="button"
                         aria-label={`About ${spec.label}`}
                         aria-expanded={infoFor === id}
-                        onClick={() => setInfoFor(infoFor === id ? null : id)}
-                        className="ui-focusable"
+                        onClick={(e) => { e.stopPropagation(); setInfoFor(infoFor === id ? null : id); }}
                         style={{
                           position: "absolute", top: 8, right: 8, width: 20, height: 20, borderRadius: "50%",
-                          border: `1px solid ${infoFor === id ? "var(--ui-text)" : "var(--ui-border)"}`,
-                          background: infoFor === id ? "var(--ui-text)" : "var(--ui-bg)",
-                          color: infoFor === id ? "var(--ui-bg)" : "var(--ui-text-2)",
-                          fontSize: 11, fontWeight: 600, fontFamily: "var(--ui-font-mono)", lineHeight: 1, cursor: "pointer", padding: 0,
-                          transition: "background-color var(--ui-dur-1) var(--ui-ease-out), color var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out)",
+                          border: `1px solid ${infoFor === id ? "var(--accent)" : "var(--border)"}`,
+                          background: infoFor === id ? "var(--accent)" : "var(--bg)",
+                          color: infoFor === id ? "var(--bg)" : "var(--muted)",
+                          fontSize: 11, fontWeight: 700, fontFamily: "Georgia, serif", fontStyle: "italic", lineHeight: 1, cursor: "pointer", padding: 0,
                         }}
                       >i</button>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{spec.label}{isRec && <span style={{ marginLeft: 6, fontSize: 8, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.04em", border: "1px solid var(--accent-mid)", borderRadius: 4, padding: "1px 4px", background: "var(--accent-dim)", verticalAlign: "middle" }}>{recIdx === 0 ? "Top pick" : "Suggested"}</span>}</div>
+                      <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{spec.info.example}</div>
                     </div>
                   );
                 })}
               </div>
               {infoFor && (
-                <div style={{ marginTop: 12, padding: "12px 16px", border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", background: "var(--ui-surface)", fontSize: 13, lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{STRUCTURES[infoFor].label}</div>
-                  <div><span style={{ fontWeight: 500 }}>What it is.</span> {STRUCTURES[infoFor].info.what}</div>
-                  <div><span style={{ fontWeight: 500 }}>Use it when.</span> {STRUCTURES[infoFor].info.when}</div>
-                  <div><span style={{ fontWeight: 500 }}>Example hook.</span> &ldquo;{STRUCTURES[infoFor].info.example}&rdquo;</div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--ui-text-2)" }}>Value move: {STRUCTURES[infoFor].valueMove === "simplify" ? "make a hard thing simple" : STRUCTURES[infoFor].valueMove === "add-research" ? "add the research to something everyone knows" : "flip something everyone believes"}.</div>
+                <div style={{ marginTop: 10, padding: "12px 14px", border: "1px solid var(--accent-mid)", borderRadius: 10, background: "var(--accent-dim)", fontSize: 13, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>{STRUCTURES[infoFor].label}</div>
+                  <div><strong>What it is.</strong> {STRUCTURES[infoFor].info.what}</div>
+                  <div><strong>Use it when.</strong> {STRUCTURES[infoFor].info.when}</div>
+                  <div><strong>Example hook.</strong> &ldquo;{STRUCTURES[infoFor].info.example}&rdquo;</div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>Value move: {STRUCTURES[infoFor].valueMove === "simplify" ? "make a hard thing simple" : STRUCTURES[infoFor].valueMove === "add-research" ? "add the research to something everyone knows" : "flip something everyone believes"}.</div>
                 </div>
               )}
             </>
@@ -575,27 +707,49 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       {/* Saved looks come first: one pick sets the preset, the image engine and
           every deck-wide style knob the studio will open with. */}
       {!isTwoSlideFormat(carouselFormat) && looks.length > 0 && (
-        <div style={group}>
-          <Label kind="section">Look</Label>
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Look</label>
           <UiSelect value={lookId} onChange={(e) => chooseLook(e.target.value)} aria-label="Saved look">
             <option value="">No saved look, set the style below</option>
             {looks.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </UiSelect>
-          {lookId && <p style={hint}>The studio opens with the sizes, colours, overlays and toggles of this look. Preset and image engine below follow it too.</p>}
+          {lookId && <div style={{ marginTop: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.5 }}>The studio opens with the sizes, colours, overlays and toggles of this look. Preset and image engine below follow it too.</div>}
         </div>
       )}
       {/* Carousel style preset — re-skins the whole carousel (colors, fonts,
           image engine). "Editorial Scientific" applies the Lunia brand book. */}
       {!isTwoSlideFormat(carouselFormat) && (
-      <div style={group}>
-        <Label kind="section">Style</Label>
-        <OptionGrid cols={2} value={stylePreset} onChange={setStylePreset} options={[
-          { value: "editorial-scientific", label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
-          { value: "free-press", label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
-          { value: "viral", label: "Viral", desc: "Editorial look, slot-built for swipe depth. 5 or 10 slides" },
-          { value: "essay", label: "Essay", desc: "Paper, one boxed word, engraving cover, serial chrome. Reads hand-made" },
-          { value: "billboard", label: "Billboard", desc: "Paper, outlined LUNIA watermark, four pillar corners, thin-over-heavy headlines around a photo band" },
-        ]} />
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {([
+            { val: "editorial-scientific" as CarouselStylePreset, label: "Editorial Scientific", desc: "Lunia palette, Inter, gpt-image-2" },
+            { val: "free-press" as CarouselStylePreset, label: "Free Press", desc: "Text-led. Photo cover, no graphics on body slides" },
+            { val: "viral" as CarouselStylePreset, label: "Viral", desc: "Editorial look, slot-built for swipe depth. 5 or 10 slides" },
+            { val: "essay" as CarouselStylePreset, label: "Essay", desc: "Paper, one boxed word, engraving cover, serial chrome. Reads hand-made" },
+            { val: "billboard" as CarouselStylePreset, label: "Billboard", desc: "Paper, outlined LUNIA watermark, four pillar corners, thin-over-heavy headlines around a photo band" },
+          ]).map((opt) => {
+            const sel = stylePreset === opt.val;
+            return (
+              <div
+                key={opt.val}
+                onClick={() => setStylePreset(opt.val)}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.desc}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       )}
 
@@ -603,44 +757,121 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           preset's palette block. On any other preset the setting would reach a
           code path that ignores it, so offering it there would be a dead control. */}
       {!isTwoSlideFormat(carouselFormat) && stylePreset === "editorial-scientific" && (
-      <div style={group}>
-        <Label kind="section">Contrast</Label>
-        <OptionGrid cols={2} value={contrastMode} onChange={setContrastMode} options={[
-          { value: "standard", label: "Standard", desc: "Ivory frame, edge to edge" },
-          { value: "high", label: "Bold post", desc: "Full-bleed photo on a dark ground, ivory type, one yellow phrase" },
-        ]} />
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Contrast</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {([
+            { val: "standard" as CarouselContrastMode, label: "Standard", desc: "Ivory frame, edge to edge" },
+            { val: "high" as CarouselContrastMode, label: "Bold post", desc: "Full-bleed photo on a dark ground, ivory type, one yellow phrase" },
+          ]).map((opt) => {
+            const sel = contrastMode === opt.val;
+            return (
+              <div
+                key={opt.val}
+                onClick={() => setContrastMode(opt.val)}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.desc}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       )}
 
       {/* Hook image style — hidden for did_you_know (no AI imagery) */}
       {!isTwoSlideFormat(carouselFormat) && (
-      <div style={group}>
-        <Label kind="section">Hook image style</Label>
-        <OptionGrid cols={2} value={imageStyle} onChange={setImageStyle}
-          options={IMAGE_STYLE_OPTIONS.map((o) => ({ value: o.value, label: o.label, desc: o.description }))} />
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hook image style</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+          {IMAGE_STYLE_OPTIONS.map((opt) => {
+            const sel = imageStyle === opt.value;
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setImageStyle(opt.value)}
+                style={{
+                  border: `1.5px solid ${sel ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  background: sel ? "rgba(30,122,138,0.06)" : "var(--bg)",
+                  transition: "all 0.12s",
+                  boxShadow: sel ? "0 0 0 3px rgba(30,122,138,0.12)" : "none",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: sel ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: sel ? "var(--accent)" : "var(--muted)", lineHeight: 1.4, opacity: sel ? 0.8 : 1 }}>{opt.description}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       )}
 
       {/* Viral: the length choice replaces content length. Every viral slide is
           already concise by construction, so the old toggle has nothing to add. */}
       {carouselFormat === "standard" && (
-      <div style={group}>
-        <Label kind="section">Length</Label>
-        <OptionGrid cols={2} value={viralSlides} onChange={setViralSlides} options={[
-          { value: 5 as const, label: "5 slides", desc: "Hook, three content slides, CTA" },
-          { value: 10 as const, label: "10 slides", desc: "Hook, eight content slides, CTA" },
-        ]} />
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Length</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {([
+            { val: 5 as const, label: "5 slides", desc: "Hook, three content slides, CTA" },
+            { val: 10 as const, label: "10 slides", desc: "Hook, eight content slides, CTA" },
+          ]).map((opt) => (
+            <div
+              key={opt.val}
+              onClick={() => setViralSlides(opt.val)}
+              style={{
+                flex: 1,
+                border: `1.5px solid ${viralSlides === opt.val ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                background: viralSlides === opt.val ? "var(--accent-dim)" : "var(--bg)",
+                transition: "all 0.12s",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: viralSlides === opt.val ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+              <div style={{ fontSize: 11, color: viralSlides === opt.val ? "var(--accent)" : "var(--muted)" }}>{opt.desc}</div>
+            </div>
+          ))}
+        </div>
       </div>
       )}
 
       {/* Content length toggle (standard only — engagement is always concise) */}
       {carouselFormat === "standard" && stylePreset !== "viral" && (
-      <div style={group}>
-        <Label kind="section">Content length</Label>
-        <OptionGrid cols={2} value={concise} onChange={setConcise} options={[
-          { value: false, label: "Standard", desc: "3-5 sentences per slide" },
-          { value: true, label: "Concise", desc: "1-2 sentences, punchy" },
-        ]} />
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Content length</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { val: false, label: "Standard", desc: "3-5 sentences per slide" },
+            { val: true,  label: "Concise",  desc: "1-2 sentences, punchy" },
+          ].map(opt => (
+            <div
+              key={String(opt.val)}
+              onClick={() => setConcise(opt.val)}
+              style={{
+                flex: 1,
+                border: `1.5px solid ${concise === opt.val ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 8, padding: "10px 12px", cursor: "pointer",
+                background: concise === opt.val ? "var(--accent-dim)" : "var(--bg)",
+                transition: "all 0.12s",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: concise === opt.val ? "var(--accent)" : "var(--text)" }}>{opt.label}</div>
+              <div style={{ fontSize: 11, color: concise === opt.val ? "var(--accent)" : "var(--muted)" }}>{opt.desc}</div>
+            </div>
+          ))}
+        </div>
       </div>
       )}
 
@@ -648,36 +879,64 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           entity line to every caption so AI crawlers / answer engines build
           a strong association between Lunia Life, the product (Lunia Restore),
           the ingredients, and the brand category. Default ON. */}
-      <div style={group}>
-        <Label kind="section">Caption</Label>
-        <CardButton
-          role="toggle"
-          selected={includeSeoFooter}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Caption
+        </label>
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setIncludeSeoFooter((v) => !v)}
-          title="Brand SEO line in caption"
-          description="Append a brand-bridge sentence plus a Lunia Life · Lunia Restore · ingredients · domain line. Helps AI crawlers and answer engines surface Lunia when users ask related questions."
-        />
+          onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Enter") {
+              e.preventDefault();
+              setIncludeSeoFooter((v) => !v);
+            }
+          }}
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 12,
+            padding: "12px 14px",
+            border: `1.5px solid ${includeSeoFooter ? "var(--accent)" : "var(--border)"}`,
+            background: includeSeoFooter ? "var(--accent-dim)" : "var(--bg)",
+            borderRadius: 8,
+            cursor: "pointer",
+            transition: "all 0.12s",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={includeSeoFooter}
+            readOnly
+            tabIndex={-1}
+            style={{
+              width: 16,
+              height: 16,
+              marginTop: 2,
+              flex: "0 0 16px",
+              flexShrink: 0,
+              cursor: "pointer",
+              accentColor: "var(--accent)",
+            }}
+          />
+          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: includeSeoFooter ? "var(--accent)" : "var(--text)", marginBottom: 2 }}>
+              Brand SEO line in caption
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+              Append a brand-bridge sentence plus a Lunia Life · Lunia Restore · ingredients · domain line. Helps AI crawlers and answer engines surface Lunia when users ask related questions.
+            </div>
+          </div>
+        </div>
       </div>
 
       <Button variant="primary" size="lg" disabled={!topic || topicTooLong} onClick={handleNext}>
         Generate carousel →
       </Button>
-    </div>
-  );
-}
-
-/** A row of option cards where exactly one is chosen. */
-function OptionGrid<T extends string | number | boolean>({ options, value, onChange, cols }: {
-  options: { value: T; label: string; desc: string }[];
-  value: T;
-  onChange: (v: T) => void;
-  cols: number;
-}) {
-  return (
-    <div role="radiogroup" style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 8 }}>
-      {options.map((o) => (
-        <CardButton key={String(o.value)} selected={value === o.value} onClick={() => onChange(o.value)} title={o.label} description={o.desc} />
-      ))}
     </div>
   );
 }

@@ -22,7 +22,7 @@ type Props = {
   busy?: boolean;
 };
 
-const label = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", fontFamily: "Inter, sans-serif" } as const;
+const label = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.14em", fontFamily: "Inter, sans-serif" } as const;
 const mono = { fontFamily: "'Fira Code', monospace", fontVariantNumeric: "tabular-nums" } as const;
 
 function Row({ children }: { children: React.ReactNode }) {
@@ -146,7 +146,7 @@ export default function ChartbookFigureStep({ topic, figures, selected, onSelect
 
   return (
     <div>
-      <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 6, letterSpacing: "var(--ui-tracking-tight)" }}>Check the numbers</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Check the numbers</h2>
       <p style={{ color: "var(--muted)", marginBottom: 20, fontSize: 14 }}>
         {figures.length} figure{figures.length === 1 ? "" : "s"} proposed for: <span style={{ color: "var(--text)", fontWeight: 600 }}>{topic}</span>. Confirm the values against the source, fix anything that is off, then write the slides.
       </p>
@@ -170,7 +170,7 @@ export default function ChartbookFigureStep({ topic, figures, selected, onSelect
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                   <span style={{ ...label, color: sel ? "var(--accent)" : "var(--text)" }}>{p.figure.layout.replace("-", " ")}</span>
-                  {n > 0 && <span title={p.violations!.join("\n")} style={{ fontSize: 11, fontWeight: 600, color: "var(--error)" }}>{n} flag{n === 1 ? "" : "s"}</span>}
+                  {n > 0 && <span title={p.violations!.join("\n")} style={{ fontSize: 10, fontWeight: 700, color: "var(--error)" }}>{n} flag{n === 1 ? "" : "s"}</span>}
                 </div>
                 <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, marginBottom: 2 }}>{p.figure.title}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>{p.angle}</div>

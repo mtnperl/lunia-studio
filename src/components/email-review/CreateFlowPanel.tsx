@@ -4,7 +4,6 @@ import CopyButton from "@/components/email-review/CopyButton";
 import EmailCard, { emailMarkdown } from "@/components/email-review/EmailCard";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { EmailFlow } from "@/lib/types";
-import { Button } from "@/components/ui";
 
 const FLOW_TYPE_LABELS: Record<string, string> = {
   abandoned_checkout: "Abandoned checkout",
@@ -86,7 +85,7 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
           }}
         >
           <div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ui-text)", marginBottom: 4 }}>
+            <div style={{ fontFamily: "Arial, sans-serif", fontSize: 16, fontWeight: 700, color: "#102635", marginBottom: 4 }}>
               Describe the flow you need
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
@@ -96,23 +95,36 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
             </div>
           </div>
 
-          <textarea className="ui-input"
+          <textarea
             value={useCase}
             onChange={(e) => setUseCase(e.target.value)}
             rows={5}
             placeholder={placeholder}
             autoFocus
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              fontSize: 13,
+              lineHeight: 1.6,
+              background: "var(--surface-r, #fafaf9)",
+              color: "#1A1A1A",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontFamily: "Arial, sans-serif",
+              resize: "vertical",
+              boxSizing: "border-box",
+            }}
           />
 
           {error && (
             <div
               style={{
                 padding: "10px 14px",
-                background: "var(--ui-danger-tint)",
-                border: "1px solid var(--ui-border)",
+                background: "rgba(176, 65, 62, 0.08)",
+                border: "1px solid rgba(176, 65, 62, 0.3)",
                 borderRadius: 8,
                 fontSize: 13,
-                color: "var(--ui-danger)",
+                color: "#B0413E",
               }}
             >
               {error}
@@ -128,12 +140,42 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
           )}
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Button variant="primary" size="md" onClick={generate} disabled={busy || !useCase.trim()}>
-              {busy ? "Generating…" : "✨ Create flow"}
-            </Button>
-            <Button variant="secondary" size="md" onClick={onCancel} disabled={busy}>
+            <button
+              onClick={generate}
+              disabled={busy || !useCase.trim()}
+              style={{
+                padding: "9px 18px",
+                fontSize: 13,
+                fontWeight: 700,
+                background: busy || !useCase.trim() ? "rgba(16,38,53,0.4)" : "#102635",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: busy || !useCase.trim() ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {busy ? "Generating…" : "✦ Create flow"}
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={busy}
+              style={{
+                padding: "9px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                background: "transparent",
+                color: "var(--muted)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                cursor: busy ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       )}
@@ -144,9 +186,8 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
           {/* Flow header */}
           <div
             style={{
-              background: "var(--ui-surface)",
-              border: "1px solid var(--ui-border)",
-              borderRadius: "var(--ui-radius-4)",
+              background: "linear-gradient(135deg, #102635 0%, #1a3a52 100%)",
+              borderRadius: 14,
               padding: "20px 24px",
               display: "flex",
               alignItems: "center",
@@ -158,9 +199,11 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
             <div>
               <div
                 style={{
-                  fontSize: 12,
-                  fontFamily: "var(--ui-font-mono)",
-                  color: "var(--ui-text-3)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.10em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.5)",
                   marginBottom: 4,
                 }}
               >
@@ -169,15 +212,16 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
               <h2
                 style={{
                   margin: 0,
+                  fontFamily: "Arial, sans-serif",
                   fontSize: 20,
-                  fontWeight: 600,
-                  color: "var(--ui-text)",
-                  letterSpacing: "var(--ui-tracking-tight)",
+                  fontWeight: 700,
+                  color: "#fff",
+                  letterSpacing: "-0.01em",
                 }}
               >
                 {flow.flowName}
               </h2>
-              <div style={{ fontSize: 13, color: "var(--ui-text-2)", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>
                 Trigger: {flow.trigger}
               </div>
             </div>
@@ -187,9 +231,24 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
                 label="Copy all"
                 size="md"
               />
-              <Button size="md" variant="primary" onClick={() => onRunReview(flow)}>
-                ✨ Run review on this flow
-              </Button>
+              <button
+                onClick={() => onRunReview(flow)}
+                style={{
+                  padding: "7px 16px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: "#FFD800",
+                  color: "#102635",
+                  border: "none",
+                  borderRadius: 5,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                ✦ Run review on this flow →
+              </button>
             </div>
           </div>
 
@@ -202,9 +261,22 @@ export default function CreateFlowPanel({ onCancel, onRunReview }: Props) {
 
           {/* Start over */}
           <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-            <Button variant="secondary" size="md" onClick={() => { setFlow(null); setError(null); }}>
+            <button
+              onClick={() => { setFlow(null); setError(null); }}
+              style={{
+                padding: "7px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                background: "transparent",
+                color: "var(--muted)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
               ← Start over
-            </Button>
+            </button>
           </div>
         </div>
       )}

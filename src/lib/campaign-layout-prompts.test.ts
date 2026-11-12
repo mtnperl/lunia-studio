@@ -137,10 +137,7 @@ describe("buildRestructurePrompt", () => {
     expect(p).toMatch(/MUST NOT invent any number/);
     expect(p).toMatch(/verbatim quoted customer\s+text/);
     expect(p).toMatch(/Dropping words is allowed/);
-    // Body copy stays the source's; only claim-free structural words may be
-    // written (2026-11, so a long email can get section headings).
-    expect(p).toMatch(/Body copy comes from the source/);
-    expect(p).toMatch(/short structural words that carry no claim/);
+    expect(p).toMatch(/You are moving text, not authoring it/);
   });
 
   it("states the no-em-dash brand rule", () => {
@@ -195,19 +192,10 @@ describe("restructure kind variety", () => {
     expect(p()).toMatch(/imagebullets/);
   });
 
-  it("budgets pictures by length, because a flat cap of two kept long emails text-only", () => {
+  it("caps pictures, because the old 'reach for them first' filled emails with weak ones", () => {
     expect(p()).toMatch(/PICTURES ARE A BUDGET, NOT A GOAL/);
-    expect(p()).toMatch(/Up to 1 picture-bearing block for an email/);
-    const long = buildRestructurePrompt(
-      [{ id: "x", body: Array.from({ length: 480 }, () => "word").join(" "), align: "left", kind: "text" }], "S", "",
-    );
-    expect(long).toMatch(/Up to 4 picture-bearing blocks/);
+    expect(p()).toMatch(/At most TWO image-bearing blocks/);
     expect(p()).not.toMatch(/Reach for them first/);
-  });
-
-  it("carries the design rules the review enforces", () => {
-    expect(p()).toMatch(/NEVER put two plain "text"/);
-    expect(p()).toMatch(/No paragraph over 60 words/);
   });
 
   it("asks for art direction on image blocks", () => {
@@ -238,23 +226,22 @@ describe("editorial (AG1-style) restructure", () => {
     expect(p).toMatch(/OPEN with a "headerimage" block/);
     expect(p).toMatch(/ALTERNATE "imagetext"/);
     expect(p).toMatch(/imagebullets/);
-    expect(p).toMatch(/6 to 9 blocks/);
-    expect(p).toMatch(/"lead"/);
+    expect(p).toMatch(/5 to 8 blocks/);
   });
 
   it("calls out the all-on-one-side failure, since alternation is the look", () => {
     expect(editorial()).toMatch(/do not emit them all on one side/);
   });
 
-  it("keeps bare text blocks out", () => {
-    expect(editorial()).toMatch(/NO bare "text" blocks/);
+  it("holds bare text blocks to at most one", () => {
+    expect(editorial()).toMatch(/AT MOST ONE/);
   });
 
   it("keeps every copy rule from the default mode", () => {
     // Editorial changes the LAYOUT, never the licence to invent.
     const p = editorial();
     expect(p).toMatch(/MUST NOT invent any number/);
-    expect(p).toMatch(/Body copy comes from the source/);
+    expect(p).toMatch(/Every word you output must appear in the source/);
     expect(p).toMatch(/NEVER use em dashes/);
   });
 
@@ -308,9 +295,9 @@ describe("LayoutEnvelopeSchema", () => {
   });
 
   it("no longer rejects on count — the cap is a truncation, not a failure", () => {
-    const many = Array.from({ length: 16 }, () => good);
+    const many = Array.from({ length: 12 }, () => good);
     expect(LayoutEnvelopeSchema.safeParse({ blocks: many }).success).toBe(true);
-    expect(many.slice(0, MAX_LAYOUT_BLOCKS)).toHaveLength(12);
+    expect(many.slice(0, MAX_LAYOUT_BLOCKS)).toHaveLength(8);
   });
 
   it("keeps the good blocks when one is unusable", () => {

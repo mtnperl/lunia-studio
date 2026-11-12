@@ -3,6 +3,8 @@ import { saveAssets } from "@/lib/kv";
 import { AssetMetadata, AssetType } from "@/lib/types";
 import { describeAsset } from "@/lib/asset-caption";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
+import { reviewAsset } from "@/lib/asset-review";
 
 // The caption call adds a few seconds to what used to be a single blob write,
 // and a batch runs several of those at once, so this needs room past the
@@ -104,7 +106,7 @@ export async function POST(req: Request) {
         // helper swallows its own failures, so this cannot fail the upload.
         const description = await describeAsset({ url: blob.url, type: file.type, name: file.name });
 
-        return {
+        const asset: AssetMetadata = {
           id: randomUUID(),
           url: blob.url,
           name: file.name,
@@ -113,6 +115,16 @@ export async function POST(req: Request) {
           uploadedAt: new Date().toISOString(),
           ...(description ? { description } : {}),
         };
+        try {
+          const metadata = await sharp(Buffer.from(await file.arrayBuffer())).metadata();
+          asset.width = metadata.autoOrient?.width ?? metadata.width;
+          asset.height = metadata.autoOrient?.height ?? metadata.height;
+        } catch { /* Dimensions are optional, unsupported formats still upload. */ }
+        if (assetType === "gen-z") {
+          try { asset.textReview = await reviewAsset(asset); }
+          catch { /* Keep the upload; unchecked text is gated before email use. */ }
+        }
+        return asset;
       } catch (err) {
         // One bad file must not cost the other nineteen their upload.
         return { name: file.name, error: err instanceof Error ? err.message : String(err) };

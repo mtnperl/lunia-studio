@@ -38,9 +38,6 @@ export function blockOwnText(b: Partial<CampaignBlock>): string {
     b.body,
     ...(b.bulletItems ?? []),
     ...(b.gridCells ?? []).flatMap((c) => [c.heading, c.caption]),
-    b.headline,
-    b.productName,
-    b.productNote,
   ];
   return clean(parts.filter(Boolean).join(". "));
 }
@@ -55,10 +52,6 @@ function framingFor(kind: CampaignBlockKind | undefined): string {
       return "A simple, close-up still life with one clear subject and plenty of space around it";
     case "imagebullets":
       return "An unstaged moment that suits a short list of benefits beside it";
-    case "product":
-      return "A clean product still life on a plain surface, soft daylight, nothing else in frame";
-    case "founder":
-      return "A natural, unposed head-and-shoulders portrait in soft window light";
     default:
       return "An unstaged, natural-light moment";
   }

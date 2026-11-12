@@ -16,7 +16,6 @@ import { RetroImageLoader, RetroImageError } from "@/components/carousel/shared/
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { IcCheck, IcClose } from "@/components/ui";
 
 /** The studio has two states: writing the brief, or working on the artwork.
  *  It kept a 1-4 step machine long after Content and Hook stopped being
@@ -756,17 +755,19 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     <div style={{
       display: "flex", alignItems: "center", gap: 6,
       padding: "4px 10px",
-      borderRadius: "var(--ui-radius-2)",
-      fontSize: 11, fontWeight: 500, fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums",
-      background: falStatus === "done" ? "var(--ui-success-tint)" : falStatus === "failed" ? "var(--ui-danger-tint)" : "var(--ui-selection-tint)",
-      color: falStatus === "done" ? "var(--ui-success)" : falStatus === "failed" ? "var(--ui-danger)" : "var(--ui-text-2)",
+      borderRadius: 20,
+      fontSize: 11, fontWeight: 700,
+      border: "1px solid",
+      borderColor: falStatus === "done" ? "rgba(95,158,117,0.4)" : falStatus === "failed" ? "rgba(184,92,92,0.4)" : "var(--accent-mid)",
+      background: falStatus === "done" ? "rgba(95,158,117,0.08)" : falStatus === "failed" ? "rgba(184,92,92,0.08)" : "var(--accent-dim)",
+      color: falStatus === "done" ? "var(--success)" : falStatus === "failed" ? "var(--error)" : "var(--accent)",
     }}>
       {falStatus === "loading" && (
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", display: "inline-block", animation: "pulse 1s ease-in-out infinite" }} />
       )}
-      {falStatus === "done" && <IcCheck size={12} strokeWidth={2} />}
-      {falStatus === "failed" && <IcClose size={12} strokeWidth={2} />}
-      fal.ai
+      {falStatus === "done" && "✓"}
+      {falStatus === "failed" && "✗"}
+      {" "}fal.ai
       {falStatus === "loading" && ` ${falCount}/1`}
       {falStatus === "done" && ` ${falCount}/1`}
     </div>
@@ -793,7 +794,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       <>
           {restoredDraft && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--accent-dim)", border: "1px solid var(--accent-mid)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--accent)" }}>
-              <span>Restored your unsaved carousel from this browser</span>
+              <span>↩ Restored your unsaved carousel from this browser.</span>
               <button
                 onClick={handleRestart}
                 style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", whiteSpace: "nowrap" }}
@@ -805,13 +806,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
 
           {warning && (
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "var(--muted)" }}>
-              {warning}
+              ⚠ {warning}
             </div>
           )}
 
           {error && !loading && (
             <div style={{ background: "rgba(184,92,92,0.08)", border: "1px solid rgba(184,92,92,0.3)", borderRadius: 8, padding: "14px 18px", marginBottom: 20 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--error)", marginBottom: 4 }}>Generation failed</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--error)", marginBottom: 4 }}>Generation failed</div>
               <div style={{ fontSize: 13, color: "var(--error)", marginBottom: 12 }}>{error}</div>
               <button onClick={() => setError(null)} style={{ background: "transparent", border: "none", fontSize: 13, fontWeight: 600, color: "var(--error)", cursor: "pointer", padding: 0, textDecoration: "underline", fontFamily: "inherit" }}>
                 Try again

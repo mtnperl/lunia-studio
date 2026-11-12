@@ -1,34 +1,39 @@
 "use client";
-// Progress surfaces for the Email Flow Review studio. These were black CRT
-// terminals (scanlines, `◆ LUNIA.EXE`, a Courier block bar) like the carousel
-// loaders DESIGN.md retired on 2026-08-22, and the analyze one ticked sections
-// off as DONE on a 3s timer whatever the model was doing. Now: the shimmer the
-// spec sanctions for "work happening", an honest elapsed clock, and the list of
-// what the review will cover, with nothing marked done that we cannot see.
+// Retro terminal-style loaders for the Email Flow Review studio.
+// Mirrors the patterns in src/components/carousel/shared/RetroLoader.tsx and
+// src/components/email/EmailPanelBuilderView.tsx so loaders feel consistent
+// across the app — black bg, Courier mono, white border, ◆ LUNIA.EXE header,
+// animated spinner, progress bar, optional stepped list.
 
 import { useEffect, useState } from "react";
-import { Spinner } from "@/components/ui";
 
-const REVIEW_COVERS = [
-  "Linter pre-flight",
-  "Timing",
-  "Subject lines, preview and sender",
-  "Full body rewrites",
-  "Design and images",
-  "Strategic question",
-  "Image prompts",
-];
+const SPINNER_FRAMES = ["◢◣◤◥", "◣◤◥◢", "◤◥◢◣", "◥◢◣◤"];
 
-function Elapsed() {
-  const [secs, setSecs] = useState(0);
+function useSpinner() {
+  const [frame, setFrame] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setSecs((s) => s + 1), 1000);
+    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 180);
     return () => clearInterval(t);
   }, []);
-  return <>{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</>;
+  return { spinner: SPINNER_FRAMES[frame], frame };
 }
 
-const mono: React.CSSProperties = { fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums" };
+const SCANLINES = "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.03) 3px,rgba(255,255,255,0.03) 4px)";
+
+// ─── Full-screen analyze loader ──────────────────────────────────────────────
+// Used during /api/email-review/analyze (Opus 4.7 with thinking, ~45-90s).
+// Walks through the framework's 6 sections so the user sees what's coming.
+
+const ANALYZE_STEPS = [
+  "PARSING FLOW + LINTER PRE-FLIGHT",
+  "SECTION 1 — HEADLINE",
+  "SECTION 2 — TIMING",
+  "SECTION 3 — SUBJECT LINES",
+  "SECTION 4 — FULL BODY REWRITES",
+  "SECTION 5 — DESIGN AUDIT",
+  "SECTION 6 — STRATEGIC QUESTION",
+  "DRAFTING IMAGE PROMPTS",
+];
 
 type AnalyzeLoaderProps = {
   flowName?: string;
@@ -36,62 +41,116 @@ type AnalyzeLoaderProps = {
   frameworkVersion?: string;
 };
 
-// Used during /api/email-review/analyze (Opus with thinking, ~45-90s).
-export function AnalyzeLoader({ flowName = "Unnamed flow", emailCount = 0, frameworkVersion = "v1.0" }: AnalyzeLoaderProps) {
+export function AnalyzeLoader({ flowName = "(unnamed flow)", emailCount = 0, frameworkVersion = "v1.0" }: AnalyzeLoaderProps) {
+  const { spinner, frame } = useSpinner();
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    // Step every ~3s — slow enough that a fast run finishes before we exhaust
+    // the list, fast enough that a slow run still progresses visibly.
+    const t = setInterval(() => setStep((s) => Math.min(s + 1, ANALYZE_STEPS.length - 1)), 3200);
+    return () => clearInterval(t);
+  }, []);
+
+  const completed = step;
+  const barFilled = Math.round((completed / ANALYZE_STEPS.length) * 28);
+  const bar = "█".repeat(barFilled) + "░".repeat(28 - barFilled);
+  const pct = Math.round((completed / ANALYZE_STEPS.length) * 100);
+
   return (
-    <div role="status" aria-live="polite" style={{
-      maxWidth: 560, margin: "48px auto", padding: 32,
-      border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-4)", background: "var(--ui-surface)",
-      color: "var(--ui-text)",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.4 }}>Reviewing {flowName}</div>
-        <span style={{ ...mono, fontSize: 13, color: "var(--ui-text-2)" }}><Elapsed /></span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px" }}>
+      <div style={{
+        fontFamily: "'Courier New', Courier, monospace",
+        background: "#000", color: "#fff",
+        border: "3px solid #fff", borderRadius: 2,
+        padding: "32px 36px", width: 520, maxWidth: "100%",
+        position: "relative", overflow: "hidden", userSelect: "none",
+      }}>
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: SCANLINES }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fff", paddingBottom: 10, marginBottom: 18, fontSize: 11, letterSpacing: "0.12em" }}>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>◆ LUNIA.EXE</span>
+          <span style={{ color: "#888" }}>claude-opus-4-7 · email-review</span>
+          <span>{spinner}</span>
+        </div>
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.05em", marginBottom: 4 }}>
+            RUNNING FLOW REVIEW
+          </div>
+          <div style={{ color: "#888", fontSize: 11, letterSpacing: "0.06em" }}>
+            {flowName.toUpperCase()} · {emailCount} EMAIL{emailCount === 1 ? "" : "S"} · FRAMEWORK {frameworkVersion.toUpperCase()}
+          </div>
+        </div>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 10, color: "#888", marginBottom: 5, letterSpacing: "0.1em" }}>── REVIEW PROGRESS ─────────────────────</div>
+          <div style={{ fontSize: 14, letterSpacing: 1.5, marginBottom: 6 }}>[{bar}]</div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#ccc" }}>
+            <span>SECTION {Math.min(completed + 1, ANALYZE_STEPS.length)} OF {ANALYZE_STEPS.length}</span>
+            <span>{pct}%</span>
+          </div>
+        </div>
+        <div style={{ borderTop: "1px solid #333", borderBottom: "1px solid #333", padding: "12px 0", marginBottom: 16 }}>
+          {ANALYZE_STEPS.map((s, i) => {
+            const done = i < step, active = i === step;
+            return (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 5,
+                fontSize: 12, letterSpacing: "0.06em",
+                color: done ? "#fff" : active ? "#fff" : "#444",
+              }}>
+                <span style={{ width: 16, flexShrink: 0 }}>{done ? "+" : active ? ">" : "."}</span>
+                <span style={{ flex: 1 }}>{s}</span>
+                <span style={{ fontSize: 11 }}>{done ? "DONE" : active ? `GEN${frame % 2 === 0 ? "..." : ".  "}` : ""}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>
+          <span>ANTHROPIC × LUNIA LIFE</span>
+          <span style={{ color: frame % 2 === 0 ? "#fff" : "#555" }}>● PROCESSING</span>
+        </div>
       </div>
-      <div style={{ ...mono, fontSize: 12, color: "var(--ui-text-3)", marginTop: 4 }}>
-        {emailCount} email{emailCount === 1 ? "" : "s"} · framework {frameworkVersion} · usually 45 to 90 seconds
-      </div>
-      <div className="ui-skeleton" style={{ height: 4, borderRadius: 2, margin: "24px 0" }} />
-      <div style={{ fontSize: 12, color: "var(--ui-text-2)", marginBottom: 8 }}>The review covers</div>
-      <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
-        {REVIEW_COVERS.map((s, i) => (
-          <li key={s} style={{ display: "flex", gap: 12, fontSize: 13, lineHeight: 1.5 }}>
-            <span style={{ ...mono, fontSize: 12, color: "var(--ui-text-3)", width: 20 }}>{String(i + 1).padStart(2, "0")}</span>
-            {s}
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }
 
+// ─── Compact bar loader ─────────────────────────────────────────────────────
+// For Klaviyo flow fetches, image generations, regen-suggestions, docx
+// exports — anywhere we want a single-line "doing X" indicator.
+
 type MiniLoaderProps = {
   label: string;
   detail?: string;
-  /** The model or engine doing the work, shown as quiet meta. */
+  /** Override the model / engine string in the top-right corner. */
   engine?: string;
 };
 
-// For Klaviyo flow fetches, image generations, regen-suggestions, docx
-// exports — anywhere we want a single-line "doing X" indicator.
 export function MiniReviewLoader({ label, detail, engine }: MiniLoaderProps) {
-  // Callers wrote these for an all-caps terminal; read them as sentence case.
-  const text = label.charAt(0).toUpperCase() + label.slice(1);
-  const sub = detail && detail === detail.toUpperCase() ? detail.toLowerCase() : detail;
+  const { spinner, frame } = useSpinner();
+  const bar = "█".repeat(frame % 2 === 0 ? 8 : 12) + "░".repeat(frame % 2 === 0 ? 20 : 16);
+
   return (
-    <div role="status" aria-live="polite" style={{
-      display: "flex", alignItems: "center", gap: 12, minHeight: 44, padding: "8px 16px",
-      border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", background: "var(--ui-surface)",
-      color: "var(--ui-text)",
+    <div style={{
+      fontFamily: "'Courier New', Courier, monospace",
+      background: "#000", color: "#fff",
+      border: "2px solid #fff", borderRadius: 2,
+      padding: "14px 18px",
+      userSelect: "none",
+      position: "relative",
+      overflow: "hidden",
     }}>
-      <Spinner />
-      <span style={{ fontSize: 13, fontWeight: 500, flex: 1, minWidth: 0 }}>
-        {text}
-        {sub && <span style={{ fontWeight: 400, color: "var(--ui-text-2)" }}> · {sub}</span>}
-      </span>
-      <span style={{ ...mono, fontSize: 12, color: "var(--ui-text-3)", whiteSpace: "nowrap" }}>
-        {engine && <>{engine} · </>}<Elapsed />
-      </span>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: SCANLINES }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #333", paddingBottom: 6, marginBottom: 8, fontSize: 10, letterSpacing: "0.1em" }}>
+        <span style={{ fontWeight: 700, fontSize: 11 }}>◆ LUNIA.EXE</span>
+        <span style={{ color: "#888" }}>{engine ?? "email-review"}</span>
+        <span style={{ color: "#aaa" }}>{spinner}</span>
+      </div>
+      <div style={{ fontSize: 10, color: "#888", marginBottom: 6, letterSpacing: "0.08em" }}>
+        {label.toUpperCase()}
+      </div>
+      <div style={{ fontSize: 12, letterSpacing: 1, marginBottom: 6, color: "#fff" }}>[{bar}]</div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", letterSpacing: "0.08em" }}>
+        <span style={{ color: frame % 2 === 0 ? "#1ef" : "#555" }}>● GEN{frame % 2 === 0 ? "..." : ".  "}█</span>
+        <span>{detail ?? "WORKING"}</span>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { createContentMessage, CONTENT_MODEL, CONTENT_THINKING, CONTENT_MAX_TOKENS_LONG, extractText } from "@/lib/anthropic";
 import { checkRateLimit } from "@/lib/kv";
-import { LayoutBlockSchema, layoutBlockToCampaignBlock, verifiedFactsText } from "@/lib/campaign-layout-prompts";
+import { LayoutBlockSchema, layoutBlockToCampaignBlock } from "@/lib/campaign-layout-prompts";
 import { z } from "zod";
 
 export const maxDuration = 60;
@@ -28,14 +28,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const requestedKind: string = body.kind ?? "text";
     const kind = VALID_KINDS.includes(requestedKind) ? requestedKind : "text";
-    // These hold a real person's words. Three "alternates" of a customer
-    // review or a founder's note would be three invented quotes.
-    if (kind === "testimonial" || kind === "reviews" || kind === "founder") {
-      return Response.json(
-        { error: "Reviews, testimonials and founder notes are real people's words, so they are edited by hand rather than regenerated." },
-        { status: 400 },
-      );
-    }
     const currentFields: Record<string, unknown> = body.currentFields ?? {};
     const subject: string = (body.subject ?? "").trim();
     const topic: string = (body.topic ?? "").trim();
@@ -49,9 +41,6 @@ Email subject: ${subject || topic || "a Lunia Life sleep-wellness campaign"}
 ${topic ? `Topic: ${topic}` : ""}
 
 Write 3 alternates that are each clearly DIFFERENT from the current content and from each other, but keep the same kind and roughly the same purpose.
-
-Numbers: use only those already in the current block or these verified product facts. Never invent a price, percentage, count, dose or date.
-${verifiedFactsText()}
 
 Return ONLY valid JSON, no markdown fences: { "alternates": [ <block1>, <block2>, <block3> ] }, where each blockN has the exact same field shape as the current block content shown above (same "kind" value, same other keys).`;
 
@@ -91,7 +80,7 @@ Return ONLY valid JSON, no markdown fences: { "alternates": [ <block1>, <block2>
       return Response.json({ error: "Regeneration failed, please try again." }, { status: 422 });
     }
 
-    const alternates = result.data.alternates.map((x) => layoutBlockToCampaignBlock(x));
+    const alternates = result.data.alternates.map(layoutBlockToCampaignBlock);
     return Response.json({ alternates });
   } catch (err) {
     console.error("[api/campaign/regenerate-block]", err);

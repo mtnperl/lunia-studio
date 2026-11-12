@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MiniReviewLoader } from "@/components/email-review/ReviewLoaders";
 import type { EmailFlow, SavedCarousel } from "@/lib/types";
-import { Button } from "@/components/ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,7 +63,7 @@ function CarouselPicker({ current, onPick, onClose }: PickerProps) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#102635", fontFamily: "Arial, sans-serif" }}>
           Choose a carousel
         </div>
         <button
@@ -82,7 +81,7 @@ function CarouselPicker({ current, onPick, onClose }: PickerProps) {
       )}
 
       {loadError && (
-        <div style={{ fontSize: 12, color: "var(--ui-danger)" }}>Failed to load library: {loadError}</div>
+        <div style={{ fontSize: 12, color: "#B0413E" }}>Failed to load library: {loadError}</div>
       )}
 
       {carousels && carousels.length === 0 && (
@@ -98,13 +97,14 @@ function CarouselPicker({ current, onPick, onClose }: PickerProps) {
               style={{
                 textAlign: "left",
                 padding: "10px 14px",
-                background: c.id === current.id ? "var(--ui-selection-tint)" : "transparent",
-                border: c.id === current.id ? "1px solid var(--ui-border)" : "1px solid var(--border)",
+                background: c.id === current.id ? "rgba(16,38,53,0.06)" : "transparent",
+                border: c.id === current.id ? "1px solid rgba(16,38,53,0.25)" : "1px solid var(--border)",
                 borderRadius: 8,
                 cursor: "pointer",
+                fontFamily: "Arial, sans-serif",
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)" }}>{c.topic}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#102635" }}>{c.topic}</div>
               <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
                 {c.format ?? "standard"} · {new Date(c.savedAt).toLocaleDateString()}
                 {c.id === current.id && " · current"}
@@ -202,25 +202,26 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
             <span
               style={{
                 padding: "3px 9px",
-                background: "var(--ui-ink)",
-                color: "var(--ui-text-2)",
-                fontSize: 11,
-                fontWeight: 600,
+                background: "#102635",
+                color: "#BFFBF8",
+                fontSize: 10,
+                fontWeight: 700,
                 letterSpacing: "0.06em",
                 borderRadius: 3,
                 textTransform: "uppercase",
+                fontFamily: "Arial, sans-serif",
               }}
             >
-              From carousel
+              ✉ From carousel
             </span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ui-text)" }}>
+            <span style={{ fontFamily: "Arial, sans-serif", fontSize: 14, fontWeight: 700, color: "#102635" }}>
               {carousel.topic}
             </span>
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10,
                 color: "var(--muted)",
-                background: "var(--surface-r, var(--ui-surface))",
+                background: "var(--surface-r, #fafaf9)",
                 border: "1px solid var(--border)",
                 borderRadius: 3,
                 padding: "2px 7px",
@@ -231,9 +232,23 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
               {carousel.format ?? "standard"}
             </span>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setShowPicker((v) => !v)} disabled={busy}>
+          <button
+            onClick={() => setShowPicker((v) => !v)}
+            disabled={busy}
+            style={{
+              padding: "5px 12px",
+              fontSize: 11,
+              fontWeight: 600,
+              background: "transparent",
+              color: "var(--muted)",
+              border: "1px solid var(--border)",
+              borderRadius: 5,
+              cursor: busy ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >
             Change carousel
-          </Button>
+          </button>
         </div>
 
         {/* Inline picker (E5) */}
@@ -249,23 +264,22 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
         {hook && (
           <div
             style={{
-              padding: "12px 16px",
-              background: "var(--ui-surface)",
-              border: "1px solid var(--ui-border)",
-              borderRadius: "var(--ui-radius-3)",
+              padding: "10px 14px",
+              background: "#102635",
+              borderRadius: 8,
               display: "flex",
               flexDirection: "column",
-              gap: 2,
+              gap: 3,
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", color: "var(--ui-text-2)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#BFFBF8", fontFamily: "Arial, sans-serif" }}>
               Hook
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ui-text)" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", fontFamily: "Arial, sans-serif" }}>
               {hook.headline}
             </div>
             {hook.subline && (
-              <div style={{ fontSize: 13, color: "var(--ui-text-2)" }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", fontFamily: "Arial, sans-serif" }}>
                 {hook.subline}
               </div>
             )}
@@ -275,7 +289,7 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
         {/* Slides */}
         {slideHeadlines.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", color: "var(--muted)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", fontFamily: "Arial, sans-serif" }}>
               Slides
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -284,13 +298,14 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
                   key={i}
                   style={{
                     fontSize: 12,
-                    color: "var(--ui-text)",
+                    color: "#1A1A1A",
+                    fontFamily: "Arial, sans-serif",
                     display: "flex",
                     gap: 8,
                     alignItems: "baseline",
                   }}
                 >
-                  <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 18 }}>S{i + 1}</span>
+                  <span style={{ fontSize: 10, color: "var(--muted)", minWidth: 18 }}>S{i + 1}</span>
                   <span>{h}</span>
                 </div>
               ))}
@@ -302,18 +317,31 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
             carousel was changed while idle or user hit "Try again") */}
         {!busy && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", color: "var(--muted)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--muted)", fontFamily: "Arial, sans-serif" }}>
               Additional instructions (optional)
             </div>
-            <textarea className="ui-input"
+            <textarea
               value={userComment}
               onChange={(e) => setUserComment(e.target.value)}
               maxLength={500}
               rows={3}
               placeholder="e.g. Keep it to 2 emails. No discount. Lead with the science angle."
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                fontSize: 12,
+                lineHeight: 1.5,
+                background: "var(--surface-r, #fafaf9)",
+                color: "#1A1A1A",
+                border: "1px solid var(--border)",
+                borderRadius: 7,
+                fontFamily: "Arial, sans-serif",
+                resize: "vertical",
+                boxSizing: "border-box",
+              }}
             />
             {userComment.length > 400 && (
-              <div style={{ fontSize: 11, color: userComment.length >= 500 ? "var(--ui-danger)" : "var(--muted)", textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: userComment.length >= 500 ? "#B0413E" : "var(--muted)", textAlign: "right" }}>
                 {userComment.length}/500
               </div>
             )}
@@ -335,8 +363,8 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
         <div
           style={{
             padding: "12px 16px",
-            background: "var(--ui-danger-tint)",
-            border: "1px solid var(--ui-border)",
+            background: "rgba(176, 65, 62, 0.08)",
+            border: "1px solid rgba(176, 65, 62, 0.3)",
             borderRadius: 8,
             display: "flex",
             alignItems: "center",
@@ -345,23 +373,67 @@ export default function CarouselToEmailPanel({ carousel: initialCarousel, onConv
             flexWrap: "wrap",
           }}
         >
-          <div style={{ fontSize: 13, color: "var(--ui-danger)" }}>{error}</div>
-          <Button variant="primary" size="sm" onClick={() => convert(carousel)}>
+          <div style={{ fontSize: 13, color: "#B0413E" }}>{error}</div>
+          <button
+            onClick={() => convert(carousel)}
+            style={{
+              padding: "7px 14px",
+              fontSize: 12,
+              fontWeight: 700,
+              background: "#102635",
+              color: "#fff",
+              border: "none",
+              borderRadius: 5,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
             Try again
-          </Button>
+          </button>
         </div>
       )}
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         {!busy && error && (
-          <Button variant="primary" size="md" onClick={() => convert(carousel)}>
-            ✨ Convert
-          </Button>
+          <button
+            onClick={() => convert(carousel)}
+            style={{
+              padding: "9px 18px",
+              fontSize: 13,
+              fontWeight: 700,
+              background: "#102635",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            ✦ Convert
+          </button>
         )}
-        <Button variant="secondary" size="sm" onClick={handleStartOver} disabled={busy}>
+        <button
+          onClick={handleStartOver}
+          disabled={busy}
+          style={{
+            padding: "7px 14px",
+            fontSize: 12,
+            fontWeight: 600,
+            background: "transparent",
+            color: "var(--muted)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            cursor: busy ? "not-allowed" : "pointer",
+            fontFamily: "inherit",
+          }}
+        >
           ← Start over
-        </Button>
+        </button>
       </div>
     </div>
   );

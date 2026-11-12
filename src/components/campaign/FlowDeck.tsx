@@ -98,7 +98,6 @@ export default function FlowDeck({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           blocks: email.content.blocks,
-          images: email.content.images,
           subject: email.content.subjectLines[email.content.selectedSubject] ?? email.subject,
           topic: email.topic,
           // The whole flow runs in one shape. The id, never its guidance:

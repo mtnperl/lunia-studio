@@ -43,19 +43,19 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
         <pre key={key++} style={{
           margin: "10px 0",
           padding: "14px 16px",
-          background: "var(--ui-surface)",
-          border: "1px solid var(--ui-border)",
-          borderLeft: "3px solid var(--ui-ink)",
+          background: "#F5F2EC",
+          border: "1px solid #d6cfbe",
+          borderLeft: "3px solid #102635",
           borderRadius: 6,
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
           fontSize: size === "sm" ? 11.5 : 12.5,
           lineHeight: 1.55,
-          color: "var(--ui-text)",
+          color: "#1A1A1A",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
           overflow: "auto",
         }}>
-          {lang && <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", color: "var(--ui-text-2)", marginBottom: 6 }}>{lang}</div>}
+          {lang && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#5b5340", marginBottom: 6 }}>{lang}</div>}
           {buf.join("\n")}
         </pre>,
       );
@@ -64,7 +64,7 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
 
     // Horizontal rule
     if (/^\s*-{3,}\s*$/.test(line)) {
-      out.push(<hr key={key++} style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--ui-border)" }} />);
+      out.push(<hr key={key++} style={{ margin: "20px 0", border: "none", borderTop: "1px solid #d6cfbe" }} />);
       i += 1;
       continue;
     }
@@ -72,25 +72,25 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
     // Headings
     const h4 = line.match(/^#{4}\s+(.+)$/);
     if (h4) {
-      out.push(<h4 key={key++} style={{ fontSize: size === "sm" ? 13 : 14, fontWeight: 600, color: "var(--ui-text)", margin: "16px 0 6px", lineHeight: 1.3 }}>{inline(h4[1])}</h4>);
+      out.push(<h4 key={key++} style={{ fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 13 : 14, fontWeight: 700, color: "#2C3F51", margin: "16px 0 6px", lineHeight: 1.3 }}>{inline(h4[1])}</h4>);
       i += 1;
       continue;
     }
     const h3 = line.match(/^#{3}\s+(.+)$/);
     if (h3) {
-      out.push(<h3 key={key++} style={{ fontSize: size === "sm" ? 14 : 15, fontWeight: 600, color: "var(--ui-text)", margin: "20px 0 8px", lineHeight: 1.3, letterSpacing: "0.02em" }}>{inline(h3[1])}</h3>);
+      out.push(<h3 key={key++} style={{ fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 14 : 15, fontWeight: 700, color: "#2C3F51", margin: "20px 0 8px", lineHeight: 1.3, letterSpacing: "0.02em" }}>{inline(h3[1])}</h3>);
       i += 1;
       continue;
     }
     const h2 = line.match(/^#{2}\s+(.+)$/);
     if (h2) {
-      out.push(<h2 key={key++} style={{ fontSize: size === "sm" ? 16 : 18, fontWeight: 600, color: "var(--ui-text)", margin: "24px 0 10px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{inline(h2[1])}</h2>);
+      out.push(<h2 key={key++} style={{ fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 16 : 18, fontWeight: 700, color: "#102635", margin: "24px 0 10px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{inline(h2[1])}</h2>);
       i += 1;
       continue;
     }
     const h1 = line.match(/^#{1}\s+(.+)$/);
     if (h1) {
-      out.push(<h2 key={key++} style={{ fontSize: size === "sm" ? 16 : 18, fontWeight: 600, color: "var(--ui-text)", margin: "24px 0 10px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{inline(h1[1])}</h2>);
+      out.push(<h2 key={key++} style={{ fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 16 : 18, fontWeight: 700, color: "#102635", margin: "24px 0 10px", lineHeight: 1.25, letterSpacing: "-0.01em" }}>{inline(h1[1])}</h2>);
       i += 1;
       continue;
     }
@@ -107,11 +107,11 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
       const rows = rowsRaw.map(parseTableRow);
       out.push(
         <div key={key++} style={{ margin: "12px 0", overflow: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: size === "sm" ? 12 : 13 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 12 : 13 }}>
             <thead>
               <tr>
                 {headerCells.map((c, ci) => (
-                  <th key={ci} style={{ background: "var(--ui-surface-2)", color: "var(--ui-text)", textAlign: "left", padding: "8px 12px", fontSize: size === "sm" ? 11 : 12, fontWeight: 600, border: "1px solid var(--ui-border)" }}>
+                  <th key={ci} style={{ background: "#102635", color: "#fff", textAlign: "left", padding: "8px 12px", fontSize: size === "sm" ? 11 : 12, fontWeight: 700, letterSpacing: "0.04em", border: "1px solid #102635" }}>
                     {inline(c)}
                   </th>
                 ))}
@@ -119,9 +119,9 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
             </thead>
             <tbody>
               {rows.map((r, ri) => (
-                <tr key={ri} style={{ background: ri % 2 === 0 ? "var(--ui-bg)" : "var(--ui-surface)" }}>
+                <tr key={ri} style={{ background: ri % 2 === 0 ? "#fff" : "#FBF9F4" }}>
                   {r.map((c, ci) => (
-                    <td key={ci} style={{ padding: "8px 12px", border: "1px solid var(--ui-border)", color: ci === 0 ? "var(--ui-text)" : "var(--ui-text)", fontWeight: ci === 0 ? 600 : 400, lineHeight: 1.5, verticalAlign: "top" }}>
+                    <td key={ci} style={{ padding: "8px 12px", border: "1px solid #e8e2d2", color: ci === 0 ? "#102635" : "#1A1A1A", fontWeight: ci === 0 ? 600 : 400, lineHeight: 1.5, verticalAlign: "top" }}>
                       {inline(c)}
                     </td>
                   ))}
@@ -145,7 +145,7 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
         i += 1;
       }
       out.push(
-        <blockquote key={key++} style={{ margin: "12px 0", padding: "10px 14px", borderLeft: "3px solid var(--ui-ink)", background: "var(--ui-selection-tint)", color: "var(--ui-text)", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.55 }}>
+        <blockquote key={key++} style={{ margin: "12px 0", padding: "10px 14px", borderLeft: "3px solid #2C3F51", background: "rgba(44,63,81,0.05)", color: "#2C3F51", fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.55 }}>
           {buf.map((l, li) => <div key={li}>{inline(l)}</div>)}
         </blockquote>,
       );
@@ -161,10 +161,10 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
         i += 1;
       }
       out.push(
-        <div key={key++} style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4, fontSize: size === "sm" ? 13 : 14, lineHeight: 1.6, color: "var(--ui-text)" }}>
+        <div key={key++} style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4, fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.6, color: "#1A1A1A" }}>
           {buf.map((b, bi) => (
             <div key={bi} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ flexShrink: 0, width: 16, color: "var(--ui-text)", fontWeight: 600, lineHeight: 1.6, textAlign: "center" }}>•</span>
+              <span style={{ flexShrink: 0, width: 16, color: "#102635", fontWeight: 700, lineHeight: 1.6, textAlign: "center" }}>•</span>
               <span style={{ flex: 1 }}>{inline(b)}</span>
             </div>
           ))}
@@ -181,10 +181,10 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
         i += 1;
       }
       out.push(
-        <div key={key++} style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4, fontSize: size === "sm" ? 13 : 14, lineHeight: 1.6, color: "var(--ui-text)" }}>
+        <div key={key++} style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4, fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.6, color: "#1A1A1A" }}>
           {buf.map((b, bi) => (
             <div key={bi} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ flexShrink: 0, minWidth: 22, color: "var(--ui-text)", fontWeight: 600, lineHeight: 1.6 }}>{bi + 1}.</span>
+              <span style={{ flexShrink: 0, minWidth: 22, color: "#102635", fontWeight: 700, lineHeight: 1.6 }}>{bi + 1}.</span>
               <span style={{ flex: 1 }}>{inline(b)}</span>
             </div>
           ))}
@@ -207,7 +207,7 @@ export default function MarkdownRenderer({ children, size = "md" }: Props) {
       i += 1;
     }
     out.push(
-      <p key={key++} style={{ margin: "8px 0", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.65, color: "var(--ui-text)", wordBreak: "break-word" }}>
+      <p key={key++} style={{ margin: "8px 0", fontFamily: "Arial, sans-serif", fontSize: size === "sm" ? 13 : 14, lineHeight: 1.65, color: "#1A1A1A", wordBreak: "break-word" }}>
         {buf.map((l, li) => <Fragment key={li}>{inline(l)}{li < buf.length - 1 && <br />}</Fragment>)}
       </p>,
     );
@@ -244,12 +244,12 @@ function inline(text: string): React.ReactNode {
     if (m.index > cursor) tokens.push(text.slice(cursor, m.index));
     const tok = m[0];
     if (tok.startsWith("`")) {
-      tokens.push(<code key={key++} style={{ fontFamily: "ui-monospace, Menlo, monospace", background: "var(--ui-selection-tint)", padding: "1px 6px", borderRadius: 3, fontSize: "0.92em", color: "var(--ui-text)" }}>{tok.slice(1, -1)}</code>);
+      tokens.push(<code key={key++} style={{ fontFamily: "ui-monospace, Menlo, monospace", background: "rgba(16,38,53,0.08)", padding: "1px 6px", borderRadius: 3, fontSize: "0.92em", color: "#102635" }}>{tok.slice(1, -1)}</code>);
     } else if (tok.startsWith("**") || tok.startsWith("__")) {
-      tokens.push(<strong key={key++} style={{ color: "var(--ui-text)", fontWeight: 600 }}>{inline(tok.slice(2, -2))}</strong>);
+      tokens.push(<strong key={key++} style={{ color: "#102635", fontWeight: 700 }}>{inline(tok.slice(2, -2))}</strong>);
     } else if (tok.startsWith("[")) {
       const [, label, href] = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/) ?? [];
-      tokens.push(<a key={key++} href={href} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-text)", textDecoration: "underline" }}>{label}</a>);
+      tokens.push(<a key={key++} href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#102635", textDecoration: "underline" }}>{label}</a>);
     } else {
       tokens.push(<em key={key++}>{inline(tok.slice(1, -1))}</em>);
     }

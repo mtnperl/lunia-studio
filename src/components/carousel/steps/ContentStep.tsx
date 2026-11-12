@@ -1,11 +1,10 @@
 "use client";
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { CarouselContent, CarouselFormat, HookTone } from "@/lib/types";
 import { CAROUSEL_ICONS, IconCategory } from "@/lib/carousel-icons";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { AutoTextarea } from "@/components/ui/AutoTextarea";
 import { Button } from "@/components/ui/Button";
-import { IcClose, IcRefresh, IcUndo, IconButton, Label, Select as UiSelect, Tabs } from "@/components/ui";
 
 type Props = {
   content: CarouselContent;
@@ -146,6 +145,28 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     return `https://scholar.google.com/scholar?q=${encodeURIComponent(citation)}`;
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: 14,
+    border: "1.5px solid var(--border)",
+    borderRadius: 7,
+    fontFamily: "inherit",
+    outline: "none",
+    background: "var(--bg)",
+    color: "var(--text)",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--muted)",
+    marginBottom: 5,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+  };
+
   // A takeaway is only renderable when it's well-formed — guards a partial
   // model response from crashing the render. When present it absorbs the CTA
   // (follow line merges onto the takeaway slide, no separate CTA slide).
@@ -156,81 +177,142 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
     content.takeaway.points.length > 0 &&
     !!content.takeaway.interaction;
 
-  const card: CSSProperties = { background: "var(--ui-surface)", borderRadius: "var(--ui-radius-3)", padding: 20, marginBottom: 16, border: "1px solid var(--ui-border)" };
-  const cardTitle: CSSProperties = { fontSize: 13, fontWeight: 600, color: "var(--ui-text)" };
-  const field = (mb = 12): CSSProperties => ({ marginBottom: mb });
-  const ctaSlideNo = 2 + content.slides.length;
-
   return (
     <div>
-      <h2 style={{ fontSize: "var(--ui-text-24)", lineHeight: "var(--ui-lh-24)", fontWeight: 600, margin: "0 0 var(--ui-space-3)", letterSpacing: "var(--ui-tracking-tight)" }}>Review content</h2>
-      <p style={{ color: "var(--ui-text-2)", margin: "0 0 var(--ui-space-8)", fontSize: 14 }}>Edit any field before continuing</p>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>Review content</h2>
+      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>Edit any field before continuing.</p>
 
       {/* Comment keyword (engagement format only) */}
       {carouselFormat === "engagement" && (
-        <div style={card}>
-          <div style={{ ...cardTitle, marginBottom: 4 }}>Comment keyword</div>
-          <p style={{ fontSize: 12, color: "var(--ui-text-2)", margin: "0 0 12px" }}>Readers comment this word to get the guide. Written for you, edit it if needed.</p>
+        <div style={{ background: "rgba(30,122,138,0.06)", border: "1.5px solid var(--accent)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent)", marginBottom: 8 }}>Comment keyword</div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, marginTop: 0 }}>Readers will comment this word to get the guide. Auto-generated — edit if needed.</p>
           <input
             type="text"
-            className="ui-input"
-            aria-label="Comment keyword"
             value={content.commentKeyword ?? ""}
             onChange={(e) => onChange({ ...content, commentKeyword: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12) })}
             maxLength={12}
             placeholder="e.g. SLEEP"
-            style={{ width: 200, minHeight: "var(--ui-control-lg)", fontSize: 16, fontWeight: 500, fontFamily: "var(--ui-font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}
+            style={{
+              width: 200,
+              padding: "8px 12px",
+              fontSize: 18,
+              fontWeight: 700,
+              fontFamily: "Jost, Montserrat, sans-serif",
+              letterSpacing: "0.1em",
+              border: "1.5px solid var(--border)",
+              borderRadius: 7,
+              background: "var(--bg)",
+              color: "var(--accent)",
+              outline: "none",
+              textTransform: "uppercase",
+            }}
           />
         </div>
       )}
 
       {/* Hooks */}
-      <div style={card}>
-        <div style={{ ...cardTitle, marginBottom: 16 }}>Slide 1 · Hook variants</div>
-        {content.hooks.map((h, i) => {
-          const last = i === content.hooks.length - 1;
-          return (
-            <div key={i} style={{ marginBottom: last ? 0 : 16, paddingBottom: last ? 0 : 16, borderBottom: last ? "none" : "1px solid var(--ui-border)" }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--ui-text-2)", marginBottom: 8, fontFamily: "var(--ui-font-mono)" }}>Hook {String(i + 1).padStart(2, "0")}</div>
-              <Label>Headline</Label>
-              <input className="ui-input" style={field(8)} value={h.headline} onChange={(e) => updateHook(i, "headline", e.target.value)} />
-              <Label>Subline</Label>
-              <input className="ui-input" style={field(8)} value={h.subline} onChange={(e) => updateHook(i, "subline", e.target.value)} />
-              <Label>Trust liner</Label>
-              <input
-                className="ui-input"
-                value={h.sourceNote ?? ""}
-                placeholder="e.g. Based on Sleep Medicine Research, 2023"
-                onChange={(e) => updateHook(i, "sourceNote", e.target.value)}
-              />
-            </div>
-          );
-        })}
+      <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 16, border: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 1 — Hook variants</div>
+        {content.hooks.map((h, i) => (
+          <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Hook {i + 1}</div>
+            <label style={labelStyle}>Headline</label>
+            <input style={{ ...inputStyle, marginBottom: 6 }} value={h.headline} onChange={(e) => updateHook(i, "headline", e.target.value)} />
+            <label style={labelStyle}>Subline</label>
+            <input style={{ ...inputStyle, marginBottom: 6 }} value={h.subline} onChange={(e) => updateHook(i, "subline", e.target.value)} />
+            <label style={labelStyle}>Trust Liner</label>
+            <input
+              style={{ ...inputStyle, marginBottom: 6 }}
+              value={h.sourceNote ?? ""}
+              placeholder='e.g. Based on Sleep Medicine Research, 2023'
+              onChange={(e) => updateHook(i, "sourceNote", e.target.value)}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Content slides */}
       {content.slides.map((slide, i) => (
-        <div key={i} style={card}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-            <div style={cardTitle}>Slide {i + 2} · Content</div>
+        <div key={i} style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 16, border: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+              Slide {i + 2} — Content
+            </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Button size="sm" variant={iconPickerOpen === i ? "selected" : "ghost"} aria-pressed={iconPickerOpen === i} onClick={() => setIconPickerOpen(iconPickerOpen === i ? null : i)}>
-                Icons
-              </Button>
-              <Button size="sm" variant="ghost" busy={regenerating === i} icon={<IcRefresh size={14} strokeWidth={1.75} />} onClick={() => handleRegenerate(i)}>
-                Regenerate
-              </Button>
-              <Button size="sm" variant="ghost" busy={shorteningSlide === i} onClick={() => handleShorten(i)}>
-                Shorter
-              </Button>
-              <Button size="sm" variant="ghost" busy={lengtheningSlide === i} title="Add a sentence. Capped so the slide's graphic keeps its room." onClick={() => handleLengthen(i)}>
-                Longer
-              </Button>
+              <button
+                onClick={() => setIconPickerOpen(iconPickerOpen === i ? null : i)}
+                style={{
+                  background: iconPickerOpen === i ? "var(--accent-dim)" : "transparent",
+                  border: `1px solid ${iconPickerOpen === i ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  color: iconPickerOpen === i ? "var(--accent)" : "var(--muted)",
+                  fontFamily: "inherit",
+                }}
+              >
+                🔷 Icon
+              </button>
+              <button
+                onClick={() => handleRegenerate(i)}
+                disabled={regenerating === i}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: regenerating === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: regenerating === i ? 0.5 : 1,
+                }}
+              >
+                {regenerating === i ? "Regenerating..." : "↺ Regenerate"}
+              </button>
+              <button
+                onClick={() => handleShorten(i)}
+                disabled={shorteningSlide === i}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: shorteningSlide === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: shorteningSlide === i ? 0.5 : 1,
+                }}
+              >
+                {shorteningSlide === i ? "Shortening…" : "✂ Shorter"}
+              </button>
+              <button
+                onClick={() => handleLengthen(i)}
+                disabled={lengtheningSlide === i}
+                title="Add a sentence. Capped so the slide's graphic keeps its room."
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: lengtheningSlide === i ? "not-allowed" : "pointer",
+                  color: "var(--muted)",
+                  fontFamily: "inherit",
+                  opacity: lengtheningSlide === i ? 0.5 : 1,
+                }}
+              >
+                {lengtheningSlide === i ? "Expanding…" : "↔ Longer"}
+              </button>
               {originalBodies[i] !== undefined && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={<IcUndo size={14} strokeWidth={1.75} />}
+                <button
                   onClick={() => {
                     updateSlide(i, "body", originalBodies[i]);
                     setOriginalBodies(prev => {
@@ -239,53 +321,98 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                       return next;
                     });
                   }}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "var(--muted)",
+                    fontFamily: "inherit",
+                  }}
                 >
-                  Undo
-                </Button>
+                  ↩ Undo
+                </button>
               )}
             </div>
           </div>
 
-          {/* Icon picker panel — expands inline when the Icons button is active */}
+          {/* Icon picker panel — expands inline when 🔷 Icon button is active */}
           {iconPickerOpen === i && (
-            <div style={{ border: "1px solid var(--ui-border)", borderRadius: "var(--ui-radius-3)", overflow: "hidden", marginBottom: 16, background: "var(--ui-bg)" }}>
+            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
               {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 8px 8px 12px", borderBottom: "1px solid var(--ui-border)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>Icons</span>
-                  <span style={{ fontSize: 12, color: "var(--ui-text-3)", fontFamily: "var(--ui-font-mono)", fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Icons
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--muted)" }}>
                     {getSelectedIcons(i).length}/4 selected
                   </span>
                   {getSelectedIcons(i).length > 0 && (
-                    <Button size="sm" variant="ghost" onClick={() => updateSlide(i, "graphic", "")}>Clear</Button>
+                    <button
+                      onClick={() => updateSlide(i, "graphic", "")}
+                      style={{ background: "transparent", fontSize: 10, color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", padding: "1px 6px", borderRadius: 4, border: "1px solid var(--border)" }}
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
-                <IconButton title="Close icon picker" onClick={() => setIconPickerOpen(null)}>
-                  <IcClose size={16} strokeWidth={1.75} />
-                </IconButton>
+                <button
+                  onClick={() => setIconPickerOpen(null)}
+                  style={{ background: "transparent", border: "none", fontSize: 16, color: "var(--muted)", cursor: "pointer", lineHeight: 1 }}
+                >
+                  ✕
+                </button>
               </div>
               {/* Layout picker */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", borderBottom: "1px solid var(--ui-border)" }}>
-                <span style={{ fontSize: 12, color: "var(--ui-text-2)" }}>Layout</span>
-                <Tabs<"row" | "column" | "grid" | "scattered">
-                  ariaLabel="Icon layout"
-                  value={iconPickerLayout}
-                  onChange={(lyt) => applyIconLayout(i, lyt)}
-                  items={(["row", "column", "grid", "scattered"] as const).map((lyt) => ({ value: lyt, label: lyt[0].toUpperCase() + lyt.slice(1) }))}
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Layout</span>
+                {(["row", "column", "grid", "scattered"] as const).map((lyt) => (
+                  <button
+                    key={lyt}
+                    onClick={() => applyIconLayout(i, lyt)}
+                    style={{
+                      padding: "2px 8px", fontSize: 10, fontWeight: 700,
+                      background: iconPickerLayout === lyt ? "var(--accent)" : "var(--bg)",
+                      color: iconPickerLayout === lyt ? "#fff" : "var(--muted)",
+                      border: "1px solid var(--border)", borderRadius: 4,
+                      cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.04em",
+                    }}
+                  >
+                    {lyt}
+                  </button>
+                ))}
               </div>
               {/* Category tabs */}
-              <div style={{ padding: "0 12px" }}>
-                <Tabs<IconCategory>
-                  variant="underline"
-                  ariaLabel="Icon category"
-                  value={iconPickerCategory}
-                  onChange={setIconPickerCategory}
-                  items={(["sleep", "health", "lifestyle", "fitness", "mind", "daily"] as IconCategory[]).map((cat) => ({ value: cat, label: cat[0].toUpperCase() + cat.slice(1) }))}
-                />
+              <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
+                {(["sleep", "health", "lifestyle", "fitness", "mind", "daily"] as IconCategory[]).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setIconPickerCategory(cat)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 2px",
+                      border: "none",
+                      borderBottom: iconPickerCategory === cat ? "2px solid var(--accent)" : "2px solid transparent",
+                      background: "transparent",
+                      fontSize: 10,
+                      fontWeight: iconPickerCategory === cat ? 700 : 500,
+                      color: iconPickerCategory === cat ? "var(--accent)" : "var(--muted)",
+                      cursor: "pointer",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
               {/* Icon grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4, padding: 8, maxHeight: 240, overflowY: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 2, padding: 8, background: "var(--bg)", maxHeight: 240, overflowY: "auto" }}>
                 {CAROUSEL_ICONS.filter((ic) => ic.category === iconPickerCategory).map((ic) => {
                   const selected = getSelectedIcons(i);
                   const isSelected = selected.includes(ic.id);
@@ -293,9 +420,6 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                   return (
                     <button
                       key={ic.id}
-                      type="button"
-                      className="ui-focusable"
-                      aria-pressed={isSelected}
                       onClick={() => toggleSlideIcon(i, ic.id)}
                       title={ic.label}
                       disabled={atMax}
@@ -303,29 +427,27 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        gap: 4,
+                        gap: 3,
                         padding: "8px 4px",
-                        border: `1px solid ${isSelected ? "var(--ui-text)" : "transparent"}`,
-                        borderRadius: "var(--ui-radius-2)",
-                        background: isSelected ? "var(--ui-selection-tint)" : "transparent",
-                        color: isSelected ? "var(--ui-text)" : "var(--ui-text-2)",
+                        border: isSelected ? "1.5px solid var(--accent)" : "1.5px solid transparent",
+                        borderRadius: 6,
+                        background: isSelected ? "var(--accent-dim)" : "transparent",
                         cursor: atMax ? "not-allowed" : "pointer",
-                        opacity: atMax ? 0.4 : 1,
-                        fontFamily: "inherit",
-                        transition: "background-color var(--ui-dur-1) var(--ui-ease-out), border-color var(--ui-dur-1) var(--ui-ease-out)",
+                        opacity: atMax ? 0.35 : 1,
+                        transition: "background 0.1s",
                       }}
                     >
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="currentColor"
+                        stroke={isSelected ? "var(--accent)" : "var(--muted)"}
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         style={{ width: 24, height: 24 }}
                         dangerouslySetInnerHTML={{ __html: ic.svg }}
                       />
-                      <span style={{ fontSize: 11, textAlign: "center", lineHeight: 1.2 }}>
+                      <span style={{ fontSize: 9, color: isSelected ? "var(--accent)" : "var(--subtle)", textAlign: "center", lineHeight: 1.2, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         {ic.label}
                       </span>
                     </button>
@@ -335,15 +457,14 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
             </div>
           )}
 
-          <Label>Headline</Label>
-          <input className="ui-input" style={field()} value={slide.headline} onChange={(e) => updateSlide(i, "headline", e.target.value)} />
-          <Label>Body</Label>
-          <AutoTextarea className="ui-input" style={field()} minHeight={90} value={slide.body} onChange={(e) => updateSlide(i, "body", e.target.value)} />
-          <Label>Citation</Label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={labelStyle}>Headline</label>
+          <input style={{ ...inputStyle, marginBottom: 8 }} value={slide.headline} onChange={(e) => updateSlide(i, "headline", e.target.value)} />
+          <label style={labelStyle}>Body</label>
+          <AutoTextarea style={{ ...inputStyle, marginBottom: 8 }} minHeight={90} value={slide.body} onChange={(e) => updateSlide(i, "body", e.target.value)} />
+          <label style={labelStyle}>Citation</label>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             <input
-              className="ui-input"
-              style={{ flex: 1 }}
+              style={{ ...inputStyle, flex: 1 }}
               value={slide.citation}
               onChange={(e) => updateSlide(i, "citation", e.target.value)}
             />
@@ -353,10 +474,22 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Verify on Google Scholar"
-                className="ui-btn ui-btn--sm ui-btn--ghost"
-                style={{ textDecoration: "none", flexShrink: 0 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 34,
+                  height: 34,
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 7,
+                  color: "var(--muted)",
+                  textDecoration: "none",
+                  fontSize: 14,
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
               >
-                Verify
+                ↗
               </a>
             )}
           </div>
@@ -376,30 +509,30 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
           setTk({ points });
         };
         return (
-          <div style={card}>
-            <div style={{ ...cardTitle, marginBottom: 16 }}>Slide {ctaSlideNo} · Takeaway <span style={{ fontWeight: 400, color: "var(--ui-text-2)" }}>The payoff and the closing follow prompt</span></div>
-            <Label>Headline</Label>
-            <input className="ui-input" style={field()} value={tk.headline} onChange={(e) => setTk({ headline: e.target.value })} />
-            <Label>Recap points</Label>
+          <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>Slide 5 — Takeaway (the payoff + closing follow prompt)</div>
+            <label style={labelStyle}>Headline</label>
+            <input style={{ ...inputStyle, marginBottom: 12 }} value={tk.headline} onChange={(e) => setTk({ headline: e.target.value })} />
+            <label style={labelStyle}>Recap points</label>
             {tk.points.map((p, i) => (
-              <input key={i} className="ui-input" style={field(8)} value={p} onChange={(e) => setPoint(i, e.target.value)} placeholder={`Point ${i + 1}`} aria-label={`Recap point ${i + 1}`} />
+              <input key={i} style={{ ...inputStyle, marginBottom: 8 }} value={p} onChange={(e) => setPoint(i, e.target.value)} placeholder={`Point ${i + 1}`} />
             ))}
-            <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
               <div style={{ flexShrink: 0 }}>
-                <Label>Ask</Label>
-                <UiSelect
+                <label style={labelStyle}>Ask</label>
+                <select
+                  style={{ ...inputStyle, width: "auto" }}
                   value={tk.interaction.type}
                   onChange={(e) => setTk({ interaction: { ...tk.interaction, type: e.target.value as "save" | "send" | "comment" } })}
-                  aria-label="Ask"
                 >
                   <option value="save">Save</option>
                   <option value="send">Send</option>
                   <option value="comment">Comment</option>
-                </UiSelect>
+                </select>
               </div>
               <div style={{ flex: 1 }}>
-                <Label>Interaction label</Label>
-                <input className="ui-input" value={tk.interaction.label} onChange={(e) => setTk({ interaction: { ...tk.interaction, label: e.target.value } })} />
+                <label style={labelStyle}>Interaction label</label>
+                <input style={inputStyle} value={tk.interaction.label} onChange={(e) => setTk({ interaction: { ...tk.interaction, label: e.target.value } })} />
               </div>
             </div>
           </div>
@@ -409,18 +542,18 @@ export default function ContentStep({ content, topic, hookTone, onChange, onNext
       {/* CTA — when a takeaway is present it absorbs the follow line onto its
           own slide (see above) and there's no separate CTA slide, so only the
           follow-line field is shown; the headline field would render nowhere. */}
-      <div style={{ ...card, marginBottom: 32 }}>
-        <div style={{ ...cardTitle, marginBottom: 16 }}>
-          {hasTakeaway ? <>Follow prompt <span style={{ fontWeight: 400, color: "var(--ui-text-2)" }}>Shown on the takeaway slide</span></> : `Slide ${ctaSlideNo} · CTA`}
+      <div style={{ background: "var(--surface)", borderRadius: 10, padding: 20, marginBottom: 28, border: "1px solid var(--border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: 14 }}>
+          {hasTakeaway ? "Follow prompt (shown on the Takeaway slide)" : "Slide 5 — CTA"}
         </div>
         {!hasTakeaway && (
           <>
-            <Label>Headline</Label>
-            <input className="ui-input" style={field()} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
+            <label style={labelStyle}>Headline</label>
+            <input style={{ ...inputStyle, marginBottom: 8 }} value={content.cta.headline} onChange={(e) => onChange({ ...content, cta: { ...content.cta, headline: e.target.value } })} />
           </>
         )}
-        <Label>Follow line</Label>
-        <input className="ui-input" value={content.cta.followLine} onChange={(e) => onChange({ ...content, cta: { ...content.cta, followLine: e.target.value } })} />
+        <label style={labelStyle}>Follow line</label>
+        <input style={inputStyle} value={content.cta.followLine} onChange={(e) => onChange({ ...content, cta: { ...content.cta, followLine: e.target.value } })} />
       </div>
 
       <Button variant="primary" size="lg" onClick={onNext}>Looks good →</Button>

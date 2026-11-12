@@ -12,7 +12,6 @@
 // come from the network. The restructure route takes a shapeId and resolves
 // guidance HERE. See resolveShapeGuidance.
 import type { LayoutBlock } from "./campaign-layout-prompts";
-import { PRODUCT } from "./lunia-brand-guidelines";
 import type { CampaignContent, CampaignBlockKind, EmailPresetSettings } from "./types";
 
 export type CampaignShape = {
@@ -47,124 +46,110 @@ in Lunia's own voice. Concretely:
 
 1. OPEN with a "headerimage" block. Use headerStyle "card" when the source has
    one strong headline, "pill" when it has a short label plus a headline.
-2. Then a "lead": the one sentence the email is about, set large and light.
-3. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right".
+2. Then ALTERNATE "imagetext" blocks, imagePosition "left", then "right".
    Two of them, only for copy with a concrete subject a camera could show.
    This alternation is the single most recognisable part of the look,
    so do not emit them all on one side.
-4. Between or after them, set the best line as a "pullquote".
-5. Then EITHER one "imagebullets" block for the strongest short list (with
+3. Then EITHER one "imagebullets" block for the strongest short list (with
    bulletColor "aqua" or "yellow") OR one "grid" when the source has three or
    more parallel points. Not both.
-6. Close with "badges", and a "product" card when the email asks for a purchase.
-7. Use "table" only for prices. NO bare "text" blocks unless one short line is
-   needed to connect two sections.
-8. Aim for 6 to 9 blocks.
+4. Use "table" only when the source already contains prices or plan numbers.
+5. Keep bare "text" blocks to AT MOST ONE. Lists without a photographable
+   subject go in a "checklist", not a picture block.
+6. Aim for 5 to 8 blocks.
 
-This shape allows up to FIVE picture blocks (the header counts as one). Every
-block that holds a picture MUST come with its own imagePrompt or a "picture"
-ref, and they must be different scenes from each other.`;
+This shape raises the picture budget from two to FOUR (the header counts as
+one). Never more. Every block that holds a picture MUST come with its own
+imagePrompt, and they must be different scenes from each other. Repeating the
+same scene across blocks is the failure mode this layout exposes most.`;
 
 /** Shared tail for guidance strings that name an opening block. */
-const KEEP_IT_HONEST = `Body copy comes from the source and the verified product facts only; short eyebrows, section headlines and button labels may be written. If the source cannot fill a block this shape asks for honestly, drop that block rather than inventing content for it.`;
+const KEEP_IT_HONEST = `Every block must use only words from the source copy. If the source cannot fill a block this shape asks for, drop that block rather than inventing content for it.`;
 
 export const CAMPAIGN_SHAPES: CampaignShape[] = [
   {
     id: "auto",
     name: "Let the model choose",
     description: "Read the copy and pick whatever layout fits it",
-    // Empty guidance is the plain "Make it visual" behaviour: the base prompt
-    // already carries the design rules. No starter: with nothing to
-    // restructure there is nothing for the model to choose between.
+    // Empty guidance is the plain "Make it visual" behaviour. No starter: with
+    // nothing to restructure there is nothing for the model to choose between.
     guidance: "",
   },
   {
     id: "editorial",
     name: "Editorial",
-    description: "Header image, a large lead, alternating picture rows, a pull quote",
+    description: "Header image, alternating picture-and-copy rows, almost no bare text",
     theme: "cream",
     guidance: EDITORIAL_GUIDANCE,
     starter: [
       { kind: "headerimage", headerStyle: "card", headerHeadline: "Stronger mornings start the night before", imagePrompt: "A bedroom just after waking, low winter light through a gap in the curtains, bedding pushed back, nobody in frame yet." },
-      { kind: "lead", body: "Better sleep is rarely about the worst night. It is about what every night has in common." },
       { kind: "imagetext", imageHeading: "Three pathways, one capsule", body: "Magnesium bisglycinate, L-theanine and apigenin work on different parts of the same problem. Doses printed on the label, so you know what you are taking.", imagePosition: "left", imagePrompt: "Loose botanical material and pale powder on a plain stone surface, macro, flat daylight from one side." },
-      { kind: "pullquote", body: "Built for every night, not for the worst one." },
-      { kind: "imagebullets", bulletItems: ["Melatonin-free", "No proprietary blends", "Every dose on the label"], bulletColor: "aqua", imagePosition: "right", imagePrompt: "A laboratory bench, gloved hands weighing a sample, clean daylight, no branding anywhere." },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
+      { kind: "imagebullets", bulletItems: ["Melatonin-free", "No proprietary blends", "Third-party tested"], bulletColor: "aqua", imagePosition: "right", imagePrompt: "A laboratory bench, gloved hands weighing a sample, clean daylight, no branding anywhere." },
+      { kind: "text", body: "Built for every night, not for the worst one.", align: "center" },
     ],
   },
   {
     id: "discount",
     name: "Discount announcement",
-    description: "The offer up front, the product, then why it is worth taking",
-    guidance: `Lead with the offer. Open with a "lead" that states it, then a "discount" block ONLY if the source contains a real code or price. Follow with a "product" card, then an "imagebullets" or "beforeafter" for the reasons to act, then "badges" just before the close. Use a "table" only if the source has plan pricing. ${KEEP_IT_HONEST}`,
+    description: "Promo band, the offer up front, then why it is worth taking",
+    guidance: `Lead with the offer. Open with a "discount" block ONLY if the source contains a real code or price, otherwise open with "text". Follow with an "imagebullets" block for the reasons to act, then a "table" if the source has plan pricing. Close on one short "text" block. ${KEEP_IT_HONEST}`,
     promoBand: "LIMITED TIME",
     ctaLabel: "Claim your discount",
     starter: [
-      { kind: "lead", eyebrow: "This week", body: "Twenty percent off your first order of Lunia Restore." },
+      { kind: "text", body: "A short line on why this offer exists right now.", align: "left" },
       { kind: "discount", discountCode: "SLEEP20", discountDescription: "20% off your first order", originalPrice: "$38.93", newPrice: "$29.20" },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productComparePrice: "$59.90", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
       { kind: "imagebullets", bulletItems: ["Melatonin-free", "Doses printed on the label", "Cancel anytime"], bulletColor: "yellow", imagePosition: "left", imagePrompt: "A kitchen counter at night, a glass of water and a paperback beside it, one warm lamp out of frame." },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
     ],
   },
   {
     id: "educational",
     name: "Educational",
-    description: "One idea explained: a lead, a section heading, steps and a picture",
-    guidance: `Teach one idea. Open with a "lead" that states it plainly. Then a "heading" for the explanation, then EITHER "steps" (when the source describes a sequence) OR two "imagetext" blocks, imagePosition "left" then "right". Set the clearest line as a "pullquote". Use "ingredients" only if the source names doses. Never two "text" blocks in a row. ${KEEP_IT_HONEST}`,
+    description: "One idea explained, with a picture beside each step",
+    guidance: `Teach one idea. Open with a "text" block that states it plainly, then TWO "imagetext" blocks that carry it forward, imagePosition "left" then "right". Use "ingredients" only if the source names doses. Keep bare text blocks to at most two. ${KEEP_IT_HONEST}`,
     starter: [
-      { kind: "lead", body: "Most people think of sleep as one thing. It is closer to three, and they fail in different ways." },
+      { kind: "text", body: "Most people think of sleep as one thing. It is closer to three, and they fail in different ways.", align: "left" },
       { kind: "imagetext", imageHeading: "Falling asleep", body: "The wind-down window is roughly the two hours before bed. Light, food and stress all push against it.", imagePosition: "left", imagePrompt: "A living room in the last hour before bed, low lamplight, a book face down on the arm of a chair." },
       { kind: "imagetext", imageHeading: "Staying asleep", body: "Waking at three in the morning is usually about how deeply you went under, not about how tired you were.", imagePosition: "right", imagePrompt: "A dark bedroom at three in the morning, a bedside clock out of focus, moonlight on the wall." },
-      { kind: "pullquote", body: "The hour before bed does more than the hours in it." },
       { kind: "ingredients", ingredientHeading: "What's inside", ingredientItems: [{ name: "Magnesium Bisglycinate", dose: "500 mg" }, { name: "L-Theanine", dose: "300 mg" }, { name: "Apigenin", dose: "50 mg" }], ingredientFootnote: "Melatonin-free, third-party tested" },
     ],
   },
   {
     id: "proof-led",
     name: "Proof-led",
-    description: "Numbers first, then the reviews and badges behind them",
-    guidance: `Lead with evidence. Open with a "stat" (the source's number, or the verified review count), then a "grid" of parallel proof points, then "reviews" or a "testimonial" ONLY if the source contains verbatim quoted customer text, then "badges", then a "product" card. Never invent a number or a quote. ${KEEP_IT_HONEST}`,
+    description: "Numbers first, then the reviews behind them",
+    guidance: `Lead with evidence. Open with a "stat" block ONLY if the source contains the number, then a "grid" of parallel proof points, then a "testimonial" ONLY if the source contains verbatim quoted customer text. Never invent a number or a quote. ${KEEP_IT_HONEST}`,
     starter: [
-      { kind: "stat", statValue: `${PRODUCT.reviewCount} reviews`, statLabel: `${PRODUCT.fiveStarPct}% five-star` },
+      { kind: "stat", statValue: "558 reviews", statLabel: "91% five-star" },
       { kind: "grid", gridCells: [
         { heading: "Melatonin-free", caption: "No grogginess, nothing to taper off.", imagePrompt: "An empty unmade bed in morning light, curtains open, nobody in frame." },
         { heading: "Transparent dosing", caption: "Every milligram printed on the label.", imagePrompt: "A clipboard and a pen on a laboratory bench, clean daylight, no text legible." },
       ] },
       { kind: "testimonial", testimonialQuote: "Replace this with a real review before sending.", testimonialAuthor: "Sample, not a real customer", testimonialStars: 5 },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
     ],
   },
   {
     id: "welcome",
     name: "Welcome",
-    description: "Who you are, what happens next, and the first step",
-    guidance: `Introduce the brand. Open with a "headerimage", style "card", then a "lead". Follow with "steps" for what to expect next (or a "checklist" when the source has no order), one "imagetext" on what the product is for, and "badges". Use "founder" ONLY if the source contains a first-person note. ${KEEP_IT_HONEST}`,
+    description: "Say who you are, then what to expect",
+    guidance: `Introduce the brand. Open with a "headerimage", style "card". Follow with one "imagetext" on what the product is for, then a "checklist" of what to expect next. Close on a short "text". ${KEEP_IT_HONEST}`,
     ctaLabel: "Start your first night",
     starter: [
       { kind: "headerimage", headerStyle: "card", headerHeadline: "Welcome to Lunia", imagePrompt: "A quiet bedroom doorway at dusk, warm light spilling from inside, seen from the hall." },
-      { kind: "lead", body: "Two capsules before bed, built for every night rather than for the worst one." },
-      { kind: "steps", steps: [
-        { title: "Up to 2 capsules", text: "30 to 60 minutes before bed" },
-        { title: "Keep the last hour dim", text: "Bright light is the main thing pushing back" },
-        { title: "Give it a full week", text: "Judge it on night seven, not night one" },
-      ] },
-      { kind: "imagetext", imageHeading: "What it is for", body: "Falling asleep without lying there planning tomorrow, and fewer 3am wake-ups.", imagePosition: "left", imagePrompt: "A bedside table with a glass of water and a small dish, one lamp lit, late evening." },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
+      { kind: "imagetext", imageHeading: "What it is for", body: "Two capsules before bed, built for every night rather than for the worst one.", imagePosition: "left", imagePrompt: "A bedside table with a glass of water and a small dish, one lamp lit, late evening." },
+      { kind: "checklist", items: ["Two capsules, before bed", "Give it a full week", "Melatonin-free, so no tapering"] },
+      { kind: "text", body: "Questions get a real answer, usually the same day.", align: "center" },
     ],
   },
   {
     id: "urgency",
     name: "Last call",
-    description: "Short: one line, the offer, the product",
-    guidance: `Keep it very short, four blocks at most. Open with a "lead", then "discount" ONLY if the source has a code or price, then a "product" card. No grid, no ingredients, no paragraphs. Urgency comes from brevity, not from adjectives. ${KEEP_IT_HONEST}`,
+    description: "Short, one reason, one deadline",
+    guidance: `Keep it very short, three blocks at most. Open with "text", then "discount" ONLY if the source has a code or price, then close. No grid, no ingredients. Urgency comes from brevity, not from adjectives. ${KEEP_IT_HONEST}`,
     promoBand: "ENDS TONIGHT",
     ctaLabel: "Before it ends",
     starter: [
-      { kind: "lead", body: "Last night to take the offer.", align: "center" },
+      { kind: "text", body: "Last night to take the offer.", align: "center" },
       { kind: "discount", discountCode: "SLEEP20", discountDescription: "20% off your first order" },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
     ],
   },
   {
@@ -172,30 +157,28 @@ export const CAMPAIGN_SHAPES: CampaignShape[] = [
     name: "Ingredient deep dive",
     description: "One ingredient at a time, each with its own picture",
     theme: "cream",
-    guidance: `Take the formula apart. Open with a "heading", then one "imagetext" per ingredient the source discusses, alternating imagePosition. Close with an "ingredients" panel (verified doses are allowed) and "badges". ${KEEP_IT_HONEST}`,
+    guidance: `Take the formula apart. Open with "text", then one "imagetext" per ingredient the source discusses, alternating imagePosition. Close with an "ingredients" panel ONLY if the source names doses. ${KEEP_IT_HONEST}`,
     starter: [
-      { kind: "heading", eyebrow: "Inside the capsule", headline: "Three ingredients, three jobs" },
+      { kind: "text", body: "Three ingredients, each doing a different job.", align: "left" },
       { kind: "imagetext", imageHeading: "Magnesium bisglycinate", body: "A chelated form, chosen because it is absorbed well and is gentle on the stomach.", imagePosition: "left", imagePrompt: "Pale mineral powder in a small dish on a plain surface, macro, soft daylight from the left." },
       { kind: "imagetext", imageHeading: "L-theanine", body: "An amino acid from green tea, associated with relaxation without sedation.", imagePosition: "right", imagePrompt: "Loose green tea leaves scattered on unglazed ceramic, overhead, flat natural light." },
       { kind: "ingredients", ingredientHeading: "What's inside", ingredientItems: [{ name: "Magnesium Bisglycinate", dose: "500 mg" }, { name: "L-Theanine", dose: "300 mg" }, { name: "Apigenin", dose: "50 mg" }], ingredientFootnote: "Melatonin-free, third-party tested" },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
     ],
   },
   {
     id: "subscribe-vs-once",
     name: "Subscribe or one-time",
-    description: "The pricing question, answered in a table and an FAQ",
-    guidance: `Answer the pricing question. Open with a "lead", then a "table" of the plans (verified prices are allowed), then an "imagebullets" of what a subscription actually changes, then an "faq" for the doubts the source raises (skipping, cancelling), then a "product" card. ${KEEP_IT_HONEST}`,
+    description: "The pricing question, answered in a table",
+    guidance: `Answer the pricing question. Open with a short "text", then a "table" ONLY if the source contains the prices, otherwise a "comparison". Follow with an "imagebullets" of what a subscription actually changes. ${KEEP_IT_HONEST}`,
     ctaLabel: "See the plans",
     starter: [
-      { kind: "lead", body: "Same capsules either way. The difference is what you pay and how often you think about it." },
+      { kind: "text", body: "Same capsules either way. The difference is what you pay and how often you think about it.", align: "left" },
       { kind: "table", tableHeaders: ["Path", "Per bottle", "Per night"], tableRows: [
         { cells: ["One bottle at a time", "$38.93", "$1.30"] },
         { cells: ["Subscription", "$29.20", "$0.97"] },
-        { cells: ["3 month plan", "$19.99", "$0.67"] },
+        { cells: ["3 month plan", "$33.10", "$0.84"] },
       ], tableEmphasisRow: 2 },
       { kind: "imagebullets", bulletItems: ["Skip or cancel anytime", "Arrives before you run out", "Same formula, lower price"], bulletColor: "aqua", imagePosition: "right", imagePrompt: "A cardboard parcel on a doormat inside a front door, morning light through the glass." },
-      { kind: "faq", faqs: [{ q: "Can I skip a month?", a: "Yes. Skip or cancel anytime." }] },
     ],
   },
   {
@@ -203,118 +186,29 @@ export const CAMPAIGN_SHAPES: CampaignShape[] = [
     name: "Wind-down story",
     description: "Walk through an evening, hour by hour",
     theme: "cream",
-    guidance: `Tell one evening as a sequence. Open with a "headerimage" style "pill", then a "lead". Then a "timeline" ONLY if the source has time labels, otherwise "steps". Set the best line as a "pullquote" and close with a "product" card. ${KEEP_IT_HONEST}`,
+    guidance: `Tell one evening as a sequence. Open with a "headerimage" style "pill", then a "timeline" ONLY if the source has time labels, otherwise two "imagetext" blocks in order. Close on a short "text". ${KEEP_IT_HONEST}`,
     starter: [
       { kind: "headerimage", headerStyle: "pill", headerPillText: "The last two hours", headerHeadline: "What your evening is actually deciding", imagePrompt: "A kitchen at dusk seen from the doorway, one lamp on, the window still faintly blue." },
-      { kind: "lead", body: "Most of tonight's sleep is decided before you get into bed." },
       { kind: "timeline", timelineRows: [
         { label: "TWO HOURS OUT", text: "Core temperature starts to fall" },
         { label: "ONE HOUR OUT", text: "Bright light is the main thing pushing back" },
         { label: "LIGHTS OUT", text: "How deeply you go under is mostly already set" },
       ] },
-      { kind: "pullquote", body: "The hour before bed does more than the hours in it." },
+      { kind: "text", body: "The hour before bed does more than the hours in it.", align: "center" },
     ],
   },
   {
     id: "why-different",
     name: "Why we're different",
-    description: "Us against the usual option, then the formula",
-    guidance: `Make the difference argument. Open with a "lead", then a "beforeafter" (the usual option against Lunia), then a "grid" of three or more parallel points, then "ingredients" (verified doses are allowed) and "badges". Avoid "checklist" here. ${KEEP_IT_HONEST}`,
+    description: "A grid of trust points, then the formula",
+    guidance: `Make the difference argument. Open with "text", then a "grid" of three or more parallel points, then "ingredients" ONLY if the source names doses. Avoid "checklist" here; the grid is the point. ${KEEP_IT_HONEST}`,
     starter: [
-      { kind: "lead", body: "Most sleep supplements are melatonin and a proprietary blend. This is neither." },
-      { kind: "beforeafter", beforeLabel: "Most sleep aids", afterLabel: "Lunia Restore", beforeItems: ["Melatonin", "Proprietary blend", "Doses you cannot see"], afterItems: ["Melatonin-free", "Three named ingredients", "Every dose on the label"] },
+      { kind: "text", body: "Most sleep supplements are melatonin and a proprietary blend. This is neither.", align: "left" },
       { kind: "grid", gridCells: [
         { heading: "Melatonin-free", caption: "No grogginess, no vivid-dream rebound.", imagePrompt: "A morning bedroom with the curtains just opened, bedding thrown back, empty." },
         { heading: "Every dose printed", caption: "Nothing hidden behind a blend.", imagePrompt: "A supplement label photographed at a steep angle so no words are readable, plain background." },
         { heading: "Third-party tested", caption: "Checked by someone who does not work for us.", imagePrompt: "A laboratory bench with sample vials in a rack, gloved hand reaching in, cool daylight." },
       ] },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
-    ],
-  },
-
-  // ── DTC flow shapes (2026-11) ──────────────────────────────────────────────
-  // The five emails every DTC supplement flow sends that the set above did not
-  // cover. Each one puts a second place to click (a product card) mid-email and
-  // its proof just before the close, the two patterns that move click-through
-  // most on long emails.
-  {
-    id: "product-launch",
-    name: "Product launch",
-    description: "Header, the one-line promise, us against the usual, the product card",
-    theme: "cream",
-    guidance: `Announce something new. Open with a "headerimage" style "pill" (the pill is the news, the headline is the promise), then a "lead". Follow with a "beforeafter" (what people use now against this), one "imagetext" on the most concrete detail, a "product" card, and "badges" last. ${KEEP_IT_HONEST}`,
-    ctaLabel: "Try it tonight",
-    starter: [
-      { kind: "headerimage", headerStyle: "pill", headerPillText: "New", headerHeadline: "A sleep supplement without the melatonin", imagePrompt: "A bedside table at night, a single lamp, a glass of water, the rest of the room in shadow." },
-      { kind: "lead", body: "Three named ingredients, every dose printed on the label, and nothing to taper off." },
-      { kind: "beforeafter", beforeLabel: "Most sleep aids", afterLabel: "Lunia Restore", beforeItems: ["Melatonin", "Proprietary blend"], afterItems: ["Melatonin-free", "Every dose on the label"] },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productComparePrice: "$59.90", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
-      { kind: "badges", badges: ["Melatonin-free", "No proprietary blends", "Every dose on the label"] },
-    ],
-  },
-  {
-    id: "replenishment",
-    name: "Running low",
-    description: "A reorder nudge timed to the bottle running out",
-    guidance: `A replenishment reminder. Open with a short "lead" (the bottle is nearly done), then a "product" card straight away. Follow with a "comparison" or "table" of one-time against subscription (verified prices are allowed), an "faq" for skipping and cancelling ONLY if the source mentions it, and "badges". Keep it to five blocks. ${KEEP_IT_HONEST}`,
-    ctaLabel: "Reorder",
-    starter: [
-      { kind: "lead", body: "Your bottle is nearly done. Thirty nights goes faster than it sounds." },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productNote: "60 capsules, 30 nights", buttonLabel: "Reorder", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
-      { kind: "comparison", comparisonLeftLabel: "One-time", comparisonLeftPrice: "$38.93", comparisonLeftPerk: "Ships once", comparisonRightLabel: "Subscribe", comparisonRightPrice: "$29.20", comparisonRightPerk: "Arrives before you run out" },
-      { kind: "badges", badges: ["Melatonin-free", "Cancel anytime", "Every dose on the label"] },
-    ],
-  },
-  {
-    id: "post-purchase",
-    name: "How to use it",
-    description: "Post-purchase: the routine in steps, the doubts in an FAQ",
-    theme: "cream",
-    guidance: `Onboard a new customer. Open with a "heading", then "steps" for how to take it (verified dose is allowed), a "pullquote" for the one habit that matters most, an "faq" for the questions a first-week customer has, and one "imagetext". No discount, no hard sell. ${KEEP_IT_HONEST}`,
-    ctaLabel: "Read the full guide",
-    starter: [
-      { kind: "heading", eyebrow: "Your first week", headline: "How to get the most from it" },
-      { kind: "steps", steps: [
-        { title: "Up to 2 capsules", text: "30 to 60 minutes before bed" },
-        { title: "Keep the last hour dim", text: "Bright light is the main thing pushing back" },
-        { title: "Give it a full week", text: "Judge it on night seven, not night one" },
-      ] },
-      { kind: "pullquote", body: "Same time every night matters more than the dose." },
-      { kind: "faq", faqs: [
-        { q: "Does it contain melatonin?", a: "No. It is melatonin-free, so there is nothing to taper off." },
-        { q: "Can I take it every night?", a: "It is built for every night rather than for the worst one." },
-      ] },
-      { kind: "imagetext", imageHeading: "The wind-down window", body: "The two hours before bed decide more than the hours in it.", imagePosition: "right", imagePrompt: "A living room in the last hour before bed, low lamplight, a book face down on the arm of a chair." },
-    ],
-  },
-  {
-    id: "objection-faq",
-    name: "Answer the doubts",
-    description: "For the undecided: the questions they are asking, answered",
-    guidance: `Win over someone who has not bought. Open with a "lead" that names the hesitation, then an "faq" of the doubts the source answers (two to four), a "beforeafter", "reviews" ONLY if the source has verbatim customer quotes, then a "product" card. ${KEEP_IT_HONEST}`,
-    ctaLabel: "Try it tonight",
-    starter: [
-      { kind: "lead", body: "Not sure a sleep supplement is for you? Fair. Here is what people ask first." },
-      { kind: "faq", faqs: [
-        { q: "Does it contain melatonin?", a: "No. It is melatonin-free, so no grogginess and nothing to taper off." },
-        { q: "What is actually in it?", a: "Magnesium bisglycinate, L-theanine and apigenin, every dose on the label." },
-        { q: "How do I take it?", a: "Up to 2 capsules, 30 to 60 minutes before bed." },
-      ] },
-      { kind: "beforeafter", beforeLabel: "Most sleep aids", afterLabel: "Lunia Restore", beforeItems: ["Melatonin", "Proprietary blend"], afterItems: ["Melatonin-free", "Every dose on the label"] },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
-    ],
-  },
-  {
-    id: "founder-story",
-    name: "Founder note",
-    description: "A signed note from a person, then the product",
-    theme: "cream",
-    guidance: `A personal note. Open with a "founder" block ONLY if the source contains a first-person note (otherwise a "lead"), then a "pullquote" of its best line, one "imagetext", and a "product" card. Keep it warm and short; no tables, no stats. ${KEEP_IT_HONEST}`,
-    starter: [
-      { kind: "founder", body: "Replace this with a few lines in your own voice: why you started Lunia, and what you want this email to do.", attribution: "Your name, founder" },
-      { kind: "pullquote", body: "Built for every night, not for the worst one." },
-      { kind: "imagetext", imageHeading: "Why melatonin-free", body: "No grogginess the next morning, and nothing to taper off.", imagePosition: "left", imagePrompt: "A bedroom just after waking, curtains open, bedding thrown back, morning light." },
-      { kind: "product", productName: "Lunia Restore", productPrice: "$38.93", productNote: "60 capsules, 30 nights", buttonLabel: "Shop now", imagePrompt: "A single amber glass jar on a linen surface by a window, soft morning light, nothing else in frame." },
     ],
   },
 ];
@@ -440,16 +334,6 @@ const KIND_PHRASE: Record<CampaignBlockKind, string> = {
   imagebullets: "a picture beside bullets",
   grid: "a grid",
   headerimage: "a header image",
-  lead: "a large light lead paragraph",
-  heading: "a section heading",
-  pullquote: "a pull quote",
-  steps: "numbered steps",
-  faq: "an FAQ",
-  beforeafter: "a before and after comparison",
-  badges: "a row of trust badges",
-  product: "a product card",
-  reviews: "a stack of reviews",
-  founder: "a signed note from the founder",
 };
 
 /** Build the layout instruction from a captured structure.

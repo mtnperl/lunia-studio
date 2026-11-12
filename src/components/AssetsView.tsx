@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { AssetMetadata, AssetType, CarouselTemplate } from "@/lib/types";
+import { AssetType, CarouselTemplate } from "@/lib/types";
 import { ASSET_TYPES, UPLOADABLE_TYPES, ASSET_SECTIONS } from "@/lib/asset-shelves";
 import { MAX_UPLOAD_BYTES, fmtSize, needsShrinking, shrinkForUpload } from "@/lib/image-shrink";
 import { chunkForUpload } from "@/lib/upload-batching";
+import PhotoLibrary from "./campaign/PhotoLibrary";
+import { publishAssets, useAssets } from "./campaign/useAssets";
 
 const LOADER_LINES = [
   "UPLOADING SLIDE IMAGES",
@@ -98,8 +100,9 @@ function TypeBadge({ assetType }: { assetType?: AssetType }) {
 }
 
 export default function AssetsView() {
-  const [assets, setAssets] = useState<AssetMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
+  const sharedAssets = useAssets();
+  const assets = sharedAssets ?? [];
+  const loading = sharedAssets === null;
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   /** Set when a file was too big and got re-encoded, so the size in the
@@ -127,11 +130,9 @@ export default function AssetsView() {
     try {
       const res = await fetch("/api/assets");
       const data = await res.json();
-      setAssets(Array.isArray(data) ? data : []);
+      publishAssets(Array.isArray(data) ? data : []);
     } catch {
       // non-critical
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -146,7 +147,6 @@ export default function AssetsView() {
   }
 
   useEffect(() => {
-    loadAssets();
     loadTemplates();
   }, []);
 
@@ -251,7 +251,7 @@ export default function AssetsView() {
   async function handleDelete(id: string) {
     try {
       await fetch(`/api/assets/${id}`, { method: "DELETE" });
-      setAssets((prev) => prev.filter((a) => a.id !== id));
+      publishAssets(assets.filter((a) => a.id !== id));
     } catch {
       // non-critical
     }
@@ -354,6 +354,10 @@ export default function AssetsView() {
       </div>
 
       {/* Upload type picker */}
+      <details style={{ marginBottom: 24 }}>
+        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Curate email photos, check Gen Z text & link versions</summary>
+        <div style={{ marginTop: 12 }}><PhotoLibrary /></div>
+      </details>
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
           Upload as — pick as many files as you like

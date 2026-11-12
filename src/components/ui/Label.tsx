@@ -14,7 +14,7 @@ export function Label({ kind = "field", children, style, htmlFor }: {
     color: "var(--muted)", textTransform: "uppercase", fontFamily: "var(--font-ui)",
   };
   const perKind: CSSProperties = kind === "section"
-    ? { fontSize: "var(--ui-text-11)", fontWeight: "var(--ui-weight-semibold)" as CSSProperties["fontWeight"], letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 8 }
-    : { fontSize: "var(--ui-text-12)", fontWeight: "var(--ui-weight-semibold)" as CSSProperties["fontWeight"], letterSpacing: "var(--ui-tracking-caps)", display: "block", marginBottom: 4 };
+    ? { fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", display: "block", marginBottom: 8 }
+    : { fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", display: "block", marginBottom: 4 };
   return <label htmlFor={htmlFor} style={{ ...shared, ...perKind, ...style }}>{children}</label>;
 }

@@ -2,8 +2,6 @@
 import { useState } from "react";
 import CopyButton from "@/components/email-review/CopyButton";
 import type { EmailFlowAsset } from "@/lib/types";
-import { IcChevron } from "@/components/ui";
-import { Button } from "@/components/ui";
 
 type Props = {
   emails: EmailFlowAsset[];
@@ -38,10 +36,10 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
 
   return (
     <div style={{
-      border: "1px solid var(--ui-border)",
+      border: "1px solid #e2ddd4",
       borderRadius: 8,
       overflow: "hidden",
-      background: "var(--ui-bg)",
+      background: "#fff",
     }}>
       {/* Collapsed header row — always visible */}
       <button
@@ -63,10 +61,10 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
         <span style={{
           flexShrink: 0,
           padding: "2px 7px",
-          background: "var(--ui-ink)",
-          color: "var(--ui-on-ink)",
-          fontSize: 11,
-          fontWeight: 600,
+          background: "#102635",
+          color: "#fff",
+          fontSize: 10,
+          fontWeight: 700,
           borderRadius: 4,
           letterSpacing: "0.06em",
           marginTop: 1,
@@ -77,24 +75,26 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Role label (create-flow emails have this) */}
           {email.role && (
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", letterSpacing: "var(--ui-tracking-caps)", textTransform: "uppercase", marginBottom: 2 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 }}>
               {email.role}
             </div>
           )}
           {/* Subject */}
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ui-text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {email.subject || <span style={{ color: "var(--ui-text-3)", fontWeight: 400 }}>(no subject)</span>}
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#102635", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {email.subject || <span style={{ color: "#aaa", fontWeight: 400 }}>(no subject)</span>}
           </div>
           {/* Preview text */}
           {email.previewText && (
-            <div style={{ fontSize: 11, color: "var(--ui-text-2)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 11, color: "#7a7060", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {email.previewText}
             </div>
           )}
         </div>
 
         {/* Expand toggle */}
-        <IcChevron size={16} strokeWidth={1.75} style={{ flexShrink: 0, color: "var(--ui-text-3)", marginTop: 2, transition: "transform var(--ui-dur-2) var(--ui-ease-in-out)", transform: open ? "none" : "rotate(-90deg)" }} />
+        <span style={{ flexShrink: 0, fontSize: 12, color: "#aaa", marginTop: 2, transition: "transform 0.15s", display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+          ›
+        </span>
       </button>
 
       {/* Copy buttons row — always visible */}
@@ -111,7 +111,7 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
       {/* Expanded body */}
       {open && (
         <div style={{
-          borderTop: "1px solid var(--ui-border)",
+          borderTop: "1px solid #e2ddd4",
           padding: "14px 14px 14px",
           display: "flex",
           flexDirection: "column",
@@ -119,26 +119,26 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
         }}>
           {/* Subject + preview text detail */}
           <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 10, rowGap: 4, fontSize: 12 }}>
-            <span style={{ color: "var(--ui-text-3)", fontWeight: 600 }}>Subject</span>
-            <span style={{ color: "var(--ui-text)", fontWeight: 600 }}>{email.subject || "—"}</span>
+            <span style={{ color: "#8b8270", fontWeight: 700 }}>Subject</span>
+            <span style={{ color: "#102635", fontWeight: 600 }}>{email.subject || "—"}</span>
             {email.previewText && <>
-              <span style={{ color: "var(--ui-text-3)", fontWeight: 600 }}>Preview</span>
-              <span style={{ color: "var(--ui-text-2)" }}>{email.previewText}</span>
+              <span style={{ color: "#8b8270", fontWeight: 700 }}>Preview</span>
+              <span style={{ color: "#4a4030" }}>{email.previewText}</span>
             </>}
-            <span style={{ color: "var(--ui-text-3)", fontWeight: 600 }}>From</span>
-            <span style={{ color: "var(--ui-text-2)" }}>{email.senderName} {email.senderEmail ? `<${email.senderEmail}>` : ""}</span>
+            <span style={{ color: "#8b8270", fontWeight: 700 }}>From</span>
+            <span style={{ color: "#4a4030" }}>{email.senderName} {email.senderEmail ? `<${email.senderEmail}>` : ""}</span>
           </div>
 
           {/* Body */}
           {bodyText ? (
             <div style={{
               padding: "10px 12px",
-              background: "var(--ui-surface)",
-              border: "1px solid var(--ui-border)",
+              background: "#F5F2EC",
+              border: "1px solid #e2ddd4",
               borderRadius: 6,
               fontSize: 12,
               lineHeight: 1.6,
-              color: "var(--ui-text)",
+              color: "#1A1A1A",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
               maxHeight: 320,
@@ -148,7 +148,7 @@ function EmailRow({ email }: { email: EmailFlowAsset }) {
               {bodyText}
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: "var(--ui-text-3)" }}>No body text available for this email</div>
+            <div style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }}>No body text available for this email.</div>
           )}
         </div>
       )}
@@ -165,16 +165,30 @@ export default function EmailPreviewPanel({ emails }: Props) {
     <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ui-text)", letterSpacing: "-0.01em" }}>
+          <h2 style={{ margin: 0, fontFamily: "Arial, sans-serif", fontSize: 16, fontWeight: 700, color: "#102635", letterSpacing: "-0.01em" }}>
             Email content · {emails.length} email{emails.length === 1 ? "" : "s"}
           </h2>
           <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--muted)" }}>
             Click any email to expand the body. Copy subject, preview text, or body individually.
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setCollapsed((v) => !v)}>
-          {collapsed ? "Show" : "Hide"}
-        </Button>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          style={{
+            flexShrink: 0,
+            padding: "5px 12px",
+            fontSize: 11,
+            fontWeight: 600,
+            background: "transparent",
+            color: "var(--muted)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          {collapsed ? "Show ↓" : "Hide ↑"}
+        </button>
       </div>
 
       {!collapsed && (

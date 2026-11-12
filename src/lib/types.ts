@@ -764,6 +764,21 @@ export type AssetMetadata = {
    *  Optional because captioning is best-effort — a failed or skipped caption
    *  (SVG, no API key) must never cost you the upload. */
   description?: string;
+  /** Curated email selection and related exports. Missing fields are legacy assets. */
+  preference?: "preferred" | "available" | "archived";
+  familyId?: string;
+  width?: number;
+  height?: number;
+  textReview?: {
+    status: "passed" | "typo" | "uncertain";
+    text: string;
+    issues: string[];
+    hasText: boolean;
+    checkedAt: string;
+    visualQuality: "strong" | "usable" | "avoid";
+    qualityReason: string;
+    sceneDescription?: string;
+  };
   /** Optional provenance — set on auto-registered carousel images so the
    *  picker can show context (topic + slide role). */
   source?: {
@@ -843,18 +858,6 @@ export const CAMPAIGN_BLOCK_KINDS = [
   "imagebullets",
   "grid",
   "headerimage",
-  // DTC rhythm blocks (2026-11). Each one exists to break up a run of
-  // paragraphs: a different type treatment, a different shape, or proof.
-  "lead",
-  "heading",
-  "pullquote",
-  "steps",
-  "faq",
-  "beforeafter",
-  "badges",
-  "product",
-  "reviews",
-  "founder",
 ] as const;
 
 export type CampaignBlockKind = (typeof CAMPAIGN_BLOCK_KINDS)[number];
@@ -1083,41 +1086,6 @@ export type CampaignBlock = {
    *  mso-only caption bar beneath the image. */
   imageOverlayEyebrow?: string;
   imageOverlayHeadline?: string;
-  /** kinds "lead" / "heading": a short label above the main line, e.g.
-   *  "How it works". Sentence case; the renderer sets the tracking. */
-  eyebrow?: string;
-  /** kind "heading": the section headline. kind "product": unused (see
-   *  productName). The subline, when there is one, is `body`. */
-  headline?: string;
-  /** kinds "pullquote" / "founder": who said it. For a pull quote of the
-   *  brand's own words this is usually empty; for a founder note it is the
-   *  signature, e.g. "Mathan, founder". */
-  attribution?: string;
-  /** kind "steps": numbered rows, a short title and one line each. */
-  steps?: { title: string; text: string }[];
-  /** kind "faq": question and answer pairs, usually objections. */
-  faqs?: { q: string; a: string }[];
-  /** kind "beforeafter": two columns of short lines. The right column is the
-   *  emphasised one. Renders only when both columns have a line. */
-  beforeLabel?: string;
-  afterLabel?: string;
-  beforeItems?: string[];
-  afterItems?: string[];
-  /** kind "badges": 2 to 4 short trust labels shown as a row of outlined tags. */
-  badges?: string[];
-  /** kind "product": a product card. The picture is `imageUrl`, the click is
-   *  `linkUrl` (unset = the CTA url). */
-  productName?: string;
-  productPrice?: string;
-  /** kind "product": the struck-through compare-at price, optional. */
-  productComparePrice?: string;
-  /** kind "product": one supporting line, e.g. "60 capsules, 30 nights". */
-  productNote?: string;
-  /** kind "product": the button label on the card. Unset = "Shop now". */
-  buttonLabel?: string;
-  /** kind "reviews": two or three short customer reviews stacked. Same rule
-   *  as "testimonial": real quotes only. */
-  reviews?: { quote: string; author: string; stars?: number }[];
 };
 
 /** A reusable block, banked from any campaign so it can be dropped into any

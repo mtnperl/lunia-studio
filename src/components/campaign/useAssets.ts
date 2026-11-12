@@ -7,8 +7,24 @@
 // caller starts it, everyone else awaits the same promise.
 import { useEffect, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
+import { rankEmailAssets } from "@/lib/asset-selection";
 
 let cached: Promise<AssetMetadata[]> | null = null;
+const listeners = new Set<(assets: AssetMetadata[]) => void>();
+
+export function publishAssets(assets: AssetMetadata[]) {
+  cached = Promise.resolve(assets);
+  listeners.forEach((listener) => listener(assets));
+}
+
+export async function refreshAssets(): Promise<AssetMetadata[]> {
+  const res = await fetch("/api/assets", { cache: "no-store" });
+  if (!res.ok) throw new Error("Could not reload the image library.");
+  const assets: AssetMetadata[] = await res.json();
+  if (!Array.isArray(assets)) throw new Error("Invalid image library response.");
+  publishAssets(assets);
+  return assets;
+}
 
 function load(): Promise<AssetMetadata[]> {
   cached ??= fetch("/api/assets")
@@ -31,17 +47,15 @@ export function useAssets(): AssetMetadata[] | null {
   const [assets, setAssets] = useState<AssetMetadata[] | null>(null);
   useEffect(() => {
     let alive = true;
+    listeners.add(setAssets);
     load().then((a) => { if (alive) setAssets(a); });
-    return () => { alive = false; };
+    return () => { alive = false; listeners.delete(setAssets); };
   }, []);
   return assets;
 }
 
-/** A random product image from the library, used to give a new block a
- *  picture without spending a generation. It used to be the FIRST one, so
- *  every new block in every email arrived with the same bottle shot.
- *  Undefined until the library loads, or when it holds no product images. */
+/** Seed new blocks from the same curated priority as the main chooser.
+ * Unchecked Gen Z text stays gated until the one-time library check. */
 export function pickSampleImageUrl(assets: AssetMetadata[] | null): string | undefined {
-  const pool = assets?.filter((a) => a.assetType === "product-image") ?? [];
-  return pool[Math.floor(Math.random() * pool.length)]?.url;
+  return rankEmailAssets(assets ?? [], "")[0]?.url;
 }
