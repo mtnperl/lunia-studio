@@ -1688,10 +1688,10 @@ export default function CampaignEditor({
                 setRailTab("block");
                 iframeRef.current?.contentWindow?.postMessage({ source: "lunia-editor", type: "highlightBlock", id: b.id }, "*");
               }}
-              title={text || BLOCK_KIND_META[kind].title}
+              title={text || (BLOCK_KIND_META[kind]?.title ?? `Saved ${kind} block`)}
             >
               <span className="blocks__grip" aria-hidden="true"><IcDragHandle size={14} /></span>
-              <span className="blocks__kind">{i + 1} {BLOCK_KIND_META[kind].label}</span>
+              <span className="blocks__kind">{i + 1} {(BLOCK_KIND_META[kind]?.label ?? kind)}</span>
               <span className="blocks__text">{text || "Empty"}</span>
               {b.isSample && <UiBadge>Sample</UiBadge>}
             </button>
@@ -3116,7 +3116,7 @@ export default function CampaignEditor({
           const blockTarget = selectedBlock && imageKinds.has(selectedBlock.kind ?? "text") ? selectedBlock : null;
           const slotTarget = blockTarget ? null : (content.images.find((i) => i.id === selectedSlotId) ?? content.images.find((i) => i.role === "hero") ?? null);
           const targetLabel = blockTarget
-            ? `A pick goes into block ${content.blocks.indexOf(blockTarget) + 1}, ${BLOCK_KIND_META[blockTarget.kind ?? "text"].label.toLowerCase()}.`
+            ? `A pick goes into block ${content.blocks.indexOf(blockTarget) + 1}, ${(BLOCK_KIND_META[blockTarget.kind ?? "text"]?.label ?? blockTarget.kind ?? "Text").toLowerCase()}.`
             : slotTarget
               ? slotTarget.role === "hero" ? "A pick becomes the hero image." : `A pick goes into image ${content.images.filter((i) => i.role === "secondary").indexOf(slotTarget) + 2}.`
               : "Select a block with an image, or an image in the email, and a pick goes there.";
