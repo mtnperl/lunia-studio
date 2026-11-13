@@ -502,7 +502,6 @@ export default function ImageSlotControl({
           onClose={() => setPickerOpen(false)}
           onPick={(asset) => {
             pickAsset(asset);
-            setPickerOpen(false);
           }}
         />
       )}

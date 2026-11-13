@@ -56,10 +56,10 @@ describe("photo contact sheet in a browser", () => {
       expect(cards).toHaveLength(2);
       expect(await cards[0].evaluate((el) => el.textContent)).toContain("Gen Z · Priority");
       await cards[0].click();
+      await page.waitForFunction(() => document.getElementById("picked")?.textContent === "clean");
       await page.waitForSelector('[aria-label="Versions of selected photo"] button');
       const versions = await page.$$('[aria-label="Versions of selected photo"] button');
       await versions[1].click();
-      await page.locator('button').filter((el) => el.textContent === "Use this image").click();
       await page.waitForFunction(() => document.getElementById("picked")?.textContent === "caption");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     } finally { await page.close(); }
@@ -69,7 +69,7 @@ describe("photo contact sheet in a browser", () => {
     try {
       await page.locator('button').filter((el) => el.textContent === "All photos").click();
       await page.locator('[aria-label="Photo contact sheet"] button').filter((el) => el.textContent?.includes("Typo found") ?? false).click();
-      expect(await page.locator('button').filter((el) => el.textContent === "Use this image").map((el) => (el as HTMLButtonElement).disabled).wait()).toBe(true);
+      expect(await page.evaluate(() => document.getElementById("picked")?.textContent)).toBe("");
       expect(await page.evaluate(() => document.body.textContent)).toContain("Sleap → Sleep");
     } finally { await page.close(); }
   });

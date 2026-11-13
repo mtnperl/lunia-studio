@@ -509,7 +509,6 @@ export default function BlockImageControl({
       {pickerOpen && (
         <AssetPicker
           onPick={(asset) => {
-            setPickerOpen(false);
             void pick(asset.url, true, assetHasText(asset));
           }}
           onClose={() => setPickerOpen(false)}

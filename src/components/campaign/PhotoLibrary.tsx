@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
 import { assetHasText, emailEligible, formatLabel, groupAssetFamilies, needsTextReview, rankEmailAssets } from "@/lib/asset-selection";
+import { prepareManualPhoto } from "@/lib/manual-photo-pick";
 import { useAssets, refreshAssets } from "./useAssets";
 
 type Props = { currentUrl?: string; selectedId?: string; copy?: string; exclude?: string[]; onPick?: (asset: AssetMetadata) => void; onClose?: () => void };
@@ -33,6 +34,8 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
   const [message, setMessage] = useState("");
   const [linking, setLinking] = useState(false);
   const [linked, setLinked] = useState<string[]>([]);
+  const pickSequence = useRef(0);
+  const [picking, setPicking] = useState(false);
   const checking = useRef(false);
   const mounted = useRef(true);
   const stopCheck = useRef(false);
@@ -67,7 +70,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
 
   async function request(path: string, body: unknown, method = "POST") {
     const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const data = await res.json();
+    const data = await res.json().catch(() => { throw new Error(`Image service unavailable (${res.status}). Please retry.`); });
     if (!res.ok) throw new Error(data.error ?? "Could not save this change.");
     return data;
   }
@@ -79,23 +82,28 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
     return data.results as { id: string; textReview: NonNullable<AssetMetadata["textReview"]> }[];
   }
 
-  async function apply() {
-    if (!chosen || busy || !onPick) return;
-    setBusy(true); setMessage("");
+  async function choose(asset: AssetMetadata) {
+    if (busy) return;
+    setSelected(asset.id);
+    setMessage("");
+    const sequence = ++pickSequence.current;
+    if (!onPick) return;
+    setPicking(true);
+    if (!asset.textReview && assetHasText(asset)) setMessage("Checking caption before replacing the email image…");
     try {
-      let asset = chosen;
-      if (needsTextReview(asset)) {
-        const result = await checkImages([asset.id]);
-        asset = { ...asset, textReview: result[0]?.textReview };
-        if (!asset.textReview) throw new Error("The image could not be checked. Please retry.");
-      }
-      if (asset.textReview?.status === "typo" || asset.textReview?.status === "uncertain") {
-        throw new Error(asset.textReview.issues.join(" ") || "Text could not be verified. Choose a clean version or another photo.");
-      }
-      onPick(asset);
-      setMessage("Image applied.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not apply image."); }
-    finally { setBusy(false); }
+      const ready = await prepareManualPhoto(asset, async (id) => {
+        const results = await checkImages([id]);
+        if (!results[0]?.textReview) throw new Error("Caption check unavailable. Try a clean version or retry.");
+        return results[0].textReview;
+      });
+      if (sequence !== pickSequence.current || !mounted.current) return;
+      onPick(ready);
+      setMessage("Email image replaced. Use Undo in the editor to go back.");
+    } catch (error) {
+      if (sequence === pickSequence.current && mounted.current) setMessage(error instanceof Error ? error.message : "Could not replace image.");
+    } finally {
+      if (sequence === pickSequence.current && mounted.current) setPicking(false);
+    }
   }
 
   async function curate(preference: NonNullable<AssetMetadata["preference"]>) {
@@ -151,6 +159,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
     </div>
     {!assets && <p role="status" style={muted}>Loading photos…</p>}
     {assets?.length === 0 && <p style={muted}>No photos yet. Upload images in Assets.</p>}
+    {message && <p role="status" aria-live="polite" style={{ ...muted, margin: 0, position: "sticky", top: 0, zIndex: 2, background: "var(--surface)", padding: 8, borderRadius: 6 }}>{message}</p>}
     {!!assets?.length && <>
       <div role="group" aria-label="Browse photos" style={{ display: "flex", gap: 4 }}>
         {(["recommended", "preferred", "all"] as const).map((tab) => <button key={tab} type="button" aria-pressed={view === tab} style={{ ...button, flex: 1, background: view === tab ? "var(--accent-dim)" : "var(--surface)" }} onClick={() => { setView(tab); setLimit(12); }}>{tab === "all" ? "All photos" : tab === "preferred" ? "Preferred" : "Recommended"}</button>)}
@@ -172,7 +181,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
         {family && family.assets.length > 1 && <>
           <span style={muted}>Same photo · {family.assets.length} versions{family.inferred ? " · matched by filename" : ""}</span>
           <div role="group" aria-label="Versions of selected photo" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 5 }}>
-            {family.assets.map((variant) => <button key={variant.id} type="button" disabled={busy} style={{ ...button, textAlign: "left", borderColor: chosen.id === variant.id ? "var(--accent)" : "var(--border)", opacity: variant.textReview?.status === "typo" ? .55 : 1 }} aria-pressed={chosen.id === variant.id} onClick={() => { setSelected(variant.id); setMessage(""); }}>
+            {family.assets.map((variant) => <button key={variant.id} type="button" disabled={busy} style={{ ...button, textAlign: "left", borderColor: chosen.id === variant.id ? "var(--accent)" : "var(--border)", opacity: variant.textReview?.status === "typo" ? .55 : 1 }} aria-pressed={chosen.id === variant.id} onClick={() => void choose(variant)}>
               <img src={variant.url} alt="" loading="lazy" style={{ width: "100%", height: 65, objectFit: "contain" }} />
               <span style={{ display: "block", ...muted }}>{formatLabel(variant)}<br />{assetHasText(variant) ? "With caption" : "Clean"} · {reviewLabel(variant)}</span>
             </button>)}
@@ -180,7 +189,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
           <button type="button" disabled={busy} style={button} onClick={split}>This is a different photo</button>
         </>}
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-          {onPick && <button type="button" disabled={busy || chosen.textReview?.status === "typo" || chosen.textReview?.status === "uncertain"} style={{ ...button, background: "var(--accent-dim)", fontWeight: 700 }} onClick={apply}>{busy ? "Working…" : needsTextReview(chosen) ? "Check text & use image" : "Use this image"}</button>}
+
           <button type="button" disabled={busy} aria-pressed={chosen.preference === "preferred"} style={button} onClick={() => curate(chosen.preference === "preferred" ? "available" : "preferred")}>{chosen.preference === "preferred" ? "Preferred" : "Prefer"}</button>
           <button type="button" disabled={busy} style={button} onClick={() => curate(chosen.preference === "archived" ? "available" : "archived")}>{chosen.preference === "archived" ? "Restore" : "Don't recommend"}</button>
           <button type="button" disabled={busy} style={button} onClick={async () => { setBusy(true); setMessage(""); try { await checkImages([chosen.id], true); setMessage("Image checked. See the result above."); } catch (error) { setMessage(error instanceof Error ? error.message : "Check failed."); } finally { setBusy(false); } }}>Recheck text</button>
@@ -190,7 +199,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
         <span style={{ ...muted, flex: 1 }}>{families.length} distinct photos</span>
         <button type="button" disabled={busy} onClick={checkGenZ} style={button}>Check Gen Z text</button>
         {auditing && <button type="button" style={button} onClick={() => { stopCheck.current = true; setMessage("Stopping after the current batch. Completed checks are saved."); }}>Stop check</button>}
-        <button type="button" disabled={busy} onClick={() => { setLinking(!linking); setLinked([]); }} style={button}>{linking ? "Cancel grouping" : "Link versions"}</button>
+        {!onPick && <button type="button" disabled={busy} onClick={() => { setLinking(!linking); setLinked([]); }} style={button}>{linking ? "Cancel grouping" : "Link versions"}</button>}
       </div>
       {linking && <div style={muted}>Select cards that are versions of the same photograph. <button type="button" disabled={busy || linked.length < 2 || linked.length > 50} style={button} onClick={group}>Link {linked.length} versions</button></div>}
       <div role="group" aria-label="Photo contact sheet" onKeyDown={(event) => {
@@ -208,7 +217,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
           const picked = f.assets.every((v) => linked.includes(v.id));
           return <button key={f.key} type="button" aria-pressed={linking ? picked : active} disabled={busy} onClick={() => {
             if (linking) setLinked((ids) => picked ? ids.filter((id) => !f.assets.some((v) => v.id === id)) : [...new Set([...ids, ...f.assets.map((v) => v.id)])]);
-            else { setSelected(a.id); setMessage(""); }
+            else void choose(a);
           }} style={{ ...button, padding: 3, minWidth: 0, textAlign: "left", border: `2px solid ${(linking ? picked : active) ? "var(--accent)" : "var(--border)"}` }} title={a.description || a.name}>
             <img src={a.url} alt={a.description || a.name} loading="lazy" style={{ width: "100%", aspectRatio: "4/5", objectFit: "contain", display: "block", background: "var(--surface)", borderRadius: 4 }} />
             <span style={{ display: "block", fontSize: 10, padding: "4px 2px", overflowWrap: "anywhere" }}>{a.assetType === "gen-z" ? "Gen Z · Priority" : a.preference === "preferred" ? "Preferred" : a.assetType} {f.assets.length > 1 ? `· ${f.assets.length} versions` : ""}</span>
@@ -218,8 +227,8 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
       </div>
       {!families.length && <p style={muted}>No photos match. Try All photos or clear a filter.</p>}
       {families.length > limit && <button type="button" style={button} onClick={() => setLimit((n) => n + 12)}>Show 12 more photos</button>}
-      <p style={{ ...muted, margin: 0 }}>{onPick ? "Select a photo to preview it. Apply when ready. Existing formats and captions appear together; use Shape or Edit crop for a new crop." : "Select a photo to inspect its text, set preferences or link its versions. Archived photos remain available under All photos."}</p>
+      <p style={{ ...muted, margin: 0 }}>{onPick ? "Click a photo or version to replace the email image. Captions are checked on selection. Use Undo in the editor to go back. Group photos in Assets." : "Select a photo to inspect its text, set preferences or link its versions. Archived photos remain available under All photos."}</p>
     </>}
-    {message && <p role="status" style={{ ...muted, margin: 0 }}>{message}</p>}
+    {picking && <span style={muted}>Selecting image… You can choose another photo.</span>}
   </section>;
 }

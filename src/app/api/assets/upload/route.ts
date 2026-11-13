@@ -3,7 +3,6 @@ import { saveAssets } from "@/lib/kv";
 import { AssetMetadata, AssetType } from "@/lib/types";
 import { describeAsset } from "@/lib/asset-caption";
 import { randomUUID } from "crypto";
-import sharp from "sharp";
 import { reviewAsset } from "@/lib/asset-review";
 
 // The caption call adds a few seconds to what used to be a single blob write,
@@ -116,6 +115,7 @@ export async function POST(req: Request) {
           ...(description ? { description } : {}),
         };
         try {
+          const { default: sharp } = await import("sharp");
           const metadata = await sharp(Buffer.from(await file.arrayBuffer())).metadata();
           asset.width = metadata.autoOrient?.width ?? metadata.width;
           asset.height = metadata.autoOrient?.height ?? metadata.height;

@@ -1,7 +1,6 @@
 import "server-only";
 import { createContentMessage, extractText, hasContentModelProvider, CRAFT_MODEL } from "./anthropic";
 import type { AssetMetadata } from "./types";
-import sharp from "sharp";
 
 async function imageDimensions(asset: AssetMetadata): Promise<{ width?: number; height?: number }> {
   if (asset.width && asset.height) return { width: asset.width, height: asset.height };
@@ -12,6 +11,7 @@ async function imageDimensions(asset: AssetMetadata): Promise<{ width?: number; 
   if (!response.ok || Number(response.headers.get("content-length")) > 20 * 1024 * 1024) return {};
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > 20 * 1024 * 1024) return {};
+  const { default: sharp } = await import("sharp");
   const meta = await sharp(bytes, { limitInputPixels: 50_000_000 }).metadata();
   return { width: meta.autoOrient?.width ?? meta.width, height: meta.autoOrient?.height ?? meta.height };
 }
