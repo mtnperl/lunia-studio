@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
 import { assetHasText, emailEligible, formatLabel, groupAssetFamilies, needsTextReview, rankEmailAssets } from "@/lib/asset-selection";
 import { prepareManualPhoto } from "@/lib/manual-photo-pick";
-import { useAssets, refreshAssets } from "./useAssets";
+import { useAssets, refreshAssets, mergeAssetDetails } from "./useAssets";
 
 type Props = { currentUrl?: string; selectedId?: string; copy?: string; exclude?: string[]; onPick?: (asset: AssetMetadata) => void; onClose?: () => void };
 type View = "recommended" | "preferred" | "all";
@@ -44,13 +44,16 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
   const chosen = assets?.find((a) => a.id === selected) ?? assets?.find((a) => a.id === selectedId || a.url === currentUrl);
   const allFamilies = useMemo(() => groupAssetFamilies(assets ?? []), [assets]);
   const family = allFamilies.find((f) => f.assets.some((a) => a.id === chosen?.id));
+  const ranked = useMemo(() => {
+    const pool = (assets ?? []).filter((a) => !["logo", "carousel-style"].includes(a.assetType));
+    const ordered = view === "all" ? pool : rankEmailAssets(pool, copy, true);
+    return new Map(ordered.map((asset, index) => [asset.id, index]));
+  }, [assets, view, copy]);
   const families = useMemo(() => {
     const skip = new Set(exclude ?? []);
     if (currentUrl) skip.delete(currentUrl);
     const excludedKeys = new Set(allFamilies.filter((f) => f.assets.some((a) => skip.has(a.url))).map((f) => f.key));
-    const pool = (assets ?? []).filter((a) => !["logo", "carousel-style"].includes(a.assetType));
-    const ordered = view === "all" ? pool : rankEmailAssets(pool, copy, true);
-    const order = new Map(ordered.map((asset, index) => [asset.id, index]));
+    const order = ranked;
     const q = query.trim().toLowerCase();
     function matches(a: AssetMetadata) {
       if (view === "preferred" && a.assetType !== "gen-z" && a.preference !== "preferred") return false;
@@ -66,7 +69,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
           .sort((a, b) => order.get(a.id)! - order.get(b.id)!)[0];
         return representative ? [{ ...f, representative }] : [];
       }).sort((a, b) => order.get(a.representative.id)! - order.get(b.representative.id)!);
-  }, [assets, allFamilies, copy, currentUrl, exclude, view, query, category, text, shape]);
+  }, [ranked, allFamilies, currentUrl, exclude, view, query, category, text, shape]);
 
   async function request(path: string, body: unknown, method = "POST") {
     const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -77,7 +80,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
 
   async function checkImages(ids: string[], force = false) {
     const data = await request("/api/assets/review", { ids, force });
-    await refreshAssets();
+    mergeAssetDetails(data.results ?? []);
     if (data.failures?.length) throw new Error("Some images could not be checked. Retry before using them.");
     return data.results as { id: string; textReview: NonNullable<AssetMetadata["textReview"]> }[];
   }

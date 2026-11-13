@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import LiveEmailPreview from "./LiveEmailPreview";
+import { legacyBlockFields } from "@/lib/legacy-email-block";
 import { CAMPAIGN_BLOCK_KINDS } from "@/lib/types";
 import { BRAND_COLOR_ROLES, BRAND_ROLE_LABELS, BRAND_ROLE_HEX } from "@/lib/campaign-theme";
 import BlockImageControl from "./BlockImageControl";
@@ -539,9 +541,7 @@ export default function CampaignEditor({
   const previewPaneRef = useRef<HTMLDivElement | null>(null);
   const [paneWidth, setPaneWidth] = useState(600);
   const [iframeBodyHeight, setIframeBodyHeight] = useState(600);
-  // True while the iframe is mid-reload (srcDoc changed but onLoad hasn't
-  // fired yet). Drives a soft spinner overlay so the preview never goes
-  // visually blank between edits.
+  // Only the initial preview load needs a spinner. Later edits patch the live document.
   const [previewLoading, setPreviewLoading] = useState(true);
   // Live preview viewport — desktop = full container width (~520px), mobile
   // = 375px (iPhone-class viewport) so the email's @media (max-width:600px)
@@ -741,7 +741,7 @@ export default function CampaignEditor({
   // listener swallows every click, so shipping it left the hero dead in the
   // copied email.
   const html = useMemo(() => renderCampaignEmail(content, { selectable: true }), [content]);
-  const emailHtml = useMemo(() => renderCampaignEmail(content), [content]);
+
 
   // Rendered before/after for a pending RESTRUCTURE. Built from the real
   // renderer, not an approximation, because this diff is the only thing
@@ -855,19 +855,6 @@ export default function CampaignEditor({
     if (id && slotCardRefs.current[id]) scrollToSlot(id);
   }, [imagesOpenSignal]);
 
-  // Lightweight hash of the HTML body so the iframe gets a fresh `key` on
-  // every content change. Without this, some browsers don't re-fetch images
-  // inside a srcDoc when the URL changes — the iframe element is preserved,
-  // not remounted. Keying on a content-derived string forces React to unmount
-  // and re-mount the iframe, which guarantees fresh image loads.
-  const htmlKey = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < html.length; i++) {
-      h = ((h << 5) - h + html.charCodeAt(i)) | 0;
-    }
-    return String(h);
-  }, [html]);
-
   /**
    * Nudge the page while a preview drag nears the top or bottom of the window.
    *
@@ -900,36 +887,6 @@ export default function CampaignEditor({
       dragAutoScroll.current.raf = null;
     }
   }
-
-  function fitIframe() {
-    const f = iframeRef.current;
-    if (!f?.contentDocument?.body) return;
-    // Read the rendered email body height, then drive the iframe height +
-    // outer wrapper height via state. The wrapper height is scaled, the
-    // iframe height is native.
-    setIframeBodyHeight(f.contentDocument.body.scrollHeight);
-    setPreviewLoading(false);
-    // An iframe is its own scrolling context — a mouse wheel over it never
-    // bubbles to the parent page, so with the cursor anywhere over the
-    // preview, scrolling silently does nothing (the preview itself has no
-    // internal overflow to consume the gesture either, since it's sized to
-    // fit its content exactly). Forward the wheel delta to the outer page
-    // so scrolling over the preview scrolls the editor like everywhere
-    // else. The iframe is fully remounted (new `key`) on every content
-    // change, so this listener never needs manual cleanup.
-    f.contentDocument.addEventListener(
-      "wheel",
-      (e: WheelEvent) => window.scrollBy(e.deltaX, e.deltaY),
-      { passive: true },
-    );
-  }
-
-  // Whenever the rendered HTML changes (a keystroke, a regeneration), flip
-  // the loading flag back on so the spinner overlay reappears until the
-  // iframe finishes painting and fitIframe → setPreviewLoading(false).
-  useEffect(() => {
-    setPreviewLoading(true);
-  }, [htmlKey]);
 
   // Track the preview pane width so we can scale a 600px iframe down to fit.
   useEffect(() => {
@@ -1139,7 +1096,7 @@ export default function CampaignEditor({
   }
 
   function exportHtml() {
-    const blob = new Blob([emailHtml], { type: "text/html" });
+    const blob = new Blob([renderCampaignEmail(latestContent.current)], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1488,7 +1445,7 @@ export default function CampaignEditor({
 
   async function copyHtml() {
     try {
-      await navigator.clipboard.writeText(emailHtml);
+      await navigator.clipboard.writeText(renderCampaignEmail(latestContent.current));
       setCopyLabel("Copied");
       setTimeout(() => setCopyLabel("Copy HTML"), 2000);
     } catch {
@@ -1507,7 +1464,7 @@ export default function CampaignEditor({
       const res = await fetch("/api/campaign/klaviyo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html: emailHtml, topic, subject }),
+        body: JSON.stringify({ html: renderCampaignEmail(latestContent.current), topic, subject }),
       });
       const data = await res.json();
       if (!res.ok || !data.editorUrl) {
@@ -1611,23 +1568,15 @@ export default function CampaignEditor({
             boxSizing: "border-box",
             background: "#01253f",
           }}>
-            <iframe
-              key={`${htmlKey}-${previewMode}`}
-              ref={iframeRef}
-              srcDoc={html}
-              onLoad={fitIframe}
-              title="Campaign preview"
-              style={{
-                width: nativeWidth,
-                height: Math.max(600, iframeBodyHeight),
-                border: "none",
-                display: "block",
-                background: "#01253f",
-                transform: `scale(${previewScale})`,
-                transformOrigin: "top left",
-                opacity: previewLoading ? 0.55 : 1,
-                transition: "opacity var(--ui-dur-2) var(--ui-ease-out)",
-              }}
+            <LiveEmailPreview
+              html={html}
+              frameRef={iframeRef}
+              width={nativeWidth}
+              height={iframeBodyHeight}
+              scale={previewScale}
+              selectedId={selectedBlockId}
+              onHeight={setIframeBodyHeight}
+              onReady={() => setPreviewLoading(false)}
             />
           </div>
           {/* Light spinner overlay while the iframe re-renders. Sits on top
@@ -1763,7 +1712,10 @@ export default function CampaignEditor({
             {content.blocks.filter((b) => b.id === selectedBlockId).map((b) => {
               const i = content.blocks.indexOf(b);
               const weight = b.weight ?? "light";
-              const kind: BlockKind = b.kind ?? "text";
+              const savedKind = b.kind ?? "text";
+              const knownKind = CAMPAIGN_BLOCK_KINDS.includes(savedKind);
+              const kind: BlockKind = knownKind ? savedKind : "text";
+              const savedFields = knownKind ? [] : legacyBlockFields(savedKind);
               const copied = copiedKey === `block:${b.id}`;
               const copyErr = copiedKey === `err:block:${b.id}`;
               return (
@@ -1800,7 +1752,7 @@ export default function CampaignEditor({
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px 0", gap: 8 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                       <span style={{ cursor: "grab", color: "var(--muted)", display: "inline-flex" }} title="Drag to reorder"><IcDragHandle size={16} /></span>
-                      Block {i + 1}{kind !== "text" && ` · ${BLOCK_KINDS.find((k) => k.key === kind)?.label}`}
+                      Block {i + 1}{savedKind !== "text" && ` · ${BLOCK_KIND_META[savedKind]?.label ?? savedKind}`}
                       {/* Starter content still in place. The chip clears only
                           on an explicit Keep or Clear, never on the first
                           keystroke: a table has twelve cells, and editing one
@@ -1899,7 +1851,21 @@ export default function CampaignEditor({
                     </div>
                   )}
 
-                  {kind === "text" && (
+                  {!!savedFields.length && <div style={{ padding: 10, display: "grid", gap: 8 }}>
+                    {savedFields.map((field) => {
+                      const value = (b as unknown as Record<string, unknown>)[field.key];
+                      return <label key={field.key} style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {field.label}{field.list ? " (one per line)" : ""}
+                        <AutoTextarea
+                          value={Array.isArray(value) ? value.join("\n") : typeof value === "string" ? value : ""}
+                          onChange={(event) => updateBlock(b.id, { [field.key]: field.list ? event.target.value.split("\n") : event.target.value })}
+                          minHeight={field.list ? 64 : 32}
+                          style={{ ...input, marginTop: 4, color: "var(--text)" }}
+                        />
+                      </label>;
+                    })}
+                  </div>}
+                  {kind === "text" && !savedFields.length && (
                     <>
                       {/* Toolbar — alignment · italic · weight, grouped */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 10px" }}>

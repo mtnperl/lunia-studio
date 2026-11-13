@@ -9,3 +9,20 @@ export function legacyBlockLines(block: Record<string, unknown>): string[] {
     default: return [...text(block.body)];
   }
 }
+
+/** Saved layouts keep their original fields when edited. */
+export function legacyBlockFields(kind: string): { key: string; label: string; list?: boolean }[] {
+  switch (kind) {
+    case "beforeafter": return [
+      { key: "beforeLabel", label: "Before heading" }, { key: "beforeItems", label: "Before items", list: true },
+      { key: "afterLabel", label: "After heading" }, { key: "afterItems", label: "After items", list: true },
+    ];
+    case "badges": return [{ key: "badges", label: "Badges", list: true }];
+    case "product": return [
+      { key: "productName", label: "Product name" }, { key: "productPrice", label: "Price" },
+      { key: "productComparePrice", label: "Original price" }, { key: "productNote", label: "Product details" },
+      { key: "buttonLabel", label: "Button label" },
+    ];
+    default: return [];
+  }
+}

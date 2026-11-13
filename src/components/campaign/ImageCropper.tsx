@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   centreCrop, clampCrop, cropToPixels, outputSize,
-  zoomTo, zoomLevelOf, clampZoom, MIN_ZOOM, MAX_ZOOM,
+  zoomTo, zoomLevelOf, MIN_ZOOM, MAX_ZOOM,
   anchorCrop, activeAnchor, ANCHORS, type AspectRatio,
 } from "@/lib/image-crop";
 import type { ImageCrop } from "@/lib/types";
@@ -26,15 +26,24 @@ export function proxied(url: string): string {
   return `/api/carousel/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
-/** Load an image we are allowed to read back. */
+const loadedImages = new Map<string, Promise<HTMLImageElement>>();
+const shapedImages = new Map<string, Promise<ShapedImage>>();
+
+/** Reuse decoded pixels for cropping and reframing, with bounded session caches. */
 function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+  const cached = loadedImages.get(url);
+  if (cached) return cached;
+  const pending = new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Could not load that image"));
     img.src = proxied(url);
   });
+  loadedImages.set(url, pending);
+  if (loadedImages.size > 12) loadedImages.delete(loadedImages.keys().next().value!);
+  void pending.catch(() => { if (loadedImages.get(url) === pending) loadedImages.delete(url); });
+  return pending;
 }
 
 /** Crop `sourceUrl` to `crop` at `aspect` and upload it. Returns the new URL. */
@@ -66,7 +75,18 @@ export type ShapedImage = { url: string; sourceUrl: string; crop: ImageCrop };
 
 /** Centre-crop `url` to `aspect`. An image already that shape comes back as
  *  is: re-encoding it would only cost quality and a blob. */
-export async function cropToShape(url: string, aspect: AspectRatio): Promise<ShapedImage> {
+export function cropToShape(url: string, aspect: AspectRatio): Promise<ShapedImage> {
+  const key = `${aspect}:${url}`;
+  const cached = shapedImages.get(key);
+  if (cached) return cached;
+  const pending = makeShapedImage(url, aspect);
+  shapedImages.set(key, pending);
+  if (shapedImages.size > 32) shapedImages.delete(shapedImages.keys().next().value!);
+  void pending.catch(() => { if (shapedImages.get(key) === pending) shapedImages.delete(key); });
+  return pending;
+}
+
+async function makeShapedImage(url: string, aspect: AspectRatio): Promise<ShapedImage> {
   const img = await loadImage(url);
   const crop = centreCrop(img.naturalWidth, img.naturalHeight, aspect);
   if (crop.x === 0 && crop.y === 0 && crop.w === 1 && crop.h === 1) return { url, sourceUrl: url, crop };
@@ -75,7 +95,7 @@ export async function cropToShape(url: string, aspect: AspectRatio): Promise<Sha
 
 /** How long a swap has to stay put before it is cropped. Flicking through ten
  *  pictures with the arrow keys should upload one crop, not ten. */
-const SETTLE_MS = 700;
+const SETTLE_MS = 250;
 
 /**
  * Put a picture in and crop it to shape. With `settle`, the raw picture lands

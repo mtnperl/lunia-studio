@@ -1069,7 +1069,7 @@ export function renderCampaignEmail(content: CampaignContent, opts: RenderEmailO
       ?? INNER_BLOCK_RENDERERS.text;
     const inner = INNER_BLOCK_RENDERERS[(b.kind ?? "text") as InnerBlockKind]
       ? render(b, t)
-      : legacyBlockLines(b as unknown as Record<string, unknown>).map((line) => `<p>${esc(line)}</p>`).join("");
+      : render({ ...b, body: legacyBlockLines(b as unknown as Record<string, unknown>).join("\n\n") }, t);
     if (!inner) return "";
     return tagRow(`<tr><td class="h-padding" style="padding:0 24px ${blockGap}px;">
        <div class="text-block" style="padding:15px;">${inner}</div>

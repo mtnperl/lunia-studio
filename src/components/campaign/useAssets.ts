@@ -10,11 +10,20 @@ import type { AssetMetadata } from "@/lib/types";
 import { rankEmailAssets } from "@/lib/asset-selection";
 
 let cached: Promise<AssetMetadata[]> | null = null;
+let snapshot: AssetMetadata[] | null = null;
 const listeners = new Set<(assets: AssetMetadata[]) => void>();
 
 export function publishAssets(assets: AssetMetadata[]) {
+  snapshot = assets;
   cached = Promise.resolve(assets);
   listeners.forEach((listener) => listener(assets));
+}
+
+/** Review responses already contain the saved changes. Avoid a second full-library request. */
+export function mergeAssetDetails(patches: (Partial<AssetMetadata> & { id: string })[]) {
+  if (!snapshot) return;
+  const byId = new Map(patches.map((patch) => [patch.id, patch]));
+  publishAssets(snapshot.map((asset) => byId.has(asset.id) ? { ...asset, ...byId.get(asset.id) } : asset));
 }
 
 export async function refreshAssets(): Promise<AssetMetadata[]> {
@@ -30,6 +39,7 @@ function load(): Promise<AssetMetadata[]> {
   cached ??= fetch("/api/assets")
     .then((r) => r.json())
     .then((data) => (Array.isArray(data) ? (data as AssetMetadata[]) : []))
+    .then((assets) => { publishAssets(assets); return assets; })
     .catch(() => {
       // Do not cache a failure: a transient network error should not disable
       // asset-backed samples for the rest of the session.
@@ -44,7 +54,7 @@ function load(): Promise<AssetMetadata[]> {
  *  they do with no assets (for samples, an empty image field and the
  *  renderer's own placeholder). */
 export function useAssets(): AssetMetadata[] | null {
-  const [assets, setAssets] = useState<AssetMetadata[] | null>(null);
+  const [assets, setAssets] = useState<AssetMetadata[] | null>(snapshot);
   useEffect(() => {
     let alive = true;
     listeners.add(setAssets);
