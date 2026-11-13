@@ -1,9 +1,10 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Private asset URLs use the existing browser/proxy pipeline, not the Next image optimizer. */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useId, useMemo, useRef, useState } from "react";
 import type { AssetMetadata } from "@/lib/types";
 import { assetHasText, emailEligible, formatLabel, groupAssetFamilies, needsTextReview, rankEmailAssets } from "@/lib/asset-selection";
+import { revealPhotoPage } from "@/lib/reveal-photo-page";
 import { prepareManualPhoto } from "@/lib/manual-photo-pick";
 import { useAssets, refreshAssets, mergeAssetDetails } from "./useAssets";
 
@@ -22,6 +23,7 @@ function reviewLabel(asset: AssetMetadata) {
 /** A photo is the choice; size and caption are versions of that choice. */
 export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclude, onPick, onClose }: Props) {
   const assets = useAssets();
+  const gridId = useId();
   const [view, setView] = useState<View>("recommended");
   const [query, setQuery] = useState("");
   const [text, setText] = useState("any");
@@ -29,6 +31,19 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState<string | undefined>(selectedId);
   const [limit, setLimit] = useState(12);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const pendingReveal = useRef<number | null>(null);
+  const [newFrom, setNewFrom] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (pendingReveal.current === null || !gridRef.current) return;
+    revealPhotoPage(gridRef.current, pendingReveal.current, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    pendingReveal.current = null;
+  }, [limit]);
+  function showMore() {
+    pendingReveal.current = limit;
+    setNewFrom(limit);
+    setLimit((count) => count + 12);
+  }
   const [busy, setBusy] = useState(false);
   const [auditing, setAuditing] = useState(false);
   const [message, setMessage] = useState("");
@@ -111,8 +126,12 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
 
   async function curate(preference: NonNullable<AssetMetadata["preference"]>) {
     if (!chosen || busy) return;
-    setBusy(true); setMessage("");
-    try { await request(`/api/assets/${encodeURIComponent(chosen.id)}`, { preference, applyToFamily: true }, "PATCH"); await refreshAssets(); }
+    setBusy(true); setMessage("Saving photo preference…");
+    try {
+      await request(`/api/assets/${encodeURIComponent(chosen.id)}`, { preference, applyToFamily: true }, "PATCH");
+      await refreshAssets();
+      setMessage(preference === "preferred" ? "Photo and its versions marked as preferred." : preference === "archived" ? "Removed from recommendations. Still available in All photos." : "Photo preference updated.");
+    }
     catch (error) { setMessage(error instanceof Error ? error.message : "Could not update image."); }
     finally { setBusy(false); }
   }
@@ -137,24 +156,24 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
   }
 
   async function group() {
-    setBusy(true); setMessage("");
+    setBusy(true); setMessage("Linking photo versions…");
     try {
       await request("/api/assets/families", { ids: linked });
-      await refreshAssets(); setLinking(false); setLinked([]);
+      await refreshAssets(); setLinking(false); setLinked([]); setMessage("Versions linked. They now appear together.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not link versions."); }
     finally { setBusy(false); }
   }
 
   async function split() {
     if (!chosen) return;
-    setBusy(true); setMessage("");
-    try { await request(`/api/assets/${encodeURIComponent(chosen.id)}`, { familyId: chosen.id }, "PATCH"); await refreshAssets(); }
+    setBusy(true); setMessage("Separating this photo…");
+    try { await request(`/api/assets/${encodeURIComponent(chosen.id)}`, { familyId: chosen.id }, "PATCH"); await refreshAssets(); setMessage("Photo separated from this version group."); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Could not separate version."); }
     finally { setBusy(false); }
   }
 
   const filterStyle: React.CSSProperties = { ...button, minWidth: 0, flex: "1 1 100px", maxWidth: "100%" };
-  return <section aria-label="Photo library" style={{ border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", padding: 10, fontSize: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+  return <section className="photo-library" aria-label="Photo library" style={{ border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg)", padding: 10, fontSize: 12, display: "flex", flexDirection: "column", gap: 10 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
       <strong style={{ flex: 1 }}>{onPick ? "Choose a photo" : "Curate photos"}</strong>
       <span style={muted}>Gen Z first. Versions together.</span>
@@ -195,7 +214,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
 
           <button type="button" disabled={busy} aria-pressed={chosen.preference === "preferred"} style={button} onClick={() => curate(chosen.preference === "preferred" ? "available" : "preferred")}>{chosen.preference === "preferred" ? "Preferred" : "Prefer"}</button>
           <button type="button" disabled={busy} style={button} onClick={() => curate(chosen.preference === "archived" ? "available" : "archived")}>{chosen.preference === "archived" ? "Restore" : "Don't recommend"}</button>
-          <button type="button" disabled={busy} style={button} onClick={async () => { setBusy(true); setMessage(""); try { await checkImages([chosen.id], true); setMessage("Image checked. See the result above."); } catch (error) { setMessage(error instanceof Error ? error.message : "Check failed."); } finally { setBusy(false); } }}>Recheck text</button>
+          <button type="button" disabled={busy} style={button} onClick={async () => { setBusy(true); setMessage("Checking image text…"); try { await checkImages([chosen.id], true); setMessage("Image checked. See the result above."); } catch (error) { setMessage(error instanceof Error ? error.message : "Check failed."); } finally { setBusy(false); } }}>Recheck text</button>
         </div>
       </div>}
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
@@ -205,7 +224,7 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
         {!onPick && <button type="button" disabled={busy} onClick={() => { setLinking(!linking); setLinked([]); }} style={button}>{linking ? "Cancel grouping" : "Link versions"}</button>}
       </div>
       {linking && <div style={muted}>Select cards that are versions of the same photograph. <button type="button" disabled={busy || linked.length < 2 || linked.length > 50} style={button} onClick={group}>Link {linked.length} versions</button></div>}
-      <div role="group" aria-label="Photo contact sheet" onKeyDown={(event) => {
+      <div ref={gridRef} className="photo-library__grid" id={gridId} role="group" aria-label="Photo contact sheet" onKeyDown={(event) => {
         const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
         const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
         const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 3, ArrowUp: -3 }[event.key];
@@ -214,11 +233,11 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
           buttons[Math.max(0, Math.min(buttons.length - 1, index + step))]?.focus();
         }
       }} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 7, maxHeight: 420, overflowY: "auto" }}>
-        {families.slice(0, limit).map((f) => {
+        {families.slice(0, limit).map((f, index) => {
           const a = f.representative;
           const active = f.assets.some((v) => v.id === chosen?.id);
           const picked = f.assets.every((v) => linked.includes(v.id));
-          return <button key={f.key} type="button" aria-pressed={linking ? picked : active} disabled={busy} onClick={() => {
+          return <button key={f.key} type="button" data-photo-card="" data-new={newFrom !== null && index >= newFrom || undefined} aria-pressed={linking ? picked : active} disabled={busy} onClick={() => {
             if (linking) setLinked((ids) => picked ? ids.filter((id) => !f.assets.some((v) => v.id === id)) : [...new Set([...ids, ...f.assets.map((v) => v.id)])]);
             else void choose(a);
           }} style={{ ...button, padding: 3, minWidth: 0, textAlign: "left", border: `2px solid ${(linking ? picked : active) ? "var(--accent)" : "var(--border)"}` }} title={a.description || a.name}>
@@ -229,7 +248,12 @@ export default function PhotoLibrary({ currentUrl, selectedId, copy = "", exclud
         })}
       </div>
       {!families.length && <p style={muted}>No photos match. Try All photos or clear a filter.</p>}
-      {families.length > limit && <button type="button" style={button} onClick={() => setLimit((n) => n + 12)}>Show 12 more photos</button>}
+      <div className="photo-library__pagination">
+        <span role="status" aria-live="polite" className="photo-library__count">Showing {Math.min(limit, families.length)} of {families.length} photos</span>
+        {families.length > limit
+          ? <button type="button" style={button} onClick={showMore} aria-controls={gridId}>Show {Math.min(12, families.length - limit)} more photos <span aria-hidden="true">↓</span></button>
+          : !!families.length && <span style={muted}>All matching photos shown</span>}
+      </div>
       <p style={{ ...muted, margin: 0 }}>{onPick ? "Click a photo or version to replace the email image. Captions are checked on selection. Use Undo in the editor to go back. Group photos in Assets." : "Select a photo to inspect its text, set preferences or link its versions. Archived photos remain available under All photos."}</p>
     </>}
     {picking && <span style={muted}>Selecting image… You can choose another photo.</span>}

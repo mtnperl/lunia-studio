@@ -1,4 +1,5 @@
 "use client";
+import { acknowledgeButton } from "@/lib/editor-button-feedback";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { Button, IconButton, Tooltip, Tabs, Menu, IcUndo, IcRedo, IcDownload, type MenuItem } from "@/components/ui";
@@ -41,7 +42,12 @@ export function EditorShell<V extends string>({
   const saveText = saveState ? { saved: "Saved", saving: "Saving", dirty: "Unsaved changes", unsaved: "Not saved yet" }[saveState] : null;
 
   return (
-    <div className="shell shell--embedded" style={{ ["--shell-left" as string]: `${leftWidth}px`, ["--shell-right" as string]: `${rightWidth}px` }}>
+    <div className="shell shell--embedded" onClickCapture={(event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest<HTMLButtonElement>("button");
+      if (button) acknowledgeButton(button);
+    }} style={{ ["--shell-left" as string]: `${leftWidth}px`, ["--shell-right" as string]: `${rightWidth}px` }}>
       <header className="shell__top">
         <div className="shell__top-left">
           {onBack && (
