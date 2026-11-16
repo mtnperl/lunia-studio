@@ -18,6 +18,9 @@ const PUBLIC_PREFIXES = [
   "/scripts/",
   "/ugc/share/",
   "/api/ugc/briefs/share/",
+  // Shared asset shelf: an unguessable token resolves to one shelf, listed
+  // read-only for third parties to download. Revoking the token 404s it.
+  "/assets/share/",
   // Needed by public share pages for CORS-safe PNG export. The endpoint itself
   // enforces a hardcoded allowlist of upstream hosts (fal.media, etc).
   "/api/carousel/image-proxy",

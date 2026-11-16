@@ -26,6 +26,7 @@
     "@sparticuz/chromium": "^143.0.4",
     "@vercel/blob": "^2.3.1",
     "docx": "^9.6.1",
+    "fflate": "^0.8.3",
     "html-to-image": "^1.11.13",
     "ioredis": "^5.10.1",
     "nanoid": "^5.1.9",

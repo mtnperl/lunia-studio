@@ -97,6 +97,11 @@ function TypeBadge({ assetType }: { assetType?: AssetType }) {
   );
 }
 
+const shelfBtn: React.CSSProperties = {
+  fontSize: 12, fontWeight: 600, color: "var(--text)", border: "1px solid var(--border)",
+  borderRadius: 5, padding: "3px 8px", background: "var(--bg)", cursor: "pointer", fontFamily: "inherit",
+};
+
 export default function AssetsView() {
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +128,12 @@ export default function AssetsView() {
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [loaderTick, setLoaderTick] = useState(0);
 
+  // Shelf share links: shelf key → token. A shelf with a token is shared.
+  const [shares, setShares] = useState<Record<string, string>>({});
+  const [shareBusy, setShareBusy] = useState<string | null>(null);
+  const [copiedShelf, setCopiedShelf] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+
   async function loadAssets() {
     try {
       const res = await fetch("/api/assets");
@@ -145,10 +156,83 @@ export default function AssetsView() {
     }
   }
 
+  async function loadShares() {
+    try {
+      const res = await fetch("/api/assets/share");
+      const data = (await res.json()) as unknown;
+      if (!Array.isArray(data)) return;
+      setShares(Object.fromEntries((data as { assetType: string; token: string }[]).map((s) => [s.assetType, s.token])));
+    } catch {
+      // non-critical
+    }
+  }
+
   useEffect(() => {
     loadAssets();
     loadTemplates();
+    loadShares();
   }, []);
+
+  function shareUrl(token: string) {
+    return `${window.location.origin}/assets/share/${token}`;
+  }
+
+  async function copyShareLink(shelf: string, token: string) {
+    try {
+      await navigator.clipboard.writeText(shareUrl(token));
+      setCopiedShelf(shelf);
+      setTimeout(() => setCopiedShelf((c) => (c === shelf ? null : c)), 2000);
+    } catch {
+      // Clipboard blocked — show the link so it can be copied by hand.
+      window.prompt("Copy this link", shareUrl(token));
+    }
+  }
+
+  async function handleShare(shelf: string) {
+    setShareBusy(shelf);
+    setShareError(null);
+    try {
+      const res = await fetch("/api/assets/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetType: shelf }),
+      });
+      const data = (await res.json()) as { token?: string; error?: string };
+      if (!res.ok || !data.token) {
+        setShareError(data.error ?? `Could not create link (${res.status})`);
+        return;
+      }
+      const token = data.token;
+      setShares((prev) => ({ ...prev, [shelf]: token }));
+      await copyShareLink(shelf, token);
+    } catch {
+      setShareError("Network error while creating the link.");
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  async function handleRevoke(shelf: string) {
+    if (!window.confirm("Revoke this link? Anyone who has it will lose access.")) return;
+    setShareBusy(shelf);
+    setShareError(null);
+    try {
+      const res = await fetch(`/api/assets/share?assetType=${encodeURIComponent(shelf)}`, { method: "DELETE" });
+      if (!res.ok) {
+        setShareError(`Could not revoke link (${res.status})`);
+        return;
+      }
+      setShares((prev) => {
+        const next = { ...prev };
+        delete next[shelf];
+        return next;
+      });
+    } catch {
+      setShareError("Network error while revoking the link.");
+    } finally {
+      setShareBusy(null);
+    }
+  }
 
   useEffect(() => {
     if (!creatingTemplate) { setLoaderTick(0); return; }
@@ -412,6 +496,12 @@ export default function AssetsView() {
         </div>
       )}
 
+      {shareError && (
+        <div role="alert" style={{ background: "#fff3f3", border: "1px solid #f5c6c6", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#9b1c1c" }}>
+          {shareError}
+        </div>
+      )}
+
       {/* Carousel style notice */}
       {styleCount > 0 && (
         <div style={{ background: "#f5f0ff", border: "1px solid #c4b5fd", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 13, color: "#5b21b6" }}>
@@ -442,6 +532,25 @@ export default function AssetsView() {
                   {section.label}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--subtle)" }}>{group.length}</span>
+                {section.key !== "uncategorised" && (
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                    {shares[section.key] ? (
+                      <>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>Shared</span>
+                        <button onClick={() => copyShareLink(section.key, shares[section.key]!)} style={shelfBtn}>
+                          {copiedShelf === section.key ? "Copied" : "Copy link"}
+                        </button>
+                        <button onClick={() => handleRevoke(section.key)} disabled={shareBusy === section.key} style={{ ...shelfBtn, color: "#9b1c1c" }}>
+                          Revoke
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => handleShare(section.key)} disabled={shareBusy === section.key} style={shelfBtn}>
+                        {shareBusy === section.key ? "Creating…" : "Share folder"}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
           {group.map((a) => (

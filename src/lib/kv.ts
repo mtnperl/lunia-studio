@@ -718,3 +718,28 @@ export async function setOutreach(text: string): Promise<void> {
 
 // Re-export the internal redis wrapper so analytics routes can import { kv }
 export const kv = redis;
+
+// ─── Shelf share links ────────────────────────────────────────────────────────
+// One unguessable token per shared shelf. The public page resolves the token
+// to a shelf and lists that shelf live, so new uploads show up on the link.
+const ASSET_SHARES_KEY = "lunia:asset-shares";
+
+export type AssetShare = { token: string; assetType: AssetMetadata["assetType"]; createdAt: string };
+
+export async function getAssetShares(): Promise<AssetShare[]> {
+  return readCollection<AssetShare>(ASSET_SHARES_KEY);
+}
+
+export async function getAssetShareByToken(token: string): Promise<AssetShare | null> {
+  return (await getAssetShares()).find((s) => s.token === token) ?? null;
+}
+
+export async function saveAssetShare(share: AssetShare): Promise<void> {
+  const all = await getAssetShares();
+  await writeCollection(ASSET_SHARES_KEY, [share, ...all.filter((s) => s.assetType !== share.assetType)]);
+}
+
+export async function deleteAssetShare(assetType: AssetShare["assetType"]): Promise<void> {
+  const all = await getAssetShares();
+  await writeCollection(ASSET_SHARES_KEY, all.filter((s) => s.assetType !== assetType));
+}
