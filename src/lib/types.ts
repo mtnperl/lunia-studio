@@ -50,7 +50,10 @@ export type HookTone =
   | "symptom"
   | "paradox"
   | "tell";
-export type CarouselFormat = "standard" | "engagement" | "did_you_know" | "chartbook" | "primer";
+export type CarouselFormat = "standard" | "engagement" | "did_you_know" | "chartbook" | "primer" | "le_week_end";
+
+/** "Le week-end": the French weekend-magazine sleep column. Its own studio, not a two-slide format. */
+export type { LwPost } from "./le-weekend";
 
 /** The frozen two-slide formats: a cover and one slide that does the work,
  *  a fixed set of layouts, three variants per subject, no image engine. */
@@ -667,6 +670,7 @@ export type SavedCarousel = {
   penColor?: string;
   chartbookContent?: ChartbookContent;   // present iff format === "chartbook"
   primerContent?: PrimerContent;         // present iff format === "primer"
+  leWeekendContent?: import("./le-weekend").LwPost; // present iff format === "le_week_end"
   /** Did you know only: which box the marked phrase takes. Absent = navy-box. */
   didYouKnowTreatment?: DidYouKnowTreatment;
   /** Paper ground, 0..1 each: grain opacity and vignette strength. Absent

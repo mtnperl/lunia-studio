@@ -20,6 +20,7 @@ import EssayTakeawaySlide from "@/components/carousel/slides/EssayTakeawaySlide"
 import { essayNumberFrom, essayDate } from "@/components/carousel/shared/EssayChrome";
 import DidYouKnowSlide from "@/components/carousel/slides/DidYouKnowSlide";
 import TwoSlideShareView from "@/components/TwoSlideShareView";
+import { LeWeekendSlide } from "@/components/carousel/slides/LeWeekendSlides";
 import { SavedCarousel, BrandStyle } from "@/lib/types";
 import { isEditorialPreset } from "@/lib/carousel-style-presets";
 
@@ -79,6 +80,15 @@ export default function CarouselShareClient({ carousel }: Props) {
   }
   if (carousel.format === "primer" && carousel.primerContent) {
     return <TwoSlideShareView carousel={carousel} format="primer" />;
+  }
+  if (carousel.format === "le_week_end" && carousel.leWeekendContent) {
+    const post = carousel.leWeekendContent;
+    return (
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "32px 16px", display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+        {post.slides.map((_, i) => <LeWeekendSlide key={i} post={post} index={i} scale={0.42} />)}
+        <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 14, maxWidth: 460 }}>{post.caption}</pre>
+      </div>
+    );
   }
 
   const {

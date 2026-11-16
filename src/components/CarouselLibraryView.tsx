@@ -116,17 +116,20 @@ function CarouselCard({ c, onClick, onDelete, onConvertToCampaign, onVary, selec
   }
   // The three two-slide formats share the card: a paper tile with the
   // format's name and the piece's first line, no hook image.
-  const isDidYouKnow = c.format === "did_you_know" || c.format === "chartbook" || c.format === "primer";
-  const formatLabel = c.format === "chartbook" ? "Chartbook" : c.format === "primer" ? "Primer" : "Did you know?";
+  const isDidYouKnow = c.format === "did_you_know" || c.format === "chartbook" || c.format === "primer" || c.format === "le_week_end";
+  const lw = c.format === "le_week_end" ? c.leWeekendContent : undefined;
+  const formatLabel = c.format === "chartbook" ? "Chartbook" : c.format === "primer" ? "Primer" : lw ? "Le week-end" : "Did you know?";
   const hookImg = c.slideImages?.[0] ?? c.hookImageUrl ?? null;
   const toneColor = isDidYouKnow ? "#102635" : (TONE_COLORS[c.hookTone] ?? "var(--accent)");
   const caption = c.format === "chartbook" ? (c.chartbookContent?.caption ?? "")
     : c.format === "primer" ? (c.primerContent?.caption ?? "")
+    : lw ? lw.caption
     : isDidYouKnow ? (c.didYouKnowContent?.caption ?? "") : (c.content?.caption ?? "");
-  const slideCount = isDidYouKnow ? 2 : (c.content?.slides?.length ?? 0) + 2;
+  const slideCount = lw ? lw.slides.length : isDidYouKnow ? 2 : (c.content?.slides?.length ?? 0) + 2;
   const shareHref = `${typeof window !== "undefined" ? window.location.origin : ""}/carousels/${c.id}`;
   const dykPreviewText = c.format === "chartbook" ? (c.chartbookContent?.cover.question ?? "")
     : c.format === "primer" ? (c.primerContent?.cover.title ?? "")
+    : lw ? `p. ${lw.folio} · ${lw.topic}`
     : isDidYouKnow
     ? c.didYouKnowContent?.slide1.body1.map((t) => t.text).join("").slice(0, 100) ?? ""
     : "";

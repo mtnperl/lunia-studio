@@ -9,6 +9,8 @@ import { STRUCTURES, VALUE_MOVE_TEXT } from "@/lib/carousel-structures";
 import { readKeptCover, keptCoverBlock, applyKeptCover, type KeptCover } from "@/lib/carousel-recast";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
 import { lintPrimer } from "@/lib/two-slide-lint";
+import { generateLeWeekend } from "@/lib/le-weekend-generate";
+import { LW_COLUMNS, LW_COVERS, coversForColumn, type LwColumn, type LwCover } from "@/lib/le-weekend";
 import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
 import { getCarouselRowById, updateCarouselRow } from "@/lib/kv";
 import { ROW_FINISH_PROMPT, parseRowFinish, rowBuildBlocker, rowToCarousel, selectedHookIndex } from "@/lib/carousel-row-deck";
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
       : body.format === "did_you_know" ? "did_you_know"
       : body.format === "chartbook" ? "chartbook"
       : body.format === "primer" ? "primer"
+      : body.format === "le_week_end" ? "le_week_end"
       : "standard";
     const engagementSubType: EngagementSubType = body.engagementSubType === "diagnostic" ? "diagnostic" : "reveal";
     const structure: CarouselStructure | undefined = isCarouselStructure(body.structure) ? body.structure : undefined;
@@ -116,6 +119,20 @@ export async function POST(req: Request) {
     }
     if (format === "primer") {
       return await generateTwoSlide(format, topic, count);
+    }
+    if (format === "le_week_end") {
+      const column: LwColumn = (LW_COLUMNS as readonly string[]).includes(body.column) ? body.column : "chronique";
+      const askedCover: LwCover = (LW_COVERS as readonly string[]).includes(body.cover) ? body.cover : "photo";
+      const cover = coversForColumn(column).includes(askedCover) ? askedCover : coversForColumn(column)[0];
+      const folio = Math.max(1, Math.min(9999, Math.round(Number(body.folio) || 1)));
+      const slideCount = Math.max(1, Math.min(4, Math.round(Number(body.slideCount) || 1)));
+      const dateFr = typeof body.dateFr === "string" && body.dateFr.trim() ? body.dateFr.trim().slice(0, 40) : "Samedi";
+      try {
+        return Response.json({ post: await generateLeWeekend({ topic: topic.trim(), column, cover, dateFr, folio, slideCount }) });
+      } catch (err) {
+        console.error("[generate/le_week_end] failed:", err instanceof Error ? err.message : err);
+        return Response.json({ error: describeGenerateError(err, "le week-end generation") }, { status: 500 });
+      }
     }
 
     // Fetch carousel-style reference images (up to 2)
