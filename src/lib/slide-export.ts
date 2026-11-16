@@ -117,9 +117,16 @@ export function isTaintError(err: unknown): boolean {
 export async function compositeSlideWithImages(
   el: HTMLElement,
   imgEls: HTMLImageElement[],
-  opts: { filename: string; exportH: number; loadDataUrl: LoadDataUrl },
+  opts: {
+    filename: string; exportH: number; loadDataUrl: LoadDataUrl;
+    /** Output type. PNG by default; Le week-end exports JPEG at quality 0.9. */
+    type?: "image/png" | "image/jpeg"; quality?: number;
+    /** Canvas pixels per CSS pixel. 2 by default; 1 gives exactly 1080 wide. */
+    pixelRatio?: number;
+  },
 ): Promise<File> {
   const { filename, exportH, loadDataUrl } = opts;
+  const type = opts.type ?? "image/png";
   const elRect = el.getBoundingClientRect();
 
   // ── Read the slide: geometry, styles, and a draw source per image ────────
@@ -169,7 +176,7 @@ export async function compositeSlideWithImages(
     paperImages.set(layer.src, dataUrl ? await loadImage(dataUrl) : null);
   }
 
-  const PR = 2;
+  const PR = opts.pixelRatio ?? 2;
   const W = 1080 * PR, H = exportH * PR;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
@@ -281,7 +288,7 @@ export async function compositeSlideWithImages(
   let fgDataUrl: string;
   try {
     fgDataUrl = await toPng(el, {
-      width: 1080, height: exportH, pixelRatio: 2,
+      width: 1080, height: exportH, pixelRatio: PR,
       cacheBust: false, backgroundColor: "transparent",
       fontEmbedCSS,
       filter: (n: Node) => !(n instanceof HTMLImageElement),
@@ -299,7 +306,7 @@ export async function compositeSlideWithImages(
   if (fg) ctx.drawImage(fg, 0, 0, W, H);
 
   const toBlob = () => new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png"),
+    canvas.toBlob((b) => b ? resolve(b) : reject(new Error("toBlob failed")), type, opts.quality),
   );
 
   let blob: Blob;
@@ -319,5 +326,5 @@ export async function compositeSlideWithImages(
   // shows the error rather than handing that to the user as a finished slide.
   if (undrawn.length > 0) throw new MissingSlideImagesError(undrawn);
 
-  return new File([blob], filename, { type: "image/png" });
+  return new File([blob], filename, { type });
 }

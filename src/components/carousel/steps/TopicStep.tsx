@@ -263,16 +263,19 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
   // Types with something to show, so the dropdown never names an empty one.
   const categoryOptions = CATEGORIES.filter((c) => c === "All" || pool.some((s) => s.carouselType === c));
 
+  // The frozen formats skip the deck controls: the two-slide ones and Le week-end.
+  const frozenFormat = isTwoSlideFormat(carouselFormat) || carouselFormat === "le_week_end";
+
   function handleNext() {
     if (!topic || topicTooLong) return;
     const rowId = selectedRow?.id;
     const effectiveTone =
       carouselFormat === "engagement" ? ("science-backed" as HookTone)
-      : isTwoSlideFormat(carouselFormat) ? ("educational" as HookTone)
+      : frozenFormat ? ("educational" as HookTone)
       : STRUCTURES[structure].legacyTone;
     const effectiveConcise =
       carouselFormat === "engagement" ? true
-      : isTwoSlideFormat(carouselFormat) ? true
+      : frozenFormat ? true
       : concise;
     onNext(topic, effectiveTone, rowId, effectiveConcise, imageStyle, carouselFormat, carouselFormat === "engagement" ? engagementSubType : undefined, stylePreset, includeSeoFooter, stylePreset === "editorial-scientific" ? contrastMode : "standard", looks.find((x) => x.id === lookId)?.settings, carouselFormat === "standard" ? viralSlides : undefined, carouselFormat === "standard" ? structure : undefined);
   }
@@ -305,6 +308,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
             { value: "did_you_know", label: "Did You Know" },
             { value: "chartbook", label: "Chartbook" },
             { value: "primer", label: "Primer" },
+            { value: "le_week_end", label: "Le week-end" },
           ]}
         />
         {carouselFormat === "engagement" && (
@@ -315,6 +319,9 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
         )}
         {carouselFormat === "chartbook" && (
           <p style={hint}>Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.</p>
+        )}
+        {carouselFormat === "le_week_end" && (
+          <p style={hint}>Le week-end is a page from the sleep column of a French weekend magazine: pick the topic here, then the column (chronique, lexique, courrier, rituel, règles), the cover and the folio in its studio. Photo covers generate only after you approve the prompt.</p>
         )}
         {carouselFormat === "primer" && (
           <p style={hint}>Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.</p>
@@ -574,7 +581,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
 
       {/* Saved looks come first: one pick sets the preset, the image engine and
           every deck-wide style knob the studio will open with. */}
-      {!isTwoSlideFormat(carouselFormat) && looks.length > 0 && (
+      {!frozenFormat && looks.length > 0 && (
         <div style={group}>
           <Label kind="section">Look</Label>
           <UiSelect value={lookId} onChange={(e) => chooseLook(e.target.value)} aria-label="Saved look">
@@ -586,7 +593,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       )}
       {/* Carousel style preset — re-skins the whole carousel (colors, fonts,
           image engine). "Editorial Scientific" applies the Lunia brand book. */}
-      {!isTwoSlideFormat(carouselFormat) && (
+      {!frozenFormat && (
       <div style={group}>
         <Label kind="section">Style</Label>
         <OptionGrid cols={2} value={stylePreset} onChange={setStylePreset} options={[
@@ -602,7 +609,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       {/* Contrast — Editorial Scientific only, because it works by swapping that
           preset's palette block. On any other preset the setting would reach a
           code path that ignores it, so offering it there would be a dead control. */}
-      {!isTwoSlideFormat(carouselFormat) && stylePreset === "editorial-scientific" && (
+      {!frozenFormat && stylePreset === "editorial-scientific" && (
       <div style={group}>
         <Label kind="section">Contrast</Label>
         <OptionGrid cols={2} value={contrastMode} onChange={setContrastMode} options={[
@@ -613,7 +620,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
       )}
 
       {/* Hook image style — hidden for did_you_know (no AI imagery) */}
-      {!isTwoSlideFormat(carouselFormat) && (
+      {!frozenFormat && (
       <div style={group}>
         <Label kind="section">Hook image style</Label>
         <OptionGrid cols={2} value={imageStyle} onChange={setImageStyle}

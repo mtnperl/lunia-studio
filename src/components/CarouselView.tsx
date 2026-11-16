@@ -8,6 +8,8 @@ import PreviewStep from "@/components/carousel/steps/PreviewStep";
 import DidYouKnowPreviewStep from "@/components/carousel/steps/DidYouKnowPreviewStep";
 import TwoSlidePreviewStep, { type TwoSlideVariant } from "@/components/carousel/steps/TwoSlidePreviewStep";
 import ChartbookFigureStep from "@/components/carousel/steps/ChartbookFigureStep";
+import LeWeekendStudio from "@/components/carousel/steps/LeWeekendStudio";
+import type { LwPost } from "@/lib/le-weekend";
 import type { ChartbookFigure, ChartbookFigureProposal } from "@/lib/types";
 import { PAPER_DEFAULTS } from "@/lib/brand-tokens";
 import { isTwoSlideFormat } from "@/lib/types";
@@ -150,6 +152,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       setTwoSlideVariants([(initialCarousel.chartbookContent ?? initialCarousel.primerContent) as TwoSlideVariant]);
       setSelectedTwoSlide(0);
     }
+    setLeWeekendPost(initialCarousel.leWeekendContent ?? null);
     if (initialCarousel.didYouKnowContent) {
       setDidYouKnowVariants([initialCarousel.didYouKnowContent]);
       setSelectedDidYouKnow(0);
@@ -177,6 +180,9 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
   const [chartbookFigures, setChartbookFigures] = useState<ChartbookFigureProposal[]>([]);
   const [selectedFigure, setSelectedFigure] = useState(0);
   const [composing, setComposing] = useState(false);
+  // Le week-end: one post, written inside its own studio.
+  const [leWeekendPost, setLeWeekendPost] = useState<LwPost | null>(null);
+  const frozenFormat = isTwoSlideFormat(carouselFormat) || carouselFormat === "le_week_end";
   const [falStatus, setFalStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
   const [falCount, setFalCount] = useState(0); // how many images loaded so far
   const [falErrors, setFalErrors] = useState<(string | null)[]>([null, null, null, null, null]);
@@ -242,11 +248,13 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       if (Array.isArray(d.twoSlideVariants)) setTwoSlideVariants(d.twoSlideVariants);
       if (typeof d.selectedTwoSlide === "number") setSelectedTwoSlide(d.selectedTwoSlide);
       if (Array.isArray(d.chartbookFigures)) setChartbookFigures(d.chartbookFigures);
+      if (d.leWeekendPost) setLeWeekendPost(d.leWeekendPost);
       if (typeof d.selectedFigure === "number") setSelectedFigure(d.selectedFigure);
       const restoredDyk = Array.isArray(d.didYouKnowVariants) && d.didYouKnowVariants.length > 0;
       const restoredTwoSlide = Array.isArray(d.twoSlideVariants) && d.twoSlideVariants.length > 0;
       const restoredFigures = d.carouselFormat === "chartbook" && Array.isArray(d.chartbookFigures) && d.chartbookFigures.length > 0;
-      setStep(restoredContent || restoredDyk || restoredTwoSlide ? STUDIO : restoredFigures ? FIGURES : BRIEF);
+      const restoredLw = d.carouselFormat === "le_week_end" && typeof d.topic === "string" && d.topic.length > 0;
+      setStep(restoredContent || restoredDyk || restoredTwoSlide || restoredLw ? STUDIO : restoredFigures ? FIGURES : BRIEF);
       setRestoredDraft(true);
     } catch { /* ignore corrupt draft */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,7 +268,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       v: 1, step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook,
       brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages,
       imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants,
-      selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure,
+      selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure, leWeekendPost,
     };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -269,7 +277,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, slideImages: undefined, hookImageUrl: undefined })); } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure]);
+  }, [step, topic, hookTone, structure, concise, variants, selectedVariant, selectedHook, brandStyle, stylePreset, contrastMode, includeSeoFooter, hookImageUrl, slideImages, imageStyle, moodId, carouselFormat, engagementSubType, didYouKnowVariants, selectedDidYouKnow, twoSlideVariants, selectedTwoSlide, chartbookFigures, selectedFigure, leWeekendPost]);
 
   const content = variants[selectedVariant] ?? null;
 
@@ -456,6 +464,14 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     // generation then failed.
     if (format === "chartbook") {
       await proposeFigures(t);
+      return;
+    }
+    if (format === "le_week_end") {
+      // The column, cover and folio are chosen in the studio, which writes the post.
+      setLeWeekendPost(null);
+      setVariants([]);
+      setLoading(false);
+      setStep(STUDIO);
       return;
     }
     try {
@@ -747,6 +763,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     setSelectedTwoSlide(0);
     setChartbookFigures([]);
     setSelectedFigure(0);
+    setLeWeekendPost(null);
     setCarouselFormat("standard");
     clearActiveDraft();
   }
@@ -772,7 +789,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
     </div>
   );
 
-  const inStudio = !loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&(falStatus === "done" || falStatus === "idle") && !!config;
+  const inStudio = !loading && !error && step === 4 && !frozenFormat &&(falStatus === "done" || falStatus === "idle") && !!config;
 
   return (
     // The studio is full-bleed inside the app shell: the editor shell owns its
@@ -852,6 +869,16 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSaved={onSaved}
             />
           )}
+          {!loading && !error && step === 4 && carouselFormat === "le_week_end" && (
+            <LeWeekendStudio
+              key={loadedId ?? "draft"}
+              topic={topic}
+              initialPost={leWeekendPost}
+              initialSavedId={loadedId}
+              onChange={setLeWeekendPost}
+              onSaved={onSaved}
+            />
+          )}
           {!loading && !error && step === 4 && carouselFormat === "did_you_know" && didYouKnowVariants.length > 0 && (
             <DidYouKnowPreviewStep
               topic={topic}
@@ -867,12 +894,12 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               onSaved={onSaved}
             />
           )}
-          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&falStatus === "loading" && (
+          {!loading && !error && step === 4 && !frozenFormat &&falStatus === "loading" && (
             <RetroImageLoader items={[
               { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
             ]} modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"} />
           )}
-          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&falStatus === "failed" && (
+          {!loading && !error && step === 4 && !frozenFormat &&falStatus === "failed" && (
             <RetroImageError
               items={[
                 { label: "HOOK SLIDE", done: !!slideImages[0], error: falErrors[0] },
@@ -881,7 +908,7 @@ export default function CarouselView({ initialCarousel, onCarouselLoaded, onSave
               modelLabel={version === "v2" ? "fal-ai/recraft/v4/pro" : "fal-ai/recraft-v3"}
             />
           )}
-          {!loading && !error && step === 4 && !isTwoSlideFormat(carouselFormat) &&(falStatus === "done" || falStatus === "idle") && config && (
+          {!loading && !error && step === 4 && !frozenFormat &&(falStatus === "done" || falStatus === "idle") && config && (
             <PreviewStep
               // Remount when a saved carousel loads over a restored draft, so
               // the studio's saved id and settings come from the

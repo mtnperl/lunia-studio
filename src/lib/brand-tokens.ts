@@ -87,7 +87,10 @@ const GOOGLE_FONTS_FAMILIES =
   // the byline. Approved as a departure from the Inter/Cormorant/Fira set on
   // 2026-09-06 (see the DESIGN.md decisions log).
   "&family=Anton" +
-  "&family=Caveat:wght@500;600";
+  "&family=Caveat:wght@500;600" +
+  // Le week-end: Bodoni Moda, roman and true italic, 400-500, with the
+  // optical-size axis so the 300px figure and the 15px strip each get their cut.
+  "&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..500;1,6..96,400..500";
 
 /** Render target. `display=block` so fallback metrics can never paint into a
  *  capture — a PNG exported mid-swap is wrong forever. */

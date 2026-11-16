@@ -28,6 +28,8 @@ import { ChartbookCoverSlide, ChartbookFigureSlide } from "@/components/carousel
 import { PrimerBodySlide, PrimerCoverSlide } from "@/components/carousel/slides/PrimerSlides";
 import BillboardContentSlide from "@/components/carousel/slides/BillboardContentSlide";
 import BillboardTakeawaySlide from "@/components/carousel/slides/BillboardTakeawaySlide";
+import { LeWeekendSlide } from "@/components/carousel/slides/LeWeekendSlides";
+import type { LwPost } from "@/lib/le-weekend";
 import { FP_COLORS, ESSAY_COLORS, DYK_COLORS, BILLBOARD_COLORS, type EssayAccent } from "@/lib/brand-tokens";
 import { SLIDE } from "@/lib/brand-tokens";
 import type { BillboardPillar, BrandStyle, CarouselStylePreset, ChartbookContent, DidYouKnowSlideContent, DidYouKnowTreatment, PrimerContent } from "@/lib/types";
@@ -56,7 +58,10 @@ export type RenderSlideProps = {
    *  the deck's first and last slides so the visual suite covers them too.
    *  "did_you_know" draws one slide of the frozen two-slide format from
    *  `dyk`, so that format is in the suite as well. */
-  kind?: "content" | "hook" | "takeaway" | "did_you_know" | "chartbook" | "primer";
+  kind?: "content" | "hook" | "takeaway" | "did_you_know" | "chartbook" | "primer" | "le_week_end";
+  /** Le week-end: the whole post, and which slide (0-based). */
+  leWeekend?: LwPost;
+  lwIndex?: number;
   dyk?: DidYouKnowSlideContent;
   dykIndex?: 1 | 2;
   /** Chartbook and Primer: the whole piece, and which of its two slides. */
@@ -251,7 +256,9 @@ export default function RenderSlideClient(props: RenderSlideProps) {
           (props.kind === "did_you_know" || props.kind === "chartbook" || props.kind === "primer" ? DYK_COLORS.paper : props.stylePreset === "free-press" ? FP_COLORS.paper : props.stylePreset === "essay" ? ESSAY_COLORS.paper : props.stylePreset === "billboard" ? BILLBOARD_COLORS.paper : "#01253f"),
       }}
     >
-      {props.kind === "chartbook" && props.chartbook ? (
+      {props.kind === "le_week_end" && props.leWeekend ? (
+        <LeWeekendSlide post={props.leWeekend} index={props.lwIndex ?? 0} scale={1} />
+      ) : props.kind === "chartbook" && props.chartbook ? (
         props.twoSlideIndex === 2
           ? <ChartbookFigureSlide content={props.chartbook} paper={paperProp} scale={1} />
           : <ChartbookCoverSlide content={props.chartbook} paper={paperProp} scale={1} />

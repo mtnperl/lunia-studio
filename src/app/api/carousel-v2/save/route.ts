@@ -1,6 +1,7 @@
 import { saveAssetIfNew, saveCarousel } from "@/lib/kv";
 import { isCarouselStructure } from "@/lib/carousel-structures";
 import { AssetMetadata, ChartbookContentSchema, DidYouKnowContentSchema, PrimerContentSchema, SavedCarousel } from "@/lib/types";
+import { LwPostSchema } from "@/lib/le-weekend";
 import { randomUUID } from "crypto";
 import { recordVersion } from "@/lib/versions";
 import { put } from "@vercel/blob";
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
       showLuniaLifeWatermark,
       imageStyle, reelsMode, citationFontSize,
       headlineScale, bodyScale, iconScale,
-      format, engagementSubType, didYouKnowContent, chartbookContent, primerContent,
+      format, engagementSubType, didYouKnowContent, chartbookContent, primerContent, leWeekendContent,
       didYouKnowTreatment, paperGrain, paperVignette, penColor, fontScale,
       hookOverlays,
       stylePreset, showSlideArrows, showSlideNumbers, showCitationBars,
@@ -79,6 +80,14 @@ export async function POST(req: Request) {
       }
       validatedPrimer = parsed.data;
     }
+    let validatedLw: SavedCarousel["leWeekendContent"];
+    if (format === "le_week_end") {
+      const parsed = LwPostSchema.safeParse(leWeekendContent);
+      if (!parsed.success) {
+        return Response.json({ error: "Invalid leWeekendContent", details: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`) }, { status: 400 });
+      }
+      validatedLw = parsed.data;
+    }
     let validatedDyk: typeof didYouKnowContent | undefined;
     if (format === "did_you_know") {
       const parsed = DidYouKnowContentSchema.safeParse(didYouKnowContent);
@@ -89,7 +98,7 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
       validatedDyk = parsed.data;
-    } else if (format !== "chartbook" && format !== "primer") {
+    } else if (format !== "chartbook" && format !== "primer" && format !== "le_week_end") {
       if (!content || selectedHook == null) {
         return Response.json({ error: "Missing required fields" }, { status: 400 });
       }
@@ -110,10 +119,14 @@ export async function POST(req: Request) {
         : [];
     const [mirroredHook, ...mirroredRest] = await Promise.all([
       mirrorImage(hookImageUrl, `${id}-hook`),
+      // Le week-end's photograph (generated or uploaded) gets the same permanent copy.
+      mirrorImage(validatedLw?.imageUrl, `${id}-leweekend`),
       ...rawSlides.map((u, i) => mirrorImage(u, `${id}-slide-${i}`)),
       ...rawContentBgs.map((u, i) => mirrorImage(u, `${id}-bg-${i}`)),
       ...rawWeightEntries.map(([weight, u]) => mirrorImage(u, `${id}-hook-${weight}`)),
     ]);
+    const mirroredLwImage = mirroredRest.shift();
+    if (validatedLw && mirroredLwImage) validatedLw = { ...validatedLw, imageUrl: mirroredLwImage };
     const mirroredSlides = mirroredRest.slice(0, rawSlides.length) as (string | null)[];
     const mirroredContentBgs = mirroredRest.slice(rawSlides.length, rawSlides.length + rawContentBgs.length) as (string | null)[];
     const mirroredWeightUrls = mirroredRest.slice(rawSlides.length + rawContentBgs.length) as (string | null)[];
@@ -147,6 +160,7 @@ export async function POST(req: Request) {
       didYouKnowContent: validatedDyk ?? undefined,
       chartbookContent: validatedChartbook ?? undefined,
       primerContent: validatedPrimer ?? undefined,
+      leWeekendContent: validatedLw ?? undefined,
       didYouKnowTreatment: didYouKnowTreatment === "navy-box" || didYouKnowTreatment === "yellow-box" ? didYouKnowTreatment : undefined,
       paperGrain: typeof paperGrain === "number" && paperGrain >= 0 && paperGrain <= 1 ? paperGrain : undefined,
       paperVignette: typeof paperVignette === "number" && paperVignette >= 0 && paperVignette <= 1 ? paperVignette : undefined,
