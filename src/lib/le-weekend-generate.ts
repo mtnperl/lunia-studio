@@ -2,11 +2,11 @@
 // through the shared content client, one reprompt when the lint fails, and
 // the one-in-five product rotation read off the saved posts.
 
-import { createContentMessage, CONTENT_MODEL, CONTENT_MAX_TOKENS_LONG, CONTENT_THINKING, EFFORT_MEDIUM } from "./anthropic";
+import { createContentMessage, CONTENT_MODEL, CONTENT_MAX_TOKENS_LONG, CONTENT_THINKING, DRAFT_MAX_TOKENS_SHORT, DRAFT_MODEL, DRAFT_THINKING, EFFORT_MEDIUM } from "./anthropic";
 import { parseModelJson } from "./model-json";
 import { getCarousels } from "./kv";
 import {
-  LW_CAPTION_END, LW_COLUMN_LABEL, LW_COLUMN_TEMPLATES, LW_DEMO_POSTS, LW_TYPE_TEMPLATES,
+  LW_CAPTION_END, LW_COLUMNS, LW_COLUMN_LABEL, LW_COLUMN_TEMPLATES, LW_DEMO_POSTS, LW_TYPE_TEMPLATES,
   LwPostSchema, lintLeWeekend, type LwColumn, type LwCover, type LwPost,
 } from "./le-weekend";
 
@@ -115,6 +115,37 @@ async function draft(req: LwRequest, allowed: boolean, violations?: string[]): P
     throw new Error(`Invalid response shape: ${parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   }
   return parsed.data;
+}
+
+/** Column and slide count for a topic when the studio leaves them on auto.
+ *  The cover comes from the grid rhythm, and a navy slot can only be courrier. */
+export async function pickLayout(topic: string, cover: LwCover, column?: LwColumn): Promise<{ column: LwColumn; slideCount: number }> {
+  const fallback = (c: LwColumn) => ({ column: c, slideCount: cover === "photo" ? 2 : 1 });
+  if (cover === "navy") return fallback("courrier");
+  const choices = LW_COLUMNS.filter((c) => c !== "courrier" && (!column || c === column));
+  try {
+    const msg = await createContentMessage({
+      model: DRAFT_MODEL,
+      max_tokens: DRAFT_MAX_TOKENS_SHORT,
+      thinking: DRAFT_THINKING,
+      messages: [{ role: "user", content: `Pick the column of "Le week-end", a French weekend magazine's sleep column, that fits this topic best: "${topic}".
+Columns:
+- chronique: a short essay on one mechanism, optionally with one curve over time, or one striking number.
+- lexique: a dictionary entry for one French word that names the idea.
+- rituel: an evening or morning routine, essay pages plus a list of dos and don'ts.
+- regles: four dos and four don'ts, nothing else.
+Allowed: ${choices.join(", ")}.
+Slides: 1 to 4 pages. ${cover === "photo" ? "Slide 1 is a photograph, so at least 2." : ""} Use more pages only when the topic needs them.
+Return JSON only: { "column": "...", "slideCount": n }` }],
+    });
+    const json = parseModelJson(msg, "le week-end layout") as { column?: string; slideCount?: number };
+    const picked = choices.find((c) => c === json.column) ?? choices[0];
+    const min = cover === "photo" ? 2 : 1;
+    return { column: picked, slideCount: Math.max(min, Math.min(4, Math.round(Number(json.slideCount) || min))) };
+  } catch (err) {
+    console.warn("[generate/le_week_end] layout pick failed:", err instanceof Error ? err.message : err);
+    return fallback(choices[0]);
+  }
 }
 
 /** One draft, linted; one reprompt with the violations; what still fails rides along. */

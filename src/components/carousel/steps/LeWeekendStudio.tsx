@@ -14,7 +14,7 @@ import { compositeSlideWithImages } from "@/lib/slide-export";
 import { saveFiles } from "@/lib/save-files";
 import { readJsonResponse } from "@/lib/fetch-json";
 import {
-  LW_COLORS, LW_COLUMNS, LW_COLUMN_LABEL, LW_DEMO_POSTS, coversForColumn, exportFilename, frenchDate,
+  LW_COLORS, LW_COLUMNS, LW_COLUMN_LABEL, LW_COVERS, LW_DEMO_POSTS, coversForColumn, exportFilename, frenchDate,
   lintLeWeekend, nextWeekendDate, photoToneFor, planGrid, topLuminance,
   type LwColumn, type LwCover, type LwPost, type LwSlide,
 } from "@/lib/le-weekend";
@@ -50,16 +50,21 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
   const apiBase = useCarouselApi();
   const [post, setPostState] = useState<LwPost | null>(initialPost ?? null);
   const setPost = (p: LwPost | null) => { setPostState(p); onChange?.(p); };
-  const [column, setColumn] = useState<LwColumn>(initialPost?.column ?? "chronique");
+  // Everything starts filled: column and slides on auto (picked for the topic
+  // on the server), the cover from the grid rhythm, date and folio from memory.
+  const [column, setColumn] = useState<LwColumn | "auto">(initialPost?.column ?? "auto");
   const [cover, setCover] = useState<LwCover>(initialPost?.cover ?? "photo");
   const [dateFr, setDateFr] = useState(initialPost?.dateFr ?? frenchDate(nextWeekendDate()));
   const [folio, setFolio] = useState(initialPost?.folio ?? 1);
-  const [slideCount, setSlideCount] = useState(initialPost?.slides.length ?? 2);
+  const [slideCount, setSlideCount] = useState<number | "auto">(initialPost?.slides.length ?? "auto");
   const [memory, setMemory] = useState<Memory | null>(null);
   useEffect(() => {
     const m = readMemory();
     setMemory(m);
-    if (!initialPost && m) setFolio(m.nextFolio);
+    if (!initialPost && m) {
+      setFolio(m.nextFolio);
+      setCover(planGrid(m.lastCover, 1, m.lastNonPhoto)[0]);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [busy, setBusy] = useState<null | "copy" | "image" | "export" | "save">(null);
@@ -70,6 +75,7 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
 
   // Courrier is the navy page and nothing else is.
   useEffect(() => {
+    if (column === "auto") return;
     const allowed = coversForColumn(column);
     if (!allowed.includes(cover)) setCover(allowed[0]);
   }, [column]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -86,6 +92,8 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
       });
       const data = await readJsonResponse<{ post?: LwPost; error?: string }>(res, "generation");
       if (!res.ok || !data.post) throw new Error(data.error ?? "Generation failed");
+      // Show what auto picked; "Write again" keeps it unless set back to Auto.
+      setColumn(data.post.column); setCover(data.post.cover); setSlideCount(data.post.slides.length);
       setPost(data.post);
       setSavedId(null);
     } catch (err) {
@@ -259,7 +267,7 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
   const panel: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, marginBottom: 16 };
   const field: CSSProperties = { width: "100%", fontFamily: "inherit", fontSize: 13, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", boxSizing: "border-box" };
   const btn = (primary = false): CSSProperties => ({ background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "var(--ui-on-ink)" : "var(--text)", border: primary ? "none" : "1.5px solid var(--border)", borderRadius: 8, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" });
-  const covers = coversForColumn(column);
+  const covers: LwCover[] = column === "auto" ? [...LW_COVERS] : coversForColumn(column);
 
   return (
     <div>
@@ -272,17 +280,21 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
         <div style={panel}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
             <label><span style={label}>Column</span>
-              <select style={field} value={column} onChange={(e) => setColumn(e.target.value as LwColumn)}>
+              <select style={field} value={column} onChange={(e) => setColumn(e.target.value as LwColumn | "auto")}>
+                <option value="auto">Auto (fits the topic)</option>
                 {LW_COLUMNS.map((c) => <option key={c} value={c}>{LW_COLUMN_LABEL[c]}</option>)}
               </select>
             </label>
             <label><span style={label}>Cover</span>
               <select style={field} value={cover} onChange={(e) => setCover(e.target.value as LwCover)}>
-                {covers.map((c) => <option key={c} value={c}>{c}</option>)}
+                {covers.map((c) => <option key={c} value={c}>{c === "navy" && column === "auto" ? "navy (courrier)" : c}</option>)}
               </select>
             </label>
             <label><span style={label}>Slides</span>
-              <input style={field} type="number" min={1} max={4} value={slideCount} onChange={(e) => setSlideCount(Math.max(1, Math.min(4, Number(e.target.value) || 1)))} />
+              <select style={field} value={slideCount} onChange={(e) => setSlideCount(e.target.value === "auto" ? "auto" : Number(e.target.value))}>
+                <option value="auto">Auto</option>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
             </label>
             <label><span style={label}>Date</span>
               <input style={field} value={dateFr} onChange={(e) => setDateFr(e.target.value)} />
