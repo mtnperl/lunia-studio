@@ -2,15 +2,16 @@
 // through the shared content client, one reprompt when the lint fails, and
 // the one-in-five product rotation read off the saved posts.
 
-import { createContentMessage, CONTENT_MODEL, CONTENT_MAX_TOKENS_LONG, CONTENT_THINKING, DRAFT_MAX_TOKENS_SHORT, DRAFT_MODEL, DRAFT_THINKING, EFFORT_MEDIUM } from "./anthropic";
+import { createContentMessage, CONTENT_MODEL, CONTENT_MAX_TOKENS_LONG, CONTENT_THINKING, CRAFT_MODEL, EFFORT_LIGHT, EFFORT_MEDIUM, MIN_MAX_TOKENS_WITH_THINKING } from "./anthropic";
+import { fetchIgGrid } from "./instagram-grid";
 import { parseModelJson } from "./model-json";
 import { getCarousels } from "./kv";
 import {
-  LW_CAPTION_END, LW_COLUMNS, LW_COLUMN_LABEL, LW_COLUMN_TEMPLATES, LW_DEMO_POSTS, LW_TYPE_TEMPLATES,
-  LwPostSchema, lintLeWeekend, type LwColumn, type LwCover, type LwPost,
+  LW_CAPTION_END, LW_COLUMNS, LW_COVERS, LW_COLUMN_LABEL, LW_COLUMN_TEMPLATES, LW_DEMO_POSTS, LW_TYPE_TEMPLATES,
+  LwPostSchema, lintLeWeekend, planGrid, type LwColumn, type LwCover, type LwPost,
 } from "./le-weekend";
 
-export type LwRequest = { topic: string; column: LwColumn; cover: LwCover; dateFr: string; folio: number; slideCount: number };
+export type LwRequest = { topic: string; column: LwColumn; cover: LwCover; dateFr: string; folio: number; slideCount: number; photoDirection?: string };
 
 export const LE_WEEKEND_SYSTEM = `You write "Le week-end", the sleep column of a well-edited French weekend magazine, for Lunia Life (a sleep supplement brand). The copy is in English. Only the section labels are French: La chronique, Le lexique, Le courrier, Le rituel, Les règles, Chère Lunia, La réponse, Ce qui se fait, Ce qui ne se fait pas.
 
@@ -69,7 +70,7 @@ ${slidePlan(req)}
 Template fields:
 ${templates.map((t) => `- ${TEMPLATE_SPEC[t]}`).join("\n")}
 
-${req.cover === "photo" ? IMAGE_RULES : `No imagePrompt: this post has no photograph.`}
+${req.cover === "photo" ? IMAGE_RULES + (req.photoDirection ? `\nFor this photograph, so it sits well in the Instagram grid: ${req.photoDirection}` : "") : `No imagePrompt: this post has no photograph.`}
 
 ${productAllowed ? "The product may appear this time, softly, in the caption or a lexique definition, if it fits. It does not have to." : "Do not mention the product or Lunia Restore anywhere in this post: it appeared in one of the last four posts."}
 
@@ -117,34 +118,97 @@ async function draft(req: LwRequest, allowed: boolean, violations?: string[]): P
   return parsed.data;
 }
 
-/** Column and slide count for a topic when the studio leaves them on auto.
- *  The cover comes from the grid rhythm, and a navy slot can only be courrier. */
-export async function pickLayout(topic: string, cover: LwCover, column?: LwColumn): Promise<{ column: LwColumn; slideCount: number }> {
-  const fallback = (c: LwColumn) => ({ column: c, slideCount: cover === "photo" ? 2 : 1 });
-  if (cover === "navy") return fallback("courrier");
-  const choices = LW_COLUMNS.filter((c) => c !== "courrier" && (!column || c === column));
-  try {
-    const msg = await createContentMessage({
-      model: DRAFT_MODEL,
-      max_tokens: DRAFT_MAX_TOKENS_SHORT,
-      thinking: DRAFT_THINKING,
-      messages: [{ role: "user", content: `Pick the column of "Le week-end", a French weekend magazine's sleep column, that fits this topic best: "${topic}".
-Columns:
+export type LwGridSource = "instagram" | "screenshot" | "history";
+export interface LwPlan { cover: LwCover; column: LwColumn; slideCount: number; reason: string; photoDirection?: string; source: LwGridSource; sourceNote?: string }
+
+/** Cover rhythm from the saved posts when there is no grid to look at. */
+async function historyCover(): Promise<LwCover> {
+  const all = await getCarousels().catch(() => []);
+  const saved = all
+    .filter((c) => c.format === "le_week_end" && c.leWeekendContent)
+    .sort((a, b) => (b.savedAt ?? "").localeCompare(a.savedAt ?? ""))
+    .map((c) => c.leWeekendContent!.cover);
+  const lastNonPhoto = saved.find((c): c is "ivory" | "navy" => c !== "photo");
+  return planGrid(saved[0] ?? null, 1, lastNonPhoto)[0];
+}
+
+const COLUMN_GUIDE = `Columns:
 - chronique: a short essay on one mechanism, optionally with one curve over time, or one striking number.
 - lexique: a dictionary entry for one French word that names the idea.
 - rituel: an evening or morning routine, essay pages plus a list of dos and don'ts.
 - regles: four dos and four don'ts, nothing else.
-Allowed: ${choices.join(", ")}.
-Slides: 1 to 4 pages. ${cover === "photo" ? "Slide 1 is a photograph, so at least 2." : ""} Use more pages only when the topic needs them.
-Return JSON only: { "column": "...", "slideCount": n }` }],
-    });
-    const json = parseModelJson(msg, "le week-end layout") as { column?: string; slideCount?: number };
-    const picked = choices.find((c) => c === json.column) ?? choices[0];
-    const min = cover === "photo" ? 2 : 1;
-    return { column: picked, slideCount: Math.max(min, Math.min(4, Math.round(Number(json.slideCount) || min))) };
+- courrier: a reader's letter and the reply. Only ever on the navy cover.`;
+
+/** Asked values win; a navy cover is always courrier, and courrier is only navy. */
+export function settlePlan(
+  req: { cover?: LwCover; column?: LwColumn; slideCount?: number },
+  p: { cover?: string; column?: string; slideCount?: number },
+  fallbackCover?: LwCover,
+): { cover: LwCover; column: LwColumn; slideCount: number } {
+  let c: LwCover = req.cover ?? ((LW_COVERS as readonly string[]).includes(p.cover ?? "") ? (p.cover as LwCover) : fallbackCover ?? "photo");
+  let col: LwColumn = req.column ?? ((LW_COLUMNS as readonly string[]).includes(p.column ?? "") ? (p.column as LwColumn) : "chronique");
+  if (c === "navy") col = "courrier";
+  else if (col === "courrier") { if (req.column) c = "navy"; else col = "chronique"; }
+  const min = c === "photo" ? 2 : 1;
+  const n = req.slideCount ?? Math.round(Number(p.slideCount) || min);
+  return { cover: c, column: col, slideCount: Math.max(min, Math.min(4, n)) };
+}
+
+/**
+ * Everything the studio leaves on auto: the cover (from the live grid when it
+ * can be seen), the column and the slide count (from the topic), and a note
+ * on the photograph that would sit well in the grid. Asked values are kept.
+ */
+export async function planPost(req: { topic: string; cover?: LwCover; column?: LwColumn; slideCount?: number; gridImage?: string }): Promise<LwPlan> {
+  let grid: string | undefined;
+  let source: LwGridSource = "history";
+  let sourceNote: string | undefined;
+  try {
+    grid = (await fetchIgGrid(9)).screenshot;
+    source = "instagram";
   } catch (err) {
-    console.warn("[generate/le_week_end] layout pick failed:", err instanceof Error ? err.message : err);
-    return fallback(choices[0]);
+    sourceNote = err instanceof Error ? err.message : String(err);
+    if (req.gridImage?.startsWith("data:image/")) { grid = req.gridImage; source = "screenshot"; }
+  }
+  const cover = req.cover ?? (grid ? undefined : await historyCover());
+
+  const settle = (p: { cover?: string; column?: string; slideCount?: number }) => settlePlan(req, p, cover);
+
+  const fixed = [req.cover && `cover: ${req.cover}`, req.column && `column: ${req.column}`, req.slideCount && `slides: ${req.slideCount}`].filter(Boolean).join(", ");
+  const ask = `Topic for the next post of "Le week-end", the sleep column of a French weekend magazine on Instagram: "${req.topic}".
+${COLUMN_GUIDE}
+Covers: "photo" (full-bleed interior reportage photograph, warm and lived-in), "ivory" (cream page, navy Bodoni type), "navy" (deep navy page, ivory type; courrier only).
+Slides: 1 to 4 pages; a photo cover needs at least 2. More pages only when the topic needs them.
+${fixed ? `Already decided, keep these: ${fixed}.` : ""}`;
+
+  const content: ({ type: "text"; text: string } | { type: "image"; source: { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/webp"; data: string } })[] = [];
+  if (grid) {
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(grid);
+    if (m) content.push({ type: "image", source: { type: "base64", media_type: m[1] as "image/jpeg", data: m[2] } });
+  }
+  content.push({ type: "text", text: grid
+    ? `${ask}
+
+The image is our Instagram profile grid as it stands, newest post top-left, three across. The new post lands top-left and pushes everything one place along. Choose so the grid looks edited: alternate photographs with type pages, never two type pages of the same colour side by side, balance light against dark and warm against cool across the top row, and do not repeat the subject or palette of the nearest photograph. If it is a photo cover, write photoDirection: one or two sentences on light, palette, subject and framing for the new photograph so it sits well beside its neighbours (still a lived-in Paris interior or still life, no people). reason: one plain sentence for the editor on why this cover fits.
+Return JSON only: { "cover": "...", "column": "...", "slideCount": n, "reason": "...", "photoDirection": "..." }`
+    : `${ask}
+The cover is ${cover}. Pick the column and slide count. reason: one plain sentence for the editor.
+Return JSON only: { "column": "...", "slideCount": n, "reason": "..." }` });
+
+  try {
+    const msg = await createContentMessage({
+      model: CRAFT_MODEL,
+      max_tokens: MIN_MAX_TOKENS_WITH_THINKING,
+      thinking: CONTENT_THINKING,
+      output_config: { effort: EFFORT_LIGHT },
+      messages: [{ role: "user", content }],
+    });
+    const json = parseModelJson(msg, "le week-end plan") as { cover?: string; column?: string; slideCount?: number; reason?: string; photoDirection?: string };
+    const s = settle(json);
+    return { ...s, reason: json.reason?.trim() || "Picked for the topic.", photoDirection: s.cover === "photo" ? json.photoDirection?.trim() || undefined : undefined, source, sourceNote };
+  } catch (err) {
+    console.warn("[generate/le_week_end] plan failed:", err instanceof Error ? err.message : err);
+    return { ...settle({}), reason: "The planner failed, so the default layout was used.", source, sourceNote };
   }
 }
 

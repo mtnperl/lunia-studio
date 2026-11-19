@@ -9,7 +9,7 @@ import { STRUCTURES, VALUE_MOVE_TEXT } from "@/lib/carousel-structures";
 import { readKeptCover, keptCoverBlock, applyKeptCover, type KeptCover } from "@/lib/carousel-recast";
 import { GENERATE_CAROUSEL_PROMPT, GENERATE_DID_YOU_KNOW_PROMPT, GENERATE_ENGAGEMENT_CAROUSEL_PROMPT, GENERATE_PRIMER_PROMPT } from "@/lib/carousel-prompts";
 import { lintPrimer } from "@/lib/two-slide-lint";
-import { generateLeWeekend, pickLayout } from "@/lib/le-weekend-generate";
+import { generateLeWeekend, planPost } from "@/lib/le-weekend-generate";
 import { LW_COLUMNS, LW_COVERS, coversForColumn, type LwColumn, type LwCover } from "@/lib/le-weekend";
 import { PrimerVariantsResponseSchema, type PrimerContent } from "@/lib/types";
 import { getCarouselRowById, updateCarouselRow } from "@/lib/kv";
@@ -121,18 +121,25 @@ export async function POST(req: Request) {
       return await generateTwoSlide(format, topic, count);
     }
     if (format === "le_week_end") {
-      // "auto" (or missing) column and slides are picked for the topic; the
-      // cover is the grid's next slot, and a navy slot makes it courrier.
+      // Anything left on "auto" (or missing) is planned: the cover from the
+      // live Instagram grid (or a pasted screenshot of it), the column and
+      // slide count from the topic. What the editor set is kept.
       const askedColumn: LwColumn | undefined = (LW_COLUMNS as readonly string[]).includes(body.column) ? body.column : undefined;
-      const askedCover: LwCover = (LW_COVERS as readonly string[]).includes(body.cover) ? body.cover : "photo";
-      const cover = !askedColumn || coversForColumn(askedColumn).includes(askedCover) ? askedCover : coversForColumn(askedColumn)[0];
-      const folio = Math.max(1, Math.min(9999, Math.round(Number(body.folio) || 1)));
+      const askedCover: LwCover | undefined = (LW_COVERS as readonly string[]).includes(body.cover) ? body.cover : undefined;
       const askedSlides = Math.round(Number(body.slideCount));
+      const folio = Math.max(1, Math.min(9999, Math.round(Number(body.folio) || 1)));
       const dateFr = typeof body.dateFr === "string" && body.dateFr.trim() ? body.dateFr.trim().slice(0, 40) : "Samedi";
+      const gridImage = typeof body.gridImage === "string" && body.gridImage.length < 3_000_000 ? body.gridImage : undefined;
       try {
-        const picked = askedColumn && askedSlides >= 1 ? { column: askedColumn } : await pickLayout(topic.trim(), cover, askedColumn);
-        const layout = askedSlides >= 1 ? { ...picked, slideCount: Math.min(4, askedSlides) } : picked as { column: LwColumn; slideCount: number };
-        return Response.json({ post: await generateLeWeekend({ topic: topic.trim(), cover, dateFr, folio, ...layout }) });
+        const plan = await planPost({
+          topic: topic.trim(),
+          column: askedColumn,
+          cover: askedCover && askedColumn && !coversForColumn(askedColumn).includes(askedCover) ? coversForColumn(askedColumn)[0] : askedCover,
+          slideCount: askedSlides >= 1 ? Math.min(4, askedSlides) : undefined,
+          gridImage,
+        });
+        const post = await generateLeWeekend({ topic: topic.trim(), dateFr, folio, column: plan.column, cover: plan.cover, slideCount: plan.slideCount, photoDirection: plan.photoDirection });
+        return Response.json({ post, plan });
       } catch (err) {
         console.error("[generate/le_week_end] failed:", err instanceof Error ? err.message : err);
         return Response.json({ error: describeGenerateError(err, "le week-end generation") }, { status: 500 });

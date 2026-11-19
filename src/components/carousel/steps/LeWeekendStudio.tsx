@@ -9,18 +9,20 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { LeWeekendSlide } from "@/components/carousel/slides/LeWeekendSlides";
+import type { LwPlan } from "@/lib/le-weekend-generate";
 import { useCarouselApi } from "@/components/carousel/api-context";
 import { compositeSlideWithImages } from "@/lib/slide-export";
 import { saveFiles } from "@/lib/save-files";
 import { readJsonResponse } from "@/lib/fetch-json";
 import {
-  LW_COLORS, LW_COLUMNS, LW_COLUMN_LABEL, LW_COVERS, LW_DEMO_POSTS, coversForColumn, exportFilename, frenchDate,
-  lintLeWeekend, nextWeekendDate, photoToneFor, planGrid, topLuminance,
+  LW_COLUMNS, LW_COLUMN_LABEL, LW_COVERS, LW_DEMO_POSTS, coversForColumn, exportFilename, frenchDate,
+  lintLeWeekend, nextWeekendDate, photoToneFor, topLuminance,
   type LwColumn, type LwCover, type LwPost, type LwSlide,
 } from "@/lib/le-weekend";
 
 const PREVIEW_SCALE = 0.36;
 const MEMORY_KEY = "lunia:leweekend:last";
+const GRID_KEY = "lunia:leweekend:grid";
 
 type Memory = { nextFolio: number; lastCover: LwCover; lastNonPhoto?: "ivory" | "navy" };
 function readMemory(): Memory | null {
@@ -50,21 +52,17 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
   const apiBase = useCarouselApi();
   const [post, setPostState] = useState<LwPost | null>(initialPost ?? null);
   const setPost = (p: LwPost | null) => { setPostState(p); onChange?.(p); };
-  // Everything starts filled: column and slides on auto (picked for the topic
-  // on the server), the cover from the grid rhythm, date and folio from memory.
+  // Everything starts on auto: the server reads the Instagram grid for the
+  // cover and picks the column and slide count for the topic; date and folio
+  // come from memory. Anything set by hand is kept.
   const [column, setColumn] = useState<LwColumn | "auto">(initialPost?.column ?? "auto");
-  const [cover, setCover] = useState<LwCover>(initialPost?.cover ?? "photo");
+  const [cover, setCover] = useState<LwCover | "auto">(initialPost?.cover ?? "auto");
   const [dateFr, setDateFr] = useState(initialPost?.dateFr ?? frenchDate(nextWeekendDate()));
   const [folio, setFolio] = useState(initialPost?.folio ?? 1);
   const [slideCount, setSlideCount] = useState<number | "auto">(initialPost?.slides.length ?? "auto");
-  const [memory, setMemory] = useState<Memory | null>(null);
   useEffect(() => {
     const m = readMemory();
-    setMemory(m);
-    if (!initialPost && m) {
-      setFolio(m.nextFolio);
-      setCover(planGrid(m.lastCover, 1, m.lastNonPhoto)[0]);
-    }
+    if (!initialPost && m) setFolio(m.nextFolio);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [busy, setBusy] = useState<null | "copy" | "image" | "export" | "save">(null);
@@ -75,25 +73,65 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
 
   // Courrier is the navy page and nothing else is.
   useEffect(() => {
-    if (column === "auto") return;
+    if (column === "auto" || cover === "auto") return;
     const allowed = coversForColumn(column);
     if (!allowed.includes(cover)) setCover(allowed[0]);
   }, [column]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── The grid ──────────────────────────────────────────────────────────────
+  // The live grid when the Meta token can read Instagram; otherwise the last
+  // screenshot pasted here, kept in this browser until a new one replaces it.
+  const [ig, setIg] = useState<{ username?: string; thumbs?: string[]; error?: string } | null>(null);
+  const [pastedGrid, setPastedGrid] = useState<string | null>(null);
+  const [plan, setPlan] = useState<LwPlan | null>(null);
+  useEffect(() => {
+    try { setPastedGrid(localStorage.getItem(GRID_KEY)); } catch { /* private window */ }
+    fetch(`${apiBase}/le-weekend-grid`).then((r) => r.json()).then(setIg).catch(() => setIg({ error: "Could not reach the grid route" }));
+  }, [apiBase]);
+  async function takeGridScreenshot(file: File) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error("Could not read that screenshot")); i.src = url; });
+      const w = Math.min(720, img.naturalWidth), h = Math.round(img.naturalHeight * (w / img.naturalWidth));
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      const data = cv.toDataURL("image/jpeg", 0.8);
+      setPastedGrid(data);
+      try { localStorage.setItem(GRID_KEY, data); } catch { /* too big or private: kept for this visit only */ }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that screenshot");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  useEffect(() => {
+    if (ig?.thumbs?.length) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const f = Array.from(e.clipboardData?.files ?? []).find((x) => x.type.startsWith("image/"));
+      if (f) { e.preventDefault(); takeGridScreenshot(f); }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [ig]);
+
   // ── Generation ────────────────────────────────────────────────────────────
+  // One click: plan the post against the grid, write it, and, for a photo
+  // cover, generate the photograph straight after.
   async function generate() {
     setError(null);
     setBusy("copy");
+    let written: LwPost | null = null;
     try {
       const res = await fetch(`${apiBase}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format: "le_week_end", topic, column, cover, dateFr, folio, slideCount }),
+        body: JSON.stringify({ format: "le_week_end", topic, column, cover, dateFr, folio, slideCount, gridImage: ig?.thumbs?.length ? undefined : pastedGrid ?? undefined }),
       });
-      const data = await readJsonResponse<{ post?: LwPost; error?: string }>(res, "generation");
+      const data = await readJsonResponse<{ post?: LwPost; plan?: LwPlan; error?: string }>(res, "generation");
       if (!res.ok || !data.post) throw new Error(data.error ?? "Generation failed");
-      // Show what auto picked; "Write again" keeps it unless set back to Auto.
-      setColumn(data.post.column); setCover(data.post.cover); setSlideCount(data.post.slides.length);
+      written = data.post;
+      setPlan(data.plan ?? null);
       setPost(data.post);
       setSavedId(null);
     } catch (err) {
@@ -101,11 +139,13 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
     } finally {
       setBusy(null);
     }
+    if (written?.cover === "photo" && written.imagePrompt?.trim()) await generateImage(written);
   }
 
   function loadDemo(i: number) {
     const d = LW_DEMO_POSTS[i];
-    setColumn(d.column); setCover(d.cover); setDateFr(d.dateFr); setFolio(d.folio); setSlideCount(d.slides.length);
+    setDateFr(d.dateFr); setFolio(d.folio);
+    setPlan(null);
     setPost(structuredClone(d));
     setSavedId(null);
   }
@@ -133,14 +173,17 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
       ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 0, 0, w, h);
       try {
         const tone = photoToneFor(topLuminance(ctx.getImageData(0, 0, w, h).data, w, h));
-        setPostState((p) => (p && p.photoTone !== tone ? { ...p, photoTone: tone } : p));
+        const footRows = Math.round(h * 0.15);
+        const foot = photoToneFor(topLuminance(ctx.getImageData(0, h - footRows, w, footRows).data, w, footRows, 1));
+        setPostState((p) => (p && (p.photoTone !== tone || p.photoFootTone !== foot) ? { ...p, photoTone: tone, photoFootTone: foot } : p));
       } catch (err) { console.warn("[le-weekend] could not read the photo", err); }
     };
     img.src = imageSrc;
     return () => { alive = false; };
   }, [imageSrc]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function generateImage() {
+  async function generateImage(target: LwPost | null = post) {
+    const post = target;
     if (!post?.imagePrompt?.trim()) return;
     setError(null);
     setBusy("image");
@@ -154,7 +197,7 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
       });
       const data = await readJsonResponse<{ url?: string; error?: string }>(res, "image");
       if (!res.ok || !data.url) throw new Error(data.error ?? "Image generation failed");
-      setPost({ ...post, imageUrl: data.url, photoTone: undefined });
+      setPost({ ...post, imageUrl: data.url, photoTone: undefined, photoFootTone: undefined });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Image generation failed");
     } finally {
@@ -173,7 +216,7 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
       const scale = Math.max(1080 / img.naturalWidth, 1350 / img.naturalHeight);
       const sw = 1080 / scale, sh = 1350 / scale;
       cv.getContext("2d")!.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, 0, 0, 1080, 1350);
-      setPost({ ...post, imageUrl: cv.toDataURL("image/jpeg", 0.9), photoTone: undefined });
+      setPost({ ...post, imageUrl: cv.toDataURL("image/jpeg", 0.9), photoTone: undefined, photoFootTone: undefined });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -252,7 +295,6 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
       const data = await readJsonResponse<{ id?: string; error?: string; imageUrl?: string }>(res, "save");
       if (!res.ok || !data.id) throw new Error(data.error ?? "Save failed");
       writeMemory(post);
-      setMemory(readMemory());
       setSavedId(data.id);
       onSaved?.(data.id);
     } catch (err) {
@@ -268,6 +310,7 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
   const field: CSSProperties = { width: "100%", fontFamily: "inherit", fontSize: 13, padding: "6px 8px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)", boxSizing: "border-box" };
   const btn = (primary = false): CSSProperties => ({ background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "var(--ui-on-ink)" : "var(--text)", border: primary ? "none" : "1.5px solid var(--border)", borderRadius: 8, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" });
   const covers: LwCover[] = column === "auto" ? [...LW_COVERS] : coversForColumn(column);
+  const busyLabel = busy === "copy" ? "Reading the grid, writing..." : busy === "image" ? "Generating the photo..." : null;
 
   return (
     <div>
@@ -286,7 +329,8 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
               </select>
             </label>
             <label><span style={label}>Cover</span>
-              <select style={field} value={cover} onChange={(e) => setCover(e.target.value as LwCover)}>
+              <select style={field} value={cover} onChange={(e) => setCover(e.target.value as LwCover | "auto")}>
+                <option value="auto">Auto (fits the grid)</option>
                 {covers.map((c) => <option key={c} value={c}>{c === "navy" && column === "auto" ? "navy (courrier)" : c}</option>)}
               </select>
             </label>
@@ -304,13 +348,12 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
             </label>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-            <button style={btn(true)} disabled={!!busy || !topic} onClick={generate}>{busy === "copy" ? "Writing..." : post ? "Write again" : "Write the post"}</button>
+            <button style={btn(true)} disabled={!!busy || !topic} onClick={generate}>{busyLabel ?? (post ? "Write again" : "Write the post")}</button>
             <button style={btn()} disabled={!!busy} onClick={() => loadDemo(0)}>Demo: lexique</button>
             <button style={btn()} disabled={!!busy} onClick={() => loadDemo(1)}>Demo: courrier</button>
-            {post && cover !== post.cover && <span style={{ fontSize: 12, color: "var(--muted)" }}>Cover changes apply on the next write.</span>}
           </div>
         </div>
-        <GridPlanner key={memory?.lastCover ?? "none"} memory={memory} onUse={(c) => { if (covers.includes(c)) setCover(c); }} />
+        <GridFit ig={ig} pasted={pastedGrid} plan={plan} post={post} imageSrc={imageSrc} onScreenshot={takeGridScreenshot} />
       </div>
 
       {error && <div style={{ fontSize: 13, color: "var(--error)", margin: "0 0 16px" }}>{error}</div>}
@@ -339,15 +382,15 @@ export default function LeWeekendStudio({ topic, initialPost, initialSavedId, on
 
           {post.cover === "photo" && (
             <div style={panel}>
-              <span style={label}>Photo prompt (edit, then approve: each image costs credits)</span>
+              <span style={label}>Photo prompt (generated with the post; edit and generate again if it misses)</span>
               <textarea style={{ ...field, minHeight: 110 }} value={post.imagePrompt ?? ""} onChange={(e) => setPost({ ...post, imagePrompt: e.target.value })} />
               <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <button style={btn(true)} disabled={!!busy || !post.imagePrompt?.trim()} onClick={generateImage}>{busy === "image" ? "Generating..." : post.imageUrl ? "Approve and generate again" : "Approve and generate"}</button>
+                <button style={btn(true)} disabled={!!busy || !post.imagePrompt?.trim()} onClick={() => generateImage()}>{busy === "image" ? "Generating..." : post.imageUrl ? "Generate again" : "Generate the photo"}</button>
                 <label style={{ ...btn(), display: "inline-block" }}>
                   Upload a photo
                   <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ""; }} />
                 </label>
-                {post.imageUrl && <span style={{ fontSize: 12, color: "var(--muted)" }}>Headline set in {post.photoTone ?? "..."}, read from the top of the photo.</span>}
+                {post.imageUrl && <span style={{ fontSize: 12, color: "var(--muted)" }}>Headline set in {post.photoTone ?? "..."}, footer in {post.photoFootTone ?? "..."}, read from the photo.</span>}
               </div>
             </div>
           )}
@@ -435,36 +478,64 @@ function SlideFields({ index, slide, onChange, fieldStyle }: { index: number; sl
   );
 }
 
-/** The next posts' covers, newest first in three columns, like the profile grid. */
-function GridPlanner({ memory, onUse }: { memory: Memory | null; onUse: (c: LwCover) => void }) {
-  const [last, setLast] = useState<LwCover | "none">(memory?.lastCover ?? "none");
-  const [count, setCount] = useState(9);
-  const plan = planGrid(last === "none" ? null : last, count, memory?.lastNonPhoto);
-  const tile: Record<LwCover, CSSProperties> = {
-    photo: { background: LW_COLORS.slate, color: LW_COLORS.ivory },
-    ivory: { background: LW_COLORS.ivory, color: LW_COLORS.deepNavy, boxShadow: "inset 0 0 0 1px var(--border)" },
-    navy: { background: LW_COLORS.richNavy, color: LW_COLORS.ivory },
-  };
-  const ctl: CSSProperties = { fontFamily: "inherit", fontSize: 12, padding: "4px 6px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", color: "var(--text)" };
+/**
+ * The Instagram grid with the new post dropped into the top-left slot, and
+ * the planner's reason. The live grid when the token can read Instagram;
+ * otherwise a pasted screenshot, which is asked for once and remembered.
+ */
+function GridFit({ ig, pasted, plan, post, imageSrc, onScreenshot }: {
+  ig: { username?: string; thumbs?: string[]; error?: string } | null;
+  pasted: string | null; plan: LwPlan | null; post: LwPost | null; imageSrc?: string;
+  onScreenshot: (f: File) => void;
+}) {
+  const TILE = 88;
+  const live = ig?.thumbs?.length ? ig.thumbs : null;
+  const head: CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 8 };
+  const note: CSSProperties = { fontSize: 12, color: "var(--muted)", lineHeight: 1.45 };
+  const cover = post ? (
+    <div style={{ width: TILE, height: TILE * 1.25, overflow: "hidden", outline: "2px solid var(--accent)", outlineOffset: -2 }}>
+      <LeWeekendSlide post={post} index={0} scale={TILE / 1080} imageSrc={imageSrc} />
+    </div>
+  ) : null;
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "var(--ui-tracking-caps)", marginBottom: 8 }}>Grid rhythm</div>
-      <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, marginBottom: 10, flexWrap: "wrap" }}>
-        Last post
-        <select style={ctl} value={last} onChange={(e) => setLast(e.target.value as LwCover | "none")}>
-          <option value="none">none yet</option><option value="photo">photo</option><option value="ivory">ivory</option><option value="navy">navy</option>
-        </select>
-        plan
-        <input style={{ ...ctl, width: 48 }} type="number" min={1} max={30} value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 3 }}>
-        {plan.map((c, i) => ({ c, n: i + 1 })).reverse().map(({ c, n }) => (
-          <div key={n} title={`Post ${n}: ${c}`} style={{ ...tile[c], aspectRatio: "4 / 5", display: "flex", alignItems: "flex-end", padding: 4, fontSize: 10, fontWeight: 600 }}>{n} · {c}</div>
-        ))}
-      </div>
-      <button onClick={() => onUse(plan[0])} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-        Use the next cover ({plan[0]})
-      </button>
+      <div style={head}>Grid fit</div>
+      {live ? (
+        <>
+          <div style={{ ...note, marginBottom: 8 }}>Live grid{ig?.username ? ` of @${ig.username}` : ""}{post ? ", with this post in front" : ""}.</div>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(3, ${TILE}px)`, gap: 2 }}>
+            {cover}
+            {live.slice(0, post ? 8 : 9).map((t, i) => <img key={i} src={t} alt="" style={{ width: TILE, height: TILE * 1.25, objectFit: "cover", display: "block" }} />)}
+          </div>
+        </>
+      ) : pasted ? (
+        <>
+          <div style={{ ...note, marginBottom: 8 }}>From your last pasted screenshot. Paste a new one any time (⌘V).</div>
+          {cover && <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>{cover}<span style={note}>goes top-left of:</span></div>}
+          <img src={pasted} alt="Instagram grid screenshot" style={{ width: "100%", display: "block", borderRadius: 4 }} />
+        </>
+      ) : (
+        <div style={note}>
+          Paste a screenshot of the Instagram profile grid here (⌘V) and the cover will be picked to fit it. Until then the cover follows the rhythm of the saved posts.
+        </div>
+      )}
+      {!live && (
+        <label style={{ ...note, display: "inline-block", marginTop: 8, color: "var(--accent)", fontWeight: 600, cursor: "pointer" }}>
+          {pasted ? "Replace screenshot" : "Upload a screenshot"}
+          <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onScreenshot(f); e.target.value = ""; }} />
+        </label>
+      )}
+      {plan && (
+        <div style={{ ...note, marginTop: 10, color: "var(--text)" }}>
+          <strong>{plan.cover} · {LW_COLUMN_LABEL[plan.column]} · {plan.slideCount} slide{plan.slideCount === 1 ? "" : "s"}.</strong> {plan.reason}
+          {plan.photoDirection && <div style={{ ...note, marginTop: 6 }}>Photo: {plan.photoDirection}</div>}
+        </div>
+      )}
+      {!live && ig?.error && (
+        <div style={{ ...note, marginTop: 10, fontSize: 11 }}>
+          Live grid off: {ig.error}. To read it automatically, give the Meta token the instagram_basic and pages_show_list permissions with the Instagram account linked to a Facebook page.
+        </div>
+      )}
     </div>
   );
 }

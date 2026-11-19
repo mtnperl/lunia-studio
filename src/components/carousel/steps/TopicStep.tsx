@@ -321,7 +321,7 @@ export default function TopicStep({ onNext, initialLook, initialFormat, initialS
           <p style={hint}>Chartbook is a frozen 2-slide format: a serif question, then one figure from five layouts (pill bars, versus bars, ranked, object pair, claim check). Every number must be one a published source reported. Generates 3 variants per topic; the Chartbook subjects are seeded for it.</p>
         )}
         {carouselFormat === "le_week_end" && (
-          <p style={hint}>Le week-end is a page from the sleep column of a French weekend magazine: pick the topic here, then the column (chronique, lexique, courrier, rituel, règles), the cover and the folio in its studio. Photo covers generate only after you approve the prompt.</p>
+          <p style={hint}>Le week-end is a page from the sleep column of a French weekend magazine. Pick the topic here; the studio picks the column, the cover to fit the Instagram grid and the slide count, writes the post and generates the photo in one go. Anything can be overridden there.</p>
         )}
         {carouselFormat === "primer" && (
           <p style={hint}>Primer is a frozen 2-slide format: a cover, then one reference slide from four layouts (numbered rows, a definition with its formula, versus columns, a creed). Generates 3 variants per topic; the Primer subjects are seeded for it.</p>
