@@ -11,10 +11,17 @@ import {
   type LwFigure, type LwPost, type LwSlide,
 } from "@/lib/le-weekend";
 
-const serif = (size: number, italic = false, weight: 400 | 500 = 400): CSSProperties => ({
-  fontFamily: LW_SERIF, fontSize: size, fontStyle: italic ? "italic" : "normal", fontWeight: weight, lineHeight: 1.1,
+// Bodoni Moda is variable on optical size. Left to itself the browser picks
+// the display cut (opsz 96) at headline sizes, whose hairlines vanish once
+// Instagram shows the page at phone width (about a third of 1080). The axis
+// is pinned to a text cut so every stroke survives that reduction, and
+// display sizes get a heavier weight for the same reason.
+const serif = (size: number, italic = false, weight?: 400 | 500 | 600): CSSProperties => ({
+  fontFamily: LW_SERIF, fontSize: size, fontStyle: italic ? "italic" : "normal", lineHeight: 1.1,
+  fontWeight: weight ?? (size >= 60 ? 500 : 400),
+  fontOpticalSizing: "none", fontVariationSettings: `"opsz" ${size >= 60 ? 14 : 11}`,
 });
-const sans = (size: number, weight: 300 | 400 | 600 = 300): CSSProperties => ({ fontFamily: LW_SANS, fontSize: size, fontWeight: weight });
+const sans = (size: number, weight: 400 | 500 | 600 = 400): CSSProperties => ({ fontFamily: LW_SANS, fontSize: size, fontWeight: weight });
 const rule = (ink: string, width: number | string = "100%"): CSSProperties => ({ width, height: 0, borderTop: `1px solid ${ink}` });
 
 type Tone = { ink: string; soft: string; ground: string; shadow?: string };
@@ -43,20 +50,20 @@ export function LeWeekendSlide({ post, index, scale = 1, imageSrc }: Props) {
   );
 }
 
-function Furniture({ post, index, tone, footerRule, children }: { post: LwPost; index: number; tone: Tone; footerRule: boolean; children: ReactNode }) {
+function Furniture({ post, index, tone, footTone, footerRule, children }: { post: LwPost; index: number; tone: Tone; footTone?: Tone; footerRule: boolean; children: ReactNode }) {
   const t: CSSProperties = { color: tone.ink, textShadow: tone.shadow };
   return (
     <div style={{ position: "absolute", inset: 0, padding: `${LW_PAD.y}px ${LW_PAD.x}px`, display: "flex", flexDirection: "column", ...t }}>
       <div style={{ ...serif(56, true), lineHeight: 1, textAlign: "center" }}>Le week-end</div>
       <div style={{ marginTop: 22, borderTop: `1px solid ${tone.ink}`, borderBottom: `1px solid ${tone.ink}`, padding: "14px 0", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "baseline" }}>
-        <span style={{ ...sans(15, 600), letterSpacing: "0.18em" }}>LUNIA LIFE</span>
-        <span style={{ ...serif(19, true), lineHeight: 1 }}>{LW_COLUMN_LABEL[post.column]}</span>
-        <span style={{ ...sans(15), justifySelf: "end" }}>{post.dateFr}</span>
+        <span style={{ ...sans(19, 600), letterSpacing: "0.16em" }}>LUNIA LIFE</span>
+        <span style={{ ...serif(26, true), lineHeight: 1 }}>{LW_COLUMN_LABEL[post.column]}</span>
+        <span style={{ ...sans(19), justifySelf: "end" }}>{post.dateFr}</span>
       </div>
       <div data-lw-fit="body" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", padding: "56px 0 40px" }}>
         {children}
       </div>
-      <div style={{ ...(footerRule ? { borderTop: `1px solid ${tone.ink}` } : {}), paddingTop: 16, display: "flex", justifyContent: "space-between", ...sans(15) }}>
+      <div style={{ ...(footerRule ? { borderTop: `1px solid ${tone.ink}` } : {}), paddingTop: 16, display: "flex", justifyContent: "space-between", ...sans(19), ...(footTone ? { color: footTone.ink, textShadow: footTone.shadow } : {}) }}>
         <span>lunialife.com</span>
         <span>p. {pageNumber(post, index)}</span>
       </div>
@@ -80,7 +87,7 @@ const centred: CSSProperties = { flex: 1, display: "flex", flexDirection: "colum
 // ─── A · chronique ───────────────────────────────────────────────────────────
 
 function Chronique({ f, tone }: { f: F<"chronique">; tone: Tone }) {
-  const body: CSSProperties = { ...sans(25), lineHeight: 1.55, flex: 1, minWidth: 0 };
+  const body: CSSProperties = { ...sans(29), lineHeight: 1.5, flex: 1, minWidth: 0 };
   const [cap, ...rest] = Array.from(f.column1.trim());
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 44 }}>
@@ -126,15 +133,15 @@ function Curve({ fig, tone }: { fig: LwFigure; tone: Tone }) {
         const p = pts[Math.min(m.at, pts.length - 1)];
         const edge = p[0] < 120 ? "left" : p[0] > W - 120 ? "right" : "mid";
         return (
-          <div key={i} style={{ position: "absolute", top: p[1] - 40, left: edge === "right" ? undefined : p[0], right: edge === "right" ? W - p[0] : undefined, transform: edge === "mid" ? "translateX(-50%)" : undefined, ...serif(24, true), color: tone.soft, whiteSpace: "nowrap" }}>
+          <div key={i} style={{ position: "absolute", top: p[1] - 40, left: edge === "right" ? undefined : p[0], right: edge === "right" ? W - p[0] : undefined, transform: edge === "mid" ? "translateX(-50%)" : undefined, ...serif(28, true), color: tone.soft, whiteSpace: "nowrap" }}>
             {m.label}
           </div>
         );
       })}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, ...sans(15), color: tone.soft }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, ...sans(19), color: tone.soft }}>
         {fig.axis.map((a, i) => <span key={i}>{a}</span>)}
       </div>
-      <div style={{ marginTop: 6, textAlign: "right", ...sans(13), color: tone.soft }}>Illustrative curve</div>
+      <div style={{ marginTop: 6, textAlign: "right", ...sans(16), color: tone.soft }}>Illustrative curve</div>
     </div>
   );
 }
@@ -150,7 +157,7 @@ function ChroniqueNumber({ f, tone }: { f: F<"chronique-number">; tone: Tone }) 
       </div>
       <div style={{ ...rule(tone.ink, 120), marginTop: 56 }} />
       <div style={{ ...serif(66), marginTop: 44 }}>{f.headline}</div>
-      <p style={{ ...sans(26), lineHeight: 1.55, margin: "28px 0 0", maxWidth: 820 }}>{f.body}</p>
+      <p style={{ ...sans(30), lineHeight: 1.5, margin: "28px 0 0", maxWidth: 840 }}>{f.body}</p>
     </div>
   );
 }
@@ -184,7 +191,7 @@ function Courrier({ f, tone }: { f: F<"courrier">; tone: Tone }) {
       <div style={{ ...serif(46), lineHeight: 1.3, marginTop: 28 }}>{f.letter}</div>
       <div style={{ ...serif(26, true), textAlign: "right", marginTop: 24 }}>{f.signature}</div>
       <div style={{ ...rule(tone.ink, 120), marginTop: 52 }} />
-      <div style={{ ...sans(18, 600), letterSpacing: "0.04em", marginTop: 40 }}>La réponse</div>
+      <div style={{ ...sans(20, 600), letterSpacing: "0.04em", marginTop: 40 }}>La réponse</div>
       <p style={{ ...sans(32), lineHeight: 1.5, margin: "18px 0 0" }}>{f.reply}</p>
     </div>
   );
@@ -215,16 +222,25 @@ function Regles({ f, tone }: { f: F<"regles">; tone: Tone }) {
 // ─── F · photo ───────────────────────────────────────────────────────────────
 
 function PhotoPage({ post, slide, index, scale, src }: { post: LwPost; slide: Extract<LwSlide, { template: "photo" }>; index: number; scale: number; src?: string }) {
-  const ivory = (post.photoTone ?? "ivory") === "ivory";
-  const tone: Tone = ivory
+  const toneOf = (t?: "ivory" | "navy"): Tone => (t ?? "ivory") === "ivory"
     ? { ink: C.ivory, soft: C.ivory, ground: C.richNavy, shadow: "0 1px 12px rgba(16,38,53,0.55)" }
     : { ink: C.deepNavy, soft: C.deepNavy, ground: C.ivory };
+  const tone = toneOf(post.photoTone);
+  const footTone = toneOf(post.photoFootTone ?? post.photoTone);
+  // Each wash is the opposite of the type it sits behind.
+  const wash = (t: Tone, a: number) => (t.ink === C.ivory ? `rgba(16,38,53,${a})` : `rgba(252,252,248,${a})`);
   return (
     <SlideWrapper scale={scale} height={LW_H} style={{ background: src ? tone.ground : C.slate }}>
       {src
-        ? <img src={src} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-        : <div style={{ position: "absolute", left: 0, right: 0, bottom: 200, textAlign: "center", ...sans(22), color: C.ivory }}>No photograph yet</div>}
-      <Furniture post={post} index={index} tone={src ? tone : { ...IVORY_PAGE, ink: C.ivory, soft: C.ivory }} footerRule={false}>
+        ? <>
+            <img src={src} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            {/* A wash behind the type at the top and the footer at the bottom,
+                in the opposite tone, so the words read over any photograph. */}
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, ${wash(tone, 0.78)} 0%, ${wash(tone, 0.55)} 30%, ${wash(tone, 0)} 58%)` }} />
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${wash(footTone, 0.6)} 0%, ${wash(footTone, 0)} 16%)` }} />
+          </>
+        :<div style={{ position: "absolute", left: 0, right: 0, bottom: 200, textAlign: "center", ...sans(22), color: C.ivory }}>No photograph yet</div>}
+      <Furniture post={post} index={index} tone={src ? tone : { ...IVORY_PAGE, ink: C.ivory, soft: C.ivory }} footTone={src ? footTone : undefined} footerRule={false}>
         <div style={{ paddingTop: 8 }}>
           <div style={{ ...serif(120), lineHeight: 1, letterSpacing: "-0.02em" }}>{slide.fields.headline}</div>
           <div style={{ ...serif(36, true), marginTop: 22 }}>{slide.fields.subline}</div>

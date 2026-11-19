@@ -92,6 +92,8 @@ export const LwPostSchema = z.object({
   imageUrl: z.string().optional(),
   /** Picked from the photo's top 40%; absent until the photo has been read. */
   photoTone: z.enum(["ivory", "navy"]).optional(),
+  /** The footer's own tone, picked from the bottom 15% of the photo. */
+  photoFootTone: z.enum(["ivory", "navy"]).optional(),
   caption: str,
   claimsToVerify: z.array(z.string()),
   violations: z.array(z.string()).optional(),
