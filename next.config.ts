@@ -53,6 +53,20 @@ const nextConfig: NextConfig = {
       "./node_modules/@img/sharp-linux-arm64/**/*",
       "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
     ],
+    // Le week-end: the live IG grid composite (instagram-grid.ts), read by the
+    // grid route and by generate's planner.
+    "/api/carousel-v2/le-weekend-grid": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
+    "/api/carousel-v2/generate": [
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+      "./node_modules/@img/sharp-linux-arm64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-arm64/**/*",
+    ],
     "/api/carousel-v2/generate-slide-bg": [
       "./node_modules/@img/sharp-linux-x64/**/*",
       "./node_modules/@img/sharp-libvips-linux-x64/**/*",
